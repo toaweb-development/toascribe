@@ -55,5 +55,9 @@ catalog:
 # Dependency build scripts are denied unless listed (DEPENDENCIES_2026 / supply-chain hygiene).
 # lefthook's postinstall runs `lefthook install`, which writes git hooks: that is a per-clone,
 # owner-run step (`pnpm exec lefthook install`), so its script stays denied.
+# esbuild (pulled in by drizzle-kit, a devDependency of @toascribe/db): its postinstall only verifies
+# the platform binary, which pnpm already installs as an optional dependency (@esbuild/<platform>).
+# drizzle-kit generate works without it, so the script stays denied.
 allowBuilds:
   lefthook: false
+  esbuild: false
