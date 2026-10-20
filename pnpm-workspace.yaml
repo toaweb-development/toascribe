@@ -56,6 +56,8 @@ catalog:
   '@nuxt/ui': ^4.12.0
   vue: ^3.5.44
   vue-tsc: ^3.3.13
+  '@iconify-json/lucide': ^1.2.147 # Nuxt UI's default icon set, served from the build instead of api.iconify.design
+  tailwindcss: ^4.3.3 # Nuxt UI's peer; the module registers @tailwindcss/vite itself
 
 # Dependency build scripts are denied unless listed (DEPENDENCIES_2026 / supply-chain hygiene).
 # lefthook's postinstall runs `lefthook install`, which writes git hooks: that is a per-clone,
@@ -63,6 +65,15 @@ catalog:
 # esbuild (pulled in by drizzle-kit, a devDependency of @toascribe/db): its postinstall only verifies
 # the platform binary, which pnpm already installs as an optional dependency (@esbuild/<platform>).
 # drizzle-kit generate works without it, so the script stays denied.
+# unrs-resolver (eslint-import-resolver chain of @nuxt/eslint): its postinstall only falls back to
+# downloading the platform binding, which pnpm already installs as the optional @unrs/resolver-binding-<platform>.
+# vue-demi (a @vueuse dependency of Nuxt UI): its postinstall only switches the build for Vue 2; the
+# shipped default is the Vue 3 build, which is what the Nuxt apps use.
 allowBuilds:
   lefthook: false
   esbuild: false
+  unrs-resolver: false
+  vue-demi: false
+
+minimumReleaseAgeExclude:
+  - '@iconify-json/lucide@1.2.147'

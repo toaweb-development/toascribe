@@ -11,10 +11,11 @@ export default defineConfig(
       '**/.output/**',
       '**/coverage/**',
       '**/migrations/**',
-      // The two Nuxt apps lint themselves with @nuxt/eslint (their own eslint.config.mjs):
+      // The two Nuxt apps and the theme layer lint themselves with @nuxt/eslint (their own eslint.config.mjs):
       // that config knows auto-imports and Vue SFCs, which this one does not.
       'apps/site/**',
       'apps/admin/**',
+      'themes/default/**',
     ],
   },
   {

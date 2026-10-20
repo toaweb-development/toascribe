@@ -1,0 +1,31 @@
+{
+  "name": "@toascribe/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The admin app and the setup wizard: a Nuxt 4 app served under /admin.",
+  "scripts": {
+    "build:deps": "pnpm --filter \"@toascribe/admin^...\" run build",
+    "dev": "pnpm run build:deps && nuxt dev --port 3002",
+    "start": "node .output/server/index.mjs",
+    "lint": "pnpm run build:deps && nuxt prepare && eslint .",
+    "typecheck": "pnpm run build:deps && nuxi typecheck",
+    "test": "pnpm run build:deps && vitest run",
+    "build": "pnpm run build:deps && nuxi build"
+  },
+  "dependencies": {
+    "@iconify-json/lucide": "catalog:",
+    "@nuxt/ui": "catalog:",
+    "@toascribe/shared": "workspace:*",
+    "nuxt": "catalog:",
+    "tailwindcss": "catalog:",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:"
+  }
+}

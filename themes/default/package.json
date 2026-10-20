@@ -1,0 +1,32 @@
+{
+  "name": "@toascribe/theme-default",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The default theme, a Nuxt layer that apps/site extends. The theme SDK comes in phase 3.",
+  "main": "./nuxt.config.ts",
+  "files": [
+    "app",
+    "nuxt.config.ts"
+  ],
+  "scripts": {
+    "lint": "nuxt prepare && eslint .",
+    "typecheck": "nuxi typecheck",
+    "test": "vitest run --passWithNoTests",
+    "build": "nuxt prepare"
+  },
+  "dependencies": {
+    "@iconify-json/lucide": "catalog:",
+    "@nuxt/ui": "catalog:",
+    "tailwindcss": "catalog:",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "catalog:",
+    "eslint": "catalog:",
+    "nuxt": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:"
+  }
+}
