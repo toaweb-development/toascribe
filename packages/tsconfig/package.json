@@ -1,0 +1,15 @@
+{
+  "name": "@toascribe/tsconfig",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared tsconfig bases for the toascribe workspace.",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.bundler.json": "./tsconfig.bundler.json"
+  },
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.bundler.json"
+  ]
+}

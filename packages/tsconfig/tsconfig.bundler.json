@@ -1,0 +1,10 @@
+{
+  // For packages a bundler reads (Vite, Nuxt): typescript §3.
+  // Nuxt apps extend Nuxt's generated tsconfig instead (NUXT_VUE_STANDARD_2026).
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true
+  }
+}

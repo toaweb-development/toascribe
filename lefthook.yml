@@ -1,0 +1,19 @@
+# GIT_STANDARD_2026 "Enforcement". Install once per clone: pnpm exec lefthook install
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
+
+pre-commit:
+  parallel: true
+  commands:
+    typecheck:
+      run: pnpm typecheck
+    lint:
+      run: pnpm lint
+
+pre-push:
+  scripts:
+    'protect-main.sh':
+      runner: bash
+      use_stdin: true # pre-push gets the refs on stdin; without this lefthook hangs
