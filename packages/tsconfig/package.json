@@ -11,5 +11,15 @@
   "files": [
     "tsconfig.base.json",
     "tsconfig.bundler.json"
-  ]
+  ],
+  "scripts": {
+    "lint": "echo 'lint: nothing to lint (JSON configs only; prettier covers them via the root format:check)'",
+    "typecheck": "node check-configs.mjs",
+    "test": "vitest run --passWithNoTests",
+    "build": "echo 'build: nothing to build (the configs are consumed as-is)'"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
 }
