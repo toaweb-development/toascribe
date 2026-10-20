@@ -1,0 +1,11 @@
+{
+  // Production build: src -> dist, run with `node dist/index.js` (typescript §13).
+  // Imports the other workspace packages through their dist/, so they are built first (pnpm -r build order).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

@@ -11,6 +11,11 @@ packages:
 # A package with nothing to test uses `vitest run --passWithNoTests`; one with nothing to
 # lint or build uses an `echo` that says why. `pnpm -r` skips the workspace root.
 
+# Packages run one at a time under `pnpm -r`. apps/api and apps/worker build the libraries they import
+# (build:deps) before lint, typecheck and test, because those libraries are consumed through dist/.
+# Run in parallel, both would write the same dist/ at once and a reader could see a half-written file.
+workspaceConcurrency: 1
+
 # One version per dependency across the workspace (TYPESCRIPT_STANDARD_2026 §7).
 # Packages write "catalog:" and never carry their own version.
 # Versions verified against the npm registry 2026-10-20 (`npm view <pkg> version`).

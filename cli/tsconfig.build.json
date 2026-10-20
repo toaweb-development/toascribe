@@ -1,0 +1,10 @@
+{
+  // Build: src -> dist. The entry point is dist/index.js (package.json bin).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

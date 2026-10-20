@@ -9,9 +9,10 @@
     "node": ">=24.12"
   },
   "scripts": {
-    "lint": "eslint . && pnpm --filter @toascribe/site --filter @toascribe/admin --if-present lint",
-    "typecheck": "tsc --noEmit && pnpm -r --if-present typecheck",
-    "test": "vitest run",
+    "build:libs": "pnpm --filter \"@toascribe/api^...\" --filter \"@toascribe/worker^...\" run build",
+    "lint": "pnpm build:libs && eslint . && pnpm --filter @toascribe/site --filter @toascribe/admin --if-present lint",
+    "typecheck": "pnpm build:libs && tsc --noEmit && pnpm -r --if-present typecheck",
+    "test": "pnpm build:libs && vitest run",
     "build": "pnpm -r --if-present build",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
