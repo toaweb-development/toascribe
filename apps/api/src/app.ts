@@ -20,6 +20,7 @@ import type { Pool } from './repositories/health.ts'
 import { createAuthApp } from './routes/auth.ts'
 import { createHealthApp } from './routes/health.ts'
 import { createMeApp } from './routes/me.ts'
+import { createSecurityApp } from './routes/security.ts'
 import { createSystemApp } from './routes/system.ts'
 import { createServices } from './services/index.ts'
 
@@ -38,6 +39,8 @@ export interface AppDeps {
   readonly keyRing: KeyRing
   /** Where the account flows send mail. */
   readonly mail: MailPort
+  /** How long the account flows that hide whether an account exists take at least (ms). Tests set 0. Default: lib/timing.ts. */
+  readonly minimumResponseMs?: number
   /** The clock, for the session lifetimes and the lockouts. Tests set it; the default is the real time. */
   readonly clock?: () => Date
 }
@@ -63,6 +66,9 @@ export function buildApp(deps: AppDeps) {
     signingKey: deps.signingKey,
     keyRing: deps.keyRing,
     mail: deps.mail,
+    logger: deps.logger,
+    publicOrigin,
+    ...(deps.minimumResponseMs === undefined ? {} : { minimumResponseMs: deps.minimumResponseMs }),
     onInvalidSetting: (key) => {
       deps.logger.warn({ key }, 'a stored setting is invalid; the default is used')
     },
@@ -122,6 +128,7 @@ export function buildApp(deps: AppDeps) {
   app.route('/api', createHealthApp({ pool: deps.pool, version: deps.version }))
   app.route('/api/v1', createAuthApp(services))
   app.route('/api/v1', createMeApp(services))
+  app.route('/api/v1', createSecurityApp(services))
   app.route('/api/v1', createSystemApp(services))
 
   const document = { openapi: '3.1.0', info: { title: 'toascribe API', version: deps.version } } as const

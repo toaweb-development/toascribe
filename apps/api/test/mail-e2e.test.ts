@@ -172,6 +172,100 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
       expect(workerOutput).toContain('"recipientDomain":"mailpit.example.test"')
       expect(JSON.stringify(env.lines)).not.toContain(TOKEN)
     })
+
+    /** The token in the fragment of the link in a mail's text. */
+    function tokenInLink(text: string, action: string): string {
+      const match = new RegExp(
+        `${TEST_ORIGIN.replaceAll('.', '\\.')}/admin/login\\?action=${action}#token=([A-Za-z0-9_-]{43})`,
+      ).exec(text)
+      const token = match?.[1]
+      if (token === undefined) {
+        throw new Error(`no ${action} link in the mail`)
+      }
+      return token
+    }
+
+    it('lost password: the mail arrives with a working link, the link sets the password, and it works once', async () => {
+      const account = await env.createAccount({ username: 'e2e-lost', email: uniqueAddress('e2e-lost') })
+      const client = env.client({ ip: '198.51.100.41' })
+      expect((await client.post('/api/v1/auth/password/lost', { login: account.username })).status).toBe(202)
+
+      const message = await waitForMessage(config(), account.email)
+      expect(message.Subject).toBe('[cms.example.test] Tilbakestill passordet')
+      expect(message.Text).toContain('Hei e2e-lost,')
+      const token = tokenInLink(message.Text, 'resetpass')
+      // The link is built from PUBLIC_ORIGIN, with the token in the fragment and nowhere else.
+      expect(message.Text).not.toContain(`?token=${token}`)
+      expect(message.HTML).toContain(`action=resetpass#token=${token}`)
+
+      const reset = await client.post('/api/v1/auth/password/reset', { token, password: 'reset through real mail 42' })
+      expect(reset.status).toBe(204)
+      expect(
+        (await client.post('/api/v1/auth/password/reset', { token, password: 'reset through real mail 43' })).status,
+      ).toBe(400)
+      expect(
+        (await env.client({ ip: '198.51.100.42' }).login(account.username, 'reset through real mail 42')).status,
+      ).toBe(200)
+
+      // Nothing about the link in the job table, the api log or the worker log.
+      expect(JSON.stringify(await env.query('select data, output from pgboss.job'))).not.toContain(token)
+      expect(workerOutput).not.toContain(token)
+      expect(JSON.stringify(env.lines)).not.toContain(token)
+    })
+
+    it('lost password: an address with no account gets no mail at all', async () => {
+      const nobody = uniqueAddress('e2e-nobody')
+      const client = env.client({ ip: '198.51.100.43' })
+      expect((await client.post('/api/v1/auth/password/lost', { login: nobody })).status).toBe(202)
+      // Mails to a real account go through the same queue; wait for one so the absence means something.
+      const probe = await env.createAccount({ username: 'e2e-probe', email: uniqueAddress('e2e-probe') })
+      await client.post('/api/v1/auth/password/lost', { login: probe.username })
+      await waitForMessage(config(), probe.email)
+      expect(await countMessages(config(), nobody)).toBe(0)
+    })
+
+    it('registration: the welcome mail arrives, the link sets the first password, and the account is active', async () => {
+      await env.query(`update setting set value = 'true'::jsonb where key = 'users_can_register'`)
+      try {
+        const address = uniqueAddress('e2e-register')
+        const client = env.client({ ip: '198.51.100.44' })
+        expect((await client.post('/api/v1/auth/register', { username: 'e2e-newcomer', email: address })).status).toBe(
+          202,
+        )
+        const message = await waitForMessage(config(), address)
+        expect(message.Subject).toBe('[cms.example.test] Velkommen! Velg passord')
+        const token = tokenInLink(message.Text, 'setpassword')
+        const set = await client.post('/api/v1/auth/password/set', { token, password: 'first password from mail 1' })
+        expect(set.status).toBe(204)
+        expect(
+          (await env.client({ ip: '198.51.100.45' }).login('e2e-newcomer', 'first password from mail 1')).status,
+        ).toBe(200)
+      } finally {
+        await env.query(`update setting set value = 'false'::jsonb where key = 'users_can_register'`)
+      }
+    })
+
+    it('e-mail change: the link goes to the new address, a notice to the old one, and the link switches the address', async () => {
+      const account = await env.createAccount({ username: 'e2e-mover', email: uniqueAddress('e2e-old') })
+      const client = env.client({ ip: '198.51.100.46' })
+      expect((await client.login(account.username, TEST_PASSWORD)).status).toBe(200)
+      const fresh = uniqueAddress('e2e-new')
+      expect((await client.post('/api/v1/me/email-change', { newEmail: fresh, password: TEST_PASSWORD })).status).toBe(
+        202,
+      )
+
+      const toNew = await waitForMessage(config(), fresh)
+      expect(toNew.Subject).toBe('[cms.example.test] Bekreft den nye e-postadressen')
+      const toOld = await waitForMessage(config(), account.email)
+      expect(toOld.Subject).toBe('[cms.example.test] E-postadressen på kontoen din skal byttes')
+      expect(toOld.Text).toContain(fresh)
+      expect(toOld.Text).not.toContain('#token=')
+
+      const token = tokenInLink(toNew.Text, 'confirmemail')
+      const confirmed = await client.post('/api/v1/me/email-change/confirm', { token })
+      expect(confirmed.status).toBe(200)
+      expect(await confirmed.json()).toEqual({ email: fresh })
+    })
   },
 )
 

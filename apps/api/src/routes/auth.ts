@@ -1,5 +1,18 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
-import { ApiError, LoginRequest, LoginResponse, SessionResponse, safeRedirectPath } from '@toascribe/shared'
+import {
+  AcceptedResponse,
+  ApiError,
+  AuthOptionsResponse,
+  ChoosePasswordRequest,
+  LoginRequest,
+  LoginResponse,
+  LostPasswordRequest,
+  MfaVerifyRequest,
+  MfaVerifyResponse,
+  RegisterRequest,
+  SessionResponse,
+  safeRedirectPath,
+} from '@toascribe/shared'
 
 import { clearSessionCookie, setSessionCookie } from '../lib/cookies.ts'
 import type { AppEnv } from '../lib/env.ts'
@@ -64,6 +77,115 @@ const logoutRoute = defineRoute({
   },
 })
 
+const optionsRoute = defineRoute({
+  method: 'get',
+  path: '/auth/options',
+  tags: ['auth'],
+  summary: 'What the login screens need to know',
+  description: 'Public. For now whether the register link is shown (the setting «Anyone can register»).',
+  policy: publicAccess(),
+  responses: {
+    200: { content: { 'application/json': { schema: AuthOptionsResponse } }, description: 'The options' },
+  },
+})
+
+const verifyMfaRoute = defineRoute({
+  method: 'post',
+  path: '/auth/mfa/verify',
+  tags: ['auth'],
+  summary: 'Finish a login with a code from the authenticator app or a recovery code',
+  description:
+    'For a session in state `verification` (the answer of the login was `mfa_required`). Sets a new session cookie with the ' +
+    'full lifetime; the CSRF token stays the same. A code of the same 30-second step works once, and a recovery code works once. ' +
+    `A wrong code counts against the \`mfa\` limits (429 when they are used up). ${CSRF_NOTE} Needs the X-CSRF-Token header.`,
+  policy: authenticated({ allowPendingMfa: true }),
+  request: { body: { required: true, content: { 'application/json': { schema: MfaVerifyRequest } } } },
+  responses: {
+    200: { content: { 'application/json': { schema: MfaVerifyResponse } }, description: 'Signed in' },
+    400: errorResponse('Invalid request'),
+    401: errorResponse('No session, or it has expired (the half-signed-in session lives 10 minutes)'),
+    403: errorResponse('CSRF token missing or wrong, or the code is wrong (`invalid_code`)'),
+    409: errorResponse('The session has no second factor to pass (`mfa_not_pending`)'),
+    429: errorResponse('Too many wrong codes; see Retry-After'),
+  },
+})
+
+const lostPasswordRoute = defineRoute({
+  method: 'post',
+  path: '/auth/password/lost',
+  tags: ['auth'],
+  summary: 'Ask for a link to choose a new password',
+  description:
+    'A username or an e-mail address. Always 202 with the same body, and about the same time, whether or not the account ' +
+    `exists (K-004); the mail is the only difference. ${CSRF_NOTE}`,
+  policy: publicAccess(),
+  request: { body: { required: true, content: { 'application/json': { schema: LostPasswordRequest } } } },
+  responses: {
+    202: { content: { 'application/json': { schema: AcceptedResponse } }, description: 'Accepted' },
+    400: errorResponse('Invalid request, or a cross-site request'),
+    429: errorResponse('Too many requests from this address; see Retry-After'),
+  },
+})
+
+const resetPasswordRoute = defineRoute({
+  method: 'post',
+  path: '/auth/password/reset',
+  tags: ['auth'],
+  summary: 'Choose a new password with the link from the lost-password mail',
+  description:
+    'The token is the one in the link (`...?action=resetpass#token=...`). It works once, for 24 hours, and only here: a link ' +
+    'for another purpose is refused. Signs the account out everywhere. Does not sign in; the second factor, if any, is still ' +
+    `asked at the next login. ${CSRF_NOTE}`,
+  policy: publicAccess(),
+  request: { body: { required: true, content: { 'application/json': { schema: ChoosePasswordRequest } } } },
+  responses: {
+    204: { description: 'The password is changed' },
+    400: errorResponse(
+      'Invalid request, a password the site refuses (`weak_password`), or a link that is not valid (`invalid_token`)',
+    ),
+    429: errorResponse('Too many tries from this address; see Retry-After'),
+  },
+})
+
+const setPasswordRoute = defineRoute({
+  method: 'post',
+  path: '/auth/password/set',
+  tags: ['auth'],
+  summary: 'Choose the first password with the link from the welcome mail',
+  description:
+    'The token is the one in the link (`...?action=setpassword#token=...`): the welcome mail of a registration or of an account ' +
+    `an administrator made. It makes the account active. Same rules as /auth/password/reset. ${CSRF_NOTE}`,
+  policy: publicAccess(),
+  request: { body: { required: true, content: { 'application/json': { schema: ChoosePasswordRequest } } } },
+  responses: {
+    204: { description: 'The password is set and the account is active' },
+    400: errorResponse(
+      'Invalid request, a password the site refuses (`weak_password`), or a link that is not valid (`invalid_token`)',
+    ),
+    429: errorResponse('Too many tries from this address; see Retry-After'),
+  },
+})
+
+const registerRoute = defineRoute({
+  method: 'post',
+  path: '/auth/register',
+  tags: ['auth'],
+  summary: 'Register an account',
+  description:
+    'Only when the setting «Anyone can register» is on (403 `registration_closed` otherwise). Makes a pending account with the ' +
+    'default role and mails a link to choose the password. Always 202 with the same body, and about the same time, whether or ' +
+    `not the username or the address was free (K-004). ${CSRF_NOTE}`,
+  policy: publicAccess(),
+  request: { body: { required: true, content: { 'application/json': { schema: RegisterRequest } } } },
+  responses: {
+    202: { content: { 'application/json': { schema: AcceptedResponse } }, description: 'Accepted' },
+    400: errorResponse('Invalid request, or a cross-site request'),
+    403: errorResponse('Registration is closed (`registration_closed`)'),
+    429: errorResponse('Too many requests from this address; see Retry-After'),
+    503: errorResponse('The default role cannot be given to visitors (`registration_unavailable`)'),
+  },
+})
+
 /** Routes under /api/v1/auth. */
 export function createAuthApp(services: Services) {
   return new OpenAPIHono<AppEnv>()
@@ -114,6 +236,46 @@ export function createAuthApp(services: Services) {
         return c.json({ status: 'authenticated' as const, csrfToken, account: toSessionAccount(auth), expiresAt }, 200)
       }
       return c.json({ status: 'mfa_required' as const, mfa: auth.mfa, csrfToken, expiresAt }, 200)
+    })
+    .openapi(optionsRoute, async (c) => c.json({ registrationOpen: await services.flows.registrationOpen() }, 200))
+    .openapi(verifyMfaRoute, async (c) => {
+      const auth = await requireSession(c)
+      const verified = await services.mfa.verify(auth, c.req.valid('json'), {
+        ip: getClientIp(c),
+        requestId: c.get('requestId'),
+      })
+      setSessionCookie(c, verified.issued.token, verified.issued.cookieMaxAgeSeconds)
+      return c.json(
+        {
+          status: 'authenticated' as const,
+          csrfToken: services.sessions.csrfToken(auth.session.id),
+          account: toSessionAccount(auth),
+          expiresAt: verified.issued.expiresAt.toISOString(),
+          recoveryCodesRemaining: verified.recoveryCodesRemaining,
+        },
+        200,
+      )
+    })
+    .openapi(lostPasswordRoute, async (c) => {
+      await services.flows.requestPasswordReset(c.req.valid('json').login, {
+        ip: getClientIp(c),
+        requestId: c.get('requestId'),
+      })
+      return c.json({ status: 'accepted' as const }, 202)
+    })
+    .openapi(resetPasswordRoute, async (c) => {
+      const { token, password } = c.req.valid('json')
+      await services.flows.resetPassword(token, password, { ip: getClientIp(c), requestId: c.get('requestId') })
+      return c.body(null, 204)
+    })
+    .openapi(setPasswordRoute, async (c) => {
+      const { token, password } = c.req.valid('json')
+      await services.flows.setPassword(token, password, { ip: getClientIp(c), requestId: c.get('requestId') })
+      return c.body(null, 204)
+    })
+    .openapi(registerRoute, async (c) => {
+      await services.flows.register(c.req.valid('json'), { ip: getClientIp(c), requestId: c.get('requestId') })
+      return c.json({ status: 'accepted' as const }, 202)
     })
     .openapi(logoutRoute, async (c) => {
       const auth = await requireSession(c)

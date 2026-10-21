@@ -19,6 +19,8 @@ export const EMAIL_TEMPLATE = [
   'email_change',
   'admin_new_user',
   'admin_password_change',
+  'account_exists',
+  'email_change_notice',
   'test',
 ] as const
 export const EmailTemplate = z.enum(EMAIL_TEMPLATE)
@@ -98,6 +100,19 @@ function messages<S extends z.ZodType<string>>(secret: S) {
       template: z.literal('admin_password_change'),
       to: Recipient,
       data: z.strictObject({ username: Username }),
+    }),
+    // Registration or an e-mail change that named an address that already has an account (K-005, K-012). The answer to the
+    // request is the same either way, so this mail is how the owner of the address finds out; it holds nothing secret.
+    z.strictObject({
+      template: z.literal('account_exists'),
+      to: Recipient,
+      data: z.strictObject({ username: Username }),
+    }),
+    // To the OLD address when an e-mail change is requested (K-012): the owner can see it and react before it is confirmed.
+    z.strictObject({
+      template: z.literal('email_change_notice'),
+      to: Recipient,
+      data: z.strictObject({ username: Username, newEmail: Recipient }),
     }),
     // POST /system/test-email (K-204): proves that the SMTP settings work.
     z.strictObject({

@@ -29,6 +29,12 @@ const SAMPLES: Record<EmailTemplate, unknown> = {
     data: { username: 'ola', email: 'ola@example.no' },
   },
   admin_password_change: { template: 'admin_password_change', to: 'admin@example.no', data: { username: 'ola' } },
+  account_exists: { template: 'account_exists', to: 'kari@example.no', data: { username: 'kari' } },
+  email_change_notice: {
+    template: 'email_change_notice',
+    to: 'kari@example.no',
+    data: { username: 'kari', newEmail: 'ny@example.no' },
+  },
   test: { template: 'test', to: 'admin@example.no', data: { requestedBy: 'admin' } },
 }
 
@@ -142,6 +148,8 @@ describe('renderMail (bokmål)', () => {
     ['email_change', '[Bloggen min] Bekreft den nye e-postadressen', 'Du har bedt om å bruke denne e-postadressen'],
     ['admin_new_user', '[Bloggen min] Ny bruker: ola', 'E-post: ola@example.no'],
     ['admin_password_change', '[Bloggen min] Passordet til ola er endret', 'er endret.'],
+    ['account_exists', '[Bloggen min] Du har allerede en konto', 'brukernavnet kari'],
+    ['email_change_notice', '[Bloggen min] E-postadressen på kontoen din skal byttes', 'til ny@example.no.'],
     ['test', '[Bloggen min] Test av e-post', 'sendt etter ønske fra admin'],
   ] as const)('renders %s', (template, subject, line) => {
     const mail = render(template)

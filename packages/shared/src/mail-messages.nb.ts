@@ -52,6 +52,26 @@ export const MAIL_MESSAGES_NB: MailMessages = {
       intro: ['Passordet til brukeren {username} på {siteName} er endret.'],
       outro: [ADMIN_NOTE],
     },
+    account_exists: {
+      subject: '[{siteName}] Du har allerede en konto',
+      greeting: 'Hei,',
+      intro: [
+        'Noen har prøvd å bruke denne e-postadressen til en konto på {siteName}, men du har allerede en konto med brukernavnet {username}.',
+        'Har du glemt passordet, kan du velge et nytt med «Mistet passordet?» på innloggingssiden.',
+      ],
+      outro: ['Var det ikke du som prøvde, kan du se bort fra denne e-posten. Ingenting er endret.'],
+    },
+    email_change_notice: {
+      subject: '[{siteName}] E-postadressen på kontoen din skal byttes',
+      greeting: 'Hei {username},',
+      intro: [
+        'Det er bedt om å bytte e-postadressen på kontoen din på {siteName} til {newEmail}.',
+        'Byttet skjer først når den nye adressen er bekreftet med en lenke vi har sendt dit. Kontoen har ikke endret seg ennå.',
+      ],
+      outro: [
+        'Var det ikke du som ba om dette, bør du bytte passord med en gang og logge ut overalt ellers. Da blir byttet stoppet.',
+      ],
+    },
     test: {
       subject: '[{siteName}] Test av e-post',
       greeting: 'Hei,',

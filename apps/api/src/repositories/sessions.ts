@@ -145,3 +145,19 @@ export async function replaceTokenAfterMfa(
     .returning({ id: session.id })
   return rows.length > 0
 }
+
+/** Deletes every session of the account: a password reset signs the account out everywhere. Returns how many. */
+export async function deleteAllSessions(db: Executor, accountId: string): Promise<number> {
+  const rows = await db.delete(session).where(eq(session.accountId, accountId)).returning({ id: session.id })
+  return rows.length
+}
+
+/** Records that the second factor was passed in this session, keeping its token. False if the row is gone. */
+export async function markSessionMfaVerified(db: Executor, sessionId: string, now: Date): Promise<boolean> {
+  const rows = await db
+    .update(session)
+    .set({ mfaVerifiedAt: now, modifiedAt: now })
+    .where(eq(session.id, sessionId))
+    .returning({ id: session.id })
+  return rows.length > 0
+}

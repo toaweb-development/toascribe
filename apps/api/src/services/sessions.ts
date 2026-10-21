@@ -18,6 +18,7 @@ import {
   deleteOwnSession,
   findLiveSession,
   insertSession,
+  markSessionMfaVerified,
   listLiveSessions,
   replaceTokenAfterMfa,
   touchSession,
@@ -82,6 +83,12 @@ export interface SessionService {
    * caller sets the cookie. Returns undefined when the session has gone.
    */
   completeMfa: (sessionId: string, remember: boolean, db?: Executor) => Promise<IssuedToken | undefined>
+  /**
+   * For a complete session whose account has just enrolled its first factor: the person proved the code a moment ago, so this
+   * session counts as having passed it (it keeps its token). The account's other sessions are not marked: they have to pass
+   * the factor like any new login.
+   */
+  markMfaPassed: (sessionId: string, db?: Executor) => Promise<void>
 }
 
 export interface IssuedToken {
@@ -233,6 +240,10 @@ export function createSessionService(options: {
 
     revokeOthers(auth, executor = db) {
       return deleteOtherSessions(executor, auth.account.id, auth.session.id)
+    },
+
+    async markMfaPassed(sessionId, executor = db) {
+      await markSessionMfaVerified(executor, sessionId, clock())
     },
 
     async completeMfa(sessionId, remember, executor = db) {

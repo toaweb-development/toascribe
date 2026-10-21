@@ -13,6 +13,9 @@ import type { MatrixCase } from './role-matrix.ts'
 noticeIfSkipped('role-matrix')
 
 const SOMEONE_ELSES_SESSION = '0198a3c2-0000-7000-8000-000000000000'
+const NO_SUCH_FACTOR = '0198a3c2-0000-7000-8000-000000000001'
+/** Looks like a token and is none: the one-time-link routes answer 400 `invalid_token`. */
+const NOT_A_TOKEN = 'A'.repeat(43)
 
 /** Routes that exist only for this test, to show that the matrix tells capabilities apart. */
 const TEST_ONLY_POLICIES = {
@@ -53,6 +56,82 @@ const CASES: readonly MatrixCase[] = [
     ownRefusal: true,
     expected: { ...ok, anonymous: 401 },
   },
+  // The flows around the login: anyone may call them, and none of them says whether an account exists
+  {
+    route: 'GET /api/v1/auth/options',
+    method: 'GET',
+    path: '/api/v1/auth/options',
+    expected: { ...ok, anonymous: 200 },
+  },
+  {
+    route: 'POST /api/v1/auth/password/lost',
+    method: 'POST',
+    path: '/api/v1/auth/password/lost',
+    json: { login: 'nobody-at-all' },
+    expected: {
+      ...ok,
+      anonymous: 202,
+      administrator: 202,
+      editor: 202,
+      author: 202,
+      contributor: 202,
+      subscriber: 202,
+    },
+  },
+  {
+    route: 'POST /api/v1/auth/password/reset',
+    method: 'POST',
+    path: '/api/v1/auth/password/reset',
+    json: { token: NOT_A_TOKEN, password: 'a perfectly fine password' },
+    expected: {
+      ...ok,
+      anonymous: 400,
+      administrator: 400,
+      editor: 400,
+      author: 400,
+      contributor: 400,
+      subscriber: 400,
+    },
+  },
+  {
+    route: 'POST /api/v1/auth/password/set',
+    method: 'POST',
+    path: '/api/v1/auth/password/set',
+    json: { token: NOT_A_TOKEN, password: 'a perfectly fine password' },
+    expected: {
+      ...ok,
+      anonymous: 400,
+      administrator: 400,
+      editor: 400,
+      author: 400,
+      contributor: 400,
+      subscriber: 400,
+    },
+  },
+  {
+    // Registration is switched on for this suite (see beforeAll). Each caller names itself, so none collides with another.
+    route: 'POST /api/v1/auth/register',
+    method: 'POST',
+    path: '/api/v1/auth/register',
+    body: (actor) => ({ username: `registered-${actor}`, email: `registered-${actor}@example.test` }),
+    expected: {
+      ...ok,
+      anonymous: 202,
+      administrator: 202,
+      editor: 202,
+      author: 202,
+      contributor: 202,
+      subscriber: 202,
+    },
+  },
+  // A half-signed-in session may pass its second factor; a complete one is told there is nothing to pass
+  {
+    route: 'POST /api/v1/auth/mfa/verify',
+    method: 'POST',
+    path: '/api/v1/auth/mfa/verify',
+    json: { type: 'totp', code: '123456' },
+    expected: { ...ok, administrator: 409, editor: 409, author: 409, contributor: 409, subscriber: 409 },
+  },
   // Any signed-in account
   {
     route: 'POST /api/v1/auth/logout',
@@ -70,6 +149,56 @@ const CASES: readonly MatrixCase[] = [
     method: 'DELETE',
     path: `/api/v1/me/sessions/${SOMEONE_ELSES_SESSION}`,
     expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 404 },
+  },
+  { route: 'GET /api/v1/me/mfa', method: 'GET', path: '/api/v1/me/mfa', expected: ok },
+  {
+    route: 'POST /api/v1/me/mfa/totp',
+    method: 'POST',
+    path: '/api/v1/me/mfa/totp',
+    json: {},
+    expected: { ...ok, administrator: 201, editor: 201, author: 201, contributor: 201, subscriber: 201 },
+  },
+  {
+    route: 'POST /api/v1/me/mfa/totp/:id/confirm',
+    method: 'POST',
+    path: `/api/v1/me/mfa/totp/${NO_SUCH_FACTOR}/confirm`,
+    json: { code: '123456' },
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 404 },
+  },
+  {
+    route: 'DELETE /api/v1/me/mfa/:id',
+    method: 'DELETE',
+    path: `/api/v1/me/mfa/${NO_SUCH_FACTOR}`,
+    json: { password: TEST_PASSWORD },
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 404 },
+  },
+  {
+    route: 'POST /api/v1/me/mfa/recovery-codes',
+    method: 'POST',
+    path: '/api/v1/me/mfa/recovery-codes',
+    json: { password: TEST_PASSWORD },
+    expected: { ...ok, administrator: 409, editor: 409, author: 409, contributor: 409, subscriber: 409 },
+  },
+  {
+    route: 'PATCH /api/v1/me/password',
+    method: 'PATCH',
+    path: '/api/v1/me/password',
+    json: { currentPassword: TEST_PASSWORD, newPassword: TEST_PASSWORD },
+    expected: { ...ok, administrator: 204, editor: 204, author: 204, contributor: 204, subscriber: 204 },
+  },
+  {
+    route: 'POST /api/v1/me/email-change',
+    method: 'POST',
+    path: '/api/v1/me/email-change',
+    body: (actor) => ({ newEmail: `changed-${actor}@example.test`, password: TEST_PASSWORD }),
+    expected: { ...ok, administrator: 202, editor: 202, author: 202, contributor: 202, subscriber: 202 },
+  },
+  {
+    route: 'POST /api/v1/me/email-change/confirm',
+    method: 'POST',
+    path: '/api/v1/me/email-change/confirm',
+    json: { token: NOT_A_TOKEN },
+    expected: { ...ok, administrator: 400, editor: 400, author: 400, contributor: 400, subscriber: 400 },
   },
   // The `manage_options` capability: only the administrator
   {
@@ -107,6 +236,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('role matrix (needs TEST_DATABA
 
   beforeAll(async () => {
     env = await startAuthApp()
+    // The register route answers 403 while the setting is off; the matrix is about who may call it, so it is on here.
+    await env.query(`update setting set value = 'true'::jsonb where key = 'users_can_register'`)
     const response = { 200: { content: { 'application/json': { schema: z.object({}) } }, description: 'ok' } } as const
     env.app.openapi(
       defineRoute({

@@ -175,6 +175,11 @@ export interface AuthTestApp {
   readonly mail: ReturnType<typeof recordingMail>
   /** The test clock. Starts at the real time; `setNow` pins it, `advance` moves it. */
   readonly clock: { now: () => Date; set: (at: Date) => void; advance: (ms: number) => void }
+  /**
+   * Another app over the same database with its own mail port or timing, for a test of a different configuration. It shares
+   * the database, the clock and the accounts; its log lines and its recorded mail are its own.
+   */
+  variant: (options: VariantOptions) => { client: (options?: ClientOptions) => TestClient; lines: LogLines }
   createAccount: (input: NewAccount) => Promise<CreatedAccount>
   client: (options?: ClientOptions) => TestClient
   query: <R extends pg.QueryResultRow>(text: string, values?: readonly unknown[]) => Promise<R[]>
@@ -183,12 +188,21 @@ export interface AuthTestApp {
 
 export interface StartOptions {
   readonly publicOrigin?: string
+  /** How long the flows that hide whether an account exists take at least (ms). Default 0, so the tests are not slowed; the timing tests pass a real value. */
+  readonly minimumResponseMs?: number
   /**
    * The mail port the app uses, made once the database exists (it may need its URL). The default is a recording port that
    * keeps what it is asked to send. A port with a `stop` is stopped when the app is closed.
    */
   readonly mail?: (database: TestDatabase) => MailPort & { readonly stop?: () => Promise<void> }
 }
+
+export interface VariantOptions {
+  readonly mail?: MailPort
+  readonly minimumResponseMs?: number
+}
+
+type LogLines = ReturnType<typeof memoryLogger>['lines']
 
 export async function startAuthApp(options: StartOptions = {}): Promise<AuthTestApp> {
   const database = await createTestDatabase()
@@ -224,6 +238,7 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
       keyRing: testKeyRing,
       mail: custom ?? mail,
       clock: clock.now,
+      minimumResponseMs: options.minimumResponseMs ?? 0,
     })
 
     const roleIds = new Map<string, string>()
@@ -270,6 +285,26 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
           await owner.query('insert into account_role (account_id, role_id) values ($1, $2)', [id, roleId])
         }
         return { id, username: input.username, email }
+      },
+
+      variant(variantOptions) {
+        const variantLog = memoryLogger()
+        const other = buildApp({
+          pool,
+          db,
+          logger: variantLog.logger,
+          version: '9.9.9',
+          publicOrigin: options.publicOrigin ?? TEST_ORIGIN,
+          signingKey: TEST_SIGNING_KEY,
+          keyRing: testKeyRing,
+          mail: variantOptions.mail ?? recordingMail(),
+          clock: clock.now,
+          minimumResponseMs: variantOptions.minimumResponseMs ?? 0,
+        })
+        return {
+          client: (clientOptions) => new TestClient(other.app, clientOptions),
+          lines: variantLog.lines,
+        }
       },
 
       client: (clientOptions) => new TestClient(built.app, clientOptions),

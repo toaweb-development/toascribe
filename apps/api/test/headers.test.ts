@@ -81,8 +81,22 @@ describe('the OpenAPI document', () => {
         '/api/ready',
         '/api/v1/auth/login',
         '/api/v1/auth/logout',
+        '/api/v1/auth/mfa/verify',
+        '/api/v1/auth/options',
+        '/api/v1/auth/password/lost',
+        '/api/v1/auth/password/reset',
+        '/api/v1/auth/password/set',
+        '/api/v1/auth/register',
         '/api/v1/auth/session',
         '/api/v1/me',
+        '/api/v1/me/email-change',
+        '/api/v1/me/email-change/confirm',
+        '/api/v1/me/mfa',
+        '/api/v1/me/mfa/recovery-codes',
+        '/api/v1/me/mfa/totp',
+        '/api/v1/me/mfa/totp/{id}/confirm',
+        '/api/v1/me/mfa/{id}',
+        '/api/v1/me/password',
         '/api/v1/me/sessions',
         '/api/v1/me/sessions/{id}',
         '/api/v1/system/test-email',
@@ -101,5 +115,20 @@ describe('the OpenAPI document', () => {
     expect(doc.paths['/api/v1/auth/logout']?.['post']?.['x-policy']).toBe('authenticated')
     expect(doc.paths['/api/v1/system/test-email']?.['post']?.['x-policy']).toBe('capability:manage_options')
     expect(doc.paths['/api/health']?.['get']?.['x-policy']).toBe('public')
+    // The account flows: the public ones are public, the second step may be taken half signed in, the rest need `read`.
+    for (const path of [
+      '/api/v1/auth/password/lost',
+      '/api/v1/auth/password/reset',
+      '/api/v1/auth/password/set',
+      '/api/v1/auth/register',
+    ]) {
+      expect(doc.paths[path]?.['post']?.['x-policy'], path).toBe('public')
+    }
+    expect(doc.paths['/api/v1/auth/options']?.['get']?.['x-policy']).toBe('public')
+    expect(doc.paths['/api/v1/auth/mfa/verify']?.['post']?.['x-policy']).toBe('authenticated')
+    expect(doc.paths['/api/v1/me/mfa/totp']?.['post']?.['x-policy']).toBe('authenticated')
+    expect(doc.paths['/api/v1/me/mfa/{id}']?.['delete']?.['x-policy']).toBe('capability:read')
+    expect(doc.paths['/api/v1/me/password']?.['patch']?.['x-policy']).toBe('capability:read')
+    expect(doc.paths['/api/v1/me/email-change/confirm']?.['post']?.['x-policy']).toBe('capability:read')
   })
 })

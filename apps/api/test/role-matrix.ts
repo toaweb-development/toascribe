@@ -68,7 +68,8 @@ export function describeRoleMatrix(
     async function clientFor(actor: Actor): Promise<{ client: TestClient; account: CreatedAccount | undefined }> {
       const env = getEnv()
       // Every call gets a session of its own, so a call that ends it (logout) cannot disturb the next.
-      const client = env.client({ ip: '198.51.100.99' })
+      // Each caller has an address of its own: the flows that count every request per address (lost password, registration) would otherwise run into their limit.
+      const client = env.client({ ip: `198.51.100.${String(100 + ACTORS.indexOf(actor))}` })
       clients.push(client)
       if (actor === 'anonymous') {
         return { client, account: undefined }
