@@ -16,8 +16,18 @@ const envExample = read('docker/.env.example')
 const caddyfile = read('docker/proxy/Caddyfile')
 const readme = read('README.md')
 const composeBuild = read('docker/compose.build.yaml')
+const ciWorkflow = read('.github/workflows/ci.yml')
 const initScript = read('docker/postgres/10-init.sh')
 const postgresDockerfile = read('docker/postgres/Dockerfile')
+
+/** The text of one service in compose.yaml, from `  name:` to the next service (two-space indent) or the networks. */
+function service(name: string): string {
+  const start = compose.indexOf(`\n  ${name}:\n`)
+  expect(start, `service ${name}`).toBeGreaterThan(-1)
+  const rest = compose.slice(start + 1)
+  const next = rest.slice(name.length + 4).search(/^(?: {2}[a-z]|[a-z])/m)
+  return next === -1 ? rest : rest.slice(0, name.length + 4 + next)
+}
 
 /** Names set in .env.example, commented out or not: `NAME=` at the start of a line. */
 function documentedVariables(text: string): Set<string> {
@@ -73,10 +83,14 @@ describe('docker/compose.yaml', () => {
     expect(migrate).toContain('MIGRATION_DATABASE_URL:')
   })
 
-  it('publishes exactly one port, on the proxy', () => {
-    expect(compose.match(/^\s+ports:/gm)).toHaveLength(1)
-    const proxy = compose.slice(compose.indexOf('  proxy:'), compose.indexOf('  site:'))
-    expect(proxy).toContain('ports:')
+  it('publishes two ports at most: the proxy, and the development-only mailpit page on loopback', () => {
+    expect(compose.match(/^\s+ports:/gm)).toHaveLength(2)
+    expect(service('proxy')).toContain('ports:')
+    const mailpit = service('mailpit')
+    expect(mailpit).toContain('ports:')
+    // Bound to 127.0.0.1 in the file itself: no variable can widen it, and the page has no login.
+    expect(mailpit).toContain("- '127.0.0.1:${TOASCRIBE_MAILPIT_PORT:-8025}:8025'")
+    expect(mailpit).not.toMatch(/'[^']*:1025'/) // SMTP stays on the internal network
   })
 
   it('binds the published port to loopback unless TOASCRIBE_HTTP_BIND says otherwise', () => {
@@ -91,8 +105,66 @@ describe('docker/compose.yaml', () => {
 
   it('pins every image that is not built here by tag and digest', () => {
     const external = [...compose.matchAll(/^\s+image: (?!ghcr\.io\/toaweb\/)(\S+)/gm)].map((match) => match[1])
-    expect(external.length).toBeGreaterThanOrEqual(1) // valkey
+    expect(external.length).toBeGreaterThanOrEqual(2) // valkey, mailpit
     for (const image of external) expect(image).toMatch(/:[^@/]+@sha256:[0-9a-f]{64}$/)
+  })
+
+  it('stops with a message when a key is empty, and gives the signing key to the api only', () => {
+    expect(compose).toContain('${TOASCRIBE_ENCRYPTION_KEY:?')
+    expect(compose).toContain('${TOASCRIBE_SIGNING_KEY:?')
+    expect(service('api')).toContain('TOASCRIBE_SIGNING_KEY:')
+    expect(service('worker')).not.toContain('TOASCRIBE_SIGNING_KEY')
+    for (const name of ['migrate', 'site', 'admin', 'proxy', 'postgres']) {
+      expect(service(name)).not.toMatch(/TOASCRIBE_(ENCRYPTION|SIGNING)_/)
+    }
+  })
+
+  it('gives the encryption keys and the public origin to the api and the worker, the same way', () => {
+    for (const name of ['api', 'worker']) {
+      const text = service(name)
+      expect(text).toContain('PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:${TOASCRIBE_HTTP_PORT:-8080}}')
+      expect(text).toContain('${TOASCRIBE_ENCRYPTION_KEY:?')
+      // An empty string would be read as 0 by the apps (z.coerce.number), which they refuse: the default is 1.
+      expect(text).toContain('TOASCRIBE_ENCRYPTION_KEY_VERSION: ${TOASCRIBE_ENCRYPTION_KEY_VERSION:-1}')
+      expect(text).toContain('TOASCRIBE_ENCRYPTION_OLD_KEYS: ${TOASCRIBE_ENCRYPTION_OLD_KEYS:-}')
+    }
+  })
+
+  it('passes the e-mail defaults to the worker as optional values, and to nobody else', () => {
+    const names = [
+      'SMTP_HOST',
+      'SMTP_PORT',
+      'SMTP_SECURE',
+      'SMTP_USERNAME',
+      'SMTP_PASSWORD',
+      'MAIL_FROM_ADDRESS',
+      'MAIL_FROM_NAME',
+    ]
+    const worker = service('worker')
+    for (const name of names) {
+      expect(worker).toContain(`${name}: \${${name}:-}`)
+      expect(envExample).toMatch(new RegExp(`^${name}=$`, 'm'))
+      expect(compose.match(new RegExp(`^\\s+${name}:`, 'gm'))).toHaveLength(1)
+    }
+  })
+
+  it('keeps mailpit optional and hardened, and nothing depends on it', () => {
+    const mailpit = service('mailpit')
+    expect(mailpit).toMatch(/profiles:\n\s+- mailpit/)
+    expect(mailpit).toMatch(/user: '[1-9][0-9]*:[1-9][0-9]*'/) // the image runs as root by default
+    expect(mailpit).toContain('read_only: true')
+    expect(mailpit).toContain('<<: *hardened') // cap_drop ALL and no-new-privileges
+    expect(mailpit).toContain("['CMD', '/mailpit', 'readyz']")
+    expect(mailpit).toMatch(/networks:\n\s+- internal\n/)
+    expect(mailpit).not.toContain('- db')
+    expect(compose.replace(mailpit, '')).not.toMatch(/^\s+mailpit:\n\s+condition:/m)
+  })
+
+  it('uses the same mailpit image in compose.yaml and in CI', () => {
+    const pattern = /axllent\/mailpit:v[0-9.]+@sha256:[0-9a-f]{64}/
+    const inCompose = pattern.exec(compose)?.[0]
+    expect(inCompose).toBeDefined()
+    expect(ciWorkflow).toContain(String(inCompose))
   })
 
   it('needs no file from the repo at run time', () => {
@@ -152,6 +224,35 @@ describe('docker/proxy/Caddyfile', () => {
     expect(caddyfile.indexOf('handle @unnormalized')).toBeLessThan(caddyfile.indexOf('handle @setup'))
     expect(caddyfile.indexOf('handle @setup')).toBeLessThan(redirect)
     expect(redirect).toBeLessThan(caddyfile.indexOf('handle /api/*'))
+  })
+
+  it('sends the sign-in screens and the WordPress addresses to the admin app with a 308, after the path check', () => {
+    const code = caddyfile
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n')
+    // Only inside `handle` blocks (a bare `redir` or `rewrite` would run before the 400 for an unnormalised path), and
+    // with the `*` matcher: a first argument that starts with "/" would be read as a path matcher.
+    expect(code).not.toMatch(/^\s*redir (?!\* )/m)
+    expect(code.match(/^\s*rewrite /gm)).toHaveLength(1) // the one inside the route below
+    const blocks: [string, string][] = [
+      ['@auth', 'redir * /admin{uri} 308'],
+      ['@wplogin', 'rewrite * /admin/login'],
+      ['@wpadmin', 'redir * /admin 308'],
+    ]
+    for (const [matcher, body] of blocks) {
+      const at = code.indexOf(`handle ${matcher} {`)
+      expect(at, matcher).toBeGreaterThan(-1)
+      expect(at).toBeGreaterThan(code.indexOf('handle @unnormalized'))
+      expect(at).toBeLessThan(code.indexOf('handle /api/*'))
+      expect(code.indexOf(body, at), body).toBeGreaterThan(at)
+      expect(code.indexOf(body, at)).toBeLessThan(code.indexOf('handle /api/*'))
+    }
+    expect(code).toMatch(/@auth path \/login \/login\/ \/register \/register\/ \/logout \/logout\//)
+    expect(code).toContain('@wplogin path /wp-login.php')
+    expect(code).toContain('@wpadmin path /wp-admin /wp-admin/*')
+    // The rewrite and the redirect keep their order only inside a `route`.
+    expect(code).toMatch(/route \{\n\s+rewrite \* \/admin\/login\n\s+redir \* \{uri\} 308\n\s+\}/)
   })
 
   it('believes forwarded headers from one configured address only, never private_ranges', () => {

@@ -23,6 +23,24 @@ jobs:
     name: Lint, types, tests, build
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # The e-mail tests (apps/worker, apps/api) read these two; without them those suites skip. Mailpit catches the mails
+    # the tests send and shows them over HTTP. There is no secret in it, so a service container will do (the database
+    # below needs a password made per run, which a service container cannot take). Same image as the mailpit profile
+    # in docker/compose.yaml (a test checks that).
+    env:
+      MAILPIT_URL: http://127.0.0.1:8025
+      MAILPIT_SMTP: 127.0.0.1:1025
+    services:
+      mailpit:
+        image: axllent/mailpit:v1.31.6@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -59,7 +77,8 @@ jobs:
 
       # One command for every check, the same one a developer runs before a push: format, lint, typecheck, test and
       # build for every workspace package and for the root files (eslint, tsc and the `root` Vitest project).
-      # TEST_DATABASE_URL comes from the step above, so the database tests run here and none is skipped.
+      # TEST_DATABASE_URL comes from the step above and MAILPIT_URL/MAILPIT_SMTP from the job, so the database and
+      # e-mail tests run here and none is skipped.
       - name: Check
         run: pnpm check
 
@@ -161,12 +180,22 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
 
+      # Mailpit is also part of the stack a developer can switch on (the mailpit profile), so it gets the same scan.
+      - name: Scan the mailpit image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: axllent/mailpit:v1.31.6@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
       # The images just built, started as the user starts them: every container healthy, the migrate step done,
-      # and the proxy routing as docs/PLAN.md says. compose.yaml stops when a password is empty (there are no
-      # default passwords), so give it throwaway ones. They exist only for this run and are masked.
-      - name: Make throwaway passwords
+      # and the proxy routing as docs/PLAN.md says. compose.yaml stops when a password or a key is empty (there are no
+      # defaults), so give it throwaway ones. They exist only for this run and are masked. The two keys must differ.
+      - name: Make throwaway passwords and keys
         run: |
-          for name in POSTGRES_PASSWORD POSTGRES_OWNER_PASSWORD POSTGRES_APP_PASSWORD; do
+          for name in POSTGRES_PASSWORD POSTGRES_OWNER_PASSWORD POSTGRES_APP_PASSWORD TOASCRIBE_ENCRYPTION_KEY TOASCRIBE_SIGNING_KEY; do
             value="$(openssl rand -hex 32)"
             echo "::add-mask::${value}"
             echo "${name}=${value}" >> "$GITHUB_ENV"
@@ -190,6 +219,9 @@ jobs:
           check / 200
           check /admin 200
           check /setup 308
+          check /login 308
+          check '/wp-login.php?action=lostpassword' 308
+          check /wp-admin/edit.php 308
           check /admin/setup 200
           check /api/health 200
           check /api/ready 200

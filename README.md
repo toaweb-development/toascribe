@@ -16,7 +16,8 @@ You need Docker with Compose v2.
 
 ```sh
 cp docker/.env.example docker/.env
-# Put a password in each of the three PASSWORD lines of docker/.env:  openssl rand -hex 32
+# Put a value in each of the three PASSWORD lines and in TOASCRIBE_ENCRYPTION_KEY and TOASCRIBE_SIGNING_KEY of
+# docker/.env (a different one each):  openssl rand -hex 32
 docker compose -f docker/compose.yaml up -d --build
 ```
 
@@ -30,8 +31,22 @@ Then open <http://localhost:8080>.
 | `/api/health` | 200 when the API is up                                      |
 | `/api/ready`  | 200 when the API can reach the database, 503 when it cannot |
 
-Compose stops with a clear message when a password is empty; there are no default passwords. The migrations run in
+Compose stops with a clear message when a password or a key is empty; there are no defaults. The migrations run in
 their own step (`migrate`) before the API and the worker start.
+
+**Two keys, made once.** `TOASCRIBE_ENCRYPTION_KEY` encrypts the secrets the database holds (TOTP secrets, the SMTP
+password); `TOASCRIBE_SIGNING_KEY` signs the CSRF tokens, and must be a different value. **Back the encryption key up
+outside the server:** without it those values cannot be read again. To replace it without losing data, put the new key in
+`TOASCRIBE_ENCRYPTION_KEY`, raise `TOASCRIBE_ENCRYPTION_KEY_VERSION` by one and put the old key in
+`TOASCRIBE_ENCRYPTION_OLD_KEYS` as `v<its version>:<key>`.
+
+**E-mail.** The worker sends mail through an SMTP server you name in `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`,
+`SMTP_USERNAME` and `SMTP_PASSWORD`, from `MAIL_FROM_ADDRESS` and `MAIL_FROM_NAME`. These are the defaults; a setting saved
+in the admin wins. Until a host and a sender address are set, mails wait in the queue and are retried.
+
+**Old WordPress addresses.** `/wp-login.php` goes to `/admin/login` with its query string (so `?action=lostpassword`
+survives), and `/wp-admin` and everything under it go to `/admin`; `/login`, `/register` and `/logout` go to the same
+pages under `/admin`. All are permanent redirects (308) made by the proxy.
 
 **The database passwords are set once.** `docker/postgres/10-init.sh` runs `init.sql` (it creates the roles
 `toascribe_owner` and `toascribe_app`) only when postgres starts on an empty volume, the first time. After that, changing
@@ -59,6 +74,11 @@ Use `toascribe_owner` for the owner password, and `postgres` for `POSTGRES_PASSW
 - **Update.** `docker compose -f docker/compose.yaml pull && docker compose -f docker/compose.yaml up -d` once images are
   published. Nothing is published yet, so for now update with `git pull` and `up -d --build`.
 - **Valkey** (cache) is optional and not used yet: `COMPOSE_PROFILES=valkey` in `docker/.env`.
+- **Mailpit** (for development) catches every mail instead of sending it: `COMPOSE_PROFILES=mailpit` in `docker/.env`, or
+  `docker compose -f docker/compose.yaml --profile mailpit up -d`, with `SMTP_HOST=mailpit`, `SMTP_PORT=1025`,
+  `SMTP_SECURE=none` and a `MAIL_FROM_ADDRESS` set (see `docker/.env.example`). Its inbox is at
+  <http://127.0.0.1:8025> (`TOASCRIBE_MAILPIT_PORT` changes the port). It is the one published port besides the proxy's,
+  bound to this machine's loopback only, and the page has no login: do not use the profile on a server.
 - **The CLI** runs in the API container: `docker compose -f docker/compose.yaml exec api toa --version`.
 - **Stop.** `docker compose -f docker/compose.yaml down` (add `-v` to delete the database volume as well).
 
@@ -189,7 +209,8 @@ docker run -d --name toascribe-dev-db -e POSTGRES_DB=toascribe -e POSTGRES_PASSW
   -p 127.0.0.1:5432:5432 -v toascribe_dev_data:/var/lib/postgresql toascribe-postgres-dev
 
 # .env in the repo root is read by the api and worker dev scripts (and is git-ignored)
-printf 'DATABASE_URL=postgres://toascribe_app:%s@127.0.0.1:5432/toascribe\nPUBLIC_ORIGIN=http://localhost:3000\n' "$app" > .env
+printf 'DATABASE_URL=postgres://toascribe_app:%s@127.0.0.1:5432/toascribe\nPUBLIC_ORIGIN=http://localhost:3000\nTOASCRIBE_ENCRYPTION_KEY=%s\nTOASCRIBE_SIGNING_KEY=%s\n' \
+  "$app" "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
 MIGRATION_DATABASE_URL="postgres://toascribe_owner:$owner@127.0.0.1:5432/toascribe" pnpm --filter @toascribe/db migrate
 
 pnpm --filter @toascribe/api dev     # http://localhost:3001/api/health

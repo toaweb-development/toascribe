@@ -89,6 +89,10 @@ separate step: say so.
   `X-Forwarded-For` from the right (`trusted_proxies_strict`) and sends the result to every upstream in `X-Real-IP`.
   **The apps read the client IP from `X-Real-IP` only and never parse `X-Forwarded-For`** (M0.3 relies on it: login
   limits, `audit_log.ip`). A new `reverse_proxy` in the Caddyfile keeps `header_up X-Real-IP {client_ip}` (a test checks it).
+- **One exception to "only the proxy publishes a port":** the `mailpit` compose profile (development only, off by default,
+  nothing depends on it) publishes its web page on `127.0.0.1` only, through `TOASCRIBE_MAILPIT_PORT`; the SMTP port stays
+  on the internal network. A test pins the loopback address. The worker's mail settings come from `SMTP_*` and
+  `MAIL_FROM_*` in `docker/.env`; `TOASCRIBE_ENCRYPTION_KEY` and `TOASCRIBE_SIGNING_KEY` are required in compose.
 - CI (`.github/workflows/`): third-party actions are pinned to a full commit SHA with the version in a comment, checked
   against the action's own repository; `permissions: contents: read` at the top; `persist-credentials: false` wherever
   third-party code runs; event values go through `env:`, never inline `${{ }}` in a script. Run `actionlint` on every
