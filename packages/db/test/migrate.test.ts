@@ -22,12 +22,18 @@ interface Run {
   readonly output: string
 }
 
-/** Runs the real entry point (src/migrate.ts through Node's type stripping) with the given env. */
+/**
+ * Runs the real entry point (src/migrate.ts through Node's type stripping) with the given env. `--conditions=source`
+ * makes Node load @toascribe/shared from src/ too, as Vitest does, so the test needs no built dist/.
+ */
 function runEntry(env: Readonly<Record<string, string>>): Promise<Run> {
   return new Promise((resolve, reject) => {
     // Only the env given here reaches the runner, so a MIGRATION_DATABASE_URL in the shell cannot leak in.
     const base = Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== 'MIGRATION_DATABASE_URL'))
-    const child = spawn(process.execPath, [ENTRY], { env: { ...base, ...env }, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(process.execPath, ['--conditions=source', ENTRY], {
+      env: { ...base, ...env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
     let output = ''
     child.stdout.on('data', (chunk: Buffer) => (output += chunk.toString()))
     child.stderr.on('data', (chunk: Buffer) => (output += chunk.toString()))

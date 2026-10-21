@@ -9,6 +9,7 @@ import pg from 'pg'
 import type { Logger } from 'pino'
 
 import { PGBOSS_SCHEMA } from './pgboss.ts'
+import { seedCore } from './seed.ts'
 
 /**
  * Session advisory lock held for the whole run, so two containers never migrate at once
@@ -30,8 +31,9 @@ export interface RunMigrationsOptions {
 }
 
 /**
- * Applies the Drizzle SQL migrations and installs or upgrades the pg-boss schema, as the owner role,
- * under the migration lock. Safe to run again: both steps skip what is already applied.
+ * Applies the Drizzle SQL migrations, installs or upgrades the pg-boss schema and seeds the built-in roles and
+ * default settings (seedCore), as the owner role, under the migration lock. Safe to run again: every step skips what
+ * is already there, and the seed never overwrites a row.
  */
 export async function runMigrations(options: RunMigrationsOptions): Promise<void> {
   const { connectionString, logger } = options
@@ -50,6 +52,9 @@ export async function runMigrations(options: RunMigrationsOptions): Promise<void
 
       await migratePgBoss(connectionString, logger)
       logger.info({ schema: PGBOSS_SCHEMA }, 'pg-boss schema up to date')
+
+      const seeded = await seedCore(db)
+      logger.info(seeded, 'core roles and settings seeded')
     } finally {
       await client.query('select pg_advisory_unlock($1::bigint)', [MIGRATION_LOCK_KEY])
     }

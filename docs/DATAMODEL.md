@@ -213,6 +213,27 @@ meaning without the parent.
 
 Referential actions run as the table owner, so SET NULL on `audit_log` works although the app role has no UPDATE there.
 
+## Seed data
+
+`seedCore(db)` in `@toascribe/db` writes the rows a site needs before anyone logs in. The migration step calls it after
+the Drizzle migrations and pg-boss, under the same lock and as the owner role, so `docker compose up` on an empty volume
+ends with them in place; `toa core install` and the tests call it as well. It seeds no accounts, no content and no
+secrets.
+
+- **`role`:** the five built-in roles, `administrator`, `editor`, `author`, `contributor` and `subscriber`, with WordPress'
+  English display names and capability lists (50, 26, 7, 3 and 1 names, WordPress 7.1.3 `populate_roles()`). The
+  lists are `DEFAULT_ROLES` and `CAPABILITIES` in `@toascribe/shared`. Meta capabilities (`edit_post`, ...) are resolved
+  in code, never stored. The admin translates built-in role names by slug.
+- **`setting`:** one row per key of `CORE_SETTINGS` in `@toascribe/shared`, the WordPress option names and install-time
+  defaults for the General, Reading, Discussion, Media and Permalinks pages, typed (booleans and numbers, not WordPress'
+  strings) and validated by `CoreSettings`. Changes from WordPress: an empty site title, `locale` `nb` (WordPress
+  `WPLANG`), day-and-name permalinks, and the date format, time format, week start and time zone of WordPress' nb_NO
+  translation. The mapping is listed in `packages/shared/src/settings.ts`.
+
+It only inserts what is missing (`ON CONFLICT DO NOTHING` on `role.slug` and `setting.key`), in one transaction. A run
+never updates a row: a setting an administrator changed and a role whose capabilities were edited keep their values. A
+deleted built-in role or core setting comes back on the next run. It needs INSERT only, so the app role can run it too.
+
 ## Deviations from PLAN
 
 Where PLAN names a column, the schema uses its name. These are the places it differs, or adds what PLAN leaves open.
@@ -228,6 +249,9 @@ Where PLAN names a column, the schema uses its name. These are the places it dif
 - `block_note` «tekst» is `body`, «løst» is `is_resolved`. `oembed_cache` «utløper» is `expires_at`.
 - `role` capabilities are a `text[]` of capability names, not JSONB.
 - `comment` has `modified_at` as well as `created_at` (moderation and editing change rows).
+- `extension_state` «aktiv» is `is_active` (boolean prefix, PostgreSQL standard «Navnekonvensjoner»).
+- The built-in roles store WordPress' capabilities without the deprecated `level_0` ... `level_10`, which WordPress
+  still writes for old plugins. Nothing reads them, and WXR does not carry roles (see «Seed data»).
 
 **Decisions PLAN leaves open**
 
@@ -270,7 +294,7 @@ Where PLAN names a column, the schema uses its name. These are the places it dif
 - `webhook`: `name`, `url`, `events`, `secret_encrypted`, `is_active`. `webhook_delivery`: `event`, `payload`, `status`,
   `attempts`, `response_status`, `error`, `duration_ms`, `delivered_at`.
 - `release`: `title`, `description`, `status`, `publish_at`, `published_at`, `account_id`.
-- `extension_state`: `kind`, `slug`, `version`, `is_active`, `settings`, `approved_permissions`, `auto_update`,
+- `extension_state`: `kind`, `slug`, `version`, `settings`, `approved_permissions`, `auto_update`,
   `last_error`.
 - `privacy_request`: `type`, `email`, `account_id`, `status`, `token_hash`, `confirmed_at`, `completed_at`.
 - `consent`: `subject_key`, `account_id`, `category`, `granted`, `policy_version`.
