@@ -1,0 +1,15 @@
+/* Nuxt UI's defaults use the 500 shade for text and badges, about 2.3:1 on white. These pick the
+   darker shade of the same palettes, so badge text and links reach 4.5:1 (WCAG 1.4.3). Dark mode keeps
+   Nuxt UI's own values, which already read well on dark. No new colours, only other steps of Nuxt UI's. */
+:root {
+  --ui-primary: var(--ui-color-primary-700);
+  --ui-success: var(--ui-color-success-800);
+  --ui-error: var(--ui-color-error-700);
+}
+
+/* The rule above is unlayered, so it would also win in dark mode: put Nuxt UI's dark steps back. */
+.dark {
+  --ui-primary: var(--ui-color-primary-400);
+  --ui-success: var(--ui-color-success-400);
+  --ui-error: var(--ui-color-error-400);
+}

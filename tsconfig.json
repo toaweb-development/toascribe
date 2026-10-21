@@ -1,0 +1,8 @@
+{
+  // Root tooling files and repo-level tests (test/). Packages have their own tsconfig.
+  "extends": "@toascribe/tsconfig/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["eslint.config.ts", "vitest.config.ts", "test"]
+}

@@ -1,0 +1,79 @@
+# What is released cannot change without a new version and a CHANGELOG entry (VERSIONING_STANDARD_2026 §4).
+name: Version
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERSION_FILE: package.json # the single source of truth (§3); the workspace packages mirror it (test/version-mirror.test.ts)
+      RELEASED: >- # paths that are «what is rolled out» (prefixes, space separated)
+        apps/ packages/ cli/ themes/ docker/ package.json pnpm-lock.yaml pnpm-workspace.yaml
+      BASE_REF: ${{ github.base_ref }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # needs tags and the base branch
+          persist-credentials: false
+      - name: Check the version
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess, sys
+
+          def git(*args):
+              done = subprocess.run(["git", *args], capture_output=True, text=True)
+              return done.stdout.strip() if done.returncode == 0 else ""
+
+          def read_version(text, name):
+              # Tolerant on purpose: a missing file, text that is not JSON, or no "version" field all mean
+              # "no version here" (""). The first pull request into a main that has only docs/ hits exactly this.
+              try:
+                  if name.endswith("package.json"):
+                      value = json.loads(text).get("version", "")
+                      return value if isinstance(value, str) else ""
+                  return text.strip()
+              except (ValueError, AttributeError):
+                  return ""
+
+          semver = re.compile(r"\d+\.\d+\.\d+")
+          as_tuple = lambda v: tuple(int(n) for n in v.split("."))
+          vf = os.environ["VERSION_FILE"]
+          version = read_version(open(vf, encoding="utf-8").read(), vf)
+          problems = []
+          if not semver.fullmatch(version):
+              problems.append(f"{vf}: '{version}' is not MAJOR.MINOR.PATCH")
+
+          entries = re.findall(r"^## \[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$",
+                               open("CHANGELOG.md", encoding="utf-8").read(), re.MULTILINE)
+          if not entries or entries[0] != version:
+              problems.append(f"CHANGELOG.md: newest entry is {entries[0] if entries else 'none'}, "
+                              f"the version is {version} - add '## [{version}] - YYYY-MM-DD'")
+
+          base_ref = os.environ.get("BASE_REF")
+          base = (git("merge-base", f"origin/{base_ref}", "HEAD") if base_ref
+                  else git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*"))
+          if base:                                    # no tag yet = first release
+              released = tuple(os.environ["RELEASED"].split())
+              changed = [p for p in git("diff", "--name-only", base, "HEAD").splitlines()
+                         if p.startswith(released)]
+              old = git("show", f"{base}:{vf}")
+              old_version = read_version(old, vf) if old else ""
+              if changed and semver.fullmatch(old_version) and semver.fullmatch(version) \
+                      and as_tuple(version) <= as_tuple(old_version):
+                  problems.append(f"{changed[0]} changed, but the version is {version} "
+                                  f"(previous: {old_version}) - bump the version and the CHANGELOG")
+
+          for p in problems:
+              print(f"::error::{p}")
+          print(f"version {version}: {'FAIL' if problems else 'OK'}")
+          sys.exit(1 if problems else 0)
+          PY

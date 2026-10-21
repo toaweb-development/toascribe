@@ -1,0 +1,23 @@
+# Secrets and local env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# OS
+*.Zone.Identifier
+.DS_Store
+Thumbs.db
+
+# Node / Nuxt / build output
+node_modules/
+dist/
+.nuxt/
+.output/
+coverage/
+*.tsbuildinfo
+pnpm-debug.log
+*.log
+
+# Docker volumes
+postgres_data/

@@ -1,0 +1,29 @@
+{
+  "name": "@toascribe/blocks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Placeholder for the block definitions (JSON Schema) the editor and the API share; they come in phase 1.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@toascribe/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

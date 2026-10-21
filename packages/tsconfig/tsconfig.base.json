@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext", // gives moduleResolution nodenext
+    "rewriteRelativeImportExtensions": true, // imports are written ./x.ts; tsc turns them into ./x.js in dist/
+    "strict": true,
+    "noUncheckedIndexedAccess": true, // arr[i] and record[key] may be undefined
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "verbatimModuleSyntax": true, // import type is written explicitly
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true, // no enum, namespace or parameter properties (typescript §4)
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "types": ["node"], // TypeScript 7 defaults to [] - list what you need
+    "sourceMap": true
+  }
+}

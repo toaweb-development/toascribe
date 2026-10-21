@@ -1,0 +1,31 @@
+# Build context for every image in docker/ is the repo root. Keep it small and keep secrets out of it.
+.git
+.github
+.gitignore
+.lefthook
+.editorconfig
+.prettierrc
+.prettierignore
+
+# Secrets and local env (docker/.env holds the real passwords)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and build output are produced inside the build
+**/node_modules
+**/dist
+**/.nuxt
+**/.output
+**/.cache
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+
+# Not needed in any image
+docs
+test
+**/test
+**/*.test.ts
+*.md
+LICENSE

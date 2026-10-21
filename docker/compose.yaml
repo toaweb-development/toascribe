@@ -1,0 +1,321 @@
+# toascribe: the whole stack on one port.
+#
+#   cp docker/.env.example docker/.env      # then fill in the three passwords (see the file)
+#   docker compose -f docker/compose.yaml up -d --build
+#
+# Open http://localhost:8080. Only the proxy publishes a port; TLS belongs to an external Traefik or nginx
+# that sends all traffic to that port (docs/PLAN.md, «Arkitektur»).
+#
+# Every image has both `image:` and `build:`. Development builds from the repo (`--build`); an installation
+# that only has this file and .env pulls the images instead (`docker compose pull && docker compose up -d`).
+# Nothing in this file needs a file from the repo at run time: the Caddyfile and the database roles are
+# baked into the proxy and postgres images.
+
+name: toascribe
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+# DOCKER_STANDARD «Container-herding» and SECURITY §10: least privilege, relaxed per service only where it
+# is needed (postgres, valkey).
+x-hardened: &hardened
+  restart: unless-stopped
+  init: true
+  logging: *logging
+  security_opt:
+    - 'no-new-privileges:true'
+  cap_drop:
+    - ALL
+
+# The one api image runs the api, the worker, the migrate step and the `toa` CLI with different commands.
+x-api-image: &api-image
+  image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.1.0}
+
+# The database roles' passwords sit in URLs, so they must be URL-safe: `openssl rand -hex 32` (see .env.example).
+x-database-url: &database-url 'postgres://toascribe_app:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}@postgres:5432/${POSTGRES_DB:-toascribe}'
+
+services:
+  # ── Entry point ──────────────────────────────────────────
+  proxy:
+    <<: *hardened
+    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.1.0}
+    build:
+      context: ..
+      dockerfile: docker/proxy/Dockerfile
+    ports:
+      - '${TOASCRIBE_HTTP_PORT:-8080}:8080'
+    environment:
+      TOASCRIBE_TRUSTED_PROXIES: ${TOASCRIBE_TRUSTED_PROXIES:-private_ranges}
+    read_only: true
+    tmpfs:
+      - /data
+      - /config
+    networks:
+      - edge
+      - internal
+    depends_on:
+      site:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8081/healthz']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # ── Web apps ─────────────────────────────────────────────
+  site:
+    <<: *hardened
+    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.1.0}
+    build:
+      context: ..
+      dockerfile: docker/nuxt/Dockerfile
+      args:
+        APP: site
+        HEALTH_PATH: /
+    environment:
+      # Where server-side rendering reaches the api (runtimeConfig.apiUrlInternal).
+      NUXT_API_URL_INTERNAL: http://api:3001
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - internal
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/',{signal:AbortSignal.timeout(4000),redirect:'manual'}).then(r=>process.exit(r.status<500?0:1),()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  admin:
+    <<: *hardened
+    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.1.0}
+    build:
+      context: ..
+      dockerfile: docker/nuxt/Dockerfile
+      args:
+        APP: admin
+        HEALTH_PATH: /admin
+    environment:
+      NUXT_API_URL_INTERNAL: http://api:3001
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - internal
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/admin',{signal:AbortSignal.timeout(4000),redirect:'manual'}).then(r=>process.exit(r.status<500?0:1),()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── API, worker and the migrate step: one image, three commands ──
+  api:
+    <<: [*hardened, *api-image]
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    command: ['node', 'apps/api/dist/index.js']
+    environment:
+      NODE_ENV: production
+      PORT: '3001'
+      DATABASE_URL: *database-url
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:${TOASCRIBE_HTTP_PORT:-8080}}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - internal
+      - db
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'node', 'apps/api/dist/healthcheck.js']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  worker:
+    <<: [*hardened, *api-image]
+    command: ['node', 'apps/worker/dist/index.js']
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: *database-url
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      WORKER_HEARTBEAT_FILE: /tmp/toascribe-worker.heartbeat
+    read_only: true
+    tmpfs:
+      - /tmp # the heartbeat file the healthcheck reads
+    # pg-boss waits up to 30 s for running jobs; the worker allows 40 s (apps/worker). Docker must not kill it sooner.
+    stop_grace_period: 45s
+    networks:
+      - internal # the worker will need the internet (e-mail, webhooks) once it does real work
+      - db
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'node', 'apps/worker/dist/healthcheck.js']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Runs the migrations as the owner role, then exits. It is the only service that gets MIGRATION_DATABASE_URL.
+  # It takes an advisory lock, so two of them never migrate at once (packages/db).
+  migrate:
+    <<: *api-image
+    command: ['node', 'packages/db/dist/migrate.js']
+    environment:
+      MIGRATION_DATABASE_URL: 'postgres://toascribe_owner:${POSTGRES_OWNER_PASSWORD:?POSTGRES_OWNER_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}@postgres:5432/${POSTGRES_DB:-toascribe}'
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    restart: 'no'
+    init: true
+    logging: *logging
+    read_only: true
+    security_opt:
+      - 'no-new-privileges:true'
+    cap_drop:
+      - ALL
+    networks:
+      - db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      disable: true # one-shot; the image's HEALTHCHECK is the api's
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── Data ─────────────────────────────────────────────────
+  postgres:
+    restart: unless-stopped
+    init: true
+    logging: *logging
+    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.1.0}
+    build:
+      context: ..
+      dockerfile: docker/postgres/Dockerfile
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-toascribe}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}'
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      # Used once, by 10-init.sh, on the first start of an empty volume. Changing them later changes nothing in
+      # the database (ALTER ROLE does that).
+      POSTGRES_OWNER_PASSWORD: '${POSTGRES_OWNER_PASSWORD:?POSTGRES_OWNER_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}'
+      POSTGRES_APP_PASSWORD: '${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}'
+    volumes:
+      # PostgreSQL 18 and newer: mount on /var/lib/postgresql, not /var/lib/postgresql/data (POSTGRESQL_STANDARD).
+      - postgres_data:/var/lib/postgresql
+    # The root filesystem stays writable: the postgres entrypoint needs it. It starts as root, fixes the volume's
+    # owner and drops to the postgres user, which is why these five capabilities stay and nothing else.
+    security_opt:
+      - 'no-new-privileges:true'
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    networks:
+      - db
+    healthcheck:
+      # 127.0.0.1, not the socket: during first-start init the temporary server listens on the socket only.
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # Optional cache and queue backend. Off by default and not used by the apps yet:
+  #   docker compose --profile valkey up -d      (or COMPOSE_PROFILES=valkey in .env)
+  valkey:
+    <<: *hardened
+    profiles:
+      - valkey
+    image: valkey/valkey:9.1.2-alpine3.24
+    # Start as the valkey user (uid 999) so the entrypoint needs no capabilities. A cache: nothing is saved to disk.
+    user: '999:1000'
+    command: ['valkey-server', '--save', '', '--appendonly', 'no']
+    read_only: true
+    tmpfs:
+      - /data
+    networks:
+      - db
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+networks:
+  # Where an external Traefik or nginx attaches to reach the proxy (only the proxy is on it).
+  edge: {}
+  # The apps talk to each other here.
+  internal: {}
+  # Postgres and valkey live here and nowhere else. `internal: true`: no route out of the network.
+  db:
+    internal: true
+
+volumes:
+  postgres_data: {}

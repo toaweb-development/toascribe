@@ -1,0 +1,8 @@
+# Owner-written project documents (embedded-content markers) are not reformatted
+docs/
+pnpm-lock.yaml
+dist/
+.nuxt/
+.output/
+coverage/
+**/migrations/
