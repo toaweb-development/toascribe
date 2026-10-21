@@ -51,6 +51,7 @@ ENV NODE_ENV=production \
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=prod-deps /app/apps/worker/node_modules ./apps/worker/node_modules
+COPY --from=prod-deps /app/cli/node_modules ./cli/node_modules
 COPY --from=prod-deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=prod-deps /app/packages/shared/node_modules ./packages/shared/node_modules
 

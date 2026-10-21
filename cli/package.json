@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The toa command (placeholder in M0.1). Runs in the api container: docker compose exec api toa …",
+  "description": "The toa command. Runs in the api container: docker compose exec api toa …",
   "bin": {
     "toa": "dist/index.js"
   },
@@ -16,10 +16,19 @@
     "test": "vitest run",
     "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js"
   },
+  "dependencies": {
+    "@toascribe/db": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "pino": "catalog:",
+    "zod": "catalog:"
+  },
   "devDependencies": {
+    "@toascribe/shared": "workspace:*",
     "@toascribe/tsconfig": "workspace:*",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "eslint": "catalog:",
+    "pg": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
