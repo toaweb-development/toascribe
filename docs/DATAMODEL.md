@@ -1,9 +1,19 @@
 # Data model
 
-The core tables of toascribe in PostgreSQL 18, as built in M0.2. The specification is the table in
-[PLAN.md](PLAN.md) («Datamodell i PostgreSQL»); this file explains how it was turned into a schema and lists every place
-the schema differs from it. The schema is in `packages/db/src/schema/` (one file per domain), the migration in
-`packages/db/migrations/`, the value sets and JSON shapes in `packages/shared/src/values.ts` and `documents.ts`.
+The core tables of toascribe in PostgreSQL 18, as built in M0.2 and extended in M0.3 (login and accounts). The
+specification is the table in [PLAN.md](PLAN.md) («Datamodell i PostgreSQL»); this file explains how it was turned into
+a schema and lists every place the schema differs from it. The schema is in `packages/db/src/schema/` (one file per
+domain), the migrations in `packages/db/migrations/`, the value sets and JSON shapes in `packages/shared/src/values.ts`
+and `documents.ts`.
+
+| Migration                       | Release | What it does                                                                           |
+| ------------------------------- | ------- | -------------------------------------------------------------------------------------- |
+| `0000_core`                     | 0.2.0   | the 43 PLAN tables (generated)                                                         |
+| `0001_audit_log_privileges`     | 0.2.0   | audit_log append-only for the app role, `audit_log_clear_old_ips()` (custom)            |
+| `0002_account_token_session`    | 0.3.0   | `account_token`; `session.mfa_verified_at` and `session.is_remembered` (generated)     |
+| `0003_rights_ip_retention`      | 0.3.0   | editor without `unfiltered_html`, `default_role` never administrator, IP retention from the setting (custom) |
+
+Drizzle has no down migrations. A published migration is never edited; a change is a new migration.
 
 ## Conventions
 
@@ -24,9 +34,10 @@ the schema differs from it. The schema is in `packages/db/src/schema/` (one file
   deleted. Other indexes only for a lookup PLAN or the function register names.
 - **Privileges:** the app role gets DML on every table from the default privileges in `docker/postgres/init.sql`
   (including the identity sequence). `audit_log` is append-only: the app role has INSERT and SELECT there and nothing
-  else. The 90-day IP clean-up is the function `audit_log_clear_old_ips()` (below), which the app role may only execute.
+  else. The IP clean-up is the function `audit_log_clear_old_ips()` (below), which the app role may only execute.
   Both are in the hand-written custom migration `0001_audit_log_privileges.sql` (`drizzle-kit generate --custom`), so a
-  regenerate of `0000_core` cannot drop them.
+  regenerate of `0000_core` cannot drop them; `0003_rights_ip_retention.sql` replaces the function's body. Every other
+  table, `account_token` included, has the default DML, which is all the worker's clean-up jobs need.
 
 ## Diagram
 
@@ -40,6 +51,7 @@ erDiagram
   account ||--o{ app_password : has
   account ||--o{ mfa_credential : has
   account ||--o{ recovery_code : has
+  account ||--o{ account_token : has
   account |o--o{ login_attempt : "attempts"
   account ||--o{ content_author : writes
   content ||--o{ content_author : "written by"
@@ -87,6 +99,23 @@ erDiagram
     uuid id PK
     text slug UK
     text_array capabilities
+  }
+  session {
+    uuid id PK
+    uuid account_id FK
+    text token_hash UK
+    timestamptz expires_at
+    timestamptz mfa_verified_at
+    boolean is_remembered
+  }
+  account_token {
+    uuid id PK
+    uuid account_id FK
+    text purpose
+    text token_hash UK
+    text new_email "email_change only"
+    timestamptz expires_at
+    timestamptz used_at
   }
   content {
     uuid id PK
@@ -145,6 +174,73 @@ erDiagram
 Tables without links to the others: `content_type`, `field_group`, `template`, `menu`, `area`, `global_set`, `pattern`,
 `setting`, `oembed_cache`, `not_found_log`, `workflow`, `extension_state`, `backup`.
 
+## Sessions and one-time links (M0.3)
+
+**`session`** is one login behind the `__Host-` cookie. The cookie holds a random token; the row holds its hash
+(`token_hash`), never the token. M0.3 adds two columns:
+
+- **`is_remembered`** (boolean, not null, default false): «Remember me» was ticked. `expires_at` is then `created_at` plus
+  the setting `session_lifetime_remember_days` (14), otherwise plus `session_lifetime_days` (2).
+- **`mfa_verified_at`** (timestamptz, null): when the second factor was passed in this session. Null means only the
+  password has been checked. The row does not say whether a second factor is needed, because that can change while the
+  session lives (a factor is added, or the account's role is put in `mfa_required_roles`). The api decides on every
+  request:
+  - the account **needs** a second factor when it has a confirmed `mfa_credential` (`confirmed_at` set) or holds a role
+    listed in `mfa_required_roles`;
+  - a session with `mfa_verified_at` null on an account that needs one is **pending**: it may only finish the two-factor
+    step (or, for a required role without a factor yet, enrol one), nothing else;
+  - otherwise the session is fully logged in.
+
+  Recommended to the api (not enforced by the table): give a pending session a short `expires_at` (minutes), and issue
+  a new token (a new `token_hash`) when the second factor is passed, so a token seen before the second step is worth
+  nothing after it.
+
+**`account_token`** is a one-time link (K-003, K-005, K-012; Tor: «Engangslenker lagres i en egen tabell»):
+
+| Column        | Meaning                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| `account_id`  | the account the link acts on; CASCADE                                                              |
+| `purpose`     | `password_reset`, `set_password` (the welcome link of a new account) or `email_change`; CHECK from `ACCOUNT_TOKEN_PURPOSE` |
+| `token_hash`  | the hash of the token in the link, unique across all rows; the token itself is never stored       |
+| `new_email`   | `email_change` only: the address that replaces `account.email` once the link is opened. `ck_account_token_new_email` makes it required for an e-mail change and forbidden otherwise |
+| `expires_at`  | 24 hours after it was made (PLAN)                                                                  |
+| `used_at`     | when the link was acted on; a used link never works again                                          |
+
+A pending e-mail change lives here, not in `account.profile`. The api looks a link up by `token_hash`, then checks
+`purpose`, `expires_at > now()` and `used_at is null`, and sets `used_at` in the same transaction as the change it
+makes (`update ... where id = $1 and used_at is null`, which affects one row only once). When it makes a new link it
+deletes or uses up the account's earlier unused links of the same purpose (`idx_account_token_account_id_purpose`). A
+worker job deletes expired rows (`idx_account_token_expires_at`).
+
+## Settings added in M0.3
+
+Keys of their own, not WordPress options, with a default and bounds in `CoreSettings`
+(`packages/shared/src/settings.ts`). `seedCore()` inserts any key that is missing, so a v0.2.0 install gets them on its
+next migration run with the defaults below.
+
+| Key                               | Default      | Bounds          | Notes                                                              |
+| --------------------------------- | ------------ | --------------- | ------------------------------------------------------------------ |
+| `session_lifetime_days`           | 2            | 1 to 30         | Tor, as WordPress                                                  |
+| `session_lifetime_remember_days`  | 14           | 1 to 365        | Tor, as WordPress                                                  |
+| `login_limit_account_attempts`    | 5            | 1 to 100        | failures per account in the window; NIST SP 800-63B caps it at 100 |
+| `login_limit_ip_attempts`         | 20           | 1 to 1000       | failures per IP address in the window                              |
+| `login_limit_window_minutes`      | 15           | 5 to 1440       | the window attempts are counted in                                  |
+| `login_limit_lockout_minutes`     | 20           | 1 to 60         | first lockout; doubled per repeated lockout                         |
+| `login_limit_lockout_max_minutes` | 1440         | 60 to 10080     | the cap of the doubling; the bounds keep it ≥ the first lockout     |
+| `mfa_required_roles`              | `[]`         | role slugs      | roles that must use a second factor (K-023)                        |
+| `ip_retention_days`               | 90           | 7 to 3650       | sessions, comments, login attempts and the audit log               |
+| `spam_comment_retention_days`     | 30           | 1 to 365        | spam comments are deleted after this                               |
+| `mail_from_address`               | null         | e-mail          | null: the default from `.env`                                      |
+| `mail_from_name`                  | null         | one line        | null: `blogname`                                                   |
+| `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_username` | null | host, 1 to 65535, `none`/`starttls`/`tls`, one line | null: the `.env` default |
+| `smtp_password`                   | null         | `EncryptedValue`| `v<n>:` ciphertext, never plain text; write-only towards clients   |
+| `notify_admin_new_user`           | true         |                 | K-017                                                              |
+| `notify_admin_password_change`    | true         |                 | K-017                                                              |
+
+`default_role` (a WordPress option) can no longer be `administrator`: `CoreSettings` refuses it, and migration 0003 set
+it back to `subscriber` where a v0.2.0 database had it. Text that can reach a mail header (`mail_from_name`,
+`smtp_username`) may not contain control characters, so CR/LF cannot inject a header.
+
 ## content, content_draft and content_revision
 
 - **`content` holds the published version** of an item, or the item itself while it has never been published. `status`
@@ -182,7 +278,7 @@ meaning without the parent.
 | --------------------------------------------- | -------- | ----------------------------------------------------------------------- |
 | `account_role.account_id`                     | CASCADE  | an account's role links go with it                                      |
 | `account_role.role_id`                        | RESTRICT | a role still held cannot be deleted; move its accounts first            |
-| `session`, `app_password`, `mfa_credential`, `recovery_code` `.account_id` | CASCADE | credentials go with the account |
+| `session`, `app_password`, `mfa_credential`, `recovery_code`, `account_token` `.account_id` | CASCADE | credentials go with the account |
 | `login_attempt.account_id`                    | CASCADE  | rate-limit data has no value once the account is gone                   |
 | `content_author.account_id`                   | RESTRICT | deleting an account never deletes content; reassign first (K-021)       |
 | `content_author.content_id`                   | CASCADE  | author links go with the content                                        |
@@ -225,9 +321,10 @@ ends with them in place; `toa core install` and the tests call it as well. It se
 secrets.
 
 - **`role`:** the five built-in roles, `administrator`, `editor`, `author`, `contributor` and `subscriber`, with WordPress'
-  English display names and capability lists (50, 26, 7, 3 and 1 names, WordPress 7.1.3 `populate_roles()`). The
-  lists are `DEFAULT_ROLES` and `CAPABILITIES` in `@toascribe/shared`. Meta capabilities (`edit_post`, ...) are resolved
-  in code, never stored. The admin translates built-in role names by slug.
+  English display names and capability lists (WordPress 7.1.3 `populate_roles()`), except that the editor has no
+  `unfiltered_html` (Tor, M0.3): 50, 25, 7, 3 and 1 names. Only the administrator holds `unfiltered_html` by default and
+  may grant it to a role. The lists are `DEFAULT_ROLES` and `CAPABILITIES` in `@toascribe/shared`. Meta capabilities
+  (`edit_post`, ...) are resolved in code, never stored. The admin translates built-in role names by slug.
 - **`setting`:** one row per key of `CORE_SETTINGS` in `@toascribe/shared`, the WordPress option names and install-time
   defaults for the General, Reading, Discussion, Media and Permalinks pages, typed (booleans and numbers, not WordPress'
   strings) and validated by `CoreSettings`. Changes from WordPress: an empty site title, `locale` `nb` (WordPress
@@ -237,6 +334,13 @@ secrets.
 It only inserts what is missing (`ON CONFLICT DO NOTHING` on `role.slug` and `setting.key`), in one transaction. A run
 never updates a row: a setting an administrator changed and a role whose capabilities were edited keep their values. A
 deleted built-in role or core setting comes back on the next run. It needs INSERT only, so the app role can run it too.
+
+Because the seed never changes a row, a change to a default that existing installs must get is a data migration.
+`0003_rights_ip_retention` is the first: it removes `unfiltered_html` from the built-in `editor` row and sets
+`default_role` from `administrator` back to `subscriber`, writes each change to `audit_log` (actor_type `system`, actor
+`migration 0003_rights_ip_retention`, source `setup`), and does nothing on a new database, where the seed runs after it
+with the new defaults. Other roles and capabilities an administrator added are not touched, and it runs once: an editor
+given `unfiltered_html` again afterwards keeps it.
 
 ## Deviations from PLAN
 
@@ -281,18 +385,25 @@ Where PLAN names a column, the schema uses its name. These are the places it dif
     at the time when `actor_type` is `account`, otherwise the job, extension slug, or AI model or tool. It is never
     changed, so deleting an account (which sets `account_id` to null) does not erase who acted.
   - **Privileges:** the app role has INSERT and SELECT only: no UPDATE on any column, no DELETE, no TRUNCATE.
-  - **IP clean-up:** `audit_log_clear_old_ips()` sets `ip` to null where `created_at` is more than 90 days old and
-    returns how many rows it cleared. It is `SECURITY DEFINER`, owned by `toascribe_owner`, with
-    `search_path = pg_catalog, pg_temp`, and takes no argument, so a caller cannot shorten the 90 days or touch another
-    column. EXECUTE is revoked from PUBLIC and granted to `toascribe_app` only. A worker job (not written yet) calls it
-    (`select audit_log_clear_old_ips()`); old rows are never deleted by the app role.
+  - **IP clean-up:** `audit_log_clear_old_ips()` sets `ip` to null where `created_at` is older than the setting
+    `ip_retention_days` and returns how many rows it cleared (since 0003; 0001 had a fixed 90 days). The app role can
+    write `setting`, so the function enforces the bounds itself: a stored value below 7 counts as 7 and above 3650 as
+    3650, and a value that is not a whole JSON number, or no row, counts as 90. It is `SECURITY DEFINER`, owned by
+    `toascribe_owner`, with `search_path = pg_catalog, pg_temp`, and takes no argument, so a caller cannot choose
+    another retention or touch another column. EXECUTE is revoked from PUBLIC and granted to `toascribe_app` only. A
+    worker job calls it daily (`select audit_log_clear_old_ips()`); old rows are never deleted by the app role.
+  - The other IP columns (`session.ip`, `comment.ip`, `app_password.last_used_ip`) are cleared, and old
+    `login_attempt` rows deleted, by worker jobs with the app role's ordinary UPDATE and DELETE, by the same setting.
 - `consent` is append-only, one row per decision and category; the newest row per `subject_key` and category is the
   current choice.
 
 **Columns added where PLAN is silent** (all needed by phase 0–2 rows of the function register)
 
 - `account`: `locale` null means the site language.
-- `session`: `token_hash`, `user_agent`, `expires_at`, `last_seen_at`.
+- `session`: `token_hash`, `user_agent`, `expires_at`, `last_seen_at`; in M0.3 `mfa_verified_at` and `is_remembered`
+  (see «Sessions and one-time links»).
+- `account_token` (M0.3): a table PLAN does not list, made on Tor's decision for one-time links. Every column is listed
+  under «Sessions and one-time links».
 - `app_password`: `name`, `password_hash`, `last_used_at`, `last_used_ip` (K-016).
 - `mfa_credential`: `type` (totp, passkey, oidc), `name`, `secret_encrypted`, `issuer`, `external_id`, `data`,
   `confirmed_at`, `last_used_at`. One passkey or OIDC identity can belong to one account only.
@@ -322,5 +433,6 @@ Where PLAN names a column, the schema uses its name. These are the places it dif
   `consent`, `account_role`, `content_author`, `content_term`, `media_term`.
 - Foreign keys are named `fk_<table>_<column>`, not `fk_<table>_<referenced_table>`: several tables have two keys to the
   same table (`content.parent_id`, `media.uploaded_by` and `media.attached_to`).
-- `content.sticky` and `setting.autoload` keep their PLAN and WordPress names without the `is_` prefix.
+- `content.sticky` and `setting.autoload` keep their PLAN and WordPress names without the `is_` prefix. New booleans
+  have it (`session.is_remembered`).
 - Both `uuid` ids and one `bigint` identity (`content.short_id`, not a primary key).

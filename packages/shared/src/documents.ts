@@ -51,7 +51,10 @@ export type ContentTypeSchema = JsonObject
 export const FieldGroupSchema = JsonObject
 export type FieldGroupSchema = JsonObject
 
-/** account.profile (K-011, K-012, K-015): first and last name, nickname, website, biography, pending e-mail, avatar. */
+/**
+ * account.profile (K-011, K-015): first and last name, nickname, website, biography, avatar. A pending e-mail change
+ * (K-012) is not kept here: it is an `email_change` row in account_token, with the new address in `new_email`.
+ */
 export const AccountProfile = JsonObject
 export type AccountProfile = JsonObject
 

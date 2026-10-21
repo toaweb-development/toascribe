@@ -75,7 +75,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('seedCore (needs TEST_DATABASE_
     )
     expect(rows).toEqual([
       { slug: 'administrator', n: 50 },
-      { slug: 'editor', n: 26 },
+      { slug: 'editor', n: 25 },
       { slug: 'author', n: 7 },
       { slug: 'contributor', n: 3 },
       { slug: 'subscriber', n: 1 },

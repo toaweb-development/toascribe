@@ -1,5 +1,6 @@
 // audit_log against a real PostgreSQL 18 (typescript §6): append-only for the app role, the actor that outlives the
-// account, and audit_log_clear_old_ips() (migration 0001_audit_log_privileges; SECURITY_STANDARD §8 «Auditlogg»).
+// account, and audit_log_clear_old_ips() (migrations 0001_audit_log_privileges and 0003_rights_ip_retention, which reads
+// the retention from the setting ip_retention_days; SECURITY_STANDARD §8 «Auditlogg»).
 import pg from 'pg'
 import { pino } from 'pino'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -240,7 +241,75 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('audit_log (needs TEST_DATABASE
       expect(after.rows).toEqual([{ ...before.rows[0], ip: null }])
     })
 
-    it('cannot be called with an argument that would shorten the 90 days', async () => {
+    describe('retention from the setting ip_retention_days', () => {
+      /** Sets the setting as the app role, the way the settings API will: the app role may write any setting. */
+      async function setRetention(value: unknown): Promise<void> {
+        await app.query(`update setting set value = $1::jsonb, modified_at = now() where key = 'ip_retention_days'`, [
+          JSON.stringify(value),
+        ])
+      }
+
+      /** Rows aged 6, 8, 29, 31, 89, 91, 3649 and 3651 days; returns the ages whose IP the function cleared. */
+      async function clearedAges(): Promise<number[]> {
+        await owner.query('update audit_log set ip = null where ip is not null')
+        const ages = [6, 8, 29, 31, 89, 91, 3649, 3651]
+        const ids: string[] = []
+        for (const days of ages) {
+          ids.push(await insertAged(days, '192.0.2.50'))
+        }
+        const { rows } = await app.query<{ cleared: string }>(`select ${FUNCTION} as cleared`)
+        const cleared: number[] = []
+        for (const [i, id] of ids.entries()) {
+          if ((await ipOf(id)) === null) {
+            cleared.push(ages[i] ?? Number.NaN)
+          }
+        }
+        expect(rows).toEqual([{ cleared: String(cleared.length) }])
+        return cleared
+      }
+
+      afterAll(async () => {
+        await setRetention(90)
+      })
+
+      it('the seeded setting is 90 days', async () => {
+        const { rows } = await owner.query(`select value from setting where key = 'ip_retention_days'`)
+        expect(rows).toEqual([{ value: 90 }])
+        expect(await clearedAges()).toEqual([91, 3649, 3651])
+      })
+
+      it('follows a changed setting', async () => {
+        await setRetention(30)
+        expect(await clearedAges()).toEqual([31, 89, 91, 3649, 3651])
+      })
+
+      it('never keeps less than 7 days, whatever the row holds (setting 1, 0 or negative)', async () => {
+        for (const value of [1, 0, -5]) {
+          await setRetention(value)
+          expect(await clearedAges(), String(value)).toEqual([8, 29, 31, 89, 91, 3649, 3651])
+        }
+      })
+
+      it('keeps at most 3650 days', async () => {
+        await setRetention(100_000)
+        expect(await clearedAges()).toEqual([3651])
+      })
+
+      it('falls back to 90 days when the setting is missing or not a whole number', async () => {
+        for (const value of ['7', 7.5, null, true, { days: 7 }, 1e12]) {
+          await setRetention(value)
+          expect(await clearedAges(), JSON.stringify(value)).toEqual([91, 3649, 3651])
+        }
+        await owner.query(`delete from setting where key = 'ip_retention_days'`)
+        try {
+          expect(await clearedAges()).toEqual([91, 3649, 3651])
+        } finally {
+          await owner.query(`insert into setting (key, value) values ('ip_retention_days', '90'::jsonb)`)
+        }
+      })
+    })
+
+    it('cannot be called with an argument that would shorten the retention', async () => {
       // 42883 undefined_function: there is no overload that takes an interval or a number of days.
       expect(await sqlState(app.query(`select public.audit_log_clear_old_ips(interval '1 day')`))).toBe('42883')
       expect(await sqlState(app.query('select public.audit_log_clear_old_ips(1)'))).toBe('42883')

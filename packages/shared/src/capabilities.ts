@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 // The five built-in roles and their capabilities, as WordPress 7.1.3 stores them after `populate_roles()`
-// (wp-admin/includes/schema.php, steps 160 to 300). Names and lists are WordPress', so documentation and habits carry
-// over (PLAN «Roller og capabilities»). `seedCore()` in @toascribe/db writes them to the `role` table once; after that
+// (wp-admin/includes/schema.php, steps 160 to 300), with one change: the editor has no `unfiltered_html` (Tor, M0.3).
+// Names and lists are WordPress', so documentation and habits carry over (PLAN «Roller og capabilities»). `seedCore()` in @toascribe/db writes them to the `role` table once; after that
 // the rows are the truth and an administrator may change them.
 //
 // Not here, on purpose:
@@ -107,7 +107,7 @@ const EDITOR_210 = [
   'read_private_pages',
 ] as const satisfies readonly Capability[]
 
-/** The built-in roles with WordPress' capability lists: 50, 26, 7, 3 and 1 names. */
+/** The built-in roles with WordPress' capability lists, the editor without unfiltered_html: 50, 25, 7, 3 and 1 names. */
 export const DEFAULT_ROLES: readonly RoleDefinition[] = [
   { slug: 'administrator', name: 'Administrator', capabilities: CAPABILITIES },
   {
@@ -118,7 +118,8 @@ export const DEFAULT_ROLES: readonly RoleDefinition[] = [
       'manage_categories',
       'manage_links',
       'upload_files',
-      'unfiltered_html',
+      // WordPress also gives the editor unfiltered_html. toascribe does not (Tor, M0.3): raw HTML and scripts in content
+      // are the administrator's right, who may grant it to a role. Migration 0003 takes it from v0.2.0's editor row.
       'edit_posts',
       'edit_others_posts',
       'edit_published_posts',
