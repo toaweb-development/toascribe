@@ -29,6 +29,7 @@
     "@nuxt/eslint": "catalog:",
     "eslint": "catalog:",
     "nuxt": "catalog:",
+    "ofetch": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:"

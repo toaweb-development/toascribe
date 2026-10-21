@@ -12,5 +12,127 @@
       "description": "Oppsett av toascribe.",
       "intro": "Veiviseren for oppsett kommer i en senere versjon."
     }
+  },
+  "auth": {
+    "title": "{page} — toascribe admin",
+    "signedInAs": "Logget inn som {name}.",
+    "shell": {
+      "linksLabel": "Andre valg",
+      "toSite": "← Gå til {site}"
+    },
+    "links": {
+      "register": "Registrer",
+      "lost": "Mistet passordet?",
+      "login": "Logg inn"
+    },
+    "notice": {
+      "loggedOut": "Du er nå logget ut.",
+      "passwordChanged": "Passordet er endret. Du kan nå logge inn med det nye passordet.",
+      "checkEmail": "Sjekk e-posten din. Hvis kontoen finnes, har vi sendt en lenke for å velge nytt passord.",
+      "registered": "Registreringen er mottatt. Hvis opplysningene var gyldige, får du en e-post med en lenke for å velge passord. Kom det ingenting, kan brukernavnet være tatt, eller du har kanskje allerede en konto."
+    },
+    "login": {
+      "heading": "Logg inn",
+      "username": "Brukernavn eller e-postadresse",
+      "password": "Passord",
+      "remember": "Husk meg",
+      "submit": "Logg inn"
+    },
+    "password": {
+      "show": "Vis passord",
+      "hide": "Skjul passord"
+    },
+    "validation": {
+      "loginRequired": "Skriv inn brukernavnet eller e-postadressen din.",
+      "passwordRequired": "Skriv inn passordet.",
+      "newPassword": "Passordet må ha minst 8 tegn.",
+      "username": "Brukernavnet må ha 3 til 60 tegn: bokstaver og tall, og eventuelt punktum, understrek, bindestrek eller {'@'}. Det kan ikke ha mellomrom.",
+      "email": "Skriv inn en gyldig e-postadresse, for eksempel navn{'@'}eksempel.no.",
+      "totpCode": "Skriv inn koden med seks siffer fra autentiseringsappen.",
+      "recoveryCode": "Skriv inn hele gjenopprettingskoden, for eksempel ABCD-EFGH-JKMN-PQRS."
+    },
+    "mfa": {
+      "heading": "Bekreft innloggingen",
+      "intro": "Åpne autentiseringsappen og skriv inn koden den viser.",
+      "recoveryIntro": "Skriv inn en av gjenopprettingskodene dine. Hver kode kan brukes én gang.",
+      "code": "Kode fra appen",
+      "codeHelp": "Seks siffer. Du kan lime inn koden.",
+      "recoveryCode": "Gjenopprettingskode",
+      "recoveryCodeHelp": "Den er skrevet som ABCD-EFGH-JKMN-PQRS. Store og små bokstaver og bindestreker spiller ingen rolle.",
+      "submit": "Bekreft",
+      "useRecovery": "Bruk en gjenopprettingskode",
+      "useApp": "Bruk koden fra appen",
+      "lowCodes": "Du har {n} gjenopprettingskode igjen. Lag nye koder så snart du kan, så du ikke blir stengt ute. | Du har {n} gjenopprettingskoder igjen. Lag nye koder så snart du kan, så du ikke blir stengt ute.",
+      "continue": "Fortsett"
+    },
+    "enrol": {
+      "heading": "Sett opp tofaktor",
+      "starting": "Gjør klar oppsettet …",
+      "retry": "Prøv igjen",
+      "intro": "Rollen din krever tofaktor. Skann QR-koden med en autentiseringsapp, eller skriv inn nøkkelen under. Skriv deretter inn koden appen viser.",
+      "qrAlt": "QR-kode for å legge til toascribe i autentiseringsappen",
+      "keyLabel": "Nøkkel til å skrive inn for hånd",
+      "codeHelp": "Seks siffer fra appen.",
+      "submit": "Bekreft og fullfør",
+      "finish": "Fortsett",
+      "finishHint": "Bekreft at du har lagret gjenopprettingskodene for å fortsette."
+    },
+    "recovery": {
+      "title": "Gjenopprettingskoder",
+      "intro": "Disse kodene viser vi bare nå. Bruk en av dem hvis du mister tilgangen til appen. Hver kode kan brukes én gang. Lagre dem et trygt sted.",
+      "listLabel": "Gjenopprettingskoder",
+      "copy": "Kopier kodene",
+      "print": "Skriv ut",
+      "copied": "Kodene er kopiert.",
+      "copyFailed": "Kunne ikke kopiere. Marker kodene og kopier dem for hånd.",
+      "saved": "Jeg har lagret kodene"
+    },
+    "lost": {
+      "heading": "Mistet passordet?",
+      "intro": "Skriv inn brukernavnet eller e-postadressen din. Hvis kontoen finnes, sender vi en lenke for å velge nytt passord.",
+      "submit": "Få lenke for nytt passord"
+    },
+    "choose": {
+      "headingReset": "Nytt passord",
+      "headingSet": "Velg passord",
+      "introReset": "Velg et nytt passord for kontoen din.",
+      "introSet": "Velkommen. Velg et passord for å ta kontoen i bruk.",
+      "password": "Nytt passord",
+      "help": "Minst 8 tegn. Et langt passord er bedre enn et tungt.",
+      "generate": "Generer passord",
+      "generated": "Et nytt passord er satt inn og vist, så du kan kopiere det. Lagre det i passordbehandleren din før du fortsetter.",
+      "submit": "Lagre passord",
+      "newLink": "Be om en ny lenke"
+    },
+    "register": {
+      "heading": "Registrer",
+      "closedHeading": "Registrering er slått av",
+      "closed": "Dette nettstedet tar ikke imot nye brukere akkurat nå. Kontakt administratoren hvis du trenger en konto.",
+      "intro": "Skriv inn et brukernavn og en e-postadresse. Vi sender en lenke der du velger passord.",
+      "username": "Brukernavn",
+      "usernameHelp": "3 til 60 tegn: bokstaver og tall, og eventuelt punktum, understrek, bindestrek eller {'@'}.",
+      "email": "E-postadresse",
+      "submit": "Registrer"
+    },
+    "confirm": {
+      "heading": "Bekreft e-postadressen",
+      "working": "Bekrefter den nye e-postadressen …",
+      "done": "E-postadressen er bekreftet. Kontoen bruker nå {email}.",
+      "continue": "Gå til administrasjonen"
+    },
+    "logout": {
+      "heading": "Logg ut",
+      "question": "Du forsøker å logge ut av {site}. Vil du logge ut?",
+      "submit": "Logg ut",
+      "cancel": "Avbryt",
+      "link": "Logg ut"
+    },
+    "strength": {
+      "tooShort": "Passordstyrke: for kort",
+      "weak": "Passordstyrke: svakt",
+      "fair": "Passordstyrke: middels",
+      "good": "Passordstyrke: sterkt",
+      "strong": "Passordstyrke: svært sterkt"
+    }
   }
 }
