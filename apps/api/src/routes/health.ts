@@ -1,7 +1,9 @@
-import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
+import { OpenAPIHono } from '@hono/zod-openapi'
 import { HealthResponse, ReadyResponse } from '@toascribe/shared'
 
 import type { AppEnv } from '../lib/env.ts'
+import { publicAccess } from '../lib/policy.ts'
+import { defineRoute } from '../middleware/policy.ts'
 import type { Pool } from '../repositories/health.ts'
 import { checkReadiness } from '../services/health.ts'
 
@@ -10,9 +12,10 @@ export interface HealthDeps {
   readonly version: string
 }
 
-const healthRoute = createRoute({
+const healthRoute = defineRoute({
   method: 'get',
   path: '/health',
+  policy: publicAccess(), // the container healthcheck and the proxy call it without a session
   tags: ['system'],
   summary: 'Liveness: the process is up',
   description: 'Does not touch the database. Used by the container healthcheck.',
@@ -21,9 +24,10 @@ const healthRoute = createRoute({
   },
 })
 
-const readyRoute = createRoute({
+const readyRoute = defineRoute({
   method: 'get',
   path: '/ready',
+  policy: publicAccess(),
   tags: ['system'],
   summary: 'Readiness: the database answers',
   responses: {

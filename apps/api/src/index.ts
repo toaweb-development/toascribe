@@ -2,11 +2,13 @@
 // (typescript §3, §13). Starts the HTTP server and shuts down in order on SIGTERM/SIGINT.
 import { serve } from '@hono/node-server'
 import { createDb } from '@toascribe/db'
+import { createKeyRing } from '@toascribe/shared'
 import { pino } from 'pino'
 
 import { createApp } from './app.ts'
 import { ConfigError, loadConfig } from './config.ts'
 import { createLogger } from './lib/logger.ts'
+import { unconfiguredMail } from './ports/mail.ts'
 import { readPackageVersion } from './lib/version.ts'
 
 /** After this long a shutdown that has not finished is abandoned and the process exits non-zero. */
@@ -30,13 +32,27 @@ function loadConfigOrExit() {
 const config = loadConfigOrExit()
 const logger = createLogger({ level: config.LOG_LEVEL, pretty: config.NODE_ENV === 'development' })
 
-const { pool } = createDb({ connectionString: config.DATABASE_URL, applicationName: 'toascribe-api' })
+const keyRing = await createKeyRing(
+  { version: config.TOASCRIBE_ENCRYPTION_KEY_VERSION, key: config.TOASCRIBE_ENCRYPTION_KEY },
+  config.TOASCRIBE_ENCRYPTION_OLD_KEYS,
+)
+
+const { db, pool } = createDb({ connectionString: config.DATABASE_URL, applicationName: 'toascribe-api' })
 // An idle client that errors (database restart, network drop) would otherwise crash the process.
 pool.on('error', (err) => {
   logger.error({ err }, 'database pool error on an idle client')
 })
 
-const app = createApp({ pool, logger, version: readPackageVersion() })
+const app = createApp({
+  pool,
+  db,
+  logger,
+  version: readPackageVersion(),
+  publicOrigin: config.PUBLIC_ORIGIN,
+  signingKey: config.TOASCRIBE_SIGNING_KEY,
+  keyRing,
+  mail: unconfiguredMail, // replaced by the e-mail job producer when the mail queue is wired in
+})
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   logger.info({ port: info.port, env: config.NODE_ENV }, 'api listening')
 })
