@@ -15,6 +15,8 @@ const compose = read('docker/compose.yaml')
 const envExample = read('docker/.env.example')
 const caddyfile = read('docker/proxy/Caddyfile')
 const composeBuild = read('docker/compose.build.yaml')
+const initScript = read('docker/postgres/10-init.sh')
+const postgresDockerfile = read('docker/postgres/Dockerfile')
 
 /** Names set in .env.example, commented out or not: `NAME=` at the start of a line. */
 function documentedVariables(text: string): Set<string> {
@@ -76,6 +78,22 @@ describe('docker/compose.yaml', () => {
     expect(proxy).toContain('ports:')
   })
 
+  it('binds the published port to loopback unless TOASCRIBE_HTTP_BIND says otherwise', () => {
+    expect(compose).toContain("'${TOASCRIBE_HTTP_BIND:-127.0.0.1}:${TOASCRIBE_HTTP_PORT:-8080}:8080'")
+  })
+
+  it('trusts no proxy unless TOASCRIBE_TRUSTED_PROXY names one', () => {
+    expect(compose).toContain('TOASCRIBE_TRUSTED_PROXY: ${TOASCRIBE_TRUSTED_PROXY:-}')
+    expect(compose).not.toContain('private_ranges')
+    expect(envExample).not.toMatch(/^TOASCRIBE_TRUSTED_PROXY=\S/m)
+  })
+
+  it('pins every image that is not built here by tag and digest', () => {
+    const external = [...compose.matchAll(/^\s+image: (?!ghcr\.io\/toaweb\/)(\S+)/gm)].map((match) => match[1])
+    expect(external.length).toBeGreaterThanOrEqual(1) // valkey
+    for (const image of external) expect(image).toMatch(/:[^@/]+@sha256:[0-9a-f]{64}$/)
+  })
+
   it('needs no file from the repo at run time', () => {
     // A bind mount of a repo file would break for a user who downloads only compose.yaml and .env.
     expect(compose).not.toMatch(/^\s+- \.{1,2}\//m)
@@ -131,8 +149,30 @@ describe('docker/proxy/Caddyfile', () => {
     expect(redirect).toBeLessThan(caddyfile.indexOf('handle /api/*'))
   })
 
+  it('believes forwarded headers from one configured address only, never private_ranges', () => {
+    const code = caddyfile
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n')
+    expect(code).not.toContain('private_ranges')
+    // No default after the name: an empty value must stay empty, which means "trust nobody".
+    expect(code).toMatch(/^\s*trusted_proxies static \{\$TOASCRIBE_TRUSTED_PROXY\}\s*$/m)
+  })
+
   it('keeps TLS out of the stack', () => {
     expect(caddyfile).toContain('auto_https off')
     expect(caddyfile).toContain('admin off')
+  })
+})
+
+describe('docker/postgres', () => {
+  it('passes the role passwords to psql with \\getenv, not on its command line', () => {
+    expect(initScript).toContain('\\getenv owner_password POSTGRES_OWNER_PASSWORD')
+    expect(initScript).toContain('\\getenv app_password POSTGRES_APP_PASSWORD')
+    expect(initScript).not.toMatch(/-v\s+(owner|app)_password/)
+  })
+
+  it('builds gosu from a commit, not from a movable tag', () => {
+    expect(postgresDockerfile).toMatch(/go install [^\n]*github\.com\/tianon\/gosu@[0-9a-f]{40}\b/)
   })
 })

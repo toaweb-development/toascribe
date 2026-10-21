@@ -33,13 +33,17 @@ separate step: say so.
 
 ## Rules that are easy to break
 
-- **The four-script rule.** Every workspace package has `lint`, `typecheck`, `test` and `build`. The checks run
-  `pnpm -r <script>` without `--if-present`. A new package gets all four.
+- **The four-script rule.** Every workspace package has `lint`, `typecheck`, `test` and `build`. `pnpm check` (format
+  check, lint, typecheck, test, build, for every package and the root files) runs `pnpm -r <script>` without
+  `--if-present`. A new package gets all four.
 - **`catalog:` only.** Dependency versions live once, in `pnpm-workspace.yaml`. A `package.json` writes `catalog:` or
   `workspace:*`, never a version. Do not add a dependency without a reason that you can state in one line.
-- **Workspace packages export `dist/`.** `exports` points at `dist/index.js`, so a package must be built before anything
-  that imports it is linted, typechecked or tested. That is why `apps/api` and `apps/worker` run `build:deps` first and
-  the root has `build:libs`, and why `workspaceConcurrency` is 1. Keep this order when you add a script.
+- **Workspace libraries export `source` first.** A library's `exports` lists `"source": "./src/index.ts"` before
+  `types` and `default` (which point at `dist/`). `customConditions: ["source"]` in `packages/tsconfig/tsconfig.base.json`
+  and `ssr.resolve.conditions: ['source']` in every plain package's `vitest.config.ts` make lint, typecheck and tests read
+  `src/`, so they need no build. Node ignores the condition and loads `dist/`; never pass `--conditions=source` in an
+  image or a script (tests that spawn `node` on a file that imports a library may; a test checks the rest). A new
+  library gets the `source` export, and `dev` scripts that run `node` on `src/` still build the libraries first.
 - **No `process.env` outside `config.ts`** (each app has one; `packages/db/src/migrate.ts` is the entry point that reads
   `MIGRATION_DATABASE_URL`). Config is validated with Zod at start-up and errors name variables, never values.
 - **No secrets in the repo, an image, a compose file or a workflow.** `docker/.env.example` lists names with empty values.
@@ -71,7 +75,9 @@ separate step: say so.
   contexts relative to the directory it runs in, so `compose.yaml` cannot be its input). Keep the images, Dockerfiles and
   build arguments of the two files identical; a test checks it.
 - Base images are pinned by tag and digest. Containers run as non-root, with `cap_drop: [ALL]`, `no-new-privileges`
-  and a read-only root filesystem wherever the service allows it. Only the proxy publishes a port.
+  and a read-only root filesystem wherever the service allows it. Only the proxy publishes a port, bound to `127.0.0.1`
+  unless `TOASCRIBE_HTTP_BIND` says otherwise. It believes `X-Forwarded-*` from the one address in
+  `TOASCRIBE_TRUSTED_PROXY` and from nobody when that is empty; never `private_ranges` (a test checks it).
 - CI (`.github/workflows/`): third-party actions are pinned to a full commit SHA with the version in a comment, checked
   against the action's own repository; `permissions: contents: read` at the top; `persist-credentials: false` wherever
   third-party code runs; event values go through `env:`, never inline `${{ }}` in a script. Run `actionlint` on every
@@ -92,22 +98,18 @@ Spor: ingen ennå — produkt; tag ved merge (VERSIONING §5)
 toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml`, no server and no image
 push yet. `release.yml` tags `vX.Y.Z` and creates the GitHub Release when a new version reaches `main`. Version source
 of truth: the root `package.json`; every workspace `package.json` and the `TOASCRIBE_VERSION` default in
-`docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example` mirror it (tests check this). A change to what is shipped bumps the
-version and adds a CHANGELOG entry in the same branch.
+`docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example` mirror it (tests check this). A change to
+what is shipped bumps the version and adds a CHANGELOG entry in the same branch. Tests are not shipped: a change only to
+`test/` folders, `*.test.ts`, Vitest configs or ESLint configs needs no bump (`NOT_RELEASED` in `version.yml`).
 
 ## Known deviations — pending owner decision
 
 These are choices Tor has not made yet. Say which one you hit if your work touches it.
 
-- **Build-first workaround.** `@toascribe/db` has no `source` export condition, so typed lint, typecheck and tests in
-  other packages need its `dist/`. The alternative is `"source": "./src/index.ts"` in its `exports` plus
-  `customConditions: ["source"]` in consumers' tsconfig, which would remove `build:deps`, `build:libs` and
-  `workspaceConcurrency: 1`.
+- **Nuxt apps still build the libraries first.** `apps/site`, `apps/admin` and `themes/default` do not read the `source`
+  condition yet, so their scripts run `build:deps` and `workspaceConcurrency` stays 1. They follow in M0.2 task 2.
 - **Migrations are not run by `drizzle-kit migrate`.** `typescript` §13 names it; the runner in `packages/db` uses the
   Drizzle migrator instead because it also needs the lock and the pg-boss step, and drizzle-kit is a dev dependency.
-- **Database passwords on psql's command line.** `docker/postgres/10-init.sh` passes the role passwords to psql with
-  `-v`, so they are visible in the process list inside the postgres container during the first start only. psql's
-  `\getenv` would avoid it.
 - **The owner password is in `docker/.env`.** `deployment-strategy` keeps `MIGRATION_DATABASE_URL` out of the server's
   `.env`. For a product that users start from one compose file, the same file also initialises the roles, so the owner
   password has to be there. Only the `migrate` service receives the owner URL.
@@ -117,10 +119,7 @@ These are choices Tor has not made yet. Say which one you hit if your work touch
 - **Audit exceptions.** `pnpm audit --prod` reports two High advisories without a patched version
   (GHSA-86w9-cpqp-85rv node-forge, GHSA-vfj7-8cjw-p6xm braces), both from nitropack and absent from every runtime image.
   They are listed in `pnpm-workspace.yaml` with a review date; `audit.yml` fails after it.
-- **`RELEASED` includes tests under `apps/` and `packages/`.** A change to only a test there still needs a version bump.
 - **Frontend choices from M0.1.** No Pinia and no BFF layer (`nuxt-vue` §8), no `@nuxtjs/seo` or `@nuxt/image` yet, and no
   favicon (needs the brand). The `/setup` wizard is reached by a Caddy 308 to `/admin/setup`, so the address bar shows
-  `/admin/setup`. The admin path is fixed to `/admin` in the Caddyfile; a runtime `NUXT_APP_BASE_URL` would need the
-  Caddyfile to change with it.
-- **Assumptions to confirm.** The licence holder in `LICENSE` ("Tor Ove Angeltveit and toascribe contributors"), the
-  repository address `github.com/toaweb/toascribe` in `CHANGELOG.md` and the image names `ghcr.io/toaweb/toascribe-*`.
+  `/admin/setup`. The admin path is fixed to `/admin`: the app is built with it and the Caddyfile routes it; it is not a
+  setting, and a runtime `NUXT_APP_BASE_URL` would need the Caddyfile to change with it.

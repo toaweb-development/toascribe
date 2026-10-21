@@ -6,6 +6,7 @@
   "description": "Placeholder for the shared admin and extension components; they come in M0.5.",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }

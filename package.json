@@ -9,11 +9,11 @@
     "node": ">=24.12"
   },
   "scripts": {
-    "build:libs": "pnpm --filter \"@toascribe/api^...\" --filter \"@toascribe/worker^...\" run build",
-    "lint": "pnpm build:libs && eslint . && pnpm --filter @toascribe/site --filter @toascribe/admin --filter @toascribe/theme-default lint",
-    "typecheck": "pnpm build:libs && tsc --noEmit && pnpm -r --if-present typecheck",
-    "test": "pnpm build:libs && vitest run",
-    "build": "pnpm -r --if-present build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "lint": "pnpm -r lint && eslint eslint.config.ts vitest.config.ts test",
+    "typecheck": "pnpm -r typecheck && tsc --noEmit",
+    "test": "pnpm -r test && vitest run --project root",
+    "build": "pnpm -r build",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

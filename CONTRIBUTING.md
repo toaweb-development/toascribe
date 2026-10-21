@@ -13,7 +13,7 @@ pnpm exec lefthook install
 `lefthook install` sets up the git hooks, once per clone:
 
 - `commit-msg` checks the commit message (Conventional Commits, below);
-- `pre-commit` runs `pnpm typecheck` and `pnpm lint`;
+- `pre-commit` runs `pnpm lint` and then `pnpm typecheck` (one after the other, not in parallel);
 - `pre-push` refuses a force push to `main`, deleting `main`, and moving or deleting a `v*` tag.
 
 ## Commits
@@ -36,8 +36,8 @@ merge commit (`--no-ff`). Name branches `<type>/<short-description>` in lower ca
 
 ## The four scripts
 
-Every workspace package defines `lint`, `typecheck`, `test` and `build`, because the checks run
-`pnpm -r lint && pnpm -r typecheck && pnpm -r test && pnpm -r build` without `--if-present`. A package with nothing to
+Every workspace package defines `lint`, `typecheck`, `test` and `build`, because `pnpm check` runs
+`pnpm -r lint`, `pnpm -r typecheck`, `pnpm -r test` and `pnpm -r build` without `--if-present`. A package with nothing to
 test uses `vitest run --passWithNoTests`; one with nothing to lint or build uses an `echo` that says why. A new package
 must have all four before it is merged.
 
@@ -50,13 +50,16 @@ Tests use Vitest and live in a `test/` folder next to `src/` in each package. Th
 PostgreSQL 18: see "A database for the tests" in the README, and set `TEST_DATABASE_URL`. Without it they skip and say
 so, so a green run without the variable has not run them. A bug fix comes with a test that fails without the fix.
 
-Before you push, run the checks in the README, and `docker compose -f docker/compose.yaml up -d --build` if you touched
+Before you push, run `pnpm check` (format check, lint, typecheck, test and build, for every package and the root files),
+and `docker compose -f docker/compose.yaml up -d --build` if you touched
 anything under `docker/`. CI runs the same checks, builds every image, scans them and starts the stack.
 
 ## Versions and the CHANGELOG
 
 A change to what is shipped (`apps/`, `packages/`, `cli/`, `themes/`, `docker/`, `package.json`, `pnpm-lock.yaml`,
-`pnpm-workspace.yaml`) needs a new version in the same branch, or the Version check fails:
+`pnpm-workspace.yaml`) needs a new version in the same branch, or the Version check fails. Tests are not shipped: a change
+only to tests (`test/` folders, `*.test.ts`), Vitest configs or ESLint configs needs no bump. The exact list is
+`NOT_RELEASED` in `.github/workflows/version.yml`.
 
 1. Bump `version` in the root `package.json` and in every workspace `package.json` (a test checks they match), and the
    default of `TOASCRIBE_VERSION` in `docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example` (a test checks that too).

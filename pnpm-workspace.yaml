@@ -6,14 +6,16 @@ packages:
 
 # Script convention (TYPESCRIPT_STANDARD_2026 §7, §14): every workspace package defines all four
 # scripts, `lint`, `typecheck`, `test` and `build`, because the root gate runs
-# `pnpm -r lint && pnpm -r typecheck && pnpm -r test && pnpm -r build` without --if-present.
+# `pnpm -r lint`, `pnpm -r typecheck`, `pnpm -r test` and `pnpm -r build` (all inside `pnpm check`) without --if-present.
 # pnpm falls back to running a missing `lint`/`typecheck`/`build` as a shell command and fails.
 # A package with nothing to test uses `vitest run --passWithNoTests`; one with nothing to
 # lint or build uses an `echo` that says why. `pnpm -r` skips the workspace root.
 
-# Packages run one at a time under `pnpm -r`. apps/api and apps/worker build the libraries they import
-# (build:deps) before lint, typecheck and test, because those libraries are consumed through dist/.
-# Run in parallel, both would write the same dist/ at once and a reader could see a half-written file.
+# Packages run one at a time under `pnpm -r`. The libraries (shared, db, ...) list a "source" condition in their exports
+# and tsconfig.base.json sets customConditions, so lint, typecheck and test in apps/api, apps/worker, cli and the
+# libraries read src/ and need no dist/. The two Nuxt apps and the theme layer do not read the condition yet: their
+# scripts still build the libraries they import (build:deps) into dist/ first. Run in parallel, two such builds would
+# write the same dist/ at once and a reader could see a half-written file. Drop this line when the Nuxt side reads src/.
 workspaceConcurrency: 1
 
 # One version per dependency across the workspace (TYPESCRIPT_STANDARD_2026 §7).

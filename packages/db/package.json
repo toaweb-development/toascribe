@@ -6,6 +6,7 @@
   "description": "Drizzle schema, PostgreSQL client and SQL migrations for toascribe. Imported only by apps/api and apps/worker.",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }

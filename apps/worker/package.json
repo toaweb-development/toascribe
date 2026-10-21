@@ -11,9 +11,9 @@
     "build:deps": "pnpm --filter \"@toascribe/worker^...\" run build",
     "dev": "pnpm run build:deps && NODE_ENV=development node --env-file-if-exists=../../.env --watch src/index.ts",
     "start": "node dist/index.js",
-    "lint": "pnpm run build:deps && eslint .",
-    "typecheck": "pnpm run build:deps && tsc --noEmit",
-    "test": "pnpm run build:deps && vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {

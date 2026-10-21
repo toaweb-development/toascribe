@@ -18,6 +18,9 @@ import type { TestDatabase } from './helpers.ts'
 
 noticeIfSkipped('worker')
 
+// The files under test import @toascribe/db. Node ignores the "source" export condition on its own,
+// so the child processes ask for it and run the libraries from src/ like the rest of the tests (no dist/ needed).
+const NODE_ARGS = ['--conditions=source']
 const MIGRATE = fileURLToPath(new URL('../../../packages/db/src/migrate.ts', import.meta.url))
 const ENTRY = fileURLToPath(new URL('../src/index.ts', import.meta.url))
 const HEALTHCHECK = fileURLToPath(new URL('../src/healthcheck.ts', import.meta.url))
@@ -56,14 +59,14 @@ async function waitFor(condition: () => boolean, what: string, timeoutMs = 30_00
 
 describe('worker file-level behaviour (no database)', () => {
   it('the healthcheck fails when there is no heartbeat file', () => {
-    const result = spawnSync(process.execPath, [HEALTHCHECK], {
+    const result = spawnSync(process.execPath, [...NODE_ARGS, HEALTHCHECK], {
       env: { ...stringEnv(), WORKER_HEARTBEAT_FILE: join(tmpdir(), 'toascribe-no-such-heartbeat') },
     })
     expect(result.status).toBe(1)
   })
 
   it('refuses to start with a bad environment, naming the variable and never the value', () => {
-    const result = spawnSync(process.execPath, [ENTRY], {
+    const result = spawnSync(process.execPath, [...NODE_ARGS, ENTRY], {
       env: { ...stringEnv(), NODE_ENV: 'test', DATABASE_URL: 'not-a-url-sekret' },
       encoding: 'utf8',
     })
@@ -107,7 +110,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
   })
 
   it('exits non-zero as a process when the schema is missing (migration has not run)', () => {
-    const proc = spawnSync(process.execPath, [ENTRY], {
+    const proc = spawnSync(process.execPath, [...NODE_ARGS, ENTRY], {
       env: {
         ...stringEnv(),
         NODE_ENV: 'test',
@@ -122,7 +125,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
   })
 
   it('starts and stops against the migrated database', async () => {
-    const migrate = spawnSync(process.execPath, [MIGRATE], {
+    const migrate = spawnSync(process.execPath, [...NODE_ARGS, MIGRATE], {
       env: { ...stringEnv(), MIGRATION_DATABASE_URL: database.ownerUrl },
       encoding: 'utf8',
     })
@@ -152,7 +155,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
       WORKER_HEARTBEAT_FILE: file,
     }
     let output = ''
-    const proc = spawn(process.execPath, [ENTRY], { env, stdio: ['ignore', 'pipe', 'pipe'] })
+    const proc = spawn(process.execPath, [...NODE_ARGS, ENTRY], { env, stdio: ['ignore', 'pipe', 'pipe'] })
     child = proc
     proc.stdout.on('data', (chunk: Buffer) => (output += chunk.toString()))
     proc.stderr.on('data', (chunk: Buffer) => (output += chunk.toString()))
@@ -163,7 +166,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
     })
 
     await waitFor(() => output.includes('worker ready'), 'the worker to be ready')
-    const healthy = spawnSync(process.execPath, [HEALTHCHECK], { env })
+    const healthy = spawnSync(process.execPath, [...NODE_ARGS, HEALTHCHECK], { env })
     expect(healthy.status).toBe(0)
 
     proc.kill('SIGTERM')
@@ -171,7 +174,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
     expect(output).toContain('shutdown complete')
     expect(output).not.toContain(database.appUrl)
 
-    const down = spawnSync(process.execPath, [HEALTHCHECK], { env })
+    const down = spawnSync(process.execPath, [...NODE_ARGS, HEALTHCHECK], { env })
     expect(down.status).not.toBe(0)
   })
 })

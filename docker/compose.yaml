@@ -46,9 +46,11 @@ services:
       context: ..
       dockerfile: docker/proxy/Dockerfile
     ports:
-      - '${TOASCRIBE_HTTP_PORT:-8080}:8080'
+      # Loopback by default: only a proxy on this host reaches it. TOASCRIBE_HTTP_BIND=0.0.0.0 exposes it on every interface.
+      - '${TOASCRIBE_HTTP_BIND:-127.0.0.1}:${TOASCRIBE_HTTP_PORT:-8080}:8080'
     environment:
-      TOASCRIBE_TRUSTED_PROXIES: ${TOASCRIBE_TRUSTED_PROXIES:-private_ranges}
+      # The one address or network whose X-Forwarded-* headers Caddy believes. Empty: nobody (see the Caddyfile).
+      TOASCRIBE_TRUSTED_PROXY: ${TOASCRIBE_TRUSTED_PROXY:-}
     read_only: true
     tmpfs:
       - /data
@@ -288,7 +290,7 @@ services:
     <<: *hardened
     profiles:
       - valkey
-    image: valkey/valkey:9.1.2-alpine3.24
+    image: valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
     # Start as the valkey user (uid 999) so the entrypoint needs no capabilities. A cache: nothing is saved to disk.
     user: '999:1000'
     command: ['valkey-server', '--save', '', '--appendonly', 'no']
@@ -309,8 +311,14 @@ services:
           memory: 256M
 
 networks:
-  # Where an external Traefik or nginx attaches to reach the proxy (only the proxy is on it).
-  edge: {}
+  # Where an external Traefik or nginx attaches to reach the proxy (only the proxy is on it). The subnet is fixed
+  # so that the address Caddy sees an external proxy at is known: the gateway (.1) for a proxy on the host that
+  # connects to the published port, an address in the subnet for a container that joins this network. That is the
+  # value for TOASCRIBE_TRUSTED_PROXY (README, «Behind a reverse proxy»). If docker says "Pool overlaps", set another.
+  edge:
+    ipam:
+      config:
+        - subnet: ${TOASCRIBE_EDGE_SUBNET:-10.231.97.0/24}
   # The apps talk to each other here.
   internal: {}
   # Postgres and valkey live here and nowhere else. `internal: true`: no route out of the network.

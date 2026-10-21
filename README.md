@@ -32,14 +32,68 @@ Then open <http://localhost:8080>.
 Compose stops with a clear message when a password is empty; there are no default passwords. The migrations run in
 their own step (`migrate`) before the API and the worker start.
 
-- **Behind Traefik or nginx.** Only the proxy container publishes a port (`TOASCRIBE_HTTP_PORT`, default 8080), and it has
-  no TLS. Point your external proxy at that port and set `PUBLIC_ORIGIN` to the public address. The proxy trusts
-  `X-Forwarded-*` headers from private network ranges (`TOASCRIBE_TRUSTED_PROXIES`).
+**The database passwords are set once.** `docker/postgres/10-init.sh` runs `init.sql` (it creates the roles
+`toascribe_owner` and `toascribe_app`) only when postgres starts on an empty volume, the first time. After that, changing
+`POSTGRES_PASSWORD`, `POSTGRES_OWNER_PASSWORD` or `POSTGRES_APP_PASSWORD` in `docker/.env` changes nothing in the
+database, and the API and worker fail to log in. To change one, set it in the database first and then in `.env`. The new
+value goes in through the environment, so it is in neither the command line nor your shell history:
+
+```sh
+read -rs -p 'New password for toascribe_app: ' NEWPW; echo; export NEWPW
+docker compose -f docker/compose.yaml exec -T -e NEWPW postgres psql -U postgres -d toascribe -v ON_ERROR_STOP=1 <<'SQL'
+\getenv newpw NEWPW
+ALTER ROLE toascribe_app PASSWORD :'newpw';
+SQL
+unset NEWPW
+# now put the same value in POSTGRES_APP_PASSWORD in docker/.env and restart:
+docker compose -f docker/compose.yaml up -d
+```
+
+Use `toascribe_owner` for the owner password, and `postgres` for `POSTGRES_PASSWORD` (the superuser is named by
+`POSTGRES_USER`). On a throwaway install it is simpler to start over with a fresh volume:
+`docker compose -f docker/compose.yaml down -v`, edit `.env`, `up -d`.
+
+- **Behind Traefik or nginx.** See "Behind a reverse proxy" below: the port is bound to `127.0.0.1` by default and you
+  tell the stack which proxy to believe.
 - **Update.** `docker compose -f docker/compose.yaml pull && docker compose -f docker/compose.yaml up -d` once images are
   published. Nothing is published yet, so for now update with `git pull` and `up -d --build`.
 - **Valkey** (cache) is optional and not used yet: `COMPOSE_PROFILES=valkey` in `docker/.env`.
 - **The CLI** runs in the API container: `docker compose -f docker/compose.yaml exec api toa --version`.
 - **Stop.** `docker compose -f docker/compose.yaml down` (add `-v` to delete the database volume as well).
+
+## Behind a reverse proxy
+
+The stack speaks plain HTTP on one port; TLS belongs to your Traefik or nginx, which sends all traffic to that port. Set
+`PUBLIC_ORIGIN` in `docker/.env` to the public address (`https://example.com`). Two more variables decide who may reach
+the port and whose word the stack takes about the visitor:
+
+| Variable                  | Default     | What it does                                                                                   |
+| ------------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
+| `TOASCRIBE_HTTP_BIND`     | `127.0.0.1` | Host address the port is bound to. `0.0.0.0` exposes it on every interface.                    |
+| `TOASCRIBE_TRUSTED_PROXY` | empty       | The one IP address or CIDR network whose `X-Forwarded-For`, `-Proto` and `-Host` are believed. |
+
+**Why.** Those three headers say who the visitor is and whether the page was opened over HTTPS. If the stack believed
+them from anyone who can reach the port, a visitor could send `X-Forwarded-For: 1.2.3.4` and pass for another address,
+which defeats rate limits and audit logs, or claim `https` to get past secure-cookie and redirect logic. So the default
+trusts nobody: the stack replaces those headers with what it sees itself. Set `TOASCRIBE_TRUSTED_PROXY` to your proxy,
+and only to your proxy: not `private_ranges` and not a range such as `10.0.0.0/8`, which would include every container
+and LAN host that can reach the port. Empty is safe but then every request appears to come from the proxy.
+
+The `edge` network has a fixed subnet (`TOASCRIBE_EDGE_SUBNET`, default `10.231.97.0/24`) so that the address to trust
+is known. What the stack sees (measured with Caddy 2.11.7 and Docker 29):
+
+| Your proxy runs                                                           | Point it at                     | The stack sees it as                 | `TOASCRIBE_TRUSTED_PROXY`                    |
+| ------------------------------------------------------------------------- | ------------------------------- | ------------------------------------ | -------------------------------------------- |
+| on this host, outside Docker (or with host networking)                    | `http://127.0.0.1:8080`         | `10.231.97.1`, the gateway of `edge` | `10.231.97.1`                                |
+| in a container on this host                                               | `http://toascribe-proxy-1:8080` | its own address on `edge`            | `10.231.97.0/24`, or its fixed address on it |
+| on another machine (set `TOASCRIBE_HTTP_BIND` to an address of this host) | that address and the port       | its own address                      | that address                                 |
+
+For a proxy in a container, join the network `toascribe_edge` (in the proxy's own compose file:
+`networks: { toascribe_edge: { external: true } }`). In the first case every process on this host that connects to
+`127.0.0.1:8080` appears as `10.231.97.1`, so trusting it trusts the whole host; that is fine on a host you control.
+To check which address the stack sees, send one request and read `remote_ip` in
+`docker compose -f docker/compose.yaml logs proxy --tail 1`. If Docker answers "Pool overlaps" for the `edge` subnet,
+set `TOASCRIBE_EDGE_SUBNET` to a free range and trust that range instead.
 
 ## Develop
 
@@ -51,21 +105,27 @@ pnpm install
 pnpm exec lefthook install   # git hooks: commit message check, lint and typecheck before commit, protect main
 ```
 
-**The checks** (every workspace package has all four scripts, so these run everywhere):
+**The checks.** One command runs format check, lint, typecheck, test and build for every workspace package and for the
+root files (`eslint`, `tsc` and the `root` Vitest project):
 
 ```sh
-pnpm -r lint && pnpm -r typecheck && pnpm -r test && pnpm -r build
-pnpm format:check
+pnpm check
 ```
 
+Lint, typecheck and the tests read the workspace libraries from `src/` (the `source` export condition), so nothing needs
+building first. Node and the images still run the compiled `dist/`. The `dev` scripts of the api and worker build the
+libraries first, because `node --watch src/index.ts` loads them from `dist/`. The two Nuxt apps and the theme also still
+build the libraries they import before their own scripts.
+
 **A database for the tests.** The database tests need a superuser URL on a disposable PostgreSQL 18; they create and
-drop their own databases and roles on it. Without `TEST_DATABASE_URL` they skip and say so.
+drop their own databases and roles on it. Without `TEST_DATABASE_URL` they skip and say so, so a green `pnpm check`
+without it has not run them.
 
 ```sh
 password="$(openssl rand -hex 16)"
 docker run -d --rm --name toascribe-test-db -e POSTGRES_PASSWORD="$password" -p 127.0.0.1:55432:5432 postgres:18-alpine
 export TEST_DATABASE_URL="postgres://postgres:$password@127.0.0.1:55432/postgres"
-pnpm -r test
+pnpm check
 docker stop toascribe-test-db
 ```
 

@@ -5,10 +5,12 @@
 	auto_https off
 
 	servers {
-		# Believe X-Forwarded-For/-Proto/-Host only from a proxy on a private network (an external Traefik or
-		# nginx on the same host or LAN). A client from anywhere else cannot set them: Caddy overwrites them.
-		# Set TOASCRIBE_TRUSTED_PROXIES to a space-separated list of CIDR ranges to narrow or widen this.
-		trusted_proxies static {$TOASCRIBE_TRUSTED_PROXIES:private_ranges}
+		# Believe X-Forwarded-For/-Proto/-Host from exactly one address or network: TOASCRIBE_TRUSTED_PROXY, a single IP
+		# or CIDR, set in .env (README, «Behind a reverse proxy»). Never private_ranges: that would trust every
+		# container and LAN host that can reach this port, and any of them could then forge a client IP.
+		# Empty (the default) leaves `static` without ranges, which trusts nobody: Caddy then replaces X-Forwarded-*
+		# with what it sees itself (checked with caddy 2.11.7: `caddy adapt` gives {"source":"static"}, no ranges).
+		trusted_proxies static {$TOASCRIBE_TRUSTED_PROXY}
 		client_ip_headers X-Forwarded-For
 	}
 }
@@ -28,6 +30,15 @@
 	header {
 		-Server
 		-X-Powered-By
+	}
+
+	# Caddy picks the route from the cleaned path but forwards the raw one, so `/api/../admin/x` or `/api%2fx` is routed
+	# by one reading of the path and answered by another. Refuse a path with a dot segment, an encoded dot, slash or
+	# backslash, a backslash, or an empty segment (//) before anything else looks at it (SECURITY §11 D). The query
+	# string is not checked. It is a `handle`: a bare `respond` loses to the other `handle` blocks.
+	@unnormalized expression `{http.request.uri}.matches("^[^?]*(?i:%2e|%2f|%5c|\\\\|/\\.\\.?(?:/|\\?|$)|//)")`
+	handle @unnormalized {
+		respond 400
 	}
 
 	# /setup is the first-run wizard and lives in the admin app, which is built with baseURL /admin.

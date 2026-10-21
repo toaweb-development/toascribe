@@ -6,6 +6,7 @@
   "description": "Zod schemas and inferred types shared by the API, the admin app, themes and extensions. No Node or browser APIs.",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }

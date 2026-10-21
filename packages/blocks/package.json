@@ -6,6 +6,7 @@
   "description": "Placeholder for the block definitions (JSON Schema) the editor and the API share; they come in phase 1.",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }

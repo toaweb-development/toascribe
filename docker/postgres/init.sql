@@ -9,6 +9,7 @@
 --   app_password    password for toascribe_app, from POSTGRES_APP_PASSWORD
 --
 -- By hand: psql -v ON_ERROR_STOP=1 -v db_name=toascribe -v owner_password=… -v app_password=… -f init.sql
+--          (10-init.sh sets the two passwords with \getenv instead, so they are not on its command line)
 
 -- 1. Owner role: runs the migrations (DDL) through MIGRATION_DATABASE_URL. Not a superuser, no BYPASSRLS.
 --    Owning the database makes it the owner of schema public too (pg_database_owner).
