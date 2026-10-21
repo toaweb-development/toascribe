@@ -17,13 +17,14 @@
     "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js"
   },
   "dependencies": {
+    "@toascribe/auth": "workspace:*",
     "@toascribe/db": "workspace:*",
+    "@toascribe/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@toascribe/shared": "workspace:*",
     "@toascribe/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",

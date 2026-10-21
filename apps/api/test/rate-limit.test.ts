@@ -1,15 +1,15 @@
 // K-026, K-313, K-004: login limits per IP and per account, with growing lockouts, and one answer whether the account exists.
+import { verifyPassword } from '@toascribe/auth'
+import type * as AuthModule from '@toascribe/auth'
 import { ApiError } from '@toascribe/shared'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import type * as PasswordsModule from '../src/lib/passwords.ts'
-import { verifyPassword } from '../src/lib/passwords.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
 import { TEST_PASSWORD, startAuthApp } from './harness.ts'
 import type { AuthTestApp, TestClient } from './harness.ts'
 
-vi.mock('../src/lib/passwords.ts', async (importOriginal) => {
-  const actual = await importOriginal<typeof PasswordsModule>()
+vi.mock('@toascribe/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof AuthModule>()
   return { ...actual, verifyPassword: vi.fn(actual.verifyPassword) }
 })
 

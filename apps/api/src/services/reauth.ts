@@ -2,11 +2,11 @@
 // stolen session take the account over: changing the password or the e-mail address, removing a factor, making new recovery
 // codes. A wrong answer is counted against the account and the address like a failed login, so a stolen session cannot be
 // used to guess the password (K-026).
+import { verifyPassword } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
 import { AppError } from '../lib/errors.ts'
-import { verifyPassword } from '../lib/passwords.ts'
 import { findPasswordHash } from '../repositories/accounts.ts'
 import type { RateLimiter } from './rate-limit.ts'
 import { assertNotLocked } from './support.ts'

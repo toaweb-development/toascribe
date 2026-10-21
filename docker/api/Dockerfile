@@ -52,6 +52,7 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=prod-deps /app/apps/worker/node_modules ./apps/worker/node_modules
 COPY --from=prod-deps /app/cli/node_modules ./cli/node_modules
+COPY --from=prod-deps /app/packages/auth/node_modules ./packages/auth/node_modules
 COPY --from=prod-deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=prod-deps /app/packages/shared/node_modules ./packages/shared/node_modules
 
@@ -60,6 +61,8 @@ COPY --from=build /app/apps/api/package.json /app/apps/api/package.json
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/worker/package.json /app/apps/worker/package.json
 COPY --from=build /app/apps/worker/dist ./apps/worker/dist
+COPY --from=build /app/packages/auth/package.json ./packages/auth/package.json
+COPY --from=build /app/packages/auth/dist ./packages/auth/dist
 COPY --from=build /app/packages/db/package.json ./packages/db/package.json
 COPY --from=build /app/packages/db/dist ./packages/db/dist
 COPY --from=build /app/packages/db/migrations ./packages/db/migrations

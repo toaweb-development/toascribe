@@ -1,4 +1,5 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
+import { dummyPasswordHash } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 import type { KeyRing } from '@toascribe/shared'
 import type { MiddlewareHandler } from 'hono'
@@ -9,7 +10,6 @@ import type { Logger } from 'pino'
 
 import { apiError } from './lib/api-error.ts'
 import type { AppEnv } from './lib/env.ts'
-import { dummyPasswordHash } from './lib/passwords.ts'
 import { publicAccess } from './lib/policy.ts'
 import { authContext } from './middleware/auth.ts'
 import { onError, onNotFound } from './middleware/errors.ts'

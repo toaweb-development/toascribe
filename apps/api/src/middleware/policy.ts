@@ -2,12 +2,12 @@ import { createRoute } from '@hono/zod-openapi'
 import type { RouteConfig } from '@hono/zod-openapi'
 import type { MiddlewareHandler } from 'hono'
 import { COMPOSED_HANDLER } from 'hono/utils/constants'
+import { constantTimeEqual } from '@toascribe/auth'
 
 import type { AppEnv } from '../lib/env.ts'
 import { describePolicy } from '../lib/policy.ts'
 import type { BodyType, Policy } from '../lib/policy.ts'
 import { BadRequestError, ForbiddenError, UnauthorizedError } from '../lib/errors.ts'
-import { constantTimeEqual } from '../lib/tokens.ts'
 import { currentAuth } from './auth.ts'
 
 /** Methods that must not change anything; every other method is state-changing and gets the CSRF checks. */

@@ -1,5 +1,6 @@
 // Sessions (K-001, K-002, K-013; security §3). The cookie holds a random token, the database its SHA-256. The expiry is
 // fixed when the session is made, from the settings, and is not extended by use: WordPress sessions end the same way.
+import { csrfTokenFor, generateToken, hashToken } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 import { CoreSettings } from '@toascribe/shared'
 import type { SessionListItem } from '@toascribe/shared'
@@ -8,7 +9,6 @@ import type { z } from 'zod'
 
 import { ANONYMOUS } from '../lib/auth-context.ts'
 import type { AuthContext, MfaStatus, SessionAuth } from '../lib/auth-context.ts'
-import { csrfTokenFor, generateToken, hashToken } from '../lib/tokens.ts'
 import { hasConfirmedMfaFactor, listRoleGrants } from '../repositories/accounts.ts'
 import type { AccountView } from '../repositories/accounts.ts'
 import type { Executor } from '../repositories/executor.ts'

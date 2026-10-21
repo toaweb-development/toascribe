@@ -4,15 +4,14 @@
 // None of the public ones may tell whether a username or an address has an account (K-004): they answer the same status and
 // body, take about the same time (padded to a minimum, see lib/timing.ts), and when an account does exist the difference is
 // only a mail in its owner's inbox.
+import { generateToken, hashPassword, hashToken } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 import { CoreSettings, ONE_TIME_LINK_HOURS } from '@toascribe/shared'
 import type { AccountTokenPurpose } from '@toascribe/shared'
 import type { Logger } from 'pino'
 
 import { AppError } from '../lib/errors.ts'
-import { hashPassword } from '../lib/passwords.ts'
 import { uniqueViolation } from '../lib/db-errors.ts'
-import { generateToken, hashToken } from '../lib/tokens.ts'
 import { withMinimumDuration } from '../lib/timing.ts'
 import {
   findAccountByLogin,

@@ -1,10 +1,10 @@
 // Login, logout and sessions (K-001, K-002, K-004, K-008, K-013, K-310) against a real PostgreSQL.
 import { createHash } from 'node:crypto'
 
+import { hashPassword } from '@toascribe/auth'
 import { ApiError, LoginResponse, SessionResponse } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { hashPassword } from '../src/lib/passwords.ts'
 import { ARGON2ID } from './argon2.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
 import { SESSION_COOKIE_NAME, TEST_PASSWORD, startAuthApp } from './harness.ts'

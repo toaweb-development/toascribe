@@ -1,5 +1,6 @@
 // What the signed-in person does to their own account's credentials: change the password (K-013) and change the e-mail address
 // (K-012). Both ask for the current password: a stolen session alone is not enough to take the account over.
+import { generateToken, hashPassword, hashToken } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 import { CoreSettings, ONE_TIME_LINK_HOURS } from '@toascribe/shared'
 import type { Logger } from 'pino'
@@ -7,9 +8,7 @@ import type { Logger } from 'pino'
 import type { SessionAuth } from '../lib/auth-context.ts'
 import { AppError } from '../lib/errors.ts'
 import { uniqueViolation } from '../lib/db-errors.ts'
-import { hashPassword } from '../lib/passwords.ts'
 import { withMinimumDuration } from '../lib/timing.ts'
-import { generateToken, hashToken } from '../lib/tokens.ts'
 import { emailInUse, findAccountByEmail, listAdministrators, setEmail, setPassword } from '../repositories/accounts.ts'
 import {
   findTokenForUpdate,

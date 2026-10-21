@@ -1,11 +1,11 @@
 // Login and logout (K-001, K-004, K-026, K-310). The service knows nothing about HTTP: it takes plain values and returns
 // plain results, or throws a typed error that the error handler turns into the ApiError format.
+import { dummyPasswordHash, hashPassword, verifyPassword } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 
 import type { MfaStatus, SessionAuth } from '../lib/auth-context.ts'
 import { UNKNOWN_IP } from '../lib/client-ip.ts'
 import { TooManyRequestsError, UnauthorizedError } from '../lib/errors.ts'
-import { dummyPasswordHash, hashPassword, verifyPassword } from '../lib/passwords.ts'
 import { findAccountByLogin, listRoleGrants, setPasswordHash } from '../repositories/accounts.ts'
 import type { AccountView } from '../repositories/accounts.ts'
 import { insertAuditEntry } from '../repositories/audit.ts'

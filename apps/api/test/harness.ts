@@ -1,6 +1,7 @@
 // A real app on a real PostgreSQL for the auth tests: migrated database, accounts in every built-in role, and a small HTTP
 // client that keeps the session cookie and the CSRF token like a browser does. Later tasks (MFA, lost password, ...) build
 // on it.
+import { hashPassword } from '@toascribe/auth'
 import { runMigrations } from '@toascribe/db'
 import type { BuiltInRole } from '@toascribe/shared'
 import { createDb } from '@toascribe/db'
@@ -8,7 +9,6 @@ import pg from 'pg'
 import { pino } from 'pino'
 
 import { buildApp } from '../src/app.ts'
-import { hashPassword } from '../src/lib/passwords.ts'
 import { createTestDatabase } from './db.ts'
 import type { TestDatabase } from './db.ts'
 import type { MailPort } from '../src/ports/mail.ts'

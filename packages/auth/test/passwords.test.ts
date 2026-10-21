@@ -4,7 +4,7 @@ import { hash } from '@node-rs/argon2'
 import { PASSWORD_MAX_LENGTH } from '@toascribe/shared'
 import { describe, expect, it } from 'vitest'
 
-import { verifyPhpass } from '../src/lib/phpass.ts'
+import { verifyPhpass } from '../src/phpass.ts'
 import {
   ARGON2_MEMORY_KIB,
   ARGON2_PARALLELISM,
@@ -12,7 +12,7 @@ import {
   dummyPasswordHash,
   hashPassword,
   verifyPassword,
-} from '../src/lib/passwords.ts'
+} from '../src/passwords.ts'
 import { ARGON2D, ARGON2I, ARGON2ID } from './argon2.ts'
 
 // The vectors. None comes from WordPress' own tests (they generate hashes at run time); where a vector was made by us it says so.

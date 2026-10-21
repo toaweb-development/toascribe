@@ -22,6 +22,15 @@ const DatabaseEnv = z.object({
 
 export type DatabaseConfig = z.infer<typeof DatabaseEnv>
 
+const AppDatabaseEnv = z.object({
+  // The app role (toascribe_app, DML only): the same URL the api uses, present in the api container. The user commands
+  // need nothing more, so they work in production too.
+  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+  LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
+})
+
+export type AppDatabaseConfig = z.infer<typeof AppDatabaseEnv>
+
 /** Thrown for a bad environment. The message names variables and rules, never values. */
 export class ConfigError extends Error {
   readonly fields: readonly string[]
@@ -37,6 +46,15 @@ export class ConfigError extends Error {
 /** What the commands that talk to the database need: the owner role's URL and the log level. */
 export function loadDatabaseConfig(env: EnvSource = process.env): DatabaseConfig {
   const parsed = DatabaseEnv.safeParse(env)
+  if (!parsed.success) {
+    throw new ConfigError(parsed.error.issues)
+  }
+  return parsed.data
+}
+
+/** What the commands that run as the app role need: its URL and the log level. */
+export function loadAppDatabaseConfig(env: EnvSource = process.env): AppDatabaseConfig {
+  const parsed = AppDatabaseEnv.safeParse(env)
   if (!parsed.success) {
     throw new ConfigError(parsed.error.issues)
   }
