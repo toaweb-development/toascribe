@@ -114,8 +114,8 @@ pnpm check
 
 Lint, typecheck and the tests read the workspace libraries from `src/` (the `source` export condition), so nothing needs
 building first. Node and the images still run the compiled `dist/`. The `dev` scripts of the api and worker build the
-libraries first, because `node --watch src/index.ts` loads them from `dist/`. The two Nuxt apps and the theme also still
-build the libraries they import before their own scripts.
+libraries first, because `node --watch src/index.ts` loads them from `dist/`. The Nuxt apps and layers read them from
+`src/` too (an alias in `packages/nuxt-base`), so they build nothing first.
 
 **A database for the tests.** The database tests need a superuser URL on a disposable PostgreSQL 18; they create and
 drop their own databases and roles on it. Without `TEST_DATABASE_URL` they skip and say so, so a green `pnpm check`
@@ -157,6 +157,7 @@ pnpm --filter @toascribe/admin dev   # http://localhost:3002/admin
 | `apps/site`, `apps/admin`      | the two Nuxt apps                                                          |
 | `packages/db`                  | Drizzle client, migrations and the migration runner                        |
 | `packages/shared`              | Zod schemas and types shared by the API and the apps                       |
+| `packages/nuxt-base`           | the Nuxt layer both apps share (Nuxt UI, i18n, API layer, config)          |
 | `packages/sdk`, `ui`, `blocks` | placeholders for the plugin and theme SDK, shared UI and block definitions |
 | `themes/default`               | the default theme, a Nuxt layer                                            |
 | `cli`                          | the `toa` command                                                          |

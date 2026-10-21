@@ -1,0 +1,16 @@
+{
+  "admin": {
+    "name": "toascribe admin",
+    "home": {
+      "description": "Administrasjon for toascribe.",
+      "intro": "Administrasjonen kommer i en senere versjon.",
+      "setupLink": "Gå til oppsett"
+    },
+    "setup": {
+      "heading": "Oppsett",
+      "title": "Oppsett — toascribe admin",
+      "description": "Oppsett av toascribe.",
+      "intro": "Veiviseren for oppsett kommer i en senere versjon."
+    }
+  }
+}

@@ -34,9 +34,17 @@ function packageDirs(): string[] {
   return dirs.filter((dir) => existsSync(path(`${dir}/package.json`)))
 }
 
-/** A Nuxt app or layer: it is built by Nuxt and reads the libraries through dist/ until it sets the condition itself. */
+/** A Nuxt app or layer. It reads the libraries through an alias in packages/nuxt-base, not through the condition. */
 function isNuxt(dir: string): boolean {
   return existsSync(path(`${dir}/nuxt.config.ts`))
+}
+
+/** A source file without its `//` comment lines, so a rule can be checked against code and not against the prose. */
+function code(relative: string): string {
+  return read(relative)
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('//'))
+    .join('\n')
 }
 
 describe('the "source" export condition', () => {
@@ -68,13 +76,14 @@ describe('the "source" export condition', () => {
     }
   })
 
-  const plain = packageDirs().filter((dir) => !isNuxt(dir) && existsSync(path(`${dir}/vitest.config.ts`)))
+  const withVitest = packageDirs().filter((dir) => existsSync(path(`${dir}/vitest.config.ts`)))
 
-  it('finds the vitest configs of the plain packages', () => {
-    expect(plain.length).toBeGreaterThanOrEqual(8)
+  it('finds the vitest configs, the Nuxt apps and the layer among them', () => {
+    expect(withVitest.length).toBeGreaterThanOrEqual(10)
+    expect(withVitest).toEqual(expect.arrayContaining(['apps/site', 'apps/admin', 'packages/nuxt-base']))
   })
 
-  it.each(plain)('%s lets Vitest resolve it (ssr.resolve.conditions)', (dir) => {
+  it.each(withVitest)('%s lets Vitest resolve it (ssr.resolve.conditions)', (dir) => {
     // test.projects do not inherit this from the root config, and resolve.conditions alone does not reach Node tests.
     expect(read(`${dir}/vitest.config.ts`)).toMatch(/ssr:\s*\{\s*resolve:\s*\{\s*conditions:\s*\['source'\]/)
   })
@@ -96,6 +105,59 @@ describe('the "source" export condition', () => {
       const text = read(file)
       expect(text, file).not.toMatch(/--conditions|-C\s*source|NODE_OPTIONS/)
     }
+  })
+})
+
+describe('the Nuxt apps and layers', () => {
+  const nuxtDirs = packageDirs().filter(isNuxt)
+  const scriptsOf = (dir: string): Record<string, unknown> => {
+    const manifest = json(`${dir}/package.json`)
+    if (!isRecord(manifest) || !isRecord(manifest['scripts'])) throw new Error(`${dir} has no scripts`)
+    return manifest['scripts']
+  }
+
+  it('finds the site, the admin, the theme and the shared layer', () => {
+    expect(nuxtDirs.sort()).toEqual(['apps/admin', 'apps/site', 'packages/nuxt-base', 'themes/default'])
+  })
+
+  it.each(nuxtDirs)('%s builds, lints, typechecks and tests without building a library first', (dir) => {
+    for (const [name, script] of Object.entries(scriptsOf(dir))) {
+      expect(String(script), `${dir} script ${name}`).not.toContain('build:deps')
+    }
+    expect(Object.keys(scriptsOf(dir))).not.toContain('build:deps')
+  })
+
+  it.each(nuxtDirs)('%s generates its .nuxt folder on install', (dir) => {
+    // An app that extends a layer bundles the layer's files, and the bundler looks for the tsconfig of the folder they are
+    // in. Its tsconfig.json points into .nuxt, which a clean checkout does not have until `nuxt prepare` has run.
+    expect(scriptsOf(dir)['postinstall'], dir).toBe('nuxt prepare')
+  })
+
+  it('reads each library that a Nuxt package depends on from src/, through an alias in the shared layer', () => {
+    const layer = code('packages/nuxt-base/nuxt.config.ts')
+    const wanted = new Set<string>()
+    for (const dir of nuxtDirs) {
+      const manifest = json(`${dir}/package.json`)
+      if (!isRecord(manifest) || !isRecord(manifest['dependencies'])) continue
+      for (const name of Object.keys(manifest['dependencies'])) {
+        const folder = name.replace('@toascribe/', 'packages/')
+        if (name.startsWith('@toascribe/') && existsSync(path(`${folder}/src/index.ts`))) wanted.add(name)
+      }
+    }
+    expect([...wanted]).toContain('@toascribe/shared')
+    for (const name of wanted) {
+      expect(layer, `alias for ${name}`).toContain(`'${name}': fileURLToPath(`)
+    }
+  })
+
+  it.each(nuxtDirs)('%s does not set the "source" condition for TypeScript or Vite', (dir) => {
+    // Other packages (the @internationalized/date of Nuxt UI) export a "source" condition too. Set for TypeScript or
+    // Vite, it would make them check and bundle those packages' .ts files with our options.
+    expect(code(`${dir}/nuxt.config.ts`)).not.toMatch(/customConditions|conditions:\s*\[/)
+  })
+
+  it('leaves no workspace concurrency limit, because no build writes into a dist/ that another reads', () => {
+    expect(read('pnpm-workspace.yaml')).not.toMatch(/^workspaceConcurrency:/m)
   })
 })
 

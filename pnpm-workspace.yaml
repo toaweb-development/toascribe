@@ -11,12 +11,12 @@ packages:
 # A package with nothing to test uses `vitest run --passWithNoTests`; one with nothing to
 # lint or build uses an `echo` that says why. `pnpm -r` skips the workspace root.
 
-# Packages run one at a time under `pnpm -r`. The libraries (shared, db, ...) list a "source" condition in their exports
-# and tsconfig.base.json sets customConditions, so lint, typecheck and test in apps/api, apps/worker, cli and the
-# libraries read src/ and need no dist/. The two Nuxt apps and the theme layer do not read the condition yet: their
-# scripts still build the libraries they import (build:deps) into dist/ first. Run in parallel, two such builds would
-# write the same dist/ at once and a reader could see a half-written file. Drop this line when the Nuxt side reads src/.
-workspaceConcurrency: 1
+# Lint, typecheck and test read the workspace libraries (shared, db, ...) from src/, so no package builds a library first and
+# `pnpm -r` may run packages in parallel. The libraries list a "source" export condition and tsconfig.base.json sets
+# customConditions; Vitest sets ssr.resolve.conditions; the Nuxt packages cannot use the condition (Nuxt UI's own
+# dependencies export one too), so packages/nuxt-base aliases each library to its src/index.ts instead. Node and the
+# images still run the compiled dist/ (api, worker, cli); only the `dev` scripts of the api and worker build the
+# libraries first. Nothing runs a build that writes into a dist/ another process reads, so there is no concurrency limit.
 
 # One version per dependency across the workspace (TYPESCRIPT_STANDARD_2026 §7).
 # Packages write "catalog:" and never carry their own version.
@@ -58,6 +58,7 @@ catalog:
   '@nuxt/ui': ^4.12.0
   vue: ^3.5.44
   vue-tsc: ^3.3.13
+  '@nuxtjs/i18n': ^10.6.0 # screen text goes through i18n from the start (bokmål only for now); 10.x supports Nuxt 4
   '@iconify-json/lucide': ^1.2.147 # Nuxt UI's default icon set, served from the build instead of api.iconify.design
   tailwindcss: ^4.3.3 # Nuxt UI's peer; the module registers @tailwindcss/vite itself
 

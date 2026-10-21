@@ -23,8 +23,9 @@ This file and the README come first where they are more specific.
 | `apps/site`, `apps/admin`      | `@toascribe/site`, `@toascribe/admin` | Nuxt 4. The admin has `baseURL: '/admin'`.                                   |
 | `packages/db`                  | `@toascribe/db`                       | Drizzle client, migrations, the migration runner, `PGBOSS_APP_OPTIONS`.      |
 | `packages/shared`              | `@toascribe/shared`                   | Zod schemas and types. Every API shape is defined here once.                 |
+| `packages/nuxt-base`           | `@toascribe/nuxt-base`                | The Nuxt layer both apps share: Nuxt UI, i18n, API layer and plugin, config. |
 | `packages/sdk`, `ui`, `blocks` | `@toascribe/*`                        | Placeholders until M0.5 and phase 1.                                         |
-| `themes/default`               | `@toascribe/theme-default`            | A Nuxt layer, linted by its own config.                                      |
+| `themes/default`               | `@toascribe/theme-default`            | A Nuxt layer that extends `nuxt-base`, linted by its own config.             |
 | `cli`                          | `@toascribe/cli`                      | The `toa` bin. Runs in the api container.                                    |
 | `docker/`                      |                                       | Dockerfiles, `compose.yaml`, `.env.example`, `proxy/Caddyfile`, `postgres/`. |
 
@@ -40,15 +41,22 @@ separate step: say so.
   `workspace:*`, never a version. Do not add a dependency without a reason that you can state in one line.
 - **Workspace libraries export `source` first.** A library's `exports` lists `"source": "./src/index.ts"` before
   `types` and `default` (which point at `dist/`). `customConditions: ["source"]` in `packages/tsconfig/tsconfig.base.json`
-  and `ssr.resolve.conditions: ['source']` in every plain package's `vitest.config.ts` make lint, typecheck and tests read
+  and `ssr.resolve.conditions: ['source']` in every package's `vitest.config.ts` make lint, typecheck and tests read
   `src/`, so they need no build. Node ignores the condition and loads `dist/`; never pass `--conditions=source` in an
   image or a script (tests that spawn `node` on a file that imports a library may; a test checks the rest). A new
   library gets the `source` export, and `dev` scripts that run `node` on `src/` still build the libraries first.
+  The Nuxt packages do not use the condition (Nuxt UI's own dependencies export a `source` condition too, and
+  TypeScript or Vite would then take their `.ts` files): `packages/nuxt-base/nuxt.config.ts` has an `alias` from each
+  library a Nuxt package imports to its `src/index.ts`, which the typecheck, the Vite build and the Nitro build all use.
+  A Nuxt package therefore needs no `build:deps`, and `workspaceConcurrency` is not set. A test checks both.
 - **No `process.env` outside `config.ts`** (each app has one; `packages/db/src/migrate.ts` is the entry point that reads
   `MIGRATION_DATABASE_URL`). Config is validated with Zod at start-up and errors name variables, never values.
 - **No secrets in the repo, an image, a compose file or a workflow.** `docker/.env.example` lists names with empty values.
 - **TypeScript.** Strict, no `any`, no `@ts-ignore`, no `enum`, no `console.*`; pino for logs. Tests live in `test/`.
-- **Frontend.** Nuxt UI and Tailwind tokens, no `<style>` blocks, no arbitrary colours, no hard-coded user-facing
+- **Frontend.** Shared Nuxt code (API layer, API plugin, status component, runtime config, head basics, i18n setup) lives in
+  `packages/nuxt-base`, once; an app keeps only what differs. Screen text goes through i18n: bokmål in
+  `i18n/locales/nb.json` of the layer or the app, English keys, `t('…')` in templates and page heads, no literal string
+  (a test reads the sources). Nuxt UI and Tailwind tokens, no `<style>` blocks, no arbitrary colours, no hard-coded user-facing
   constants that an admin should control (`app-config`: settings first).
 
 ## Database
@@ -106,8 +114,6 @@ what is shipped bumps the version and adds a CHANGELOG entry in the same branch.
 
 These are choices Tor has not made yet. Say which one you hit if your work touches it.
 
-- **Nuxt apps still build the libraries first.** `apps/site`, `apps/admin` and `themes/default` do not read the `source`
-  condition yet, so their scripts run `build:deps` and `workspaceConcurrency` stays 1. They follow in M0.2 task 2.
 - **Migrations are not run by `drizzle-kit migrate`.** `typescript` §13 names it; the runner in `packages/db` uses the
   Drizzle migrator instead because it also needs the lock and the pg-boss step, and drizzle-kit is a dev dependency.
 - **The owner password is in `docker/.env`.** `deployment-strategy` keeps `MIGRATION_DATABASE_URL` out of the server's

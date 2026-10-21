@@ -13,11 +13,13 @@
     "lint": "nuxt prepare && eslint .",
     "typecheck": "nuxi typecheck",
     "test": "vitest run --passWithNoTests",
-    "build": "nuxt prepare"
+    "build": "nuxt prepare",
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@iconify-json/lucide": "catalog:",
     "@nuxt/ui": "catalog:",
+    "@toascribe/nuxt-base": "workspace:*",
     "tailwindcss": "catalog:",
     "vue": "catalog:"
   },

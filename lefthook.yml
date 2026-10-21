@@ -4,8 +4,8 @@ commit-msg:
     commitlint:
       run: pnpm exec commitlint --edit {1}
 
-# One command, not two in parallel: until the Nuxt apps read the shared packages from src/ like the rest, their lint and
-# typecheck scripts both build those packages into dist/, and two builds at once would write the same files.
+# One command, not two in parallel: the lint and typecheck scripts of a Nuxt package both run `nuxt prepare`, which writes
+# that package's .nuxt folder, and two at once would write the same files.
 pre-commit:
   commands:
     lint-and-typecheck:

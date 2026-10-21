@@ -1,0 +1,9 @@
+{
+  "site": {
+    "home": {
+      "title": "toascribe — selvhostet publiseringssystem",
+      "description": "toascribe er et selvhostet publiseringssystem i TypeScript, bygd for å erstatte WordPress. Dette er startsiden til en nyinstallasjon.",
+      "lead": "Et selvhostet publiseringssystem, bygd for å erstatte WordPress."
+    }
+  }
+}

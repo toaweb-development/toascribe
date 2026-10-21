@@ -5,21 +5,18 @@
   "type": "module",
   "description": "The public site: a Nuxt 4 app that renders content through the active theme layer.",
   "scripts": {
-    "build:deps": "pnpm --filter \"@toascribe/site^...\" run build",
-    "dev": "pnpm run build:deps && nuxt dev --port 3000",
+    "dev": "nuxt dev --port 3000",
     "start": "node .output/server/index.mjs",
-    "lint": "pnpm run build:deps && nuxt prepare && eslint .",
-    "typecheck": "pnpm run build:deps && nuxi typecheck",
-    "test": "pnpm run build:deps && vitest run",
-    "build": "pnpm run build:deps && nuxi build"
+    "lint": "nuxt prepare && eslint .",
+    "typecheck": "nuxi typecheck",
+    "test": "vitest run --passWithNoTests",
+    "build": "nuxi build",
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@iconify-json/lucide": "catalog:",
-    "@nuxt/ui": "catalog:",
-    "@toascribe/shared": "workspace:*",
     "@toascribe/theme-default": "workspace:*",
     "nuxt": "catalog:",
-    "tailwindcss": "catalog:",
     "vue": "catalog:"
   },
   "devDependencies": {

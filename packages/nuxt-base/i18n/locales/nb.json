@@ -1,0 +1,21 @@
+{
+  "brand": {
+    "name": "toascribe"
+  },
+  "apiStatus": {
+    "title": "API-status",
+    "ok": {
+      "badge": "OK",
+      "text": "API-et svarer. Versjon {version}."
+    },
+    "failed": {
+      "badge": "Utilgjengelig",
+      "text": "Får ikke kontakt med API-et."
+    },
+    "checking": {
+      "badge": "Sjekker",
+      "text": "Sjekker om API-et svarer."
+    },
+    "retry": "Prøv igjen"
+  }
+}
