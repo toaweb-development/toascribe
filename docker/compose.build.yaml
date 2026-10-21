@@ -1,0 +1,46 @@
+# What CI builds (DOCKER_STANDARD «CI-bygg»): image and build, nothing else.
+#
+#   docker buildx bake -f docker/compose.build.yaml          (from the repo root)
+#
+# Why a second file: `docker buildx bake` takes a build context from a compose file relative to the directory it is
+# run in, not to the file, while compose.yaml's contexts (`..`) are relative to docker/. compose.yaml also needs the
+# passwords in its environment just to be read, and building must not. The images, build arguments and Dockerfiles
+# here must be the same as in compose.yaml (test/docker-config.test.ts checks that).
+name: toascribe
+
+services:
+  proxy:
+    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: docker/proxy/Dockerfile
+
+  site:
+    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: docker/nuxt/Dockerfile
+      args:
+        APP: site
+        HEALTH_PATH: /
+
+  admin:
+    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: docker/nuxt/Dockerfile
+      args:
+        APP: admin
+        HEALTH_PATH: /admin
+
+  api:
+    image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+
+  postgres:
+    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile

@@ -1,0 +1,51 @@
+# toascribe proxy (PLAN.md «Arkitektur»). An external Traefik or nginx sends all traffic here; Caddy routes by path.
+# HTTP only inside the stack: TLS belongs to the external proxy, so there is no certificate handling here.
+{
+	admin off
+	auto_https off
+
+	servers {
+		# Believe X-Forwarded-For/-Proto/-Host only from a proxy on a private network (an external Traefik or
+		# nginx on the same host or LAN). A client from anywhere else cannot set them: Caddy overwrites them.
+		# Set TOASCRIBE_TRUSTED_PROXIES to a space-separated list of CIDR ranges to narrow or widen this.
+		trusted_proxies static {$TOASCRIBE_TRUSTED_PROXIES:private_ranges}
+		client_ip_headers X-Forwarded-For
+	}
+}
+
+# The container healthcheck. Listens on loopback only and is not published.
+:8081 {
+	bind 127.0.0.1
+	respond /healthz 200
+}
+
+:8080 {
+	# `reverse_proxy` keeps the Host header. Behind a trusted proxy it also passes X-Forwarded-Proto and -Host on,
+	# so the apps see https and the public host name.
+	log
+
+	# The external proxy sets the security headers (SECURITY §7); do not advertise what runs here.
+	header {
+		-Server
+		-X-Powered-By
+	}
+
+	# /setup is the first-run wizard and lives in the admin app, which is built with baseURL /admin.
+	# Send the browser to the real address; a proxy rewrite would only be undone by the client router.
+	@setup path /setup /setup/*
+	redir @setup /admin{uri} 308
+
+	handle /api/* {
+		reverse_proxy api:3001
+	}
+
+	@admin path /admin /admin/*
+	handle @admin {
+		reverse_proxy admin:3000
+	}
+
+	# Everything else is the site (also /_nuxt/* and /_nuxt_icon/*).
+	handle {
+		reverse_proxy site:3000
+	}
+}

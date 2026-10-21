@@ -1,0 +1,55 @@
+# Tag on merge (VERSIONING_STANDARD_2026 §5, «Tag ved merge»): toascribe has no deploy yet, so the release is made
+# when a version lands on main. If v<version> does not exist, create an annotated tag on the commit that was merged
+# and a GitHub Release with that version's CHANGELOG section as its text. No images are published from here.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # tag and release; this job only
+    env:
+      VERSION_FILE: package.json # same as in version.yml
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # The job runs no third-party code, so the token may stay in the checkout (git push of the tag).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Tag and release
+        run: |
+          version="$(python3 -c '
+          import json, sys
+          print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])
+          ' "$VERSION_FILE")"
+          tag="v${version}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "${tag} already exists - nothing to tag."
+            exit 0
+          fi
+          awk -v v="${version}" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            /^## \[/ || /^\[[^]]+\]: / { on = 0 }
+            on
+          ' CHANGELOG.md > "${RUNNER_TEMP}/notes.md"
+          if [ ! -s "${RUNNER_TEMP}/notes.md" ]; then
+            echo "::error::CHANGELOG.md has no section for ${version}"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" -m "${tag}" "${GITHUB_SHA}"
+          git push origin "${tag}"
+          gh release create "${tag}" --verify-tag --title "${tag}" --notes-file "${RUNNER_TEMP}/notes.md"

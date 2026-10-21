@@ -1,0 +1,42 @@
+# Dependabot for every ecosystem in the repo (SECURITY_STANDARD_2026 §9). Actions are pinned to a commit SHA with the
+# version in a comment; the version updates below keep those pins current. Image updates are version updates only:
+# the image scan in ci.yml is the safety net for docker and docker-compose.
+version: 2
+updates:
+  - package-ecosystem: npm # the pnpm workspace, including the catalog in pnpm-workspace.yaml
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7 # wait a week after a release before proposing it (security updates are not delayed)
+    commit-message:
+      prefix: chore
+      include: scope
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7 # wait a week after a release before proposing it (security updates are not delayed)
+    commit-message:
+      prefix: ci
+      include: scope
+  - package-ecosystem: docker # the Dockerfiles under docker/ (base images pinned by tag and digest)
+    directories:
+      - /docker/*
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7 # wait a week after a release before proposing it (security updates are not delayed)
+    commit-message:
+      prefix: chore
+      include: scope
+  - package-ecosystem: docker-compose # docker/compose.yaml
+    directory: /docker
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7 # wait a week after a release before proposing it (security updates are not delayed)
+    commit-message:
+      prefix: chore
+      include: scope

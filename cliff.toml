@@ -1,0 +1,54 @@
+# git-cliff: draft of the CHANGELOG text and the bump suggestion (VERSIONING_STANDARD_2026 §5).
+#   git cliff --bumped-version                          next version from the commits since the last tag
+#   git cliff --unreleased --bump --strip header        draft of the new section, to be edited by hand
+# The CHANGELOG is written for people; this output is a starting point, not the file.
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project are documented here.
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) ·
+Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
+"""
+body = """
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else -%}
+## [Unreleased]
+{% endif -%}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {% if commit.breaking %}**BREAKING:** {% endif %}{% if commit.scope %}`{{ commit.scope }}`: {% endif %}{{ commit.message | split(pat="\n") | first | upper_first | trim }}\
+{% endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9]*"
+sort_commits = "oldest"
+commit_parsers = [
+  # Keep a Changelog categories: feat -> Added, fix -> Fixed, perf and refactor -> Changed.
+  # A breaking change is marked BREAKING: in its line (see the body template) and grouped under Changed.
+  { message = "^[a-z]+(\\([^)]*\\))?!:", group = "Changed" },
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Changed" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^revert", group = "Removed" },
+  { message = "^(docs|chore|style|test|ci)", skip = true },
+]
+
+[bump]
+# 0.y.z (VERSIONING_STANDARD §1): a feature is a MINOR bump and a breaking change may be a MINOR bump too, until 1.0.0.
+initial_tag = "v0.1.0"
+features_always_bump_minor = true
+breaking_always_bump_major = false

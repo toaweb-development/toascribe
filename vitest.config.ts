@@ -4,8 +4,6 @@ import { defineConfig } from 'vitest/config'
 // A package joins by having its own vitest.config.ts; no edit here is needed.
 export default defineConfig({
   test: {
-    // No packages have tests yet (M0.1). Keep this until the first test files land.
-    passWithNoTests: true,
     projects: [
       // Repo-level tests (scripts, config checks). Also keeps Vitest from failing with "No projects were found".
       { test: { name: 'root', include: ['test/**/*.test.ts'] } },

@@ -77,3 +77,17 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - '@iconify-json/lucide@1.2.147'
+
+# Documented exceptions for `pnpm audit --prod --audit-level high` (SECURITY_STANDARD_2026 §9: ID, reason, review date).
+# Both advisories are High, have no patched version, and come from nitropack, the bundler inside `nuxi build`:
+#   GHSA-86w9-cpqp-85rv  node-forge <= 1.4.0  (via nitropack > listhen)
+#   GHSA-vfj7-8cjw-p6xm  braces <= 3.0.3      (via nitropack > globby > micromatch)
+# Neither package is in any runtime image: Nitro bundles only what the server imports, and a `find` over the
+# built site, admin and api images finds no node-forge, braces, listhen or nitropack (checked 2026-10-20).
+# audit.yml fails when the review date below has passed. Re-check `pnpm audit --prod` then: remove an entry as soon as a
+# patched version exists, and extend the date only after looking again.
+# audit-exceptions-review-by: 2026-11-20
+auditConfig:
+  ignoreGhsas:
+    - GHSA-86w9-cpqp-85rv
+    - GHSA-vfj7-8cjw-p6xm
