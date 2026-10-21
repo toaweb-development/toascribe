@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
+// The files under test import @toascribe/db and @toascribe/shared. Node ignores the "source" export condition on its own,
+// so the child processes ask for it and run the libraries from src/ like the rest of the tests (no dist/ needed).
+const NODE_ARGS = ['--conditions=source']
 const ENTRY = fileURLToPath(new URL('../src/index.ts', import.meta.url))
 const HEALTHCHECK = fileURLToPath(new URL('../src/healthcheck.ts', import.meta.url))
 
@@ -45,7 +48,7 @@ interface Running {
 }
 
 function start(env: Record<string, string>): Running {
-  const child = spawn(process.execPath, [ENTRY], { env, stdio: ['ignore', 'pipe', 'pipe'] })
+  const child = spawn(process.execPath, [...NODE_ARGS, ENTRY], { env, stdio: ['ignore', 'pipe', 'pipe'] })
   let out = ''
   child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()))
   child.stderr.on('data', (chunk: Buffer) => (out += chunk.toString()))
@@ -68,7 +71,7 @@ async function waitFor(condition: () => boolean, what: string, timeoutMs = 15_00
 }
 
 function healthcheck(env: Record<string, string>): number | null {
-  return spawnSync(process.execPath, [HEALTHCHECK], { env, encoding: 'utf8' }).status
+  return spawnSync(process.execPath, [...NODE_ARGS, HEALTHCHECK], { env, encoding: 'utf8' }).status
 }
 
 let running: Running | undefined

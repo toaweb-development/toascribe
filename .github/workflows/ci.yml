@@ -57,23 +57,11 @@ jobs:
           docker exec ci-postgres pg_isready -h 127.0.0.1 -U postgres
           echo "TEST_DATABASE_URL=postgres://postgres:${password}@127.0.0.1:5432/postgres" >> "$GITHUB_ENV"
 
-      - name: Format
-        run: pnpm format:check
-      - name: Lint
-        run: pnpm -r lint
-      - name: Typecheck
-        run: pnpm -r typecheck
-      - name: Test
-        run: pnpm -r test
-      - name: Build
-        run: pnpm -r build
-
-      # `pnpm -r` skips the workspace root, so its own files (test/, vitest.config.ts, eslint.config.ts) are checked here.
-      - name: Lint, typecheck and test the root files
-        run: |
-          pnpm exec eslint .
-          pnpm exec tsc --noEmit
-          pnpm exec vitest run --project root
+      # One command for every check, the same one a developer runs before a push: format, lint, typecheck, test and
+      # build for every workspace package and for the root files (eslint, tsc and the `root` Vitest project).
+      # TEST_DATABASE_URL comes from the step above, so the database tests run here and none is skipped.
+      - name: Check
+        run: pnpm check
 
       - name: Stop PostgreSQL
         if: always()
@@ -97,7 +85,9 @@ jobs:
         run: |
           set -euo pipefail
           version="$(jq -er .version package.json)"
-          if ! printf '%s' "${version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          # bash's [[ =~ ]] matches the whole string; grep matches line by line, so a value with a newline in it
+          # ("1.0.0\nX=y") would pass grep and then write a second variable into $GITHUB_ENV.
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::package.json version '${version}' is not MAJOR.MINOR.PATCH"
             exit 1
           fi
@@ -160,6 +150,17 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
 
+      # Valkey is not built here (the upstream image, pinned by tag and digest in compose.yaml), but it is part of the
+      # stack a user can switch on, so it gets the same scan.
+      - name: Scan the valkey image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
       # The images just built, started as the user starts them: every container healthy, the migrate step done,
       # and the proxy routing as docs/PLAN.md says. compose.yaml stops when a password is empty (there are no
       # default passwords), so give it throwaway ones. They exist only for this run and are masked.
@@ -192,6 +193,9 @@ jobs:
           check /admin/setup 200
           check /api/health 200
           check /api/ready 200
+          # A path that Caddy would route by one reading and forward by another is refused (docker/proxy/Caddyfile).
+          check /api/..%2Fadmin 400
+          check /api/%2e%2e/admin 400
 
       - name: Show the container logs
         if: failure()

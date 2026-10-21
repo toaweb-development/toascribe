@@ -10,13 +10,13 @@ name: toascribe
 
 services:
   proxy:
-    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: docker/proxy/Dockerfile
 
   site:
-    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: docker/nuxt/Dockerfile
@@ -25,7 +25,7 @@ services:
         HEALTH_PATH: /
 
   admin:
-    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: docker/nuxt/Dockerfile
@@ -34,13 +34,13 @@ services:
         HEALTH_PATH: /admin
 
   api:
-    image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: docker/api/Dockerfile
 
   postgres:
-    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile

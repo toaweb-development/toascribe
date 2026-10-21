@@ -5,10 +5,16 @@
 	auto_https off
 
 	servers {
-		# Believe X-Forwarded-For/-Proto/-Host only from a proxy on a private network (an external Traefik or
-		# nginx on the same host or LAN). A client from anywhere else cannot set them: Caddy overwrites them.
-		# Set TOASCRIBE_TRUSTED_PROXIES to a space-separated list of CIDR ranges to narrow or widen this.
-		trusted_proxies static {$TOASCRIBE_TRUSTED_PROXIES:private_ranges}
+		# Believe X-Forwarded-For/-Proto/-Host from exactly one address or network: TOASCRIBE_TRUSTED_PROXY, a single IP
+		# or CIDR, set in .env (README, «Behind a reverse proxy»). Never private_ranges: that would trust every
+		# container and LAN host that can reach this port, and any of them could then forge a client IP.
+		# Empty (the default) leaves `static` without ranges, which trusts nobody: Caddy then replaces X-Forwarded-*
+		# with what it sees itself (checked with caddy 2.11.7: `caddy adapt` gives {"source":"static"}, no ranges).
+		trusted_proxies static {$TOASCRIBE_TRUSTED_PROXY}
+		# Read X-Forwarded-For from the right and stop at the first address that is not trusted, so the client IP is the
+		# address the trusted proxy actually saw. Without this Caddy takes the leftmost entry, which the visitor writes
+		# when the proxy appends to the header instead of replacing it (README shows an nginx that replaces it).
+		trusted_proxies_strict
 		client_ip_headers X-Forwarded-For
 	}
 }
@@ -22,6 +28,10 @@
 :8080 {
 	# `reverse_proxy` keeps the Host header. Behind a trusted proxy it also passes X-Forwarded-Proto and -Host on,
 	# so the apps see https and the public host name.
+	#
+	# THE CLIENT IP. Every `reverse_proxy` below sets `X-Real-IP {client_ip}`, and `header_up` replaces whatever the
+	# visitor sent under that name. The apps read the client IP from X-Real-IP only and never parse X-Forwarded-For
+	# (the audit log and the login rate limits depend on it: M0.3). Keep that header in every new `reverse_proxy`.
 	log
 
 	# The external proxy sets the security headers (SECURITY §7); do not advertise what runs here.
@@ -30,22 +40,41 @@
 		-X-Powered-By
 	}
 
+	# Caddy picks the route from the cleaned path but forwards the raw one, so `/api/../admin/x` or `/api%2fx` is routed
+	# by one reading of the path and answered by another. Refuse a path with a dot segment, an encoded dot, slash or
+	# backslash, a backslash, or an empty segment (//) before anything else looks at it (SECURITY §11 D). The query
+	# string is not checked. It is a `handle`: a bare `respond` loses to the other `handle` blocks.
+	@unnormalized expression `{http.request.uri}.matches("^[^?]*(?i:%2e|%2f|%5c|\\\\|/\\.\\.?(?:/|\\?|$)|//)")`
+	handle @unnormalized {
+		respond 400
+	}
+
 	# /setup is the first-run wizard and lives in the admin app, which is built with baseURL /admin.
 	# Send the browser to the real address; a proxy rewrite would only be undone by the client router.
+	# A `handle`, after the path check above: a bare `redir` is ordered before every `handle`.
 	@setup path /setup /setup/*
-	redir @setup /admin{uri} 308
+	handle @setup {
+		# `*` is the matcher: a first argument that starts with "/" would be read as a path matcher.
+		redir * /admin{uri} 308
+	}
 
 	handle /api/* {
-		reverse_proxy api:3001
+		reverse_proxy api:3001 {
+			header_up X-Real-IP {client_ip}
+		}
 	}
 
 	@admin path /admin /admin/*
 	handle @admin {
-		reverse_proxy admin:3000
+		reverse_proxy admin:3000 {
+			header_up X-Real-IP {client_ip}
+		}
 	}
 
 	# Everything else is the site (also /_nuxt/* and /_nuxt_icon/*).
 	handle {
-		reverse_proxy site:3000
+		reverse_proxy site:3000 {
+			header_up X-Real-IP {client_ip}
+		}
 	}
 }

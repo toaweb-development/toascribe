@@ -1,11 +1,12 @@
 {
   "name": "@toascribe/shared",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Zod schemas and inferred types shared by the API, the admin app, themes and extensions. No Node or browser APIs.",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }

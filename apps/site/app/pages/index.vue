@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { useHealthApi } from '~/lib/api/health'
+const { t } = useI18n()
 
-const title = 'toascribe — selvhostet publiseringssystem'
-const description =
-  'toascribe er et selvhostet publiseringssystem i TypeScript, bygd for å erstatte WordPress. Dette er startsiden til en nyinstallasjon.'
+const title = t('site.home.title')
+const description = t('site.home.description')
 
 useSeoMeta({
   title,
@@ -11,7 +10,7 @@ useSeoMeta({
   ogTitle: title,
   ogDescription: description,
   ogType: 'website',
-  ogSiteName: 'toascribe',
+  ogSiteName: t('brand.name'),
 })
 
 const healthApi = useHealthApi()
@@ -21,7 +20,7 @@ const { data, status, error, refresh } = await useAsyncData('health', () => heal
 <template>
   <main>
     <UContainer>
-      <ThemeHero title="toascribe" lead="Et selvhostet publiseringssystem, bygd for å erstatte WordPress." />
+      <ThemeHero :title="$t('brand.name')" :lead="$t('site.home.lead')" />
       <HealthApiStatus
         :health="data"
         :failed="error !== undefined"

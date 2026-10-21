@@ -6,15 +6,17 @@ packages:
 
 # Script convention (TYPESCRIPT_STANDARD_2026 §7, §14): every workspace package defines all four
 # scripts, `lint`, `typecheck`, `test` and `build`, because the root gate runs
-# `pnpm -r lint && pnpm -r typecheck && pnpm -r test && pnpm -r build` without --if-present.
+# `pnpm -r lint`, `pnpm -r typecheck`, `pnpm -r test` and `pnpm -r build` (all inside `pnpm check`) without --if-present.
 # pnpm falls back to running a missing `lint`/`typecheck`/`build` as a shell command and fails.
 # A package with nothing to test uses `vitest run --passWithNoTests`; one with nothing to
 # lint or build uses an `echo` that says why. `pnpm -r` skips the workspace root.
 
-# Packages run one at a time under `pnpm -r`. apps/api and apps/worker build the libraries they import
-# (build:deps) before lint, typecheck and test, because those libraries are consumed through dist/.
-# Run in parallel, both would write the same dist/ at once and a reader could see a half-written file.
-workspaceConcurrency: 1
+# Lint, typecheck and test read the workspace libraries (shared, db, ...) from src/, so no package builds a library first and
+# `pnpm -r` may run packages in parallel. The libraries list a "source" export condition and tsconfig.base.json sets
+# customConditions; Vitest sets ssr.resolve.conditions; the Nuxt packages cannot use the condition (Nuxt UI's own
+# dependencies export one too), so packages/nuxt-base aliases each library to its src/index.ts instead. Node and the
+# images still run the compiled dist/ (api, worker, cli); only the `dev` scripts of the api and worker build the
+# libraries first. Nothing runs a build that writes into a dist/ another process reads, so there is no concurrency limit.
 
 # One version per dependency across the workspace (TYPESCRIPT_STANDARD_2026 §7).
 # Packages write "catalog:" and never carry their own version.
@@ -56,6 +58,7 @@ catalog:
   '@nuxt/ui': ^4.12.0
   vue: ^3.5.44
   vue-tsc: ^3.3.13
+  '@nuxtjs/i18n': ^10.6.0 # screen text goes through i18n from the start (bokmål only for now); 10.x supports Nuxt 4
   '@iconify-json/lucide': ^1.2.147 # Nuxt UI's default icon set, served from the build instead of api.iconify.design
   tailwindcss: ^4.3.3 # Nuxt UI's peer; the module registers @tailwindcss/vite itself
 

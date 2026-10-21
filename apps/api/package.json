@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "The toascribe API: Hono on Node. Owns all data and business logic.",
@@ -11,9 +11,9 @@
     "build:deps": "pnpm --filter \"@toascribe/api^...\" run build",
     "dev": "pnpm run build:deps && NODE_ENV=development node --env-file-if-exists=../../.env --watch src/index.ts",
     "start": "node dist/index.js",
-    "lint": "pnpm run build:deps && eslint .",
-    "typecheck": "pnpm run build:deps && tsc --noEmit",
-    "test": "pnpm run build:deps && vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {

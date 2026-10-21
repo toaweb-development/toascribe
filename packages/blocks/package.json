@@ -1,11 +1,12 @@
 {
   "name": "@toascribe/blocks",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Placeholder for the block definitions (JSON Schema) the editor and the API share; they come in phase 1.",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }

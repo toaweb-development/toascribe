@@ -15,6 +15,11 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "types": ["node"], // TypeScript 7 defaults to [] - list what you need
+    // A workspace library lists "source": "./src/index.ts" first in its exports. Typecheck, typed lint and Vitest read
+    // the library's src/ with this condition, so none of them needs dist/. Node ignores the condition at run time and
+    // loads dist/. The Nuxt packages do not use the condition: packages/nuxt-base/nuxt.config.ts aliases each library
+    // they import to its src/index.ts instead.
+    "customConditions": ["source"],
     "sourceMap": true
   }
 }

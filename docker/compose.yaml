@@ -32,7 +32,7 @@ x-hardened: &hardened
 
 # The one api image runs the api, the worker, the migrate step and the `toa` CLI with different commands.
 x-api-image: &api-image
-  image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.1.0}
+  image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.2.0}
 
 # The database roles' passwords sit in URLs, so they must be URL-safe: `openssl rand -hex 32` (see .env.example).
 x-database-url: &database-url 'postgres://toascribe_app:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}@postgres:5432/${POSTGRES_DB:-toascribe}'
@@ -41,14 +41,16 @@ services:
   # ── Entry point ──────────────────────────────────────────
   proxy:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: ..
       dockerfile: docker/proxy/Dockerfile
     ports:
-      - '${TOASCRIBE_HTTP_PORT:-8080}:8080'
+      # Loopback by default: only a proxy on this host reaches it. TOASCRIBE_HTTP_BIND=0.0.0.0 exposes it on every interface.
+      - '${TOASCRIBE_HTTP_BIND:-127.0.0.1}:${TOASCRIBE_HTTP_PORT:-8080}:8080'
     environment:
-      TOASCRIBE_TRUSTED_PROXIES: ${TOASCRIBE_TRUSTED_PROXIES:-private_ranges}
+      # The one address or network whose X-Forwarded-* headers Caddy believes. Empty: nobody (see the Caddyfile).
+      TOASCRIBE_TRUSTED_PROXY: ${TOASCRIBE_TRUSTED_PROXY:-}
     read_only: true
     tmpfs:
       - /data
@@ -77,7 +79,7 @@ services:
   # ── Web apps ─────────────────────────────────────────────
   site:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: ..
       dockerfile: docker/nuxt/Dockerfile
@@ -112,7 +114,7 @@ services:
 
   admin:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: ..
       dockerfile: docker/nuxt/Dockerfile
@@ -240,7 +242,7 @@ services:
     restart: unless-stopped
     init: true
     logging: *logging
-    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: ..
       dockerfile: docker/postgres/Dockerfile
@@ -288,7 +290,7 @@ services:
     <<: *hardened
     profiles:
       - valkey
-    image: valkey/valkey:9.1.2-alpine3.24
+    image: valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
     # Start as the valkey user (uid 999) so the entrypoint needs no capabilities. A cache: nothing is saved to disk.
     user: '999:1000'
     command: ['valkey-server', '--save', '', '--appendonly', 'no']
@@ -309,8 +311,14 @@ services:
           memory: 256M
 
 networks:
-  # Where an external Traefik or nginx attaches to reach the proxy (only the proxy is on it).
-  edge: {}
+  # Where an external Traefik or nginx attaches to reach the proxy (only the proxy is on it). The subnet is fixed
+  # so that the address Caddy sees an external proxy at is known: the gateway (.1) for a proxy on the host that
+  # connects to the published port, an address in the subnet for a container that joins this network. That is the
+  # value for TOASCRIBE_TRUSTED_PROXY (README, «Behind a reverse proxy»). If docker says "Pool overlaps", set another.
+  edge:
+    ipam:
+      config:
+        - subnet: ${TOASCRIBE_EDGE_SUBNET:-10.231.97.0/24}
   # The apps talk to each other here.
   internal: {}
   # Postgres and valkey live here and nowhere else. `internal: true`: no route out of the network.

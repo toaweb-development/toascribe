@@ -18,6 +18,13 @@ jobs:
       VERSION_FILE: package.json # the single source of truth (§3); the workspace packages mirror it (test/version-mirror.test.ts)
       RELEASED: >- # paths that are «what is rolled out» (prefixes, space separated)
         apps/ packages/ cli/ themes/ docker/ package.json pnpm-lock.yaml pnpm-workspace.yaml
+      # Inside those prefixes, what is still NOT rolled out and needs no new version (VERSIONING_STANDARD_2026 §4: tests
+      # and CI setup): tests and their helpers, Vitest configs and ESLint configs. None of them reaches an image or the
+      # compiled output. Shell-style patterns (fnmatch), space separated; `*` also matches `/`. Everything else under the
+      # prefixes above counts, including tsconfig files (tsconfig.build.json decides what is compiled).
+      NOT_RELEASED: >-
+        apps/*/test/* packages/*/test/* cli/test/* themes/*/test/* *.test.ts
+        */vitest.config.ts */vitest.config.mts */eslint.config.mjs */eslint.config.ts
       BASE_REF: ${{ github.base_ref }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,7 +34,7 @@ jobs:
       - name: Check the version
         run: |
           python3 - <<'PY'
-          import json, os, re, subprocess, sys
+          import fnmatch, json, os, re, subprocess, sys
 
           def git(*args):
               done = subprocess.run(["git", *args], capture_output=True, text=True)
@@ -63,8 +70,10 @@ jobs:
                   else git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*"))
           if base:                                    # no tag yet = first release
               released = tuple(os.environ["RELEASED"].split())
+              skipped = os.environ.get("NOT_RELEASED", "").split()
               changed = [p for p in git("diff", "--name-only", base, "HEAD").splitlines()
-                         if p.startswith(released)]
+                         if p.startswith(released)
+                         and not any(fnmatch.fnmatchcase(p, g) for g in skipped)]
               old = git("show", f"{base}:{vf}")
               old_version = read_version(old, vf) if old else ""
               if changed and semver.fullmatch(old_version) and semver.fullmatch(version) \

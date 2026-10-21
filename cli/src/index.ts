@@ -4,7 +4,7 @@
 import { run } from './run.ts'
 import { readVersion } from './version.ts'
 
-const result = run(process.argv.slice(2), readVersion())
+const result = await run(process.argv.slice(2), readVersion())
 process.stdout.write(result.stdout)
 process.stderr.write(result.stderr)
 process.exitCode = result.code
