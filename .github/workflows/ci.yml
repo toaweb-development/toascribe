@@ -90,6 +90,19 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
+      # The root package.json version is the repo's single version. Reading it once here, into the job's environment,
+      # makes bake (tags), the scans (image-ref) and compose (`up --no-build`) all use the same tag, so a version bump
+      # needs no edit in this file. Both bake and compose read TOASCRIBE_VERSION from the environment.
+      - name: Read the version
+        run: |
+          set -euo pipefail
+          version="$(jq -er .version package.json)"
+          if ! printf '%s' "${version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::package.json version '${version}' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          echo "TOASCRIBE_VERSION=${version}" >> "$GITHUB_ENV"
+
       # The five images users run: proxy, site, admin, api and postgres (worker and migrate use the api image). The
       # build file is docker/compose.build.yaml, which has the same images as compose.yaml (a test checks that).
       # Nothing is pushed, so there are no provenance or SBOM attestations either; they come with the push step
@@ -109,7 +122,7 @@ jobs:
       - name: Scan the api image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-api:0.1.0
+          image-ref: ghcr.io/toaweb/toascribe-api:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -117,7 +130,7 @@ jobs:
       - name: Scan the site image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-site:0.1.0
+          image-ref: ghcr.io/toaweb/toascribe-site:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -125,7 +138,7 @@ jobs:
       - name: Scan the admin image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-admin:0.1.0
+          image-ref: ghcr.io/toaweb/toascribe-admin:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -133,7 +146,7 @@ jobs:
       - name: Scan the proxy image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-proxy:0.1.0
+          image-ref: ghcr.io/toaweb/toascribe-proxy:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -141,7 +154,7 @@ jobs:
       - name: Scan the postgres image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-postgres:0.1.0
+          image-ref: ghcr.io/toaweb/toascribe-postgres:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true

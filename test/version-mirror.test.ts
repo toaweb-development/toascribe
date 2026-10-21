@@ -51,3 +51,20 @@ describe('version mirrors', () => {
     expect(versionOf(path)).toBe(rootVersion)
   })
 })
+
+// The workflows take the image tag from package.json (the `images` job writes it to TOASCRIBE_VERSION). A literal
+// `toascribe-<name>:<semver>` there would pass until the first version bump and then break the scan.
+describe('workflows', () => {
+  const dir = fileURLToPath(new URL('.github/workflows/', ROOT))
+  const files = readdirSync(dir).filter((name) => /\.ya?ml$/.test(name))
+
+  it('finds the workflow files', () => {
+    expect(files.length).toBeGreaterThan(0)
+  })
+
+  it.each(files)('%s has no image tag with a literal version', (name) => {
+    const text = readFileSync(`${dir}${name}`, 'utf8')
+    const literals = text.match(/toascribe-[a-z0-9-]+:\d+\.\d+\.\d+\S*/g) ?? []
+    expect(literals).toEqual([])
+  })
+})
