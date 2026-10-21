@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/db",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Drizzle schema, PostgreSQL client and SQL migrations for toascribe. Imported only by apps/api and apps/worker.",

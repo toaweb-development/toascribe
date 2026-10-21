@@ -5,9 +5,10 @@ and plugins), written in TypeScript from end to end: Nuxt 4 for the site and the
 PostgreSQL. Content is stored as structured blocks, not HTML, and background work runs on a real job queue. It ships
 as an open repository and starts with Docker; the rest of the setup is finished in a browser wizard.
 
-**Status: 0.1.0, the skeleton.** The whole stack starts and is healthy on one port, the apps talk to the database, and
-the API answers `/api/health` and `/api/ready`. There is no content model, login or editor yet. The plan, the
-architecture and the phases are in [docs/PLAN.md](docs/PLAN.md) (in Norwegian).
+**Status: 0.2.0, the data model.** The whole stack starts and is healthy on one port, and the database holds the core
+data model with the five roles and the default settings in place. The API answers `/api/health` and `/api/ready`. There
+is no login or editor yet. The plan, the architecture and the phases are in [docs/PLAN.md](docs/PLAN.md) (in
+Norwegian); the tables are described in [docs/DATAMODEL.md](docs/DATAMODEL.md).
 
 ## Run the stack
 

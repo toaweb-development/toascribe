@@ -32,7 +32,7 @@ x-hardened: &hardened
 
 # The one api image runs the api, the worker, the migrate step and the `toa` CLI with different commands.
 x-api-image: &api-image
-  image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.1.0}
+  image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.2.0}
 
 # The database roles' passwords sit in URLs, so they must be URL-safe: `openssl rand -hex 32` (see .env.example).
 x-database-url: &database-url 'postgres://toascribe_app:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}@postgres:5432/${POSTGRES_DB:-toascribe}'
@@ -41,7 +41,7 @@ services:
   # ── Entry point ──────────────────────────────────────────
   proxy:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: ..
       dockerfile: docker/proxy/Dockerfile
@@ -79,7 +79,7 @@ services:
   # ── Web apps ─────────────────────────────────────────────
   site:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: ..
       dockerfile: docker/nuxt/Dockerfile
@@ -114,7 +114,7 @@ services:
 
   admin:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: ..
       dockerfile: docker/nuxt/Dockerfile
@@ -242,7 +242,7 @@ services:
     restart: unless-stopped
     init: true
     logging: *logging
-    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.1.0}
+    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.2.0}
     build:
       context: ..
       dockerfile: docker/postgres/Dockerfile

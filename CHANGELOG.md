@@ -6,6 +6,47 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-21
+
+The data model: the database now holds everything a site needs, and a fresh stack starts with roles and settings in place.
+
+### Added
+
+- The core data model: 43 tables in one migration, with time-ordered ids, a short numeric id for `/?p=` links, named
+  foreign keys and indexes for JSON content and search. The app role gets data rights only, and on the audit log only
+  insert, select and update of the IP address. [docs/DATAMODEL.md](docs/DATAMODEL.md) has the ER diagram, the
+  draft and revision model and where it departs from the plan.
+- `seedCore()`: the five WordPress roles with WordPress' capabilities and 51 default settings (Norwegian date, time
+  and timezone, locale `nb`, WordPress permalinks, comments open). The migrate step runs it after the migrations and
+  never overwrites a row that exists, so a fresh `docker compose up` ends with roles and settings in place.
+- `toa dev seed tom`: resets a development database to the migrated and seeded state. It refuses unless `NODE_ENV` is
+  `development` or `test`.
+- `packages/nuxt-base`: one Nuxt layer shared by the site and the admin (API plugin, status component, runtime config,
+  head basics).
+- Norwegian bokmål as the first interface language, through `@nuxtjs/i18n`. All screen text goes through messages, and a
+  test fails on hard-coded text in templates.
+- `pnpm check`: format, lint, type check, tests and build, including the root files, in one command. CI, the
+  pre-commit hook and the docs use it.
+- A `source` export condition on the workspace libraries, so lint, type check and tests read `src/` without building
+  first. Node still loads `dist/`.
+
+### Changed
+
+- **BREAKING:** the proxy publishes its port on `127.0.0.1` by default. Set `TOASCRIBE_HTTP_BIND` to expose it on
+  another address.
+- Lint, type check and tests no longer need the libraries built first, so the root `build:libs` step and the single-worker
+  setting are gone.
+- The version gate ignores changes that only touch tests.
+
+### Security
+
+- The proxy believes `X-Forwarded-For`, `-Proto` and `-Host` only from the address in `TOASCRIBE_TRUSTED_PROXY`, and
+  replaces them with what it sees itself otherwise. The edge network has a fixed subnet.
+- Paths that are not normalised are rejected with 400.
+- The database init script passes the role passwords to psql with `\getenv`, so they no longer show in the process
+  list.
+- gosu is pinned to a commit, and the optional Valkey image is pinned and scanned like the others.
+
 ## [0.1.0] - 2026-10-20
 
 The skeleton: everything runs end to end, nothing is a feature yet.
@@ -25,5 +66,6 @@ The skeleton: everything runs end to end, nothing is a feature yet.
   dependencies, a start of the full stack, and a version gate that asks for a new version and CHANGELOG entry when
   released files change.
 
-[Unreleased]: https://github.com/toaweb/toascribe/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/toaweb/toascribe/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/toaweb/toascribe/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/toaweb/toascribe/releases/tag/v0.1.0

@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/nuxt-base",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "The Nuxt layer that apps/site and apps/admin share: API layer, API plugin, status component, Nuxt UI and i18n setup, runtime config, head basics.",

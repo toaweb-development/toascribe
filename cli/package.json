@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "The toa command. Runs in the api container: docker compose exec api toa …",
