@@ -54,6 +54,9 @@ catalog:
   pino-pretty: ^13.2.0
   '@node-rs/argon2': ^2.2.2 # argon2id password hashing (typescript §12); prebuilt N-API binaries incl. musl, no install script
   bcryptjs: ^3.0.3 # verifies imported WordPress bcrypt hashes ($2y$, $wp$2y$); pure JS, no build script, used once per account
+  nodemailer: ^10.1.7 # sends the e-mail jobs over SMTP; ships its own types (no @types/nodemailer); pure JS
+  undici: ^8.12.3 # the Agent whose connect.lookup checks every resolved address, for the SSRF-safe client (packages/http)
+  ipaddr.js: ^2.5.0 # classifies addresses (range() === 'unicast') for the same client
 
   # Frontend (NUXT_VUE_STANDARD_2026)
   nuxt: ^4.6.2

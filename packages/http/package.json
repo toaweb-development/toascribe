@@ -1,0 +1,34 @@
+{
+  "name": "@toascribe/http",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "The SSRF-safe HTTP client (safeFetch) for anything that fetches an address a user gave. Node only; imported by apps/api and apps/worker.",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "ipaddr.js": "catalog:",
+    "undici": "catalog:"
+  },
+  "devDependencies": {
+    "@toascribe/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

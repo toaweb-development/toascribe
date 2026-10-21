@@ -10,6 +10,8 @@ import { createRateLimiter } from './rate-limit.ts'
 import type { RateLimiter } from './rate-limit.ts'
 import { createSessionService } from './sessions.ts'
 import type { SessionService } from './sessions.ts'
+import { createSystemService } from './system.ts'
+import type { SystemService } from './system.ts'
 
 export interface ServiceDeps {
   readonly db: Database
@@ -28,6 +30,7 @@ export interface Services {
   readonly sessions: SessionService
   readonly auth: AuthService
   readonly me: MeService
+  readonly system: SystemService
   /** Per IP and per account limits for login, second factor, registration and lost password (K-026, K-313). */
   readonly limiter: RateLimiter
   readonly keyRing: KeyRing
@@ -42,6 +45,7 @@ export function createServices(deps: ServiceDeps): Services {
     sessions,
     auth: createAuthService({ db, clock, sessions, limiter }),
     me: createMeService({ db, clock }),
+    system: createSystemService({ db, clock, mail: deps.mail }),
     limiter,
     keyRing: deps.keyRing,
     mail: deps.mail,

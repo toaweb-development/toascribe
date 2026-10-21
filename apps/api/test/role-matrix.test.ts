@@ -71,6 +71,14 @@ const CASES: readonly MatrixCase[] = [
     path: `/api/v1/me/sessions/${SOMEONE_ELSES_SESSION}`,
     expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 404 },
   },
+  // The `manage_options` capability: only the administrator
+  {
+    route: 'POST /api/v1/system/test-email',
+    method: 'POST',
+    path: '/api/v1/system/test-email',
+    json: {},
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403, administrator: 202 },
+  },
   // Routes that exist for this test: the matrix has to tell capabilities apart
   {
     route: 'GET /api/v1/test/manage-options',

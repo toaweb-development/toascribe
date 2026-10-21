@@ -14,4 +14,5 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'GET /api/v1/me/sessions': 'capability:read',
   'DELETE /api/v1/me/sessions/:id': 'capability:read',
   'DELETE /api/v1/me/sessions': 'capability:read',
+  'POST /api/v1/system/test-email': 'capability:manage_options',
 }

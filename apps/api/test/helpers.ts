@@ -3,7 +3,7 @@ import { createKeyRing, parseKeyMaterial } from '@toascribe/shared'
 import { pino } from 'pino'
 
 import { buildApp } from '../src/app.ts'
-import type { MailPort, MailRequest } from '../src/ports/mail.ts'
+import type { MailOptions, MailPort, MailRequest } from '../src/ports/mail.ts'
 import { TEST_DATABASE_URL, SKIP_REASON, noticeIfSkipped } from './db.ts'
 
 export { SKIP_REASON, TEST_DATABASE_URL, noticeIfSkipped }
@@ -15,7 +15,9 @@ export const UNREACHABLE_DATABASE_URL = 'postgres://app:sekret-pw-123@127.0.0.1:
 export const TEST_ORIGIN = 'https://cms.example.test'
 
 /** Fixed test keys. They protect nothing: they only have to be valid and different from each other. */
-export const TEST_ENCRYPTION_KEY = parseKeyMaterial('1f2e3d4c5b6a79881706f5e4d3c2b1a09f8e7d6c5b4a39281706f5e4d3c2b1a0')
+/** The same key as hex, for a process that reads it from its environment (the worker the mail test starts). */
+export const TEST_ENCRYPTION_KEY_HEX = '1f2e3d4c5b6a79881706f5e4d3c2b1a09f8e7d6c5b4a39281706f5e4d3c2b1a0'
+export const TEST_ENCRYPTION_KEY = parseKeyMaterial(TEST_ENCRYPTION_KEY_HEX)
 export const TEST_SIGNING_KEY = parseKeyMaterial('a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f91')
 
 export const testKeyRing = await createKeyRing({ version: 1, key: TEST_ENCRYPTION_KEY })
@@ -39,14 +41,32 @@ export function memoryLogger() {
   return { logger, lines }
 }
 
-/** A mail port that keeps what it was asked to send. */
-export function recordingMail(): MailPort & { readonly sent: MailRequest[] } {
+/**
+ * A mail port that keeps what it was asked to send. A throttle key is honoured the simple way: the first mail with a key is
+ * queued and later ones with the same key are not (`jobId: null`), whatever the time. The real window is pg-boss's, and the
+ * mail integration test exercises that.
+ */
+export function recordingMail(): MailPort & {
+  readonly sent: MailRequest[]
+  readonly options: (MailOptions | undefined)[]
+} {
   const sent: MailRequest[] = []
+  const options: (MailOptions | undefined)[] = []
+  const throttled = new Set<string>()
   return {
     sent,
-    sendMail(request) {
+    options,
+    sendMail(request, mailOptions) {
+      const key = mailOptions?.throttle?.key
+      if (key !== undefined) {
+        if (throttled.has(key)) {
+          return Promise.resolve({ jobId: null })
+        }
+        throttled.add(key)
+      }
       sent.push(request)
-      return Promise.resolve()
+      options.push(mailOptions)
+      return Promise.resolve({ jobId: `job-${String(sent.length)}` })
     },
   }
 }

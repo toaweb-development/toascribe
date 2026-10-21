@@ -5,10 +5,10 @@ import { createDb } from '@toascribe/db'
 import { createKeyRing } from '@toascribe/shared'
 import { pino } from 'pino'
 
+import { createMailQueue } from './adapters/mail-queue.ts'
 import { createApp } from './app.ts'
 import { ConfigError, loadConfig } from './config.ts'
 import { createLogger } from './lib/logger.ts'
-import { unconfiguredMail } from './ports/mail.ts'
 import { readPackageVersion } from './lib/version.ts'
 
 /** After this long a shutdown that has not finished is abandoned and the process exits non-zero. */
@@ -43,6 +43,8 @@ pool.on('error', (err) => {
   logger.error({ err }, 'database pool error on an idle client')
 })
 
+const mailQueue = createMailQueue({ connectionString: config.DATABASE_URL, keyRing, logger })
+
 const app = createApp({
   pool,
   db,
@@ -51,7 +53,7 @@ const app = createApp({
   publicOrigin: config.PUBLIC_ORIGIN,
   signingKey: config.TOASCRIBE_SIGNING_KEY,
   keyRing,
-  mail: unconfiguredMail, // replaced by the e-mail job producer when the mail queue is wired in
+  mail: mailQueue,
 })
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   logger.info({ port: info.port, env: config.NODE_ENV }, 'api listening')
@@ -87,6 +89,7 @@ async function shutdown(reason: string, exitCode: number): Promise<void> {
       })
       // close() also closes idle keep-alive connections (Node 19+); active requests finish first.
     })
+    await mailQueue.stop()
     await pool.end()
     logger.info('shutdown complete')
     process.exit(exitCode)

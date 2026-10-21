@@ -25,6 +25,7 @@
     "bcryptjs": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
+    "pg-boss": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
   },

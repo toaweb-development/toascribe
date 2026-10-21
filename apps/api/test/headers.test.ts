@@ -85,6 +85,7 @@ describe('the OpenAPI document', () => {
         '/api/v1/me',
         '/api/v1/me/sessions',
         '/api/v1/me/sessions/{id}',
+        '/api/v1/system/test-email',
       ].sort(),
     )
     expect(Object.keys(doc.paths['/api/v1/me'] ?? {}).sort()).toEqual(['get', 'patch'])
@@ -98,6 +99,7 @@ describe('the OpenAPI document', () => {
     expect(doc.paths['/api/v1/me']?.['get']?.['x-policy']).toBe('capability:read')
     expect(doc.paths['/api/v1/auth/login']?.['post']?.['x-policy']).toBe('public')
     expect(doc.paths['/api/v1/auth/logout']?.['post']?.['x-policy']).toBe('authenticated')
+    expect(doc.paths['/api/v1/system/test-email']?.['post']?.['x-policy']).toBe('capability:manage_options')
     expect(doc.paths['/api/health']?.['get']?.['x-policy']).toBe('public')
   })
 })

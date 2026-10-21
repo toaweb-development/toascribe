@@ -20,6 +20,7 @@ import type { Pool } from './repositories/health.ts'
 import { createAuthApp } from './routes/auth.ts'
 import { createHealthApp } from './routes/health.ts'
 import { createMeApp } from './routes/me.ts'
+import { createSystemApp } from './routes/system.ts'
 import { createServices } from './services/index.ts'
 
 /** Everything the app needs from outside, so tests can inject their own. */
@@ -116,10 +117,12 @@ export function buildApp(deps: AppDeps) {
   app.use('/api/v1/auth/*', noStore)
   app.use('/api/v1/me', noStore)
   app.use('/api/v1/me/*', noStore)
+  app.use('/api/v1/system/*', noStore)
 
   app.route('/api', createHealthApp({ pool: deps.pool, version: deps.version }))
   app.route('/api/v1', createAuthApp(services))
   app.route('/api/v1', createMeApp(services))
+  app.route('/api/v1', createSystemApp(services))
 
   const document = { openapi: '3.1.0', info: { title: 'toascribe API', version: deps.version } } as const
   app.get(OPENAPI_PATH, policyGuard(publicAccess()), (c) =>

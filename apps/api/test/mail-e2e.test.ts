@@ -1,0 +1,180 @@
+// The whole path, as separate processes: the api queues a mail through pg-boss, a real worker process picks it up and sends it
+// through SMTP, and Mailpit holds the message. Needs TEST_DATABASE_URL, MAILPIT_URL and MAILPIT_SMTP; skips, with a notice, without.
+import { spawn } from 'node:child_process'
+import type { ChildProcess } from 'node:child_process'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { TestEmailResponse } from '@toascribe/shared'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+
+import { createMailQueue } from '../src/adapters/mail-queue.ts'
+import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
+import { TEST_ENCRYPTION_KEY_HEX, TEST_ORIGIN, memoryLogger, testKeyRing } from './helpers.ts'
+import { TEST_PASSWORD, startAuthApp } from './harness.ts'
+import type { AuthTestApp } from './harness.ts'
+import { countMessages, mailpitConfig, noticeIfMailpitSkipped, uniqueAddress, waitForMessage } from './mailpit.ts'
+
+noticeIfSkipped('mail-e2e')
+noticeIfMailpitSkipped('mail-e2e')
+
+const mailpit = mailpitConfig()
+const WORKER_ENTRY = fileURLToPath(new URL('../../worker/src/index.ts', import.meta.url))
+const TOKEN = 'zX9cVb7nMq1wErTy3uIoPa5sDfGh8jKlZxCvBnMqWe2'
+
+function stringEnv(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+  )
+}
+
+describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
+  'api -> queue -> worker process -> SMTP -> Mailpit (needs TEST_DATABASE_URL, MAILPIT_URL, MAILPIT_SMTP)',
+  () => {
+    let env: AuthTestApp
+    let worker: ChildProcess
+    let dir: string
+    let workerOutput = ''
+
+    function config() {
+      if (mailpit === undefined) {
+        throw new Error('unreachable: the suite is skipped without Mailpit')
+      }
+      return mailpit
+    }
+
+    beforeAll(async () => {
+      const mp = config()
+      env = await startAuthApp({
+        mail: (database) =>
+          createMailQueue({ connectionString: database.appUrl, keyRing: testKeyRing, logger: pinoSilent() }),
+      })
+      dir = await mkdtemp(join(tmpdir(), 'toascribe-mail-e2e-'))
+      // The worker is a separate process with its own environment, the way it runs in the container. The server and sender
+      // come from the environment here (the defaults behind the settings).
+      worker = spawn(process.execPath, ['--conditions=source', WORKER_ENTRY], {
+        env: {
+          ...stringEnv(),
+          NODE_ENV: 'test',
+          LOG_LEVEL: 'debug',
+          DATABASE_URL: env.database.appUrl,
+          PUBLIC_ORIGIN: TEST_ORIGIN,
+          TOASCRIBE_ENCRYPTION_KEY: TEST_ENCRYPTION_KEY_HEX,
+          SMTP_HOST: mp.smtpHost,
+          SMTP_PORT: String(mp.smtpPort),
+          SMTP_SECURE: 'none',
+          MAIL_FROM_ADDRESS: 'noreply@cms.example.test',
+          WORKER_HEARTBEAT_FILE: join(dir, 'heartbeat'),
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+      worker.stdout?.on('data', (chunk: Buffer) => (workerOutput += chunk.toString()))
+      worker.stderr?.on('data', (chunk: Buffer) => (workerOutput += chunk.toString()))
+      const deadline = Date.now() + 30_000
+      while (!workerOutput.includes('worker ready')) {
+        if (Date.now() > deadline || worker.exitCode !== null) {
+          throw new Error(`the worker did not start:\n${workerOutput}`)
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+    })
+
+    afterAll(async () => {
+      const exited = new Promise<void>((resolve) => {
+        if (worker.exitCode !== null) {
+          resolve()
+        } else {
+          worker.once('close', () => {
+            resolve()
+          })
+        }
+      })
+      worker.kill('SIGTERM')
+      await exited
+      await rm(dir, { recursive: true, force: true })
+      await env.close()
+    })
+
+    async function adminClient(name: string) {
+      const account = await env.createAccount({ username: name, role: 'administrator' })
+      const client = env.client({ ip: '198.51.100.31' })
+      expect((await client.login(account.username, TEST_PASSWORD)).status).toBe(200)
+      return { client, account }
+    }
+
+    it('POST /system/test-email: the test mail arrives with the right subject, recipient, sender and bokmål text', async () => {
+      const { client } = await adminClient('e2e-admin')
+      const to = uniqueAddress('e2e-test')
+      const res = await client.post('/api/v1/system/test-email', { to })
+      expect(res.status).toBe(202)
+      const { jobId } = TestEmailResponse.parse(await res.json())
+
+      const message = await waitForMessage(config(), to)
+      // No site name yet (blogname is empty), so the host of PUBLIC_ORIGIN stands in.
+      expect(message.Subject).toBe('[cms.example.test] Test av e-post')
+      expect(message.To).toEqual([{ Name: '', Address: to }])
+      expect(message.From).toEqual({ Name: 'cms.example.test', Address: 'noreply@cms.example.test' })
+      expect(message.Text).toContain('Dette er en testmelding fra cms.example.test.')
+      expect(message.Text).toContain('Meldingen er sendt etter ønske fra e2e-admin.')
+      expect(message.HTML).toContain('<html lang="nb">')
+
+      const [job] = await env.query<{ state: string }>('select state from pgboss.job where id = $1', [jobId])
+      expect(job?.state).toBe('completed')
+    })
+
+    it("uses the signed-in account's own address when none is given", async () => {
+      const { client, account } = await adminClient('e2e-self')
+      const res = await client.post('/api/v1/system/test-email')
+      expect(res.status).toBe(202)
+      const message = await waitForMessage(config(), account.email)
+      expect(message.To).toEqual([{ Name: '', Address: account.email }])
+    })
+
+    it('a second test mail inside the window is refused with 429, and only one is sent', async () => {
+      const { client } = await adminClient('e2e-twice')
+      const to = uniqueAddress('e2e-twice')
+      expect((await client.post('/api/v1/system/test-email', { to })).status).toBe(202)
+      const again = await client.post('/api/v1/system/test-email', { to })
+      expect(again.status).toBe(429)
+      expect(again.headers.get('retry-after')).toBe('30')
+      await waitForMessage(config(), to)
+      await new Promise((resolve) => setTimeout(resolve, 2500))
+      expect(await countMessages(config(), to)).toBe(1)
+    })
+
+    it('a one-time link goes through with its token, and the token is in no log and no table', async () => {
+      const to = uniqueAddress('e2e-link')
+      const receipt = await env.services.mail.sendMail({
+        template: 'set_password',
+        to,
+        data: { username: 'nyansatt', token: TOKEN },
+      })
+      const message = await waitForMessage(config(), to)
+      expect(message.Subject).toBe('[cms.example.test] Velkommen! Velg passord')
+      expect(message.Text).toContain(`${TEST_ORIGIN}/admin/login?action=setpassword#token=${TOKEN}`)
+
+      // Wait for the worker to settle the job, then look everywhere the token could have been left.
+      const deadline = Date.now() + 10_000
+      for (;;) {
+        const [job] = await env.query<{ state: string }>('select state from pgboss.job where id = $1', [receipt.jobId])
+        if (job?.state === 'completed' || Date.now() > deadline) {
+          expect(job?.state).toBe('completed')
+          break
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+      expect(JSON.stringify(await env.query('select data, output from pgboss.job'))).not.toContain(TOKEN)
+      expect(workerOutput).not.toContain(TOKEN)
+      expect(workerOutput).not.toContain(to)
+      expect(workerOutput).toContain('"template":"set_password"')
+      expect(workerOutput).toContain('"recipientDomain":"mailpit.example.test"')
+      expect(JSON.stringify(env.lines)).not.toContain(TOKEN)
+    })
+  },
+)
+
+function pinoSilent() {
+  return memoryLogger().logger
+}

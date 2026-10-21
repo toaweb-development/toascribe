@@ -1,6 +1,7 @@
 // Entry point: `node dist/index.js` in production, `node --watch src/index.ts` in development
 // (typescript §3, §13). Runs pg-boss and shuts down in order on SIGTERM/SIGINT.
 import { createDb } from '@toascribe/db'
+import { createKeyRing } from '@toascribe/shared'
 import { pino } from 'pino'
 
 import { ConfigError, loadConfig } from './config.ts'
@@ -29,7 +30,12 @@ function loadConfigOrExit() {
 const config = loadConfigOrExit()
 const logger = createLogger({ level: config.LOG_LEVEL, pretty: config.NODE_ENV === 'development' })
 
-const { pool } = createDb({ connectionString: config.DATABASE_URL, applicationName: 'toascribe-worker' })
+const keyRing = await createKeyRing(
+  { version: config.TOASCRIBE_ENCRYPTION_KEY_VERSION, key: config.TOASCRIBE_ENCRYPTION_KEY },
+  config.TOASCRIBE_ENCRYPTION_OLD_KEYS,
+)
+
+const { db, pool } = createDb({ connectionString: config.DATABASE_URL, applicationName: 'toascribe-worker' })
 // An idle client that errors (database restart, network drop) would otherwise crash the process.
 pool.on('error', (err) => {
   logger.error({ err }, 'database pool error on an idle client')
@@ -85,6 +91,10 @@ process.on('unhandledRejection', (reason) => {
 try {
   worker = await startWorker({
     pool,
+    db,
+    keyRing,
+    publicOrigin: config.PUBLIC_ORIGIN,
+    mailDefaults: config,
     databaseUrl: config.DATABASE_URL,
     logger,
     heartbeatFile: config.WORKER_HEARTBEAT_FILE,

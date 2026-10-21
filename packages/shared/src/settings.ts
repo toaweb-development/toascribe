@@ -34,6 +34,10 @@ import { COMMENT_STATUS } from './values.ts'
 //
 // Text and list bounds are against abuse, not WordPress limits.
 
+/** How the SMTP connection is protected: plain, upgraded with STARTTLS (and never sent without it), or TLS from the first byte. */
+export const SMTP_SECURE_MODES = ['none', 'starttls', 'tls'] as const
+export type SmtpSecureMode = (typeof SMTP_SECURE_MODES)[number]
+
 const text = z.string().max(1000)
 const wordList = z.array(z.string().min(1).max(1000))
 const count = z.int().min(1)
@@ -190,7 +194,7 @@ export const CoreSettings = z.object({
   smtp_host: host.nullable(),
   smtp_port: between(1, 65_535).nullable(),
   /** `none` is plain SMTP, `starttls` upgrades the connection, `tls` connects with TLS (port 465). */
-  smtp_secure: z.enum(['none', 'starttls', 'tls']).nullable(),
+  smtp_secure: z.enum(SMTP_SECURE_MODES).nullable(),
   smtp_username: line(320).nullable(),
   /** Encrypted with the site key, never plain text, and never sent back to a client (app-config 3b). */
   smtp_password: EncryptedValue.nullable(),

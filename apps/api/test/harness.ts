@@ -11,6 +11,7 @@ import { buildApp } from '../src/app.ts'
 import { hashPassword } from '../src/lib/passwords.ts'
 import { createTestDatabase } from './db.ts'
 import type { TestDatabase } from './db.ts'
+import type { MailPort } from '../src/ports/mail.ts'
 import { TEST_ORIGIN, TEST_SIGNING_KEY, memoryLogger, recordingMail, testKeyRing } from './helpers.ts'
 
 export const SESSION_COOKIE_NAME = '__Host-toa_session'
@@ -180,7 +181,16 @@ export interface AuthTestApp {
   close: () => Promise<void>
 }
 
-export async function startAuthApp(options: { readonly publicOrigin?: string } = {}): Promise<AuthTestApp> {
+export interface StartOptions {
+  readonly publicOrigin?: string
+  /**
+   * The mail port the app uses, made once the database exists (it may need its URL). The default is a recording port that
+   * keeps what it is asked to send. A port with a `stop` is stopped when the app is closed.
+   */
+  readonly mail?: (database: TestDatabase) => MailPort & { readonly stop?: () => Promise<void> }
+}
+
+export async function startAuthApp(options: StartOptions = {}): Promise<AuthTestApp> {
   const database = await createTestDatabase()
   try {
     await runMigrations({ connectionString: database.ownerUrl, logger: pino({ level: 'silent' }) })
@@ -188,6 +198,7 @@ export async function startAuthApp(options: { readonly publicOrigin?: string } =
     const owner = new pg.Pool({ connectionString: database.ownerUrl, max: 2 })
     const log = memoryLogger()
     const mail = recordingMail()
+    const custom = options.mail?.(database)
     let pinned: Date | undefined
     let offsetMs = 0
     const clock = {
@@ -211,7 +222,7 @@ export async function startAuthApp(options: { readonly publicOrigin?: string } =
       publicOrigin: options.publicOrigin ?? TEST_ORIGIN,
       signingKey: TEST_SIGNING_KEY,
       keyRing: testKeyRing,
-      mail,
+      mail: custom ?? mail,
       clock: clock.now,
     })
 
@@ -268,6 +279,7 @@ export async function startAuthApp(options: { readonly publicOrigin?: string } =
       },
 
       async close() {
+        await custom?.stop?.()
         await Promise.all([pool.end(), owner.end()])
         await database.drop()
       },

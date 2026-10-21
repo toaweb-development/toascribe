@@ -18,6 +18,9 @@
   },
   "dependencies": {
     "@toascribe/db": "workspace:*",
+    "@toascribe/shared": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "nodemailer": "catalog:",
     "pg-boss": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
