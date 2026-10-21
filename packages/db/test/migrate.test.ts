@@ -1,12 +1,14 @@
 // The migration runner: Drizzle migrations plus the pg-boss schema, as the owner role, under the lock.
 import { spawn } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import pg from 'pg'
 import { pino } from 'pino'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { MIGRATION_LOCK_KEY, runMigrations } from '../src/migrator.ts'
+import { MIGRATIONS_FOLDER, MIGRATION_LOCK_KEY, runMigrations } from '../src/migrator.ts'
 import { TEST_DATABASE_URL, createTestDatabase, noticeIfSkipped, queryAs } from './helpers.ts'
 import type { TestDatabase } from './helpers.ts'
 
@@ -36,6 +38,16 @@ function runEntry(env: Readonly<Record<string, string>>): Promise<Run> {
   })
 }
 
+/** How many migrations the committed journal lists: the runner must apply each one. */
+async function journalEntries(): Promise<number> {
+  const journal: unknown = JSON.parse(await readFile(join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'))
+  const entries = typeof journal === 'object' && journal !== null && 'entries' in journal ? journal.entries : undefined
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throw new Error('migrations/meta/_journal.json lists no migrations')
+  }
+  return entries.length
+}
+
 async function pgBossVersion(url: string): Promise<number> {
   const rows = await queryAs<{ version: number }>(url, 'select version from pgboss.version')
   return rows[0]?.version ?? Number.NaN
@@ -60,7 +72,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('migration runner (needs TEST_D
     const version = await pgBossVersion(database.ownerUrl)
     expect(version).toBeGreaterThan(0)
     expect(await queryAs(database.ownerUrl, 'select count(*)::int as n from drizzle.__drizzle_migrations')).toEqual([
-      { n: 0 },
+      { n: await journalEntries() },
     ])
 
     const second = await runEntry({ MIGRATION_DATABASE_URL: database.ownerUrl })
@@ -69,12 +81,12 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('migration runner (needs TEST_D
     expect(await pgBossVersion(database.ownerUrl)).toBe(version)
   })
 
-  it('leaves every pgboss and drizzle object owned by the owner role', async () => {
+  it('leaves every pgboss, drizzle and public object owned by the owner role', async () => {
     const owners = await queryAs<{ owner: string }>(
       database.adminUrl,
       `select distinct pg_get_userbyid(c.relowner) as owner
          from pg_class c join pg_namespace n on n.oid = c.relnamespace
-        where n.nspname in ('pgboss', 'drizzle')`,
+        where n.nspname in ('pgboss', 'drizzle', 'public')`,
     )
     expect(owners).toEqual([{ owner: 'toascribe_owner' }])
   })

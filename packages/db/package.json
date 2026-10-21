@@ -20,10 +20,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "tsc -p tsconfig.build.json",
-    "generate": "drizzle-kit generate",
+    "generate": "pnpm --filter @toascribe/shared build && drizzle-kit generate",
     "migrate": "node dist/migrate.js"
   },
   "dependencies": {
+    "@toascribe/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "pg": "catalog:",
     "pg-boss": "catalog:",

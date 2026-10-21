@@ -1,0 +1,228 @@
+// Accounts, roles, sessions and second factors (PLAN «Innlogging og kontoer», K-001 to K-026, K-310).
+// Secrets are never stored: passwords, tokens and codes as *_hash, TOTP secrets encrypted (*_encrypted, K-318).
+import { sql } from 'drizzle-orm'
+import { ACCOUNT_STATUS, LOGIN_ATTEMPT_ACTION, MFA_CREDENTIAL_TYPE } from '@toascribe/shared'
+import type { AccountPreferences, AccountProfile, MfaCredentialData } from '@toascribe/shared'
+import {
+  boolean,
+  check,
+  foreignKey,
+  index,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  unique,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
+import type { PgTableExtraConfigValue } from 'drizzle-orm/pg-core'
+
+import { createdAt, id, inet, oneOf, timestamps, timestamptz } from './columns.ts'
+
+/** A login (WordPress wp_users + wp_usermeta). Named account because `user` is reserved in PostgreSQL. */
+export const account = pgTable(
+  'account',
+  {
+    id: id(),
+    username: text('username').notNull(),
+    email: text('email').notNull(),
+    displayName: text('display_name').notNull(),
+    /** URL slug for the author archive (WordPress user_nicename). */
+    nicename: text('nicename').notNull(),
+    /** Argon2id, or an imported WordPress hash ($P$, $wp$2y$) upgraded at the next login (K-310). Null: no password set. */
+    passwordHash: text('password_hash'),
+    status: text('status').notNull(),
+    /** Admin language for this account; null follows the site language (WordPress «Site Default»). */
+    locale: text('locale'),
+    profile: jsonb('profile').$type<AccountProfile>().notNull().default({}),
+    preferences: jsonb('preferences').$type<AccountPreferences>().notNull().default({}),
+    ...timestamps(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    // Case-insensitive, as WordPress compares logins and e-mail addresses. citext would need an extension (and so
+    // superuser rights at install); an expression index needs nothing, and lookups use the same lower(...).
+    uniqueIndex('uq_account_username').on(sql`lower(${t.username})`),
+    uniqueIndex('uq_account_email').on(sql`lower(${t.email})`),
+    uniqueIndex('uq_account_nicename').on(sql`lower(${t.nicename})`),
+    check('ck_account_status', oneOf(t.status, ACCOUNT_STATUS)),
+  ],
+)
+
+/** A role with its capabilities (WordPress wp_user_roles). The five built-in roles are seeded, more can be made (K-019). */
+export const role = pgTable(
+  'role',
+  {
+    id: id(),
+    /** Stable key: administrator, editor, author, contributor, subscriber, or an admin-made slug. */
+    slug: text('slug').notNull(),
+    name: text('name').notNull(),
+    /** Capability names as in WordPress (edit_posts, manage_options, ...). Holding one grants it. */
+    capabilities: text('capabilities')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    ...timestamps(),
+  },
+  (t): PgTableExtraConfigValue[] => [unique('uq_role_slug').on(t.slug)],
+)
+
+/** Which account has which roles. */
+export const accountRole = pgTable(
+  'account_role',
+  {
+    accountId: uuid('account_id').notNull(),
+    roleId: uuid('role_id').notNull(),
+    createdAt: createdAt(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    primaryKey({ name: 'pk_account_role', columns: [t.accountId, t.roleId] }),
+    // An account's role links go with the account.
+    foreignKey({ name: 'fk_account_role_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(
+      'cascade',
+    ),
+    // A role still held by someone cannot be deleted: the service moves those accounts to another role first.
+    foreignKey({ name: 'fk_account_role_role_id', columns: [t.roleId], foreignColumns: [role.id] }).onDelete(
+      'restrict',
+    ),
+    index('idx_account_role_role_id').on(t.roleId),
+  ],
+)
+
+/** A login session behind the httpOnly cookie (K-001, K-002, K-013). The cookie holds the token, the row its hash. */
+export const session = pgTable(
+  'session',
+  {
+    id: id(),
+    accountId: uuid('account_id').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    ip: inet('ip'),
+    /** The device shown in «active sessions». */
+    userAgent: text('user_agent'),
+    /** 14 days with «Remember me», otherwise 2 (PLAN). */
+    expiresAt: timestamptz('expires_at').notNull(),
+    lastSeenAt: timestamptz('last_seen_at').notNull().defaultNow(),
+    ...timestamps(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    unique('uq_session_token_hash').on(t.tokenHash),
+    // Sessions go with their account.
+    foreignKey({ name: 'fk_session_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(
+      'cascade',
+    ),
+    // «Active sessions» and «log out everywhere else» per account; also serves the cascade.
+    index('idx_session_account_id_expires_at').on(t.accountId, t.expiresAt),
+    // The purge job deletes expired sessions.
+    index('idx_session_expires_at').on(t.expiresAt),
+  ],
+)
+
+/** An application password for API access (K-016). Shown once; only the hash is kept. */
+export const appPassword = pgTable(
+  'app_password',
+  {
+    id: id(),
+    accountId: uuid('account_id').notNull(),
+    name: text('name').notNull(),
+    passwordHash: text('password_hash').notNull(),
+    lastUsedAt: timestamptz('last_used_at'),
+    lastUsedIp: inet('last_used_ip'),
+    ...timestamps(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    // WordPress requires a unique name per user. The index also serves the lookup by account and the cascade.
+    unique('uq_app_password_account_id_name').on(t.accountId, t.name),
+    // Application passwords go with their account.
+    foreignKey({ name: 'fk_app_password_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(
+      'cascade',
+    ),
+  ],
+)
+
+/**
+ * A second factor or an external identity: a TOTP app (K-023), a passkey (K-024) or an OIDC login (K-025).
+ * TOTP keeps its secret encrypted; a passkey or an OIDC identity is named by issuer (relying party id or OIDC `iss`) and
+ * external id (credential id or `sub`), which is unique across all accounts.
+ */
+export const mfaCredential = pgTable(
+  'mfa_credential',
+  {
+    id: id(),
+    accountId: uuid('account_id').notNull(),
+    type: text('type').notNull(),
+    /** The label the user gave it («iPhone», «YubiKey»). */
+    name: text('name'),
+    /** TOTP only: the shared secret, encrypted with the site key (K-318). */
+    secretEncrypted: text('secret_encrypted'),
+    issuer: text('issuer'),
+    externalId: text('external_id'),
+    data: jsonb('data').$type<MfaCredentialData>().notNull().default({}),
+    /** Set when enrolment is finished (the first code or ceremony succeeded); null rows never count as a factor. */
+    confirmedAt: timestamptz('confirmed_at'),
+    lastUsedAt: timestamptz('last_used_at'),
+    ...timestamps(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    check('ck_mfa_credential_type', oneOf(t.type, MFA_CREDENTIAL_TYPE)),
+    check(
+      'ck_mfa_credential_shape',
+      sql`case when ${t.type} = 'totp' then ${t.secretEncrypted} is not null and ${t.issuer} is null and ${t.externalId} is null else ${t.secretEncrypted} is null and ${t.issuer} is not null and ${t.externalId} is not null end`,
+    ),
+    // One identity, one account: the same passkey or OIDC subject cannot be linked twice.
+    uniqueIndex('uq_mfa_credential_identity')
+      .on(t.type, t.issuer, t.externalId)
+      .where(sql`${t.externalId} is not null`),
+    // Second factors go with their account.
+    foreignKey({ name: 'fk_mfa_credential_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(
+      'cascade',
+    ),
+    index('idx_mfa_credential_account_id').on(t.accountId),
+  ],
+)
+
+/** Single-use recovery codes for two-factor login (K-023). */
+export const recoveryCode = pgTable(
+  'recovery_code',
+  {
+    id: id(),
+    accountId: uuid('account_id').notNull(),
+    codeHash: text('code_hash').notNull(),
+    usedAt: timestamptz('used_at'),
+    ...timestamps(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    // Also the lookup by account and the cascade.
+    unique('uq_recovery_code_account_id_code_hash').on(t.accountId, t.codeHash),
+    // Recovery codes go with their account.
+    foreignKey({ name: 'fk_recovery_code_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(
+      'cascade',
+    ),
+  ],
+)
+
+/**
+ * One attempt at a rate-limited flow, for limiting by IP and by account without Valkey (K-026, K-313).
+ * Append-only; a purge job deletes old rows. The typed username is not stored: account_id is null when it matched none.
+ */
+export const loginAttempt = pgTable(
+  'login_attempt',
+  {
+    id: id(),
+    action: text('action').notNull(),
+    ip: inet('ip').notNull(),
+    accountId: uuid('account_id'),
+    succeeded: boolean('succeeded').notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    check('ck_login_attempt_action', oneOf(t.action, LOGIN_ATTEMPT_ACTION)),
+    // Rate-limit data has no value once the account is gone.
+    foreignKey({ name: 'fk_login_attempt_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(
+      'cascade',
+    ),
+    index('idx_login_attempt_ip_created_at').on(t.ip, t.createdAt),
+    index('idx_login_attempt_account_id_created_at')
+      .on(t.accountId, t.createdAt)
+      .where(sql`${t.accountId} is not null`),
+  ],
+)
