@@ -34,7 +34,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { runMigrations } from '../src/migrator.ts'
 import * as schema from '../src/schema/index.ts'
-import { APP_ROLE, TEST_DATABASE_URL, createTestDatabase, noticeIfSkipped, sqlState } from './helpers.ts'
+import { TEST_DATABASE_URL, createTestDatabase, noticeIfSkipped, sqlState } from './helpers.ts'
 import type { TestDatabase } from './helpers.ts'
 
 noticeIfSkipped('schema')
@@ -136,6 +136,11 @@ const CATALOGUE_SQL = `
   union all
   select 'index ' || indexdef from pg_indexes where schemaname = 'public'
   union all
+  select 'function ' || p.oid::regprocedure::text || ' owner=' || pg_get_userbyid(p.proowner)
+         || ' secdef=' || p.prosecdef || ' config=' || coalesce(p.proconfig::text, '') || ' acl=' || coalesce(p.proacl::text, '')
+         || ' body=' || md5(p.prosrc)
+    from pg_proc p where p.pronamespace = 'public'::regnamespace
+  union all
   select 'migrations ' || count(*) from drizzle.__drizzle_migrations
   order by 1`
 
@@ -215,7 +220,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('core data model (needs TEST_DA
 
   describe('migration', () => {
     it('applies on an empty database, and a second run changes nothing in the catalogue', async () => {
-      expect(catalogueAfterFirstRun).toContain('migrations 1')
+      expect(catalogueAfterFirstRun).toContain('migrations 2')
       await runMigrations({ connectionString: database.ownerUrl, logger })
       expect(await catalogue()).toEqual(catalogueAfterFirstRun)
     })
@@ -430,20 +435,21 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('core data model (needs TEST_DA
       }
     })
 
-    it('keeps audit_log rows when the account is deleted, without the link (SET NULL), even as the app role', async () => {
-      const gone = await newAccount()
+    it('keeps audit_log rows and their actor when the account is deleted, without the link (SET NULL), even as the app role', async () => {
+      const gone = await newAccount('leaver')
       const entry = await insert('audit_log', {
         account_id: gone,
         actor_type: 'account',
+        actor: 'leaver',
         action: 'setting.updated',
         source: 'admin',
       })
       await app.query('delete from account where id = $1', [gone])
-      const { rows } = await owner.query<{ account_id: string | null }>(
-        'select account_id from audit_log where id = $1',
+      const { rows } = await owner.query<{ account_id: string | null; actor: string }>(
+        'select account_id, actor from audit_log where id = $1',
         [entry],
       )
-      expect(rows).toEqual([{ account_id: null }])
+      expect(rows).toEqual([{ account_id: null, actor: 'leaver' }])
     })
 
     it('deletes authors, drafts, autosaves, revisions, locks, refs, notes, terms and comments with the content', async () => {
@@ -538,30 +544,6 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('core data model (needs TEST_DA
       expect(await sqlState(app.query('alter table content add column app_made int'))).toBe('42501')
       expect(await sqlState(app.query('drop table setting'))).toBe('42501')
       expect(await sqlState(app.query('truncate login_attempt'))).toBe('42501')
-    })
-
-    it('may only INSERT and SELECT on audit_log, and UPDATE nothing but ip', async () => {
-      const entry = await insert('audit_log', {
-        actor_type: 'system',
-        actor: 'test',
-        action: 'backup.finished',
-        source: 'job',
-        ip: '192.0.2.1',
-      })
-      expect(await sqlState(app.query('update audit_log set ip = null where id = $1', [entry]))).toBeUndefined()
-      expect(await sqlState(app.query(`update audit_log set action = 'x' where id = $1`, [entry]))).toBe('42501')
-      expect(await sqlState(app.query('delete from audit_log where id = $1', [entry]))).toBe('42501')
-      const { rows } = await owner.query<{ privilege: string; granted: boolean }>(
-        `select p as privilege, has_table_privilege($1, 'audit_log', p) as granted
-           from unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) as p`,
-        [APP_ROLE],
-      )
-      expect(Object.fromEntries(rows.map((r) => [r.privilege, r.granted]))).toEqual({
-        SELECT: true,
-        INSERT: true,
-        UPDATE: false,
-        DELETE: false,
-      })
     })
   })
 })

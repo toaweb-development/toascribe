@@ -1,5 +1,5 @@
 {
-  "id": "8f5185b9-d70e-4182-9001-8a1d5f5d66a7",
+  "id": "c4fe8350-3ad4-4737-88ff-d19302d09b6b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -4135,7 +4135,7 @@
           "name": "actor",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "action": {
           "name": "action",
@@ -4254,6 +4254,10 @@
         "ck_audit_log_actor_type": {
           "name": "ck_audit_log_actor_type",
           "value": "\"audit_log\".\"actor_type\" in ('account', 'system', 'extension', 'ai')"
+        },
+        "ck_audit_log_actor": {
+          "name": "ck_audit_log_actor",
+          "value": "btrim(\"audit_log\".\"actor\") <> ''"
         },
         "ck_audit_log_source": {
           "name": "ck_audit_log_source",

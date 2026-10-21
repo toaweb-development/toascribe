@@ -1,9 +1,12 @@
 // Test helpers for the database tests of the cli (typescript §6): a throwaway database per test file on a disposable
 // server. TEST_DATABASE_URL must be a superuser URL on that server, for example
 //   TEST_DATABASE_URL=postgres://postgres:<password>@127.0.0.1:5432/postgres
-// The cli tests create no PostgreSQL roles (packages/db's tests do, and run in parallel with these on the same
-// server, see createTestDatabase), so the superuser's own URL stands in for the owner role's MIGRATION_DATABASE_URL. The reset and the
-// migrations work the same for any role that owns the tables. Without TEST_DATABASE_URL the suites skip and say so.
+// The cli tests create no PostgreSQL roles, so the superuser's own URL stands in for the owner role's
+// MIGRATION_DATABASE_URL; the reset and the migrations work the same for any role that owns the tables. The db and
+// worker tests do create the cluster-wide roles and run in parallel with these on the same server, so
+// createTestDatabase() takes the server-wide role lock (see ROLE_LOCK_KEY): while a cli database exists, no
+// toascribe_* role does, and the migrations run here without their role grants. Without TEST_DATABASE_URL the suites
+// skip and say so.
 import { randomBytes } from 'node:crypto'
 import { createServer } from 'node:net'
 
@@ -44,12 +47,65 @@ async function withClient<T>(connectionString: string, fn: (client: pg.Client) =
   }
 }
 
-/** Creates an empty database (no tables, no schema objects) with a random name. */
-export async function createTestDatabase(): Promise<TestDatabase> {
-  const base = TEST_DATABASE_URL
-  if (base === undefined) {
-    throw new Error(SKIP_REASON)
+/**
+ * Server-wide advisory lock for cross-package isolation of the cluster-wide roles toascribe_owner and toascribe_app.
+ * The db, worker and cli tests run in parallel on one server; the first two create and drop those roles, and the
+ * migrations grant to them when they exist, so any test database that lives while another package's roles exist would
+ * make that package's `drop role` fail. Every helper takes this lock (same key in packages/db, apps/worker and cli) in
+ * createTestDatabase() and releases it when that database is dropped. Do not change the key in one helper only.
+ *
+ * It is a session lock on a dedicated connection to the base database (advisory locks are per database, and all
+ * helpers use TEST_DATABASE_URL's), so it also goes away if the test process dies. Re-entrant within one process
+ * (one test file): a second database created while the first is alive shares the connection instead of deadlocking.
+ */
+const ROLE_LOCK_KEY = 7_410_202_610
+
+interface RoleLock {
+  holders: number
+  readonly client: pg.Client
+  readonly ready: Promise<void>
+}
+
+let roleLock: RoleLock | undefined
+
+async function acquireRoleLock(base: string): Promise<RoleLock> {
+  if (roleLock === undefined) {
+    const client = new pg.Client({ connectionString: base })
+    const ready = client.connect().then(async () => {
+      await client.query('select pg_advisory_lock($1)', [ROLE_LOCK_KEY])
+    })
+    roleLock = { holders: 0, client, ready }
   }
+  const lock = roleLock
+  lock.holders += 1
+  try {
+    await lock.ready
+    return lock
+  } catch (err) {
+    await releaseRoleLock(lock)
+    throw err
+  }
+}
+
+async function releaseRoleLock(lock: RoleLock): Promise<void> {
+  lock.holders -= 1
+  if (lock.holders > 0) {
+    return
+  }
+  if (roleLock === lock) {
+    roleLock = undefined
+  }
+  try {
+    await lock.client.query('select pg_advisory_unlock($1)', [ROLE_LOCK_KEY])
+  } catch {
+    // A failed connection has already lost the lock; ending it below is all that is left to do.
+  } finally {
+    await lock.client.end().catch(() => undefined)
+  }
+}
+
+/** Creates an empty database (no tables, no schema objects) with a random name. */
+async function createUnlockedTestDatabase(base: string): Promise<TestDatabase> {
   const name = `toascribe_cli_test_${randomBytes(4).toString('hex')}`
   await withClient(base, async (admin) => {
     const { rows } = await admin.query<{ super: boolean }>(
@@ -60,14 +116,6 @@ export async function createTestDatabase(): Promise<TestDatabase> {
     }
     await admin.query(`create database ${name}`)
   })
-  await withClient(urlFor(base, name), async (client) => {
-    // Migration 0000_core grants audit_log privileges to toascribe_app when that role exists. PostgreSQL roles are
-    // cluster-wide, and the db and worker tests create and drop them while this package's tests run in parallel; a
-    // grant here would make their `drop role` fail for as long as this database lives. So the database sees no roles:
-    // an empty view named pg_roles in front of the catalogue view in search_path (pg_catalog is listed last, not first).
-    await client.query('create view public.pg_roles as select null::name as rolname where false')
-    await client.query(`alter database ${name} set search_path = public, pg_catalog`)
-  })
   return {
     name,
     url: urlFor(base, name),
@@ -75,6 +123,39 @@ export async function createTestDatabase(): Promise<TestDatabase> {
       withClient(base, async (admin) => {
         await admin.query(`drop database if exists ${name} with (force)`)
       }),
+  }
+}
+
+/**
+ * Creates the throwaway database while holding the server-wide role lock (see ROLE_LOCK_KEY). The lock is released by
+ * the returned drop(), which every test file must call (afterAll); a killed process loses it with its connection.
+ */
+export async function createTestDatabase(): Promise<TestDatabase> {
+  const base = TEST_DATABASE_URL
+  if (base === undefined) {
+    throw new Error(SKIP_REASON)
+  }
+  const lock = await acquireRoleLock(base)
+  try {
+    const database = await createUnlockedTestDatabase(base)
+    let dropped = false
+    return {
+      ...database,
+      drop: async () => {
+        if (dropped) {
+          return
+        }
+        dropped = true
+        try {
+          await database.drop()
+        } finally {
+          await releaseRoleLock(lock)
+        }
+      },
+    }
+  } catch (err) {
+    await releaseRoleLock(lock)
+    throw err
   }
 }
 

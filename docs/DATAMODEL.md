@@ -23,8 +23,10 @@ the schema differs from it. The schema is in `packages/db/src/schema/` (one file
 - **Indexes:** every foreign key column leads some index (a test checks it), because every referenced row can be
   deleted. Other indexes only for a lookup PLAN or the function register names.
 - **Privileges:** the app role gets DML on every table from the default privileges in `docker/postgres/init.sql`
-  (including the identity sequence). `audit_log` is append-only: the migration takes back UPDATE and DELETE and grants
-  UPDATE on `ip` only.
+  (including the identity sequence). `audit_log` is append-only: the app role has INSERT and SELECT there and nothing
+  else. The 90-day IP clean-up is the function `audit_log_clear_old_ips()` (below), which the app role may only execute.
+  Both are in the hand-written custom migration `0001_audit_log_privileges.sql` (`drizzle-kit generate --custom`), so a
+  regenerate of `0000_core` cannot drop them.
 
 ## Diagram
 
@@ -134,6 +136,7 @@ erDiagram
   audit_log {
     uuid id PK
     uuid account_id FK
+    text actor
     text action
     inet ip
   }
@@ -208,10 +211,11 @@ meaning without the parent.
 | `redirect.content_id`                         | CASCADE  | a redirect to deleted content has nowhere to go                         |
 | `webhook_delivery.webhook_id`                 | CASCADE  | the log goes with its webhook                                           |
 | `release.account_id`                          | SET NULL | the release stays                                                       |
-| `audit_log.account_id`                        | SET NULL | the record stays, without the link                                      |
+| `audit_log.account_id`                        | SET NULL | the record stays, without the link; `actor` keeps the username          |
 | `privacy_request.account_id`, `consent.account_id` | SET NULL | the proof stays when the account is erased                         |
 
 Referential actions run as the table owner, so SET NULL on `audit_log` works although the app role has no UPDATE there.
+Only `account_id` changes; `actor`, written on every row, still names who did it (Tor's decision, 2026-10-21).
 
 ## Seed data
 
@@ -272,7 +276,16 @@ Where PLAN names a column, the schema uses its name. These are the places it dif
 - `not_found_log` keeps one row per path with a hit count and the last referrer, no IP or user agent.
 - `audit_log` has the fields of product-ux workflows §20: `account_id`, `actor_type` and `actor` (automations are never
   attributed to a person), `action`, `object_type`, `object_id`, `old_value`, `new_value`, `reason`, `source`,
-  `correlation_id`, `ip`. A job clears `ip` after 90 days; old rows are never deleted by the app role.
+  `correlation_id`, `ip`.
+  - **`actor`** is NOT NULL and never blank (`ck_audit_log_actor`), and is written on every row: the account's username
+    at the time when `actor_type` is `account`, otherwise the job, extension slug, or AI model or tool. It is never
+    changed, so deleting an account (which sets `account_id` to null) does not erase who acted.
+  - **Privileges:** the app role has INSERT and SELECT only: no UPDATE on any column, no DELETE, no TRUNCATE.
+  - **IP clean-up:** `audit_log_clear_old_ips()` sets `ip` to null where `created_at` is more than 90 days old and
+    returns how many rows it cleared. It is `SECURITY DEFINER`, owned by `toascribe_owner`, with
+    `search_path = pg_catalog, pg_temp`, and takes no argument, so a caller cannot shorten the 90 days or touch another
+    column. EXECUTE is revoked from PUBLIC and granted to `toascribe_app` only. A worker job (not written yet) calls it
+    (`select audit_log_clear_old_ips()`); old rows are never deleted by the app role.
 - `consent` is append-only, one row per decision and category; the newest row per `subject_key` and category is the
   current choice.
 

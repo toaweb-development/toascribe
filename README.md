@@ -77,24 +77,72 @@ the port and whose word the stack takes about the visitor:
 them from anyone who can reach the port, a visitor could send `X-Forwarded-For: 1.2.3.4` and pass for another address,
 which defeats rate limits and audit logs, or claim `https` to get past secure-cookie and redirect logic. So the default
 trusts nobody: the stack replaces those headers with what it sees itself. Set `TOASCRIBE_TRUSTED_PROXY` to your proxy,
-and only to your proxy: not `private_ranges` and not a range such as `10.0.0.0/8`, which would include every container
-and LAN host that can reach the port. Empty is safe but then every request appears to come from the proxy.
+and only to your proxy: one address, not `private_ranges` and not a network such as `10.231.97.0/24` or `10.0.0.0/8`,
+which would include every container and host process that can reach the port. Empty is safe but then every request
+appears to come from the proxy.
+
+**How the client address is found.** The stack reads `X-Forwarded-For` from the right and stops at the first address
+that is not the trusted proxy (Caddy's `trusted_proxies_strict`), so entries a visitor writes at the front are ignored.
+It then sends that one address to the apps in `X-Real-IP`, replacing any `X-Real-IP` the visitor sent. The apps read
+the client address from `X-Real-IP` only. Even so, make your proxy overwrite `X-Forwarded-For` (the nginx example
+below) rather than append to it: then the header holds one address you can trust.
 
 The `edge` network has a fixed subnet (`TOASCRIBE_EDGE_SUBNET`, default `10.231.97.0/24`) so that the address to trust
 is known. What the stack sees (measured with Caddy 2.11.7 and Docker 29):
 
-| Your proxy runs                                                           | Point it at                     | The stack sees it as                 | `TOASCRIBE_TRUSTED_PROXY`                    |
-| ------------------------------------------------------------------------- | ------------------------------- | ------------------------------------ | -------------------------------------------- |
-| on this host, outside Docker (or with host networking)                    | `http://127.0.0.1:8080`         | `10.231.97.1`, the gateway of `edge` | `10.231.97.1`                                |
-| in a container on this host                                               | `http://toascribe-proxy-1:8080` | its own address on `edge`            | `10.231.97.0/24`, or its fixed address on it |
-| on another machine (set `TOASCRIBE_HTTP_BIND` to an address of this host) | that address and the port       | its own address                      | that address                                 |
+| Your proxy runs                                                           | Point it at                     | The stack sees it as                 | `TOASCRIBE_TRUSTED_PROXY`  |
+| ------------------------------------------------------------------------- | ------------------------------- | ------------------------------------ | -------------------------- |
+| in a container on this host                                               | `http://toascribe-proxy-1:8080` | the fixed address you give it        | that one address (below)   |
+| on this host, outside Docker (or with host networking)                    | `http://127.0.0.1:8080`         | `10.231.97.1`, the gateway of `edge` | `10.231.97.1` (see caveat) |
+| on another machine (set `TOASCRIBE_HTTP_BIND` to an address of this host) | that address and the port       | its own address                      | that address               |
 
-For a proxy in a container, join the network `toascribe_edge` (in the proxy's own compose file:
-`networks: { toascribe_edge: { external: true } }`). In the first case every process on this host that connects to
-`127.0.0.1:8080` appears as `10.231.97.1`, so trusting it trusts the whole host; that is fine on a host you control.
-To check which address the stack sees, send one request and read `remote_ip` in
+**A proxy in a container.** Give it a fixed address on `edge`, in its own compose file, and trust exactly that
+address. Pick one near the top of the subnet: Docker hands out the low addresses to containers that have no fixed one.
+The network is called `<project>_edge`; for the default project name that is `toascribe_edge` (see
+`docker network ls`).
+
+```yaml
+# The proxy's own compose file (here nginx; Traefik is the same idea).
+services:
+  nginx:
+    image: nginx:stable-alpine
+    networks:
+      toascribe_edge:
+        ipv4_address: 10.231.97.250
+networks:
+  toascribe_edge:
+    external: true
+```
+
+Then `TOASCRIBE_TRUSTED_PROXY=10.231.97.250` in `docker/.env`. Another container that joins `edge` is not trusted and
+cannot forge the headers.
+
+**A proxy on the host.** The gateway value `10.231.97.1` is only valid with `TOASCRIBE_HTTP_BIND=127.0.0.1` (the
+default) and rootful Docker. In that setup every process on this host that connects to `127.0.0.1:8080` appears as
+`10.231.97.1`, so trusting it trusts the whole host; that is fine on a host you control. With `TOASCRIBE_HTTP_BIND` set
+to `::` or `0.0.0.0`, or with rootless Docker, a remote visitor can appear as the gateway too, so do not trust it
+there: run the proxy in a container instead.
+
+To check which address the stack sees, send one request and read `remote_ip` and `client_ip` in
 `docker compose -f docker/compose.yaml logs proxy --tail 1`. If Docker answers "Pool overlaps" for the `edge` subnet,
-set `TOASCRIBE_EDGE_SUBNET` to a free range and trust that range instead.
+set `TOASCRIBE_EDGE_SUBNET` to a free range and adjust the addresses above.
+
+**nginx.** The `location` below overwrites the forwarding headers instead of adding to them. Use `$remote_addr`, not
+`$proxy_add_x_forwarded_for`, which would keep whatever the visitor sent. If nginx itself sits behind a CDN or another
+proxy, restore the real address first with the `realip` module, so that `$remote_addr` is the visitor.
+
+```nginx
+location / {
+    proxy_pass http://toascribe-proxy-1:8080;   # or http://127.0.0.1:8080 for nginx on the host
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+}
+```
+
+Traefik replaces the forwarding headers it gets from an untrusted client by default; leave `forwardedHeaders.trustedIPs`
+and `insecure` unset on the entry point unless a proxy in front of Traefik needs them.
 
 ## Develop
 

@@ -12,10 +12,11 @@ The data model: the database now holds everything a site needs, and a fresh stac
 
 ### Added
 
-- The core data model: 43 tables in one migration, with time-ordered ids, a short numeric id for `/?p=` links, named
-  foreign keys and indexes for JSON content and search. The app role gets data rights only, and on the audit log only
-  insert, select and update of the IP address. [docs/DATAMODEL.md](docs/DATAMODEL.md) has the ER diagram, the
-  draft and revision model and where it departs from the plan.
+- The core data model: 43 tables in two migrations, with time-ordered ids, a short numeric id for `/?p=` links, named
+  foreign keys and indexes for JSON content and search. The app role gets data rights only. On the audit log it has
+  only insert and select, and every entry names its actor. IP addresses on the audit log are cleared after 90 days by
+  a database function that the app role may only execute. [docs/DATAMODEL.md](docs/DATAMODEL.md) has the ER diagram,
+  the draft and revision model and where it departs from the plan.
 - `seedCore()`: the five WordPress roles with WordPress' capabilities and 51 default settings (Norwegian date, time
   and timezone, locale `nb`, WordPress permalinks, comments open). The migrate step runs it after the migrations and
   never overwrites a row that exists, so a fresh `docker compose up` ends with roles and settings in place.
@@ -25,8 +26,8 @@ The data model: the database now holds everything a site needs, and a fresh stac
   head basics).
 - Norwegian bokmål as the first interface language, through `@nuxtjs/i18n`. All screen text goes through messages, and a
   test fails on hard-coded text in templates.
-- `pnpm check`: format, lint, type check, tests and build, including the root files, in one command. CI, the
-  pre-commit hook and the docs use it.
+- `pnpm check`: format, lint, type check, tests and build, including the root files, in one command. CI and the docs
+  use it; the pre-commit hook runs the lint and type check part (`pnpm lint && pnpm typecheck`).
 - A `source` export condition on the workspace libraries, so lint, type check and tests read `src/` without building
   first. Node still loads `dist/`.
 
@@ -42,6 +43,10 @@ The data model: the database now holds everything a site needs, and a fresh stac
 
 - The proxy believes `X-Forwarded-For`, `-Proto` and `-Host` only from the address in `TOASCRIBE_TRUSTED_PROXY`, and
   replaces them with what it sees itself otherwise. The edge network has a fixed subnet.
+- The proxy reads `X-Forwarded-For` from the right (`trusted_proxies_strict`), so entries a visitor writes in front of
+  the real address are ignored, and sends the client address to the apps in `X-Real-IP`, which the apps read instead
+  of `X-Forwarded-For`. The README shows an nginx setup that overwrites the header and asks for one trusted address
+  only, never a network.
 - Paths that are not normalised are rejected with 400.
 - The database init script passes the role passwords to psql with `\getenv`, so they no longer show in the process
   list.

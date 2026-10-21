@@ -71,19 +71,26 @@ export const backup = pgTable(
 )
 
 /**
- * Who did what (K-315; security standard §8; product-ux workflows §20). Append-only: the app role may INSERT and
- * SELECT, and UPDATE only `ip`, which a job clears after 90 days (granted in the migration). Changes made by an
- * automation carry its actor_type and actor name and are never attributed to a person.
+ * Who did what (K-315; security standard §8; product-ux workflows §20). Append-only: the app role has INSERT and SELECT
+ * only. The IP is cleared after 90 days by `audit_log_clear_old_ips()`, a SECURITY DEFINER function owned by the owner
+ * role that the app role may only execute (both in migration 0001_audit_log_privileges). Changes made by an automation
+ * carry its actor_type and name and are never attributed to a person.
  */
 export const auditLog = pgTable(
   'audit_log',
   {
     id: id(),
-    /** The person, when actor_type is account (or the person who approved an automated change). */
+    /**
+     * The person, when actor_type is account (or the person who approved an automated change). Set to null when the
+     * account is deleted; `actor` keeps the name.
+     */
     accountId: uuid('account_id'),
     actorType: text('actor_type').notNull(),
-    /** The automation's name: job, extension slug, or AI model or tool. */
-    actor: text('actor'),
+    /**
+     * Who acted, written on every row and never changed: the account's username at the time when actor_type is account,
+     * otherwise the job, extension slug, or AI model or tool. It outlives the account.
+     */
+    actor: text('actor').notNull(),
     /** What happened, e.g. setting.updated, role.capabilities_changed, login.succeeded. */
     action: text('action').notNull(),
     objectType: text('object_type'),
@@ -94,14 +101,15 @@ export const auditLog = pgTable(
     source: text('source').notNull(),
     /** The request id (X-Request-Id) or job id, to find the log lines. */
     correlationId: text('correlation_id'),
-    /** Kept for 90 days (PLAN), then set to null. */
+    /** Kept for 90 days (PLAN), then set to null by audit_log_clear_old_ips(). */
     ip: inet('ip'),
     createdAt: createdAt(),
   },
   (t): PgTableExtraConfigValue[] => [
     check('ck_audit_log_actor_type', oneOf(t.actorType, AUDIT_ACTOR_TYPE)),
+    check('ck_audit_log_actor', sql`btrim(${t.actor}) <> ''`),
     check('ck_audit_log_source', oneOf(t.source, AUDIT_SOURCE)),
-    // The entry stays when the account is deleted; it loses the link, not the record.
+    // The entry stays when the account is deleted; it loses the link, not the record or the actor's name.
     foreignKey({ name: 'fk_audit_log_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(
       'set null',
     ),

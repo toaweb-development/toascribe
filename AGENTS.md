@@ -85,7 +85,10 @@ separate step: say so.
 - Base images are pinned by tag and digest. Containers run as non-root, with `cap_drop: [ALL]`, `no-new-privileges`
   and a read-only root filesystem wherever the service allows it. Only the proxy publishes a port, bound to `127.0.0.1`
   unless `TOASCRIBE_HTTP_BIND` says otherwise. It believes `X-Forwarded-*` from the one address in
-  `TOASCRIBE_TRUSTED_PROXY` and from nobody when that is empty; never `private_ranges` (a test checks it).
+  `TOASCRIBE_TRUSTED_PROXY` and from nobody when that is empty; never `private_ranges` (a test checks it). Caddy reads
+  `X-Forwarded-For` from the right (`trusted_proxies_strict`) and sends the result to every upstream in `X-Real-IP`.
+  **The apps read the client IP from `X-Real-IP` only and never parse `X-Forwarded-For`** (M0.3 relies on it: login
+  limits, `audit_log.ip`). A new `reverse_proxy` in the Caddyfile keeps `header_up X-Real-IP {client_ip}` (a test checks it).
 - CI (`.github/workflows/`): third-party actions are pinned to a full commit SHA with the version in a comment, checked
   against the action's own repository; `permissions: contents: read` at the top; `persist-credentials: false` wherever
   third-party code runs; event values go through `env:`, never inline `${{ }}` in a script. Run `actionlint` on every

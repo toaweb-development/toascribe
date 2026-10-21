@@ -475,7 +475,7 @@ CREATE TABLE "audit_log" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"account_id" uuid,
 	"actor_type" text NOT NULL,
-	"actor" text,
+	"actor" text NOT NULL,
 	"action" text NOT NULL,
 	"object_type" text,
 	"object_id" text,
@@ -487,6 +487,7 @@ CREATE TABLE "audit_log" (
 	"ip" "inet",
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "ck_audit_log_actor_type" CHECK ("audit_log"."actor_type" in ('account', 'system', 'extension', 'ai')),
+	CONSTRAINT "ck_audit_log_actor" CHECK (btrim("audit_log"."actor") <> ''),
 	CONSTRAINT "ck_audit_log_source" CHECK ("audit_log"."source" in ('admin', 'api', 'cli', 'job', 'setup'))
 );
 --> statement-breakpoint
@@ -638,17 +639,4 @@ CREATE INDEX "idx_release_account_id" ON "release" USING btree ("account_id") WH
 CREATE INDEX "idx_audit_log_created_at" ON "audit_log" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "idx_audit_log_account_id" ON "audit_log" USING btree ("account_id") WHERE "audit_log"."account_id" is not null;--> statement-breakpoint
 CREATE INDEX "idx_consent_account_id" ON "consent" USING btree ("account_id") WHERE "consent"."account_id" is not null;--> statement-breakpoint
-CREATE INDEX "idx_privacy_request_account_id" ON "privacy_request" USING btree ("account_id") WHERE "privacy_request"."account_id" is not null;--> statement-breakpoint
--- Written by hand (drizzle-kit does not manage privileges). audit_log is append-only for the app role
--- (SECURITY_STANDARD §8): init.sql's default privileges give it SELECT, INSERT, UPDATE and DELETE on every new table,
--- so UPDATE and DELETE are taken back here. UPDATE stays on the one column the 90-day job clears (ip). ON DELETE SET NULL
--- from account still works: referential actions run as the table owner. The role is named in docker/postgres/init.sql;
--- a database set up without it (no app role yet) has nothing to revoke.
-DO $$
-BEGIN
-  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'toascribe_app') THEN
-    REVOKE UPDATE, DELETE ON TABLE "audit_log" FROM toascribe_app;
-    GRANT UPDATE ("ip") ON TABLE "audit_log" TO toascribe_app;
-  END IF;
-END
-$$;
+CREATE INDEX "idx_privacy_request_account_id" ON "privacy_request" USING btree ("account_id") WHERE "privacy_request"."account_id" is not null;
