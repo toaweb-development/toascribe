@@ -56,7 +56,8 @@ upgrade:** two new keys are required, see the first item under Changed.
   log. The administrator can grant `unfiltered_html` to a role again.
 - The IP clean-up reads `ip_retention_days` (7 to 3650, default 90) instead of a fixed 90 days.
 - The admin sends a strict Content-Security-Policy with a nonce per response, and no cached pages.
-- Compose publishes one more port in the Mailpit profile (`127.0.0.1:8025`), off by default.
+- Compose publishes one more port in the Mailpit profile (`127.0.0.1:8025`), off by default. Its image is
+  `ghcr.io/toaweb/toascribe-mailpit`: Mailpit 1.31.6 with the binary rebuilt on Go 1.27.3.
 
 ### Security
 

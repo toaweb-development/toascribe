@@ -25,8 +25,9 @@ jobs:
     timeout-minutes: 25
     # The e-mail tests (apps/worker, apps/api) read these two; without them those suites skip. Mailpit catches the mails
     # the tests send and shows them over HTTP. There is no secret in it, so a service container will do (the database
-    # below needs a password made per run, which a service container cannot take). Same image as the mailpit profile
-    # in docker/compose.yaml (a test checks that).
+    # below needs a password made per run, which a service container cannot take). Same upstream release as the mailpit
+    # profile builds on (docker/mailpit/Dockerfile; a test checks that). This one only receives the test mails and is not
+    # scanned; the image that users start is built and scanned in the «images» job.
     env:
       MAILPIT_URL: http://127.0.0.1:8025
       MAILPIT_SMTP: 127.0.0.1:1025
@@ -112,8 +113,21 @@ jobs:
           fi
           echo "TOASCRIBE_VERSION=${version}" >> "$GITHUB_ENV"
 
-      # The five images users run: proxy, site, admin, api and postgres (worker and migrate use the api image). The
-      # build file is docker/compose.build.yaml, which has the same images as compose.yaml (a test checks that).
+      # compose.yaml stops when a password or a key is empty (there are no defaults), so give it throwaway ones. They exist
+      # only for this run and are masked. The two keys must differ. This step is before the build and the scans on
+      # purpose: «Show the container logs» and «Stop the stack» run after a failed scan too, and compose needs these
+      # variables just to read the file.
+      - name: Make throwaway passwords and keys
+        run: |
+          for name in POSTGRES_PASSWORD POSTGRES_OWNER_PASSWORD POSTGRES_APP_PASSWORD TOASCRIBE_ENCRYPTION_KEY TOASCRIBE_SIGNING_KEY; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::${value}"
+            echo "${name}=${value}" >> "$GITHUB_ENV"
+          done
+
+      # The images users run: proxy, site, admin, api and postgres (worker and migrate use the api image), and the
+      # development-only mailpit. The build file is docker/compose.build.yaml, which has the same images as
+      # compose.yaml (a test checks that).
       # Nothing is pushed, so there are no provenance or SBOM attestations either; they come with the push step
       # when images are published.
       - name: Build the images
@@ -181,26 +195,18 @@ jobs:
           exit-code: '1'
 
       # Mailpit is also part of the stack a developer can switch on (the mailpit profile), so it gets the same scan.
+      # It is built here (docker/mailpit/Dockerfile): the official image fails this scan on a Go standard-library finding.
       - name: Scan the mailpit image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: axllent/mailpit:v1.31.6@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+          image-ref: ghcr.io/toaweb/toascribe-mailpit:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
 
       # The images just built, started as the user starts them: every container healthy, the migrate step done,
-      # and the proxy routing as docs/PLAN.md says. compose.yaml stops when a password or a key is empty (there are no
-      # defaults), so give it throwaway ones. They exist only for this run and are masked. The two keys must differ.
-      - name: Make throwaway passwords and keys
-        run: |
-          for name in POSTGRES_PASSWORD POSTGRES_OWNER_PASSWORD POSTGRES_APP_PASSWORD TOASCRIBE_ENCRYPTION_KEY TOASCRIBE_SIGNING_KEY; do
-            value="$(openssl rand -hex 32)"
-            echo "::add-mask::${value}"
-            echo "${name}=${value}" >> "$GITHUB_ENV"
-          done
-
+      # and the proxy routing as docs/PLAN.md says.
       - name: Start the stack
         run: docker compose -f docker/compose.yaml up -d --wait --no-build
 

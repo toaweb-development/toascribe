@@ -19,6 +19,7 @@ const composeBuild = read('docker/compose.build.yaml')
 const ciWorkflow = read('.github/workflows/ci.yml')
 const initScript = read('docker/postgres/10-init.sh')
 const postgresDockerfile = read('docker/postgres/Dockerfile')
+const mailpitDockerfile = read('docker/mailpit/Dockerfile')
 
 /** The text of one service in compose.yaml, from `  name:` to the next service (two-space indent) or the networks. */
 function service(name: string): string {
@@ -105,7 +106,7 @@ describe('docker/compose.yaml', () => {
 
   it('pins every image that is not built here by tag and digest', () => {
     const external = [...compose.matchAll(/^\s+image: (?!ghcr\.io\/toaweb\/)(\S+)/gm)].map((match) => match[1])
-    expect(external.length).toBeGreaterThanOrEqual(2) // valkey, mailpit
+    expect(external.length).toBeGreaterThanOrEqual(1) // valkey (mailpit is built here, on the official image)
     for (const image of external) expect(image).toMatch(/:[^@/]+@sha256:[0-9a-f]{64}$/)
   })
 
@@ -160,11 +161,13 @@ describe('docker/compose.yaml', () => {
     expect(compose.replace(mailpit, '')).not.toMatch(/^\s+mailpit:\n\s+condition:/m)
   })
 
-  it('uses the same mailpit image in compose.yaml and in CI', () => {
+  it('builds mailpit here, on the official image that CI starts for the e-mail tests', () => {
+    expect(service('mailpit')).toContain('image: ghcr.io/toaweb/toascribe-mailpit:')
+    expect(service('mailpit')).toContain('dockerfile: docker/mailpit/Dockerfile')
     const pattern = /axllent\/mailpit:v[0-9.]+@sha256:[0-9a-f]{64}/
-    const inCompose = pattern.exec(compose)?.[0]
-    expect(inCompose).toBeDefined()
-    expect(ciWorkflow).toContain(String(inCompose))
+    const inDockerfile = pattern.exec(mailpitDockerfile)?.[0]
+    expect(inDockerfile).toBeDefined()
+    expect(ciWorkflow).toContain(String(inDockerfile))
   })
 
   it('needs no file from the repo at run time', () => {
@@ -292,6 +295,17 @@ describe('docker/proxy/Caddyfile', () => {
   it('keeps TLS out of the stack', () => {
     expect(caddyfile).toContain('auto_https off')
     expect(caddyfile).toContain('admin off')
+  })
+})
+
+describe('docker/mailpit', () => {
+  it('builds Mailpit from a commit, not from a movable tag', () => {
+    expect(mailpitDockerfile).toMatch(/ARG MAILPIT_COMMIT=[0-9a-f]{40}\n/)
+    expect(mailpitDockerfile).toMatch(/^FROM golang:[0-9.]+-alpine[0-9.]+@sha256:[0-9a-f]{64} AS build$/m)
+  })
+
+  it('builds without VCS data, so the scanner reads the release, not a pseudo-version', () => {
+    expect(mailpitDockerfile).toContain('-buildvcs=false')
   })
 })
 

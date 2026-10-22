@@ -44,3 +44,10 @@ services:
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile
+
+  # Development only (the mailpit profile); built and scanned like the others.
+  mailpit:
+    image: ghcr.io/toaweb/toascribe-mailpit:${TOASCRIBE_VERSION:-0.3.0}
+    build:
+      context: .
+      dockerfile: docker/mailpit/Dockerfile
