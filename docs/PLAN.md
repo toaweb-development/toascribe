@@ -226,8 +226,8 @@ Alle stier ligger under `/api/v1`. Ressurser følger mønsteret liste, opprett, 
 
 | Område | Endepunkter | Rettighet | Fase |
 | --- | --- | --- | --- |
-| Innlogging | `POST /auth/login`, `/auth/logout`, `/auth/password/lost`, `/auth/password/reset`, `/auth/register`, `/auth/mfa/verify`; `GET /auth/session` | – | 0 |
-| Meg | `GET/PATCH /me`, `POST /me/email-change`, `GET/DELETE /me/sessions`, `/me/app-passwords`, `/me/mfa`, `PATCH /me/preferences` | read | 0–1 |
+| Innlogging | `POST /auth/login`, `/auth/logout`, `/auth/register`, `/auth/mfa/verify`, `/auth/password/lost`, `/auth/password/reset`, `/auth/password/set`; `GET /auth/session`, `/auth/options` | – | 0 |
+| Meg | `GET/PATCH /me`, `PATCH /me/password`, `POST /me/email-change`, `/me/email-change/confirm`; `GET/DELETE /me/sessions`, `DELETE /me/sessions/{id}`; `GET /me/mfa`, `POST /me/mfa/totp`, `/me/mfa/totp/{id}/confirm`, `/me/mfa/recovery-codes`, `DELETE /me/mfa/{id}`; `/me/app-passwords`, `PATCH /me/preferences` | read; passord, e-post og tofaktor krever passordet på nytt | 0–1 |
 | Brukere og roller | `/users`, `POST /users/bulk`, `POST /users/{id}/reset-password`, `DELETE /users/{id}?reassign=`, `/roles` | list\_users, edit\_users, promote\_users | 0–1 |
 | Innhold | `/content?type=`, `POST /content/{id}/publish`, `/trash`, `/restore`, `/preview-link`, `POST /content/bulk`; `GET /content/{id}/revisions`, `PUT /content/{id}/autosave`, `GET/PUT/DELETE /content/{id}/draft`, `POST /content/{id}/lock` | edit\_posts, publish\_posts, edit\_others\_posts | 1–2 |
 | Innholdstyper og felter | `/content-types`, `/field-groups` | manage\_options | 2 |
@@ -238,7 +238,7 @@ Alle stier ligger under `/api/v1`. Ressurser følger mønsteret liste, opprett, 
 | Innstillinger | `GET/PATCH /settings/{gruppe}` for general, writing, reading, discussion, media, permalinks, privacy, webhooks, ai og advanced | manage\_options | 1 |
 | Offentlig lesing (tema-SDK) | `GET /public/resolve?path=`, `/public/query`, `/public/menus/{location}`, `/public/areas/{id}`, `/public/settings`, `/public/search`; `POST /public/comments`, `/public/consent` | – | 1–3 |
 | Verktøy | `POST /import/wxr`, `GET /import/{jobb}`, `POST /export`, `/redirects`, `GET /not-found-log`, `/privacy-requests`, `/webhooks`, `GET /webhooks/{id}/deliveries` | import, export, manage\_options | 2 |
-| System | `GET /health`, `/site-health`, `/updates`, `/audit-log`, `/jobs`; `/backups`, `POST /backups/{id}/restore`, `POST /cache/flush` | manage\_options | 0–2 |
+| System | `GET /site-health`, `/updates`, `/audit-log`, `/jobs`; `/backups`, `POST /backups/{id}/restore`, `POST /cache/flush`, `POST /system/test-email`. Utenfor `/api/v1` og uten innlogging: `GET /api/health`, `/api/ready` | manage\_options | 0–2 |
 | Temaer og utvidelser | `/themes`, `POST /themes/{slug}/preview`, `/activate`; `/plugins`, `POST /plugins/{slug}/activate`, `/deactivate`; `GET /builds/{id}` | switch\_themes, activate\_plugins | 3 |
 | Butikk | `/shop/products`, `/shop/variants`, `/shop/stock`, `/shop/cart`, `/shop/checkout`, `/shop/orders` med `capture`, `refund`, `notes` og `resend-email`, `/shop/customers`, `/shop/coupons`, `/shop/shipping-zones`, `/shop/tax-classes`, `/shop/reports`, `/shop/withdrawals`, `POST /shop/payments/{leverandør}/webhook` | manage\_shop | B1–B2 |
 
