@@ -39,6 +39,7 @@ catalog:
   vitest: ^5.0.5
   '@vitest/coverage-v8': ^5.0.5
   '@playwright/test': ^1.64.1
+  '@axe-core/playwright': ^4.14.0 # axe-core checks with the WCAG 2.2 AA tags in the admin's end-to-end run (apps/admin/e2e)
 
   # Server
   hono: ^4.13.13
@@ -52,6 +53,13 @@ catalog:
   pg-boss: ^12.38.0
   pino: ^10.4.0
   pino-pretty: ^13.2.0
+  '@node-rs/argon2': ^2.2.2 # argon2id password hashing (typescript §12); prebuilt N-API binaries incl. musl, no install script
+  bcryptjs: ^3.0.3 # verifies imported WordPress bcrypt hashes ($2y$, $wp$2y$); pure JS, no build script, used once per account
+  nodemailer: ^10.1.7 # sends the e-mail jobs over SMTP; ships its own types (no @types/nodemailer); pure JS
+  undici: ^8.12.3 # the Agent whose connect.lookup checks every resolved address, for the SSRF-safe client (packages/http)
+  ipaddr.js: ^2.5.0 # classifies addresses (range() === 'unicast') for the same client
+  otpauth: ^9.5.2 # TOTP (RFC 6238) for the second factor: one dependency (@noble/hashes), synchronous, window tolerance returns the matched step
+  uqr: ^0.1.3 # renders the otpauth:// URI as an SVG QR code on the server; zero dependencies, typed
 
   # Frontend (NUXT_VUE_STANDARD_2026)
   nuxt: ^4.6.2
@@ -61,6 +69,8 @@ catalog:
   '@nuxtjs/i18n': ^10.6.0 # screen text goes through i18n from the start (bokmål only for now); 10.x supports Nuxt 4
   '@iconify-json/lucide': ^1.2.147 # Nuxt UI's default icon set, served from the build instead of api.iconify.design
   tailwindcss: ^4.3.3 # Nuxt UI's peer; the module registers @tailwindcss/vite itself
+  ofetch: ^1.5.1 # the fetch that Nuxt's $fetch is built on; nuxt-base's tests run the API client on the real one, not a stand-in
+  nuxt-security: ^2.6.0 # the nonce-based CSP of the site and the admin (nuxt-base) and security headers (K-314): a per-request nonce on Nuxt's inline scripts is what a static header cannot give
 
 # Dependency build scripts are denied unless listed (DEPENDENCIES_2026 / supply-chain hygiene).
 # lefthook's postinstall runs `lefthook install`, which writes git hooks: that is a per-clone,

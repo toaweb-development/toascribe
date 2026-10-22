@@ -1,7 +1,11 @@
 // The core data model against a real PostgreSQL 18 (typescript §6): the migration, the PLAN table list, constraints,
 // ON DELETE rules, the app role's privileges, and the shared value lists against the CHECKs in the database.
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+
 import {
   ACCOUNT_STATUS,
+  ACCOUNT_TOKEN_PURPOSE,
   AUDIT_ACTOR_TYPE,
   AUDIT_SOURCE,
   BACKUP_STATUS,
@@ -32,7 +36,7 @@ import pg from 'pg'
 import { pino } from 'pino'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { runMigrations } from '../src/migrator.ts'
+import { MIGRATIONS_FOLDER, runMigrations } from '../src/migrator.ts'
 import * as schema from '../src/schema/index.ts'
 import { TEST_DATABASE_URL, createTestDatabase, noticeIfSkipped, sqlState } from './helpers.ts'
 import type { TestDatabase } from './helpers.ts'
@@ -84,11 +88,20 @@ const PLAN_TABLES = [
   'audit_log',
   'privacy_request',
   'consent',
-].sort()
+]
+
+/** Tables added after PLAN's list, each with the decision that added it. */
+const ADDED_TABLES = [
+  // M0.3, Tor 2026-10-21: «Engangslenker lagres i en egen tabell».
+  'account_token',
+]
+
+const TABLES = [...PLAN_TABLES, ...ADDED_TABLES].sort()
 
 /** Every value-set CHECK in the database and the shared list it must equal. */
 const VALUE_SET_CHECKS: Readonly<Record<string, readonly (string | number)[]>> = {
   ck_account_status: ACCOUNT_STATUS,
+  ck_account_token_purpose: ACCOUNT_TOKEN_PURPOSE,
   ck_mfa_credential_type: MFA_CREDENTIAL_TYPE,
   ck_login_attempt_action: LOGIN_ATTEMPT_ACTION,
   ck_content_status: CONTENT_STATUS,
@@ -220,7 +233,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('core data model (needs TEST_DA
 
   describe('migration', () => {
     it('applies on an empty database, and a second run changes nothing in the catalogue', async () => {
-      expect(catalogueAfterFirstRun).toContain('migrations 2')
+      const journal: unknown = JSON.parse(await readFile(join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'))
+      const entries = typeof journal === 'object' && journal !== null && 'entries' in journal ? journal.entries : []
+      expect(Array.isArray(entries) && entries.length > 3).toBe(true)
+      expect(catalogueAfterFirstRun).toContain(`migrations ${String(Array.isArray(entries) ? entries.length : 0)}`)
       await runMigrations({ connectionString: database.ownerUrl, logger })
       expect(await catalogue()).toEqual(catalogueAfterFirstRun)
     })
@@ -242,16 +258,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('core data model (needs TEST_DA
       expect(schemaTables).toHaveLength(exports.length)
     })
 
-    it('the Drizzle schema has exactly the PLAN tables', () => {
-      expect(schemaTables).toEqual(PLAN_TABLES)
+    it('the Drizzle schema has exactly the PLAN tables and the ones added since', () => {
+      expect(schemaTables).toEqual(TABLES)
     })
 
-    it('the database has exactly the PLAN tables in public', async () => {
+    it('the database has exactly the PLAN tables and the ones added since in public', async () => {
       const { rows } = await owner.query<{ name: string }>(
         `select relname as name from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r'
           order by relname`,
       )
-      expect(rows.map((r) => r.name)).toEqual(PLAN_TABLES)
+      expect(rows.map((r) => r.name)).toEqual(TABLES)
     })
 
     it('stores every timestamp as timestamptz', async () => {

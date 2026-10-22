@@ -38,6 +38,8 @@ function envFor(port: number): Record<string, string> {
     DATABASE_URL: 'postgres://app:sekret-pw-123@127.0.0.1:1/toascribe',
     PUBLIC_ORIGIN: 'http://localhost:3000',
     LOG_LEVEL: 'info',
+    TOASCRIBE_ENCRYPTION_KEY: 'ab'.repeat(16) + 'cd'.repeat(16),
+    TOASCRIBE_SIGNING_KEY: '12'.repeat(16) + '34'.repeat(16),
   }
 }
 

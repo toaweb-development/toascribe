@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/admin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "The admin app and the setup wizard: a Nuxt 4 app served under /admin.",
@@ -10,6 +10,7 @@
     "lint": "nuxt prepare && eslint .",
     "typecheck": "nuxi typecheck",
     "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test",
     "build": "nuxi build",
     "postinstall": "nuxt prepare"
   },
@@ -17,12 +18,17 @@
     "@iconify-json/lucide": "catalog:",
     "@nuxt/ui": "catalog:",
     "@toascribe/nuxt-base": "workspace:*",
+    "@toascribe/shared": "workspace:*",
     "nuxt": "catalog:",
     "tailwindcss": "catalog:",
     "vue": "catalog:"
   },
   "devDependencies": {
+    "@axe-core/playwright": "catalog:",
     "@nuxt/eslint": "catalog:",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "otpauth": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",

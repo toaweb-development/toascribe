@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { EncryptedValue } from './encrypted.ts'
 import { COMMENT_STATUS } from './values.ts'
 
 // The core site settings: one `setting` row per key, value as JSON (PLAN «Innstillinger», app-config «settings first»).
@@ -25,7 +26,17 @@ import { COMMENT_STATUS } from './values.ts'
 // installer knows (`admin_email`, `siteurl`, `home`: M0.4), the Writing page (`default_category` needs a term, M0.4
 // or phase 1), and internal options that have no field on a settings page (`medium_large_size_*`, `fresh_site`, ...).
 //
+// toascribe's own keys, which WordPress has no option for (M0.3, PLAN «Innlogging og kontoer»; Tor 2026-10-21): session
+// lifetimes, login limits, two-factor per role, IP and spam retention, the mail sender and SMTP, and the admin notices.
+// Each is a setting with a safe default, and every number has a lower and an upper bound, so no value an administrator
+// can save turns a limit off or keeps personal data for ever (app-config «Settings-først»). The SMTP keys and
+// `mail_from_address` are null by default: null means «use the default from .env».
+//
 // Text and list bounds are against abuse, not WordPress limits.
+
+/** How the SMTP connection is protected: plain, upgraded with STARTTLS (and never sent without it), or TLS from the first byte. */
+export const SMTP_SECURE_MODES = ['none', 'starttls', 'tls'] as const
+export type SmtpSecureMode = (typeof SMTP_SECURE_MODES)[number]
 
 const text = z.string().max(1000)
 const wordList = z.array(z.string().min(1).max(1000))
@@ -36,6 +47,20 @@ const machineName = z
   .string()
   .regex(/^[a-z0-9_-]+$/)
   .max(64)
+/** One line of text: no control characters, so a value cannot break a mail header (CR/LF injection). */
+const line = (max: number) =>
+  z
+    .string()
+    .min(1)
+    .max(max)
+    .regex(/^[^\p{Cc}]*$/u)
+/** A host name or an IP address, as nodemailer takes it (smtp.example.com, 192.0.2.1, 2001:db8::1). */
+const host = z
+  .string()
+  .max(253)
+  .regex(/^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$|^[0-9A-Fa-f:.]+$/)
+/** A whole number of minutes or days between two bounds. */
+const between = (min: number, max: number) => z.int().min(min).max(max)
 /** A BCP 47 language tag: nb, nn, en, en-GB, pt-BR, zh-Hans. */
 const locale = z
   .string()
@@ -58,7 +83,10 @@ export const CoreSettings = z.object({
   blogdescription: text,
   site_icon: z.uuid().nullable(),
   users_can_register: z.boolean(),
-  default_role: machineName,
+  /** The role a registered account gets. Never `administrator` (Tor): registration must not hand out the site. */
+  default_role: machineName.refine((slug) => slug !== 'administrator', {
+    message: 'the default role cannot be administrator',
+  }),
   locale,
   timezone_string: timezone,
   /** Hours from UTC when `timezone_string` is empty; WordPress allows quarter hours (5.75). */
@@ -123,6 +151,62 @@ export const CoreSettings = z.object({
     .max(255),
   category_base: urlBase,
   tag_base: urlBase,
+
+  // Login and sessions (M0.3)
+  /** Session lifetime without «Remember me», in days (WordPress: 2). */
+  session_lifetime_days: between(1, 30),
+  /** Session lifetime with «Remember me», in days (WordPress: 14). */
+  session_lifetime_remember_days: between(1, 365),
+  /**
+   * Failed attempts per login name (and per account) inside the window that are answered at once. The next one has to
+   * wait (see `login_limit_delay_seconds`). Nothing is ever locked: the wait grows with the failures of the window and
+   * shrinks by itself as they age out. At most 100: NIST SP 800-63B §5.2.2 lets a verifier allow no more than 100
+   * consecutive failures.
+   */
+  login_limit_account_attempts: between(1, 100),
+  /** The same per IP address. Higher, as one address may be many people. */
+  login_limit_ip_attempts: between(1, 1000),
+  /**
+   * How long a failure counts, in minutes. The wait never exceeds what is left of the window, so the window is also the
+   * longest an attacker is remembered.
+   */
+  login_limit_window_minutes: between(5, 1440),
+  /**
+   * The first wait, in seconds, when the free attempts are used up. Each failure after that doubles it, up to
+   * `login_limit_delay_max_minutes`. The bounds keep the base (at most 10 minutes) at or below the cap (at least 10), so no
+   * pair of saved values can make the cap the smaller one.
+   */
+  login_limit_delay_seconds: between(1, 600),
+  /** The longest wait the doubling reaches, in minutes. */
+  login_limit_delay_max_minutes: between(10, 1440),
+  /** Role slugs whose accounts must use a second factor (K-023). Empty: two-factor is optional for everyone. */
+  mfa_required_roles: z.array(machineName).max(100),
+
+  // Privacy (M0.3)
+  /**
+   * Days an IP address is kept, for sessions, comments, login attempts and the audit log alike. At least 7: the audit
+   * log's clean-up function enforces the same floor in SQL, whatever the row holds.
+   */
+  ip_retention_days: between(7, 3650),
+  /** Days a comment marked as spam is kept before it is deleted. */
+  spam_comment_retention_days: between(1, 365),
+
+  // E-mail (M0.3)
+  /** The From address of mail the site sends; null uses the default from .env. */
+  mail_from_address: z.email().max(254).nullable(),
+  /** The From name; null uses `blogname`. */
+  mail_from_name: line(200).nullable(),
+  smtp_host: host.nullable(),
+  smtp_port: between(1, 65_535).nullable(),
+  /** `none` is plain SMTP, `starttls` upgrades the connection, `tls` connects with TLS (port 465). */
+  smtp_secure: z.enum(SMTP_SECURE_MODES).nullable(),
+  smtp_username: line(320).nullable(),
+  /** Encrypted with the site key, never plain text, and never sent back to a client (app-config 3b). */
+  smtp_password: EncryptedValue.nullable(),
+  /** E-mail the administrators when an account is registered or made (K-017). */
+  notify_admin_new_user: z.boolean(),
+  /** E-mail the administrators when a user changes or resets a password (K-017). */
+  notify_admin_password_change: z.boolean(),
 })
 export type CoreSettings = z.infer<typeof CoreSettings>
 export type CoreSettingKey = keyof CoreSettings
@@ -189,6 +273,33 @@ export const CORE_SETTINGS: CoreSettings = {
   permalink_structure: '/%year%/%monthnum%/%day%/%postname%/', // Tor, as the WordPress installer sets it
   category_base: '',
   tag_base: '',
+
+  // Login and sessions
+  session_lifetime_days: 2, // Tor, as WordPress
+  session_lifetime_remember_days: 14, // Tor, as WordPress
+  // No hard lock (Tor, 2026-10-22): 5 tries per login name and 20 per address answer at once, which leaves room for typing
+  // errors and for many people behind one NAT; then 30 s, 1, 2, 4, 8 minutes, and 15 minutes at most, forgotten after an hour.
+  login_limit_account_attempts: 5,
+  login_limit_ip_attempts: 20,
+  login_limit_window_minutes: 60,
+  login_limit_delay_seconds: 30,
+  login_limit_delay_max_minutes: 15,
+  mfa_required_roles: [],
+
+  // Privacy
+  ip_retention_days: 90, // Tor
+  spam_comment_retention_days: 30, // Tor
+
+  // E-mail
+  mail_from_address: null,
+  mail_from_name: null,
+  smtp_host: null,
+  smtp_port: null,
+  smtp_secure: null,
+  smtp_username: null,
+  smtp_password: null,
+  notify_admin_new_user: true, // K-017
+  notify_admin_password_change: true, // K-017
 }
 
 /** Every core setting key, in the order of the settings pages. */

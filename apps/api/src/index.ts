@@ -2,8 +2,10 @@
 // (typescript §3, §13). Starts the HTTP server and shuts down in order on SIGTERM/SIGINT.
 import { serve } from '@hono/node-server'
 import { createDb } from '@toascribe/db'
+import { createKeyRing } from '@toascribe/shared'
 import { pino } from 'pino'
 
+import { createMailQueue } from './adapters/mail-queue.ts'
 import { createApp } from './app.ts'
 import { ConfigError, loadConfig } from './config.ts'
 import { createLogger } from './lib/logger.ts'
@@ -30,13 +32,30 @@ function loadConfigOrExit() {
 const config = loadConfigOrExit()
 const logger = createLogger({ level: config.LOG_LEVEL, pretty: config.NODE_ENV === 'development' })
 
-const { pool } = createDb({ connectionString: config.DATABASE_URL, applicationName: 'toascribe-api' })
+const keyRing = await createKeyRing(
+  { version: config.TOASCRIBE_ENCRYPTION_KEY_VERSION, key: config.TOASCRIBE_ENCRYPTION_KEY },
+  config.TOASCRIBE_ENCRYPTION_OLD_KEYS,
+)
+
+const { db, pool } = createDb({ connectionString: config.DATABASE_URL, applicationName: 'toascribe-api' })
 // An idle client that errors (database restart, network drop) would otherwise crash the process.
 pool.on('error', (err) => {
   logger.error({ err }, 'database pool error on an idle client')
 })
 
-const app = createApp({ pool, logger, version: readPackageVersion() })
+const mailQueue = createMailQueue({ connectionString: config.DATABASE_URL, keyRing, logger })
+
+const app = createApp({
+  pool,
+  db,
+  logger,
+  version: readPackageVersion(),
+  publicOrigin: config.PUBLIC_ORIGIN,
+  signingKey: config.TOASCRIBE_SIGNING_KEY,
+  trustedProxy: config.TOASCRIBE_TRUSTED_PROXY,
+  keyRing,
+  mail: mailQueue,
+})
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   logger.info({ port: info.port, env: config.NODE_ENV }, 'api listening')
 })
@@ -71,6 +90,7 @@ async function shutdown(reason: string, exitCode: number): Promise<void> {
       })
       // close() also closes idle keep-alive connections (Node 19+); active requests finish first.
     })
+    await mailQueue.stop()
     await pool.end()
     logger.info('shutdown complete')
     process.exit(exitCode)

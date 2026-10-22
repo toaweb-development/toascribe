@@ -3,8 +3,9 @@
 #   cp docker/.env.example docker/.env      # then fill in the three passwords (see the file)
 #   docker compose -f docker/compose.yaml up -d --build
 #
-# Open http://localhost:8080. Only the proxy publishes a port; TLS belongs to an external Traefik or nginx
-# that sends all traffic to that port (docs/PLAN.md, «Arkitektur»).
+# Open http://localhost:8080. Only the proxy publishes a port (the optional, development-only mailpit profile is the one
+# exception, on 127.0.0.1); TLS belongs to an external Traefik or nginx that sends all traffic to that port
+# (docs/PLAN.md, «Arkitektur»).
 #
 # Every image has both `image:` and `build:`. Development builds from the repo (`--build`); an installation
 # that only has this file and .env pulls the images instead (`docker compose pull && docker compose up -d`).
@@ -32,7 +33,7 @@ x-hardened: &hardened
 
 # The one api image runs the api, the worker, the migrate step and the `toa` CLI with different commands.
 x-api-image: &api-image
-  image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.2.0}
+  image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.3.0}
 
 # The database roles' passwords sit in URLs, so they must be URL-safe: `openssl rand -hex 32` (see .env.example).
 x-database-url: &database-url 'postgres://toascribe_app:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}@postgres:5432/${POSTGRES_DB:-toascribe}'
@@ -41,7 +42,7 @@ services:
   # ── Entry point ──────────────────────────────────────────
   proxy:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.2.0}
+    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.3.0}
     build:
       context: ..
       dockerfile: docker/proxy/Dockerfile
@@ -79,7 +80,7 @@ services:
   # ── Web apps ─────────────────────────────────────────────
   site:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.2.0}
+    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.3.0}
     build:
       context: ..
       dockerfile: docker/nuxt/Dockerfile
@@ -114,7 +115,7 @@ services:
 
   admin:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.2.0}
+    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.3.0}
     build:
       context: ..
       dockerfile: docker/nuxt/Dockerfile
@@ -158,6 +159,13 @@ services:
       PORT: '3001'
       DATABASE_URL: *database-url
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:${TOASCRIBE_HTTP_PORT:-8080}}
+      TOASCRIBE_ENCRYPTION_KEY: '${TOASCRIBE_ENCRYPTION_KEY:?TOASCRIBE_ENCRYPTION_KEY is empty, set it in docker/.env (openssl rand -hex 32, and back it up)}'
+      TOASCRIBE_ENCRYPTION_KEY_VERSION: ${TOASCRIBE_ENCRYPTION_KEY_VERSION:-1}
+      TOASCRIBE_ENCRYPTION_OLD_KEYS: ${TOASCRIBE_ENCRYPTION_OLD_KEYS:-}
+      # Signs the CSRF tokens. Must differ from the encryption key; the api refuses to start if they are equal.
+      TOASCRIBE_SIGNING_KEY: '${TOASCRIBE_SIGNING_KEY:?TOASCRIBE_SIGNING_KEY is empty, set it in docker/.env (openssl rand -hex 32, not the encryption key)}'
+      # Only so the api can warn when this is empty and every request comes from one private address (README, «Behind a reverse proxy»).
+      TOASCRIBE_TRUSTED_PROXY: ${TOASCRIBE_TRUSTED_PROXY:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     read_only: true
     tmpfs:
@@ -185,6 +193,19 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: *database-url
+      # Links in e-mails are built from this and nothing else.
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:${TOASCRIBE_HTTP_PORT:-8080}}
+      TOASCRIBE_ENCRYPTION_KEY: '${TOASCRIBE_ENCRYPTION_KEY:?TOASCRIBE_ENCRYPTION_KEY is empty, set it in docker/.env (openssl rand -hex 32, and back it up)}'
+      TOASCRIBE_ENCRYPTION_KEY_VERSION: ${TOASCRIBE_ENCRYPTION_KEY_VERSION:-1}
+      TOASCRIBE_ENCRYPTION_OLD_KEYS: ${TOASCRIBE_ENCRYPTION_OLD_KEYS:-}
+      # Defaults behind the smtp_* and mail_from_* settings (an empty value counts as unset).
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       WORKER_HEARTBEAT_FILE: /tmp/toascribe-worker.heartbeat
     read_only: true
@@ -193,7 +214,7 @@ services:
     # pg-boss waits up to 30 s for running jobs; the worker allows 40 s (apps/worker). Docker must not kill it sooner.
     stop_grace_period: 45s
     networks:
-      - internal # the worker will need the internet (e-mail, webhooks) once it does real work
+      - internal # the worker needs the internet (SMTP, webhooks), and reaches mailpit when that profile is on
       - db
     depends_on:
       migrate:
@@ -242,7 +263,7 @@ services:
     restart: unless-stopped
     init: true
     logging: *logging
-    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.2.0}
+    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.3.0}
     build:
       context: ..
       dockerfile: docker/postgres/Dockerfile
@@ -301,6 +322,44 @@ services:
       - db
     healthcheck:
       test: ['CMD', 'valkey-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # Development-only mail catcher: every mail the worker sends is kept here and nothing leaves the machine.
+  #   docker compose --profile mailpit up -d      (or COMPOSE_PROFILES=mailpit in .env)
+  # then set SMTP_HOST=mailpit, SMTP_PORT=1025, SMTP_SECURE=none and a MAIL_FROM_ADDRESS in .env (.env.example).
+  # The api and worker do not depend on it. Its web UI is published on this machine's loopback only, the one
+  # port besides the proxy's; it has no login, so never bind it to another address.
+  mailpit:
+    <<: *hardened
+    profiles:
+      - mailpit
+    # Mailpit v1.31.6 with its binary rebuilt on a current Go (docker/mailpit/Dockerfile): the official image fails the
+    # image scan on a Go standard-library finding.
+    image: ghcr.io/toaweb/toascribe-mailpit:${TOASCRIBE_VERSION:-0.3.0}
+    build:
+      context: ..
+      dockerfile: docker/mailpit/Dockerfile
+    # The image runs as root by default; its ports (1025, 8025) need no privilege.
+    user: '10001:10001'
+    environment:
+      # No call to GitHub for a newer version.
+      MP_DISABLE_VERSION_CHECK: 'true'
+    ports:
+      - '127.0.0.1:${TOASCRIBE_MAILPIT_PORT:-8025}:8025'
+    read_only: true
+    tmpfs:
+      - /tmp # Mailpit keeps its mails in a SQLite file here (gone when the container is), and fails to start without it
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
       interval: 10s
       timeout: 5s
       retries: 5

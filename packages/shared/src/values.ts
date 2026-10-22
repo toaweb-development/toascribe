@@ -47,6 +47,14 @@ export const LOGIN_ATTEMPT_ACTION = ['login', 'mfa', 'register', 'password_lost'
 export const LoginAttemptAction = z.enum(LOGIN_ATTEMPT_ACTION)
 export type LoginAttemptAction = z.infer<typeof LoginAttemptAction>
 
+/**
+ * account_token.purpose: what a one-time link does (K-003, K-005, K-012). `set_password` is the welcome link of a new
+ * account; `email_change` confirms the address in `account_token.new_email` before it replaces `account.email`.
+ */
+export const ACCOUNT_TOKEN_PURPOSE = ['password_reset', 'set_password', 'email_change'] as const
+export const AccountTokenPurpose = z.enum(ACCOUNT_TOKEN_PURPOSE)
+export type AccountTokenPurpose = z.infer<typeof AccountTokenPurpose>
+
 /** media.visibility (K-124): private files are served only through an authorised route. */
 export const MEDIA_VISIBILITY = ['public', 'private'] as const
 export const MediaVisibility = z.enum(MEDIA_VISIBILITY)

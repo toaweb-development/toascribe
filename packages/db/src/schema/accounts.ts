@@ -1,7 +1,7 @@
-// Accounts, roles, sessions and second factors (PLAN «Innlogging og kontoer», K-001 to K-026, K-310).
+// Accounts, roles, sessions, second factors, one-time links (PLAN «Innlogging og kontoer», K-001 to K-026, K-310).
 // Secrets are never stored: passwords, tokens and codes as *_hash, TOTP secrets encrypted (*_encrypted, K-318).
 import { sql } from 'drizzle-orm'
-import { ACCOUNT_STATUS, LOGIN_ATTEMPT_ACTION, MFA_CREDENTIAL_TYPE } from '@toascribe/shared'
+import { ACCOUNT_STATUS, ACCOUNT_TOKEN_PURPOSE, LOGIN_ATTEMPT_ACTION, MFA_CREDENTIAL_TYPE } from '@toascribe/shared'
 import type { AccountPreferences, AccountProfile, MfaCredentialData } from '@toascribe/shared'
 import {
   boolean,
@@ -99,9 +99,17 @@ export const session = pgTable(
     ip: inet('ip'),
     /** The device shown in «active sessions». */
     userAgent: text('user_agent'),
-    /** 14 days with «Remember me», otherwise 2 (PLAN). */
+    /** From the settings session_lifetime_remember_days (14) or session_lifetime_days (2), per `is_remembered`. */
     expiresAt: timestamptz('expires_at').notNull(),
     lastSeenAt: timestamptz('last_seen_at').notNull().defaultNow(),
+    /**
+     * When the second factor was passed in this session (K-023). Null: only the password has been checked. Whether the
+     * session may act then depends on whether the account needs a second factor (a confirmed factor of its own, or a
+     * role in the setting mfa_required_roles), which the api checks on every request; see docs/DATAMODEL.md.
+     */
+    mfaVerifiedAt: timestamptz('mfa_verified_at'),
+    /** «Remember me» was ticked: the session gets the long lifetime, and the cookie a Max-Age. */
+    isRemembered: boolean('is_remembered').notNull().default(false),
     ...timestamps(),
   },
   (t): PgTableExtraConfigValue[] => [
@@ -202,7 +210,11 @@ export const recoveryCode = pgTable(
 
 /**
  * One attempt at a rate-limited flow, for limiting by IP and by account without Valkey (K-026, K-313).
- * Append-only; a purge job deletes old rows. The typed username is not stored: account_id is null when it matched none.
+ * Append-only; a purge job deletes old rows. The typed username is not stored: account_id is null when it matched none, and
+ * `login_hash` holds a keyed hash (HMAC-SHA256 under the signing key) of the normalised name that was typed, so a name that
+ * matches no account is delayed exactly like one that does (K-004) and a name that is registered later keeps its history,
+ * without the name or a password typed in its place being kept. A row with `succeeded` set ends the streak of its account (a
+ * login, a finished reset, `toa user reset-login-limit`).
  */
 export const loginAttempt = pgTable(
   'login_attempt',
@@ -211,6 +223,8 @@ export const loginAttempt = pgTable(
     action: text('action').notNull(),
     ip: inet('ip').notNull(),
     accountId: uuid('account_id'),
+    /** Base64url of the keyed hash of the login name or address that was typed; null where no name was typed (a code, a re-authentication, a reset marker). */
+    loginHash: text('login_hash'),
     succeeded: boolean('succeeded').notNull().default(false),
     createdAt: createdAt(),
   },
@@ -224,5 +238,45 @@ export const loginAttempt = pgTable(
     index('idx_login_attempt_account_id_created_at')
       .on(t.accountId, t.createdAt)
       .where(sql`${t.accountId} is not null`),
+    // The delay of a login name, known or not.
+    index('idx_login_attempt_login_hash_created_at')
+      .on(t.loginHash, t.createdAt)
+      .where(sql`${t.loginHash} is not null`),
+  ],
+)
+
+/**
+ * A one-time link: password reset, the set-password link of a new account, or confirming a new e-mail address (K-003,
+ * K-005, K-012; Tor: hash, purpose, expiry and when it was used, in a table of its own). The link holds the token, the
+ * row only its hash. A row is used once (`used_at`), expires (`expires_at`, 24 hours by default) and is deleted by the
+ * purge job after that.
+ */
+export const accountToken = pgTable(
+  'account_token',
+  {
+    id: id(),
+    accountId: uuid('account_id').notNull(),
+    purpose: text('purpose').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    /** email_change only: the address that replaces account.email when the link is opened. Null for every other purpose. */
+    newEmail: text('new_email'),
+    expiresAt: timestamptz('expires_at').notNull(),
+    /** When the link was opened and acted on; a used row never works again. */
+    usedAt: timestamptz('used_at'),
+    ...timestamps(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    unique('uq_account_token_token_hash').on(t.tokenHash),
+    check('ck_account_token_purpose', oneOf(t.purpose, ACCOUNT_TOKEN_PURPOSE)),
+    // The pending address belongs to an e-mail change, and an e-mail change cannot be without one.
+    check('ck_account_token_new_email', sql`(${t.purpose} = 'email_change') = (${t.newEmail} is not null)`),
+    // One-time links go with their account.
+    foreignKey({ name: 'fk_account_token_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(
+      'cascade',
+    ),
+    // A new link invalidates the account's earlier ones of the same purpose; also serves the cascade.
+    index('idx_account_token_account_id_purpose').on(t.accountId, t.purpose),
+    // The purge job deletes expired links.
+    index('idx_account_token_expires_at').on(t.expiresAt),
   ],
 )

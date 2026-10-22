@@ -6,6 +6,94 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-22
+
+Sign-in: people can now log in, stay logged in safely, reset a lost password and use a second factor. **Action needed on
+upgrade:** two new keys are required, see the first item under Changed.
+
+### Added
+
+- Login that works like `wp-login.php`: one address, `/admin/login`, with the screens for lost password, new password,
+  registration, second factor and e-mail confirmation behind it. `/login`, `/register`, `/logout` and `/wp-login.php`
+  (with its `action` values) redirect there and keep the query.
+- Passwords are stored with argon2id. A WordPress password hash (phpass `$P$`, or bcrypt as `$2y$` and `$wp$2y$`) is
+  accepted at login and replaced with argon2id the first time it is used, so an imported user keeps the old password.
+- Sessions in a `__Host-` cookie that scripts cannot read and that only the same site can send, with a CSRF token on every
+  write. «Husk meg» keeps a session for 14 days instead of 2; both are settings.
+- A capability policy on every API route. A route without one does not compile, is caught by a test, and stops the API
+  from starting.
+- Login limits per login name and per address, without any hard lock: after five wrong tries (20 per address) the next
+  one has to wait 30 seconds (`429` with `Retry-After`), the wait doubles with every further failure up to 15 minutes,
+  and it shrinks by itself as old failures pass out of the hour that is remembered. A name nobody has waits exactly like
+  one that exists. A finished password reset and `toa user reset-login-limit` end the wait at once. Every number is a
+  setting (`login_limit_*`).
+- Two-factor login with an authenticator app (TOTP) and ten recovery codes, set up on screen with a QR code. A role can
+  require it (`mfa_required_roles`), and then the person must set it up before anything else.
+- Lost password, registration and e-mail change through one-time links that work once and expire. The answers never
+  tell whether an account exists.
+- E-mail through the job queue and SMTP, with bokmål templates. The server is set in `.env` and can be overridden in
+  settings, where the SMTP password is stored encrypted. `docker compose --profile mailpit up` adds Mailpit, which
+  catches all mail for development and is published on `127.0.0.1` only.
+- A test e-mail endpoint for the administrator (`POST /api/v1/system/test-email`).
+- Daily clean-up jobs in the worker: ended sessions and spent links, IP addresses past the retention, and spam
+  comments past theirs. IP addresses are kept 90 days by default; one setting, `ip_retention_days`, covers sessions,
+  comments, application passwords, login attempts and the audit log.
+- `@toascribe/http`: an HTTP client that refuses private, loopback and link-local addresses at connect time, on every
+  redirect, and limits size and time.
+- `@toascribe/auth`: password hashing and one-time tokens, shared by the API and the command line.
+- `toa user create`, `toa user reset-password` and `toa user reset-login-limit`. The password comes from standard input or
+  is generated and printed once; it is never taken from an argument.
+- The password is asked for again before a second factor is added, removed or given new recovery codes, and before the
+  password or the e-mail address is changed; a code from the app is not accepted instead. The owner gets an e-mail about
+  each of them before it happens, and after a password has been reset with a link. (Setting up the factor that a role
+  requires, right after the login, does not ask again.)
+- The api writes one warning to its log when `TOASCRIBE_TRUSTED_PROXY` is empty and its first requests all come from the
+  same private address, because every visitor then shares one rate-limit bucket. See «Behind a reverse proxy» in the
+  README.
+- The login, register, lost-password and logout screens show the site name from the settings (`GET /api/v1/auth/options`
+  returns `siteName`), and the product's name only when it is empty. While a try has to wait, the screens say for how long
+  («Prøv igjen om 30 sekunder»), from `Retry-After`; the lost-password and register forms do the same.
+- The public site sends security headers (K-314): the same strict Content-Security-Policy with a nonce per response as the
+  admin, `X-Content-Type-Options`, `Referrer-Policy`, and HSTS when the request came in over https. Images may come from any
+  https host (themes show them), the site may be framed by itself only, and a page is `private, no-cache`.
+- Login screens in the admin, in bokmål, tested in a real browser at phone and desktop widths with an accessibility check
+  (`pnpm test:e2e`, see the README).
+
+### Changed
+
+- **Action needed on upgrade:** `TOASCRIBE_ENCRYPTION_KEY` and `TOASCRIBE_SIGNING_KEY` are new and required, and
+  `docker compose up` stops without them. Generate both before you start (`openssl rand -hex 32`, a different value
+  each) and put them in `docker/.env`. **Back up the encryption key outside the server:** TOTP secrets and the SMTP
+  password cannot be read without it. `TOASCRIBE_ENCRYPTION_KEY_VERSION` and `TOASCRIBE_ENCRYPTION_OLD_KEYS` let you
+  replace the key without losing data.
+- **BREAKING:** the editor role no longer has `unfiltered_html`, and `administrator` can no longer be the default role
+  for new accounts (`default_role` refuses it). Migration `0003_rights_ip_retention` applies both once on an
+  existing database: it removes `unfiltered_html` from the built-in editor role only (a role you made yourself is left
+  alone), and sets `default_role` back to `subscriber` if it was `administrator`. Each change is written to the audit
+  log. The administrator can grant `unfiltered_html` to a role again.
+- The settings `login_limit_lockout_minutes` and `login_limit_lockout_max_minutes` are replaced by
+  `login_limit_delay_seconds` (30) and `login_limit_delay_max_minutes` (15), and `login_limit_window_minutes` now
+  defaults to 60. Migration `0004_login_attempt_login_hash` removes the two old rows and adds `login_attempt.login_hash`,
+  a keyed hash of the typed name (never the name); the migration run that follows seeds the new settings.
+- `TOASCRIBE_TRUSTED_PROXY` is passed on to the api (it only reads whether it is empty).
+- The IP clean-up reads `ip_retention_days` (7 to 3650, default 90) instead of a fixed 90 days.
+- The admin sends a strict Content-Security-Policy with a nonce per response, and no cached pages. Its base is set once in
+  `packages/nuxt-base`, so the site and the admin send the same policy apart from what differs.
+- Compose publishes one more port in the Mailpit profile (`127.0.0.1:8025`), off by default. Its image is
+  `ghcr.io/toaweb/toascribe-mailpit`: Mailpit 1.31.6 with the binary rebuilt on Go 1.27.3.
+
+### Security
+
+- Nothing the admin serves can run inline script or style: no `unsafe-inline`, no `unsafe-eval`, no framing.
+- An unknown account and a wrong password look the same to the visitor, as do an unknown address on lost password and an
+  address that is already registered.
+- Reset and confirmation links are read from the address fragment and removed from the address bar at once, so they do
+  not reach logs or the `Referer` header.
+- A TOTP code works once (RFC 6238 replay protection), and a password reset ends every session of the account.
+- The address to return to after login must be a path on the same site; anything else, including encoded tricks, is
+  refused.
+- The mail server settings cannot carry line breaks into a mail header.
+
 ## [0.2.0] - 2026-10-21
 
 The data model: the database now holds everything a site needs, and a fresh stack starts with roles and settings in place.
@@ -71,6 +159,7 @@ The skeleton: everything runs end to end, nothing is a feature yet.
   dependencies, a start of the full stack, and a version gate that asks for a new version and CHANGELOG entry when
   released files change.
 
-[Unreleased]: https://github.com/toaweb/toascribe/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/toaweb/toascribe/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/toaweb/toascribe/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/toaweb/toascribe/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/toaweb/toascribe/releases/tag/v0.1.0

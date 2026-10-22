@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 const DEV_API_ORIGIN = 'http://127.0.0.1:3001'
 
 export default defineNuxtConfig({
-  modules: ['@nuxt/ui', '@nuxtjs/i18n', '@nuxt/eslint'],
+  modules: ['@nuxt/ui', '@nuxtjs/i18n', '@nuxt/eslint', 'nuxt-security'],
   compatibilityDate: '2026-10-20',
 
   // The API layer is imported by name (useHealthApi), not by a path into the layer.
@@ -40,15 +40,62 @@ export default defineNuxtConfig({
 
   // Icons come from the build, never from api.iconify.design. Nuxt UI's loading spinner is the only icon the
   // pages use, and a scan does not find icons that Nuxt UI itself names, so it is listed.
+  // `mode: 'svg'` draws them as inline <svg>. The default (css) puts each icon's style rule in a <style> that the browser adds
+  // after load and that has no nonce, so an icon shown later (the eye of «Skjul passord») would not appear under the CSP.
   icon: {
+    mode: 'svg',
     clientBundle: { icons: ['lucide:loader-circle'], scan: true },
     fallbackToApi: false,
     // The default path, /api/_nuxt_icon, would be routed to the API by the proxy.
     localApiEndpoint: '/_nuxt_icon',
   },
 
+  // The security headers and the nonce CSP of both apps (K-314), set by the app and not by Caddy: a nonce is made for each
+  // response, and Nuxt's inline scripts carry it. This is what the site and the admin have in common; each app adds what
+  // differs (`img-src`, `frame-ancestors`, `X-Frame-Options`) in its own nuxt.config.ts, with its reason. The directives are
+  // not repeated there: layers concatenate arrays, and a repeated value would only be listed twice.
+  security: {
+    nonce: true,
+    // The API owns rate limits, request sizes and cross-origin rules (api: security §3, K-258), and Caddy sits in front. The apps
+    // are pages only: a limiter would count the container health check and a whole office behind one proxy address as one
+    // visitor, and refuse them.
+    rateLimiter: false,
+    requestSizeLimiter: false,
+    corsHandler: false,
+    allowedMethodsRestricter: false,
+    // Scans the query string for markup and answers 400. Vue escapes every value it prints, and the values read from the
+    // query (`redirectTo`, the notices, later a search term) are never printed as markup; a false positive would lock a person
+    // out of a page.
+    xssValidator: false,
+    headers: {
+      contentSecurityPolicy: {
+        'default-src': ["'none'"],
+        'script-src': ["'self'", "'strict-dynamic'", "'nonce-{{nonce}}'"],
+        'script-src-attr': ["'none'"],
+        'style-src': ["'self'", "'nonce-{{nonce}}'"],
+        'font-src': ["'self'"],
+        'connect-src': ["'self'"],
+        'manifest-src': ["'self'"],
+        'object-src': ["'none'"],
+        'base-uri': ["'none'"],
+        'form-action': ["'self'"],
+        // Left off on purpose: it would send every request of an installation on plain http (a home server, a LAN address)
+        // to https and break it. TLS is the proxy's job, and HSTS (server/plugins/security.ts) follows it.
+        'upgrade-insecure-requests': false,
+      },
+      // Sent by server/plugins/security.ts, and only when the request came in over https.
+      strictTransportSecurity: false,
+      referrerPolicy: 'strict-origin-when-cross-origin',
+    },
+  },
+
   app: {
     head: {
+      // Zod 4 compiles a faster parser with `new Function`, after trying whether the browser allows it. Under this CSP the try is
+      // refused, and the browser reports it as a violation even though Zod catches it. Zod reads `globalThis.__zod_globalConfig`
+      // when the first object schema is built, which is when the shared package's module is evaluated, before any plugin can
+      // call `z.config`. So the flag is set by an inline script that runs first (it gets the nonce like Nuxt's own).
+      script: [{ innerHTML: 'globalThis.__zod_globalConfig = { jitless: true }', tagPosition: 'head' }],
       // No favicon yet (it needs the brand). An empty icon stops the browser asking for /favicon.ico, which 404s.
       link: [{ rel: 'icon', href: 'data:,' }],
       meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' }],
@@ -69,5 +116,10 @@ export default defineNuxtConfig({
     nitro: {
       devProxy: { '/api': { target: `${DEV_API_ORIGIN}/api`, changeOrigin: true } },
     },
+    // `nuxi dev` only: Vite puts each component's CSS into the page as a <style> element with no nonce (that is how its hot
+    // reload works), and the strict style-src would block all of it. `style-src-elem` covers <style> elements and takes the
+    // place of `style-src` for them; the build ships real CSS files, which is what the strict policy above is checked against
+    // (apps/admin/e2e).
+    security: { headers: { contentSecurityPolicy: { 'style-src-elem': ["'self'", "'unsafe-inline'"] } } },
   },
 })

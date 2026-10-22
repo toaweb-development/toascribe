@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { createDb } from '@toascribe/db'
+import { createKeyRing, parseKeyMaterial } from '@toascribe/shared'
 import { pino } from 'pino'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
@@ -24,6 +25,16 @@ const NODE_ARGS = ['--conditions=source']
 const MIGRATE = fileURLToPath(new URL('../../../packages/db/src/migrate.ts', import.meta.url))
 const ENTRY = fileURLToPath(new URL('../src/index.ts', import.meta.url))
 const HEALTHCHECK = fileURLToPath(new URL('../src/healthcheck.ts', import.meta.url))
+
+const ENCRYPTION_KEY_HEX = 'ab'.repeat(16) + 'cd'.repeat(16)
+const PUBLIC_ORIGIN = 'https://cms.example.test'
+const keyRing = await createKeyRing({ version: 1, key: parseKeyMaterial(ENCRYPTION_KEY_HEX) })
+
+/** What startWorker needs besides the database. */
+const MAIL = { keyRing, publicOrigin: PUBLIC_ORIGIN, mailDefaults: {} } as const
+
+/** The environment of a worker process: the required variables a test does not set itself. */
+const REQUIRED_ENV = { PUBLIC_ORIGIN, TOASCRIBE_ENCRYPTION_KEY: ENCRYPTION_KEY_HEX } as const
 
 function stringEnv(): Record<string, string> {
   return Object.fromEntries(
@@ -67,7 +78,7 @@ describe('worker file-level behaviour (no database)', () => {
 
   it('refuses to start with a bad environment, naming the variable and never the value', () => {
     const result = spawnSync(process.execPath, [...NODE_ARGS, ENTRY], {
-      env: { ...stringEnv(), NODE_ENV: 'test', DATABASE_URL: 'not-a-url-sekret' },
+      env: { ...stringEnv(), ...REQUIRED_ENV, NODE_ENV: 'test', DATABASE_URL: 'not-a-url-sekret' },
       encoding: 'utf8',
     })
     expect(result.status).toBe(1)
@@ -99,12 +110,12 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
   })
 
   it('refuses to start before the migration step has run, and cleans up', async () => {
-    const { pool } = createDb({ connectionString: database.appUrl })
+    const { db, pool } = createDb({ connectionString: database.appUrl })
     const { logger } = lines()
     // "not installed" is pg-boss's migrate:false check; with migrate:true the app role would try DDL instead.
-    await expect(startWorker({ pool, databaseUrl: database.appUrl, logger, heartbeatFile })).rejects.toThrow(
-      'pg-boss is not installed',
-    )
+    await expect(
+      startWorker({ pool, db, databaseUrl: database.appUrl, logger, heartbeatFile, ...MAIL }),
+    ).rejects.toThrow('pg-boss is not installed')
     expect(await isHeartbeatFresh(heartbeatFile)).toBe(false)
     await pool.end()
   })
@@ -113,6 +124,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
     const proc = spawnSync(process.execPath, [...NODE_ARGS, ENTRY], {
       env: {
         ...stringEnv(),
+        ...REQUIRED_ENV,
         NODE_ENV: 'test',
         DATABASE_URL: database.appUrl,
         WORKER_HEARTBEAT_FILE: join(dir, 'never'),
@@ -131,11 +143,12 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
     })
     expect(migrate.status, migrate.stdout + migrate.stderr).toBe(0)
 
-    const { pool } = createDb({ connectionString: database.appUrl })
+    const { db, pool } = createDb({ connectionString: database.appUrl })
     const { logger, collected } = lines()
-    const worker = await startWorker({ pool, databaseUrl: database.appUrl, logger, heartbeatFile })
+    const worker = await startWorker({ pool, db, databaseUrl: database.appUrl, logger, heartbeatFile, ...MAIL })
 
     expect(collected.some((line) => line['msg'] === 'worker ready')).toBe(true)
+    expect(collected.some((line) => line['msg'] === 'jobs registered')).toBe(true)
     expect(await isHeartbeatFresh(heartbeatFile)).toBe(true)
     expect(collected.filter((line) => line['level'] === 50)).toEqual([]) // no error lines
 
@@ -149,6 +162,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
     const file = join(dir, 'process-heartbeat')
     const env = {
       ...stringEnv(),
+      ...REQUIRED_ENV,
       NODE_ENV: 'test',
       DATABASE_URL: database.appUrl,
       LOG_LEVEL: 'info',

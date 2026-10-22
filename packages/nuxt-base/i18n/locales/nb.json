@@ -17,5 +17,35 @@
       "text": "Sjekker om API-et svarer."
     },
     "retry": "Prøv igjen"
+  },
+  "error": {
+    "invalidCredentials": "Brukernavnet, e-postadressen eller passordet er feil. Prøv igjen, eller velg «Mistet passordet?».",
+    "unauthorized": "Du er ikke logget inn, eller økten har gått ut. Logg inn på nytt.",
+    "mfaRequired": "Du må bekrefte med tofaktor før du kan fortsette. Logg inn på nytt.",
+    "forbidden": "Handlingen ble avvist. Siden kan ha vært åpen for lenge: last den på nytt og prøv igjen.",
+    "invalidPassword": "Passordet er feil. Prøv igjen.",
+    "passwordRequired": "Skriv inn passordet ditt for å bekrefte endringen.",
+    "invalidCode": "Koden er feil eller har gått ut. Sjekk koden i autentiseringsappen og prøv igjen.",
+    "registrationClosed": "Registrering er slått av på dette nettstedet.",
+    "registrationUnavailable": "Registrering er midlertidig utilgjengelig. Prøv igjen senere, eller kontakt administratoren.",
+    "invalidToken": "Lenken er ugyldig, utløpt eller allerede brukt. Be om en ny lenke.",
+    "weakPassword": "Passordet kan ikke være det samme som brukernavnet eller e-postadressen. Velg et annet passord.",
+    "sameEmail": "Dette er allerede e-postadressen din.",
+    "emailUnavailable": "Denne e-postadressen kan ikke brukes. Prøv en annen.",
+    "originInvalid": "Forespørselen ble avvist fordi den kom fra en annen adresse. Åpne siden på nytt fra adressen du vanligvis bruker.",
+    "validation": "Noe i skjemaet er ikke gyldig. Sjekk feltene og prøv igjen.",
+    "mfaFinished": "Tofaktorsteget er allerede gjort eller har gått ut. Logg inn på nytt.",
+    "enrolmentUnreadable": "Den lagrede nøkkelen kunne ikke leses. Start oppsettet på nytt.",
+    "tooManyRequests": "For mange forsøk. Vent litt og prøv igjen.",
+    "tooManyRequestsIn": "For mange forsøk. Prøv igjen om {wait}.",
+    "network": "Får ikke kontakt med tjenesten. Sjekk tilkoblingen og prøv igjen. Det du har fylt ut, er beholdt.",
+    "server": "Noe gikk galt hos oss. Det du har fylt ut, er beholdt. Prøv igjen om litt.",
+    "serverWithReference": "Noe gikk galt hos oss. Det du har fylt ut, er beholdt. Prøv igjen om litt, og oppgi referansen {id} hvis det fortsetter.",
+    "unknown": "Noe gikk galt. Last siden på nytt og prøv igjen.",
+    "wait": {
+      "seconds": "{n} sekund | {n} sekunder",
+      "minutes": "{n} minutt | {n} minutter",
+      "hours": "{n} time | {n} timer"
+    }
   }
 }

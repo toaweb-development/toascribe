@@ -58,6 +58,32 @@
 		redir * /admin{uri} 308
 	}
 
+	# The sign-in screens are in the admin app too. /login, /register and /logout (and a trailing slash) go to the same
+	# page under /admin with the query string kept (`{uri}` is the whole request URI).
+	@auth path /login /login/ /register /register/ /logout /logout/
+	handle @auth {
+		redir * /admin{uri} 308
+	}
+
+	# WordPress addresses (K-009): people's bookmarks and the links of old mails. /wp-login.php?action=lostpassword (or
+	# register, logout, rp, ...) goes to /admin/login with the same query: the screens there read `action`. `route` keeps
+	# the order of the two lines (a bare `redir` would run before `rewrite`); `rewrite` to a path alone replaces the path and
+	# keeps the query, which `redir * /admin/login?{query}` would not do cleanly (it leaves a "?" behind with no query).
+	@wplogin path /wp-login.php
+	handle @wplogin {
+		route {
+			rewrite * /admin/login
+			redir * {uri} 308
+		}
+	}
+
+	# /wp-admin and everything under it (edit.php, post.php?post=1, ...) go to /admin. The rest of the path and the query
+	# are dropped: those WordPress screens do not exist here, so there is nothing to map them to.
+	@wpadmin path /wp-admin /wp-admin/*
+	handle @wpadmin {
+		redir * /admin 308
+	}
+
 	handle /api/* {
 		reverse_proxy api:3001 {
 			header_up X-Real-IP {client_ip}

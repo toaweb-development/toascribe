@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "The toa command. Runs in the api container: docker compose exec api toa …",
@@ -17,13 +17,14 @@
     "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js"
   },
   "dependencies": {
+    "@toascribe/auth": "workspace:*",
     "@toascribe/db": "workspace:*",
+    "@toascribe/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@toascribe/shared": "workspace:*",
     "@toascribe/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",

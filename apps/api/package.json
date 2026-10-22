@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/api",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "The toascribe API: Hono on Node. Owns all data and business logic.",
@@ -19,16 +19,24 @@
   "dependencies": {
     "@hono/node-server": "catalog:",
     "@hono/zod-openapi": "catalog:",
+    "@toascribe/auth": "workspace:*",
     "@toascribe/db": "workspace:*",
     "@toascribe/shared": "workspace:*",
+    "drizzle-orm": "catalog:",
     "hono": "catalog:",
+    "otpauth": "catalog:",
+    "pg-boss": "catalog:",
     "pino": "catalog:",
+    "uqr": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@node-rs/argon2": "catalog:",
     "@toascribe/tsconfig": "workspace:*",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "eslint": "catalog:",
+    "pg": "catalog:",
     "pino-pretty": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

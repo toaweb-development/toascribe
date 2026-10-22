@@ -1,17 +1,33 @@
 import { checkConnection, PGBOSS_APP_OPTIONS } from '@toascribe/db'
-import type { Db } from '@toascribe/db'
+import type { Database, Db } from '@toascribe/db'
+import type { KeyRing } from '@toascribe/shared'
 import { PgBoss } from 'pg-boss'
 import type { Logger } from 'pino'
 
+import { registerJobs } from './jobs/index.ts'
 import { HEARTBEAT_INTERVAL_MS, removeHeartbeat, writeHeartbeat } from './lib/heartbeat.ts'
+import type { MailEnvDefaults, TransportFactory } from './mail/smtp.ts'
 
 export interface WorkerOptions {
   readonly pool: Db['pool']
+  readonly db: Database
   /** The app role's URL; pg-boss opens its own connections from it. */
   readonly databaseUrl: string
   readonly logger: Logger
   readonly heartbeatFile: string
   readonly heartbeatIntervalMs?: number
+  /** TOASCRIBE_ENCRYPTION_KEY and the older keys: the SMTP password and the one-time tokens in the mail jobs are decrypted with them. */
+  readonly keyRing: KeyRing
+  /** PUBLIC_ORIGIN: the links in the mails are built on it. */
+  readonly publicOrigin: string
+  /** The SMTP and sender defaults from the environment, behind the `smtp_*` and `mail_from_*` settings. */
+  readonly mailDefaults: MailEnvDefaults
+  /** Tests only: where the mail goes instead of SMTP. */
+  readonly transport?: TransportFactory
+  /** Tests only: how often the queues are polled, in seconds (default 2 for mail and 30 for the clean-up). */
+  readonly pollingSeconds?: number
+  /** Tests only: the clock of the clean-up jobs. */
+  readonly now?: () => Date
 }
 
 export interface Worker {
@@ -20,8 +36,8 @@ export interface Worker {
 }
 
 /**
- * Starts pg-boss as the app role and the heartbeat. No queues or jobs exist in M0.1; later work
- * registers them here (cron schedules are registered in the worker, never in the API, typescript §11).
+ * Starts pg-boss as the app role, registers the queues, the handlers and the cron schedules (jobs/index.ts: the e-mail job and
+ * the daily clean-up; schedules are registered in the worker, never in the API, typescript §11), and starts the heartbeat.
  * Fails if the migration step has not run: PGBOSS_APP_OPTIONS has migrate:false, so start() only
  * checks the schema version (packages/db, src/pgboss.ts).
  */
@@ -37,6 +53,28 @@ export async function startWorker(options: WorkerOptions): Promise<Worker> {
     await boss.start()
   } catch (err) {
     // Release whatever start() opened before the failure; the original error is the one to report.
+    await boss.stop({ graceful: false }).catch(() => undefined)
+    throw err
+  }
+
+  try {
+    await registerJobs(
+      boss,
+      {
+        email: {
+          db: options.db,
+          keyRing: options.keyRing,
+          logger,
+          publicOrigin: options.publicOrigin,
+          mailDefaults: options.mailDefaults,
+          ...(options.transport === undefined ? {} : { transport: options.transport }),
+        },
+        cleanup: { db: options.db, logger, ...(options.now === undefined ? {} : { now: options.now }) },
+        ...(options.pollingSeconds === undefined ? {} : { pollingSeconds: options.pollingSeconds }),
+      },
+      logger,
+    )
+  } catch (err) {
     await boss.stop({ graceful: false }).catch(() => undefined)
     throw err
   }
