@@ -5,7 +5,7 @@ import type { Database } from '@toascribe/db'
 import type { AuditSource, JsonValue } from '@toascribe/shared'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 
-const { account, accountRole, accountToken, auditLog, role, session } = schema
+const { account, accountRole, accountToken, auditLog, loginAttempt, role, session } = schema
 
 /** The database, or the transaction a command opened. */
 export type Executor = Parameters<Parameters<Database['transaction']>[0]>[0] | Database
@@ -188,4 +188,22 @@ export async function insertCliAudit(db: Executor, input: AuditInput, now: Date)
     ip: null,
     createdAt: now,
   })
+}
+
+/** The rate-limited actions of `login_attempt` (LOGIN_ATTEMPT_ACTION in @toascribe/shared) that are about one account's credentials. */
+export type ClearedAction = 'login' | 'mfa' | 'password_lost' | 'register'
+
+/**
+ * Ends the streak of failures the api counts against an account, for each action: one succeeded row per action (the table is
+ * append-only, as the api's own reset does it). The address is the «unknown» one: successes are not counted against an address.
+ */
+export async function clearLoginAttempts(
+  db: Executor,
+  accountId: string,
+  actions: readonly ClearedAction[],
+  now: Date,
+): Promise<void> {
+  await db
+    .insert(loginAttempt)
+    .values(actions.map((action) => ({ action, ip: '0.0.0.0', accountId, succeeded: true, createdAt: now })))
 }

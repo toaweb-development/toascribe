@@ -29,6 +29,13 @@
       "when": 1792594216222,
       "tag": "0003_rights_ip_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792647221564,
+      "tag": "0004_login_attempt_login_hash",
+      "breakpoints": true
     }
   ]
 }

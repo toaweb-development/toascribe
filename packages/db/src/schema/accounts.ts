@@ -210,7 +210,11 @@ export const recoveryCode = pgTable(
 
 /**
  * One attempt at a rate-limited flow, for limiting by IP and by account without Valkey (K-026, K-313).
- * Append-only; a purge job deletes old rows. The typed username is not stored: account_id is null when it matched none.
+ * Append-only; a purge job deletes old rows. The typed username is not stored: account_id is null when it matched none, and
+ * `login_hash` holds a keyed hash (HMAC-SHA256 under the signing key) of the normalised name that was typed, so a name that
+ * matches no account is delayed exactly like one that does (K-004) and a name that is registered later keeps its history,
+ * without the name or a password typed in its place being kept. A row with `succeeded` set ends the streak of its account (a
+ * login, a finished reset, `toa user reset-login-limit`).
  */
 export const loginAttempt = pgTable(
   'login_attempt',
@@ -219,6 +223,8 @@ export const loginAttempt = pgTable(
     action: text('action').notNull(),
     ip: inet('ip').notNull(),
     accountId: uuid('account_id'),
+    /** Base64url of the keyed hash of the login name or address that was typed; null where no name was typed (a code, a re-authentication, a reset marker). */
+    loginHash: text('login_hash'),
     succeeded: boolean('succeeded').notNull().default(false),
     createdAt: createdAt(),
   },
@@ -232,6 +238,10 @@ export const loginAttempt = pgTable(
     index('idx_login_attempt_account_id_created_at')
       .on(t.accountId, t.createdAt)
       .where(sql`${t.accountId} is not null`),
+    // The delay of a login name, known or not.
+    index('idx_login_attempt_login_hash_created_at')
+      .on(t.loginHash, t.createdAt)
+      .where(sql`${t.loginHash} is not null`),
   ],
 )
 

@@ -8,6 +8,13 @@ export const MAIL_MESSAGES_NB: MailMessages = {
   common: {
     footer: 'Denne e-posten er sendt fra {siteName} ({siteUrl}).',
     linkFallback: 'Virker ikke lenken? Kopier denne adressen inn i nettleseren:',
+    securityActions: {
+      mfa_added: 'Det blir lagt til en ny autentiseringsapp (tofaktor) på kontoen din.',
+      mfa_removed: 'En autentiseringsapp (tofaktor) blir fjernet fra kontoen din.',
+      recovery_codes_regenerated: 'Det blir laget nye gjenopprettingskoder for kontoen din. De gamle slutter å virke.',
+      password_changed: 'Passordet på kontoen din blir endret.',
+      password_reset: 'Passordet på kontoen din er tilbakestilt med en lenke fra «Mistet passordet?».',
+    },
   },
   templates: {
     password_reset: {
@@ -70,6 +77,17 @@ export const MAIL_MESSAGES_NB: MailMessages = {
       ],
       outro: [
         'Var det ikke du som ba om dette, bør du bytte passord med en gang og logge ut overalt ellers. Da blir byttet stoppet.',
+      ],
+    },
+    security_notice: {
+      subject: '[{siteName}] Sikkerhetsendring på kontoen din',
+      greeting: 'Hei {username},',
+      intro: [
+        '{action}',
+        'Dette er en melding om endringen på kontoen din på {siteName}. Du trenger ikke gjøre noe hvis det var du.',
+      ],
+      outro: [
+        'Var det ikke du, bør du bytte passord med en gang, logge ut overalt ellers og si fra til en administrator.',
       ],
     },
     test: {

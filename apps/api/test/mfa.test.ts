@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { totpCodeAt } from '../src/lib/totp.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
-import { codeNow, enrolTotp, errorCode, nextStep, readJson, setSetting, unique } from './flows.ts'
+import { codeNow, enrolTotp, errorCode, mailsTo, nextStep, readJson, setSetting, unique } from './flows.ts'
 import { SESSION_COOKIE_NAME, TEST_PASSWORD, startAuthApp } from './harness.ts'
 import type { AuthTestApp, TestClient } from './harness.ts'
 import { testKeyRing } from './helpers.ts'
@@ -44,6 +44,11 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
     await client.post('/api/v1/auth/logout')
     nextStep(env)
     return { account, enrolled, recoveryCodes: enrolled.recoveryCodes ?? [] }
+  }
+
+  /** The `security_notice` mails of one action that the account was sent. */
+  function noticesTo(app: AuthTestApp, to: string, action: string) {
+    return mailsTo(app, to).filter((mail) => mail.template === 'security_notice' && mail.data.action === action)
   }
 
   /** Signs in with the password only: the session is half done. */
@@ -99,7 +104,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
       const rows = await env.query<{ id: string }>('select id from mfa_credential where account_id = $1', [account.id])
       expect(rows.map((row) => row.id)).toEqual([second.id])
       // The old one cannot be finished any more.
-      const old = await client.post(`/api/v1/me/mfa/totp/${first.id}/confirm`, { code: codeNow(env, first.secret) })
+      const old = await client.post(`/api/v1/me/mfa/totp/${first.id}/confirm`, {
+        code: codeNow(env, first.secret),
+        password: TEST_PASSWORD,
+      })
       expect(old.status).toBe(404)
       // And with an unfinished factor, a new login needs no second step.
       const again = await env.client({ ip: ip() }).login(account.username, TEST_PASSWORD)
@@ -114,7 +122,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
       const right = codeNow(env, started.secret)
       const wrong = right === '000000' ? '000001' : '000000'
 
-      const bad = await client.post(`/api/v1/me/mfa/totp/${started.id}/confirm`, { code: wrong })
+      const bad = await client.post(`/api/v1/me/mfa/totp/${started.id}/confirm`, {
+        code: wrong,
+        password: TEST_PASSWORD,
+      })
       expect(bad.status).toBe(403)
       expect(await errorCode(bad)).toBe('invalid_code')
       expect(
@@ -126,7 +137,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
         ]),
       ).toHaveLength(0)
 
-      const good = await client.post(`/api/v1/me/mfa/totp/${started.id}/confirm`, { code: right })
+      const good = await client.post(`/api/v1/me/mfa/totp/${started.id}/confirm`, {
+        code: right,
+        password: TEST_PASSWORD,
+      })
       expect(good.status).toBe(200)
       const done = MfaConfirmResponse.parse(await good.json())
       expect(done.loginCompleted).toBe(false)
@@ -151,8 +165,87 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
       // A finished enrolment cannot be finished again.
       const twice = await client.post(`/api/v1/me/mfa/totp/${started.id}/confirm`, {
         code: codeNow(env, started.secret),
+        password: TEST_PASSWORD,
       })
       expect(twice.status).toBe(404)
+    })
+
+    it('adding a factor in a complete session needs the current password: none is 400, a wrong one is 403, the right one works', async () => {
+      const account = await env.createAccount({ username: unique('reauth-add') })
+      const client = env.client({ ip: ip() })
+      await client.login(account.username, TEST_PASSWORD)
+      const started = MfaEnrolStartResponse.parse(await (await client.post('/api/v1/me/mfa/totp', {})).json())
+      const confirm = (body: Record<string, unknown>) =>
+        client.post(`/api/v1/me/mfa/totp/${started.id}/confirm`, { code: codeNow(env, started.secret), ...body })
+
+      const none = await confirm({})
+      expect(none.status).toBe(400)
+      expect(await errorCode(none)).toBe('password_required')
+      const wrong = await confirm({ password: 'not the password' })
+      expect(wrong.status).toBe(403)
+      expect(await errorCode(wrong)).toBe('invalid_password')
+      // Nothing was added, and nobody was told: nothing happened.
+      expect(
+        await env.query('select 1 from mfa_credential where account_id = $1 and confirmed_at is not null', [
+          account.id,
+        ]),
+      ).toHaveLength(0)
+      expect(noticesTo(env, account.email, 'mfa_added')).toHaveLength(0)
+
+      const right = await confirm({ password: TEST_PASSWORD })
+      expect(right.status).toBe(200)
+      expect(noticesTo(env, account.email, 'mfa_added')).toEqual([
+        { template: 'security_notice', to: account.email, data: { username: account.username, action: 'mfa_added' } },
+      ])
+    })
+
+    it('a stolen session cannot add a factor of its own: without the password the account keeps no factor and gets no recovery codes', async () => {
+      const account = await env.createAccount({ username: unique('stolen') })
+      const thief = env.client({ ip: ip() })
+      await thief.login(account.username, TEST_PASSWORD)
+      const enrolled = await enrolTotp(env, thief, undefined, { password: null })
+      expect(enrolled.response.status).toBe(400)
+      expect(await env.query('select 1 from recovery_code where account_id = $1', [account.id])).toHaveLength(0)
+      expect(
+        await env.query('select 1 from mfa_credential where account_id = $1 and confirmed_at is not null', [
+          account.id,
+        ]),
+      ).toHaveLength(0)
+    })
+
+    it('a wrong password at the confirmation counts like a failed login', async () => {
+      const account = await env.createAccount({ username: unique('reauth-count') })
+      const client = env.client({ ip: ip() })
+      await client.login(account.username, TEST_PASSWORD)
+      const started = MfaEnrolStartResponse.parse(await (await client.post('/api/v1/me/mfa/totp', {})).json())
+      for (let n = 0; n < 5; n += 1) {
+        const res = await client.post(`/api/v1/me/mfa/totp/${started.id}/confirm`, {
+          code: codeNow(env, started.secret),
+          password: `wrong ${String(n)}`,
+        })
+        expect(res.status).toBe(403)
+      }
+      const waiting = await client.post(`/api/v1/me/mfa/totp/${started.id}/confirm`, {
+        code: codeNow(env, started.secret),
+        password: TEST_PASSWORD,
+      })
+      expect(waiting.status).toBe(429)
+      expect(Number(waiting.headers.get('retry-after'))).toBeGreaterThan(0)
+    })
+
+    it('the enrolment state asks for no password and still sends the notice', async () => {
+      await setSetting(env, 'mfa_required_roles', ['editor'])
+      try {
+        const account = await env.createAccount({ username: unique('enrolment-notice'), role: 'editor' })
+        const client = env.client({ ip: ip() })
+        const login = await client.login(account.username, TEST_PASSWORD)
+        expect((await readJson(login)).mfa).toBe('enrolment')
+        const enrolled = await enrolTotp(env, client, undefined, { password: null })
+        expect(enrolled.response.status).toBe(200)
+        expect(noticesTo(env, account.email, 'mfa_added')).toHaveLength(1)
+      } finally {
+        await setSetting(env, 'mfa_required_roles', [])
+      }
     })
 
     it("another account's enrolment is not found, whoever asks", async () => {
@@ -166,6 +259,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
       await thiefClient.login(thief.username, TEST_PASSWORD)
       const res = await thiefClient.post(`/api/v1/me/mfa/totp/${started.id}/confirm`, {
         code: codeNow(env, started.secret),
+        password: TEST_PASSWORD,
       })
       expect(res.status).toBe(404)
       expect(
@@ -227,7 +321,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
         (
           await anonymous.post(
             '/api/v1/me/mfa/totp/0198a3c2-0000-7000-8000-000000000001/confirm',
-            { code: '123456' },
+            { code: '123456', password: TEST_PASSWORD },
             { csrf: 'none' },
           )
         ).status,
@@ -490,29 +584,25 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
       ).toHaveLength(3)
     })
 
-    it('locks after five wrong codes, even for the right one, and opens again after the lockout', async () => {
+    it('makes the sixth try after five wrong codes wait, even with the right one, and opens again by itself', async () => {
       const { account, enrolled } = await accountWithFactor('lock')
       const { client } = await halfLogin(account.username)
       for (let n = 0; n < 5; n += 1) {
         const res = await client.post('/api/v1/auth/mfa/verify', { type: 'totp', code: '000000' })
         expect(res.status).toBe(403)
       }
-      const locked = await client.post('/api/v1/auth/mfa/verify', { type: 'totp', code: codeNow(env, enrolled.secret) })
-      expect(locked.status).toBe(429)
-      expect(Number(locked.headers.get('retry-after'))).toBeGreaterThan(0)
+      const waiting = await client.post('/api/v1/auth/mfa/verify', {
+        type: 'totp',
+        code: codeNow(env, enrolled.secret),
+      })
+      expect(waiting.status).toBe(429)
+      expect(waiting.headers.get('retry-after')).toBe('30')
       // Recovery codes are behind the same limit.
       const recovery = await client.post('/api/v1/auth/mfa/verify', { type: 'recovery', code: 'ABCD-EFGH-JKMN-PQRS' })
       expect(recovery.status).toBe(429)
 
-      // The half session lives 10 minutes and the lockout 20: a new login is needed, and the account is still locked.
-      env.clock.advance(11 * MINUTE)
-      const retry = await halfLogin(account.username)
-      const stillLocked = await retry.client.post('/api/v1/auth/mfa/verify', {
-        type: 'totp',
-        code: codeNow(env, enrolled.secret),
-      })
-      expect(stillLocked.status).toBe(429)
-      env.clock.advance(11 * MINUTE)
+      // The wait is 30 seconds, nothing is locked: after it the right code passes.
+      env.clock.advance(31_000)
       const later = await halfLogin(account.username)
       const ok = await later.client.post('/api/v1/auth/mfa/verify', {
         type: 'totp',
@@ -592,7 +682,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
         expect(verify.status).toBe(409)
 
         const before = client.sessionToken
-        const enrolled = await enrolTotp(env, client)
+        // The `enrolment` state is the one place where the password is not asked again: it was given at the login.
+        const enrolled = await enrolTotp(env, client, undefined, { password: null })
         expect(enrolled.response.status).toBe(200)
         const done = MfaConfirmResponse.parse(await enrolled.response.json())
         expect(done.loginCompleted).toBe(true)
@@ -703,16 +794,19 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
       expect(JSON.stringify(list)).not.toContain(enrolled.secret)
     })
 
-    it('removing needs the password or a fresh code; a wrong answer is 403, counted, and keeps the factor', async () => {
+    it('removing needs the current password; a wrong one is 403, counted, and keeps the factor, and a code from the app is no proof', async () => {
       const { client, enrolled } = await signedIn('remove-wrong')
       const wrongPassword = await client.delete(`/api/v1/me/mfa/${enrolled.id}`, {
         json: { password: 'not the password' },
       })
       expect(wrongPassword.status).toBe(403)
       expect(await errorCode(wrongPassword)).toBe('invalid_password')
-      const wrongCode = await client.delete(`/api/v1/me/mfa/${enrolled.id}`, { json: { code: '000000' } })
-      expect(wrongCode.status).toBe(403)
-      expect(await errorCode(wrongCode)).toBe('invalid_code')
+      // Not even the right code of the app is accepted instead of the password.
+      const code = await client.delete(`/api/v1/me/mfa/${enrolled.id}`, {
+        json: { code: codeNow(env, enrolled.secret) },
+      })
+      expect(code.status).toBe(400)
+      expect(await errorCode(code)).toBe('validation_error')
       const none = await client.delete(`/api/v1/me/mfa/${enrolled.id}`)
       expect(none.status).toBe(400)
       expect(await env.query('select 1 from mfa_credential where id = $1', [enrolled.id])).toHaveLength(1)
@@ -733,12 +827,28 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
       expect(next.body.status).toBe('authenticated')
     })
 
-    it('removing with a fresh code works, and the code is spent', async () => {
-      const { client, enrolled, account } = await signedIn('remove-code')
-      const code = codeNow(env, enrolled.secret)
-      const res = await client.delete(`/api/v1/me/mfa/${enrolled.id}`, { json: { code } })
+    it('removing sends the owner a notice before the factor goes', async () => {
+      const { client, enrolled, account } = await signedIn('remove-notice')
+      const before = noticesTo(env, account.email, 'mfa_removed')
+      expect(before).toHaveLength(0)
+      const res = await client.delete(`/api/v1/me/mfa/${enrolled.id}`, { json: { password: TEST_PASSWORD } })
       expect(res.status).toBe(204)
-      expect(await env.query('select 1 from mfa_credential where account_id = $1', [account.id])).toHaveLength(0)
+      expect(noticesTo(env, account.email, 'mfa_removed')).toEqual([
+        { template: 'security_notice', to: account.email, data: { username: account.username, action: 'mfa_removed' } },
+      ])
+    })
+
+    it('no notice goes out when the removal is refused (wrong password, no such factor)', async () => {
+      const { client, enrolled, account } = await signedIn('remove-nonotice')
+      expect((await client.delete(`/api/v1/me/mfa/${enrolled.id}`, { json: { password: 'wrong' } })).status).toBe(403)
+      expect(
+        (
+          await client.delete(`/api/v1/me/mfa/0198a3c2-0000-7000-8000-000000000009`, {
+            json: { password: TEST_PASSWORD },
+          })
+        ).status,
+      ).toBe(404)
+      expect(noticesTo(env, account.email, 'mfa_removed')).toHaveLength(0)
     })
 
     it("another account's factor is not found, and the wrong id is not found", async () => {
@@ -782,10 +892,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
       expect((await old.client.post('/api/v1/auth/mfa/verify', { type: 'recovery', code })).status).toBe(200)
     })
 
-    it('new recovery codes need the password or a code, and a factor to belong to', async () => {
-      const { client } = await signedIn('regenerate-wrong')
+    it('new recovery codes need the password (a code is no proof) and a factor to belong to, and tell the owner', async () => {
+      const { client, account, enrolled } = await signedIn('regenerate-wrong')
       expect((await client.post('/api/v1/me/mfa/recovery-codes', { password: 'nope' })).status).toBe(403)
       expect((await client.post('/api/v1/me/mfa/recovery-codes', {})).status).toBe(400)
+      expect((await client.post('/api/v1/me/mfa/recovery-codes', { code: codeNow(env, enrolled.secret) })).status).toBe(
+        400,
+      )
+      expect(noticesTo(env, account.email, 'recovery_codes_regenerated')).toHaveLength(0)
+      expect((await client.post('/api/v1/me/mfa/recovery-codes', { password: TEST_PASSWORD })).status).toBe(200)
+      expect(noticesTo(env, account.email, 'recovery_codes_regenerated')).toHaveLength(1)
 
       const bare = await env.createAccount({ username: unique('no-factor') })
       const other = env.client({ ip: ip() })
@@ -802,14 +918,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('second factor (needs TEST_DATA
           403,
         )
       }
-      const locked = await client.post('/api/v1/me/mfa/recovery-codes', { password: TEST_PASSWORD })
-      expect(locked.status).toBe(429)
+      // The sixth has to wait, even with the right password; the answer says for how long.
+      const waiting = await client.post('/api/v1/me/mfa/recovery-codes', { password: TEST_PASSWORD })
+      expect(waiting.status).toBe(429)
+      expect(waiting.headers.get('retry-after')).toBe('30')
       const failed = await env.query(
         `select 1 from login_attempt where account_id = $1 and action = 'login' and not succeeded`,
         [account.id],
       )
-      // Five wrong, and the sixth (right) one that the lockout turned away, which is counted too.
-      expect(failed).toHaveLength(6)
+      // Five wrong; the one that had to wait is not written, so waiting does not make the wait longer.
+      expect(failed).toHaveLength(5)
     })
   })
 

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { describe, expect, it } from 'vitest'
 
 import { describeApiError, describeWait } from '../app/lib/api/error-message.ts'
@@ -79,6 +81,7 @@ describe('describeApiError', () => {
     ['mfa_required', 'error.mfaRequired'],
     ['forbidden', 'error.forbidden'],
     ['invalid_password', 'error.invalidPassword'],
+    ['password_required', 'error.passwordRequired'],
     ['invalid_code', 'error.invalidCode'],
     ['registration_closed', 'error.registrationClosed'],
     ['registration_unavailable', 'error.registrationUnavailable'],
@@ -119,5 +122,25 @@ describe('describeApiError', () => {
     expect(asked('invalid_credentials', { status: 401 })).toBe(
       asked('invalid_credentials', { status: 401, message: 'other' }),
     )
+  })
+})
+
+describe('the wait messages in nb.json', () => {
+  const messages = JSON.parse(readFileSync(new URL('../i18n/locales/nb.json', import.meta.url), 'utf8')) as {
+    error: { wait: Record<string, string>; tooManyRequestsIn: string; tooManyRequests: string }
+  }
+
+  // vue-i18n picks the first form for exactly one and the second for every other number (bokmål: «1 sekund», «30 sekunder»).
+  it.each(['seconds', 'minutes', 'hours'])('has a singular and a plural form for %s', (unit) => {
+    const forms = (messages.error.wait[unit] ?? '').split(' | ')
+    expect(forms).toHaveLength(2)
+    for (const form of forms) {
+      expect(form).toMatch(/^\{n\} \S+$/)
+    }
+  })
+
+  it('reads as a sentence with the wait inside, for a wait of seconds as well as minutes', () => {
+    expect(messages.error.tooManyRequestsIn).toBe('For mange forsøk. Prøv igjen om {wait}.')
+    expect(messages.error.tooManyRequests).not.toContain('{')
   })
 })

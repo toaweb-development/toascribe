@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  AuthOptionsResponse,
   ChoosePasswordRequest,
   EmailChangeConfirmRequest,
   EmailChangeRequest,
   LostPasswordRequest,
+  MfaConfirmRequest,
   MfaVerifyRequest,
   ReauthRequest,
   RegisterRequest,
@@ -54,12 +56,27 @@ describe('MfaVerifyRequest', () => {
 })
 
 describe('ReauthRequest', () => {
-  it('takes the password or a code, and not both and not neither', () => {
+  it('takes the current password and nothing else: a code from the app is not proof', () => {
     expect(ReauthRequest.safeParse({ password: 'x' }).success).toBe(true)
-    expect(ReauthRequest.safeParse({ code: '123456' }).success).toBe(true)
+    expect(ReauthRequest.safeParse({ code: '123456' }).success).toBe(false)
     expect(ReauthRequest.safeParse({ password: 'x', code: '123456' }).success).toBe(false)
     expect(ReauthRequest.safeParse({}).success).toBe(false)
-    expect(ReauthRequest.safeParse({ code: 'abcdef' }).success).toBe(false)
+  })
+})
+
+describe('MfaConfirmRequest', () => {
+  it('takes the code, and the password as an option', () => {
+    expect(MfaConfirmRequest.safeParse({ code: '123456' }).success).toBe(true)
+    expect(MfaConfirmRequest.safeParse({ code: '123456', password: 'x' }).success).toBe(true)
+    expect(MfaConfirmRequest.safeParse({ password: 'x' }).success).toBe(false)
+    expect(MfaConfirmRequest.safeParse({ code: '123456', password: 'x', extra: 1 }).success).toBe(false)
+  })
+})
+
+describe('AuthOptionsResponse', () => {
+  it('has the site name, which may be empty', () => {
+    expect(AuthOptionsResponse.safeParse({ registrationOpen: false, siteName: '' }).success).toBe(true)
+    expect(AuthOptionsResponse.safeParse({ registrationOpen: false }).success).toBe(false)
   })
 })
 

@@ -68,6 +68,28 @@ describe.skipIf(TEST_DATABASE_URL === undefined)(
         expect(audit[0]?.new_value.otherSessionsRevoked).toBe(1)
       })
 
+      it('needs the current password (none is 400), and tells the owner before the change, only when it goes through', async () => {
+        const { account, client } = await signedIn('chpw-notice')
+        const notices = () => mailsTo(env, account.email).filter((mail) => mail.template === 'security_notice')
+        const none = await client.patch('/api/v1/me/password', { newPassword: NEW_PASSWORD })
+        expect(none.status).toBe(400)
+        expect(
+          (await client.patch('/api/v1/me/password', { currentPassword: 'wrong', newPassword: NEW_PASSWORD })).status,
+        ).toBe(403)
+        // A new password the site refuses is no change either.
+        expect(
+          (await client.patch('/api/v1/me/password', { currentPassword: TEST_PASSWORD, newPassword: account.username }))
+            .status,
+        ).toBe(400)
+        expect(notices()).toHaveLength(0)
+
+        expect(
+          (await client.patch('/api/v1/me/password', { currentPassword: TEST_PASSWORD, newPassword: NEW_PASSWORD }))
+            .status,
+        ).toBe(204)
+        expect(notices().map((mail) => mail.data)).toEqual([{ username: account.username, action: 'password_changed' }])
+      })
+
       it('needs the current password: a wrong one is 403 invalid_password and changes nothing', async () => {
         const { account, client } = await signedIn('chpw-wrong')
         const res = await client.patch('/api/v1/me/password', {
@@ -96,7 +118,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)(
           newPassword: NEW_PASSWORD,
         })
         expect(locked.status).toBe(429)
-        expect(locked.headers.get('retry-after')).not.toBeNull()
+        expect(locked.headers.get('retry-after')).toBe('30')
+        // The password did not change. The login of the same name waits too: the failures are counted together.
+        expect((await env.client({ ip: ip() }).login(account.username, NEW_PASSWORD)).status).toBe(429)
+        env.clock.advance(31_000)
         expect((await env.client({ ip: ip() }).login(account.username, NEW_PASSWORD)).status).toBe(401)
       })
 
@@ -170,13 +195,13 @@ describe.skipIf(TEST_DATABASE_URL === undefined)(
         const notices = mailsTo(env, admin.email).filter((mail) => mail.template === 'admin_password_change')
         expect(notices.at(-1)?.data).toEqual({ username: account.username })
 
-        // An administrator changing their own password is not told about it.
+        // An administrator changing their own password gets no administrators' notice about it (only the owner's own security notice).
         const own = await signedIn('chpw-admin', 'administrator')
         expect(
           (await own.client.patch('/api/v1/me/password', { currentPassword: TEST_PASSWORD, newPassword: NEW_PASSWORD }))
             .status,
         ).toBe(204)
-        expect(mailsTo(env, own.account.email)).toHaveLength(0)
+        expect(mailsTo(env, own.account.email).map((mail) => mail.template)).toEqual(['security_notice'])
       })
 
       it('does not mail the administrators when the setting is off', async () => {
@@ -245,13 +270,21 @@ describe.skipIf(TEST_DATABASE_URL === undefined)(
         ).toBe(account.email)
       })
 
-      it('needs the current password', async () => {
-        const { client } = await signedIn('email-pw')
+      it('needs the current password: none is 400, a wrong one 403, and the old address is told with the right one', async () => {
+        const { account, client } = await signedIn('email-pw')
         const to = newAddress()
+        const none = await client.post('/api/v1/me/email-change', { newEmail: to })
+        expect(none.status).toBe(400)
         const res = await client.post('/api/v1/me/email-change', { newEmail: to, password: 'nope, not this' })
         expect(res.status).toBe(403)
         expect(await errorCode(res)).toBe('invalid_password')
         expect(mailsTo(env, to)).toHaveLength(0)
+        expect(mailsTo(env, account.email)).toHaveLength(0)
+
+        expect((await client.post('/api/v1/me/email-change', { newEmail: to, password: TEST_PASSWORD })).status).toBe(
+          202,
+        )
+        expect(mailsTo(env, account.email).map((mail) => mail.template)).toEqual(['email_change_notice'])
       })
 
       it('refuses the address the account has already, and a malformed one', async () => {

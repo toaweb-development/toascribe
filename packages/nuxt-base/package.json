@@ -3,12 +3,13 @@
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "The Nuxt layer that apps/site and apps/admin share: API layer, API plugin, status component, Nuxt UI and i18n setup, runtime config, head basics.",
+  "description": "The Nuxt layer that apps/site and apps/admin share: API layer, API plugin, status component, Nuxt UI and i18n setup, security headers and CSP, runtime config, head basics.",
   "main": "./nuxt.config.ts",
   "files": [
     "app",
     "i18n",
-    "nuxt.config.ts"
+    "nuxt.config.ts",
+    "server"
   ],
   "scripts": {
     "lint": "nuxt prepare && eslint .",
@@ -22,6 +23,7 @@
     "@nuxt/ui": "catalog:",
     "@nuxtjs/i18n": "catalog:",
     "@toascribe/shared": "workspace:*",
+    "nuxt-security": "catalog:",
     "tailwindcss": "catalog:",
     "vue": "catalog:"
   },

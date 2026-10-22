@@ -1,9 +1,10 @@
-import type { EmailTemplate } from './mail.ts'
+import type { EmailTemplate, SecurityNoticeAction } from './mail.ts'
 import { MAIL_MESSAGES_NB } from './mail-messages.nb.ts'
 
 // The words of the mail, one catalogue per language, with keys in English and values in the language (PLAN: templates can
 // be overridden by a theme and translated). A string may hold `{name}` placeholders; the ones a template can use are
-// `siteName`, `siteUrl`, `hours` (how long a link works) and the fields of its data (`username`, `email`, `requestedBy`).
+// `siteName`, `siteUrl`, `hours` (how long a link works) and the fields of its data (`username`, `email`, `requestedBy`; for
+// a `security_notice`, `action` is the sentence from `common.securityActions`).
 // A placeholder that has no value is an error, so a typo in a catalogue fails a test and not a customer's mail.
 
 /** The words of one template. */
@@ -25,6 +26,8 @@ export interface MailMessages {
     readonly footer: string
     /** Before the plain address of the link, for a mail program that does not show links. */
     readonly linkFallback: string
+    /** What happened, one sentence for each action of a `security_notice`; the mail's `{action}` placeholder. */
+    readonly securityActions: Readonly<Record<SecurityNoticeAction, string>>
   }
   readonly templates: Readonly<Record<EmailTemplate, TemplateStrings>>
 }

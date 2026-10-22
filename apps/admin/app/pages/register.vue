@@ -3,9 +3,8 @@
 definePageMeta({ middleware: 'auth-screens' })
 
 const { t } = useI18n()
-const authApi = useAuthApi()
 
-const { data: options } = await useAsyncData('auth:options', () => authApi.options().catch(() => null))
+const { data: options } = await useAuthOptions()
 // Closed only when the API said so: if it could not be asked, the form is shown and the call will say what is wrong.
 const closed = computed(() => options.value?.registrationOpen === false)
 

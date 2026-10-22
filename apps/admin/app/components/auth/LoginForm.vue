@@ -3,7 +3,8 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import type { LoginResponse } from '@toascribe/shared'
 
 // «Brukernavn eller e-postadresse», «Passord» with the show/hide button, «Husk meg», «Logg inn» (wp-login.php, K-014).
-// A wrong password, an unknown account and a locked account all give the same message (K-004).
+// A wrong password and an unknown account give the same message (K-004). A name that has to wait (too many wrong tries) gets
+// the wait from `Retry-After` instead, which is the same for a known and an unknown name.
 const props = defineProps<{
   /** The target from the address, if there is one. The API checks it again and answers with the safe one. */
   redirectTo?: string

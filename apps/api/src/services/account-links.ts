@@ -7,7 +7,7 @@
 import { generateToken, hashPassword, hashToken } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 import { CoreSettings, ONE_TIME_LINK_HOURS } from '@toascribe/shared'
-import type { AccountTokenPurpose } from '@toascribe/shared'
+import type { AccountTokenPurpose, AuthOptionsResponse } from '@toascribe/shared'
 import type { Logger } from 'pino'
 
 import { AppError } from '../lib/errors.ts'
@@ -35,7 +35,7 @@ import type { Executor } from '../repositories/executor.ts'
 import { readSettings } from '../repositories/settings.ts'
 import { deleteAllSessions } from '../repositories/sessions.ts'
 import type { RateLimiter } from './rate-limit.ts'
-import { assertAddressNotLocked, assertNotLocked } from './support.ts'
+import { assertNotDelayed } from './support.ts'
 import type { Auditor, RequestContext, SafeMail } from './support.ts'
 
 const HOUR_MS = 60 * 60 * 1000
@@ -60,6 +60,8 @@ export class WeakPasswordError extends AppError {
     super(400, 'weak_password', 'Choose a password that is not your username or your e-mail address.')
   }
 }
+
+const OptionsSettings = CoreSettings.pick({ users_can_register: true, blogname: true })
 
 const RegistrationSettings = CoreSettings.pick({
   users_can_register: true,
@@ -89,14 +91,14 @@ export function isTooObvious(
 }
 
 export interface PublicFlows {
-  /** «Lost your password?». Resolves whatever happens; throws only for a locked address (429). */
+  /** «Lost your password?». Resolves whatever happens; throws only for a name or an address that has to wait (429). */
   requestPasswordReset: (login: string, ctx: RequestContext) => Promise<void>
   /** The link of the lost-password mail: choose a new password. */
   resetPassword: (token: string, password: string, ctx: RequestContext) => Promise<void>
   /** The link of a welcome or registration mail: choose the first password. */
   setPassword: (token: string, password: string, ctx: RequestContext) => Promise<void>
-  /** Whether anyone may register (the setting). */
-  registrationOpen: () => Promise<boolean>
+  /** What the login screens need before anyone is signed in (GET /auth/options). */
+  options: () => Promise<AuthOptionsResponse>
   register: (input: { username: string; email: string }, ctx: RequestContext) => Promise<void>
 }
 
@@ -155,7 +157,7 @@ export function createPublicFlows(options: {
     // Every try counts against the address, like a lost-password request: a token cannot be guessed, but nobody should be
     // able to make the database look up hashes without limit.
     const ticket = await limiter.begin('password_lost', { ip: ctx.ip })
-    assertNotLocked(ticket.status, clock())
+    assertNotDelayed(ticket.status, clock())
 
     const done = await inTransaction(db, async (tx) => {
       const now = clock()
@@ -176,6 +178,9 @@ export function createPublicFlows(options: {
         throw new InvalidTokenError()
       }
       await setPasswordAndActivate(tx, found.accountId, passwordHash, now)
+      // The owner has the account back: the failures that were counted against the login name end here (a succeeded row for
+      // each action that is about the password; the table is append-only).
+      await limiter.clear(found.accountId, ctx.ip, ['login', 'password_lost'], tx)
       // Any other link of the account (an e-mail change asked for with the old password, an older reset) is void now, and
       // so is every session: a reset may be the answer to a stolen password.
       await invalidateUnusedTokens(tx, found.accountId, now)
@@ -187,10 +192,16 @@ export function createPublicFlows(options: {
         objectId: found.accountId,
         newValue: { sessionsRevoked: revoked },
       })
-      return { accountId: found.accountId, username: found.accountUsername }
+      return { accountId: found.accountId, username: found.accountUsername, email: found.accountEmail }
     })
 
     if (purpose === 'password_reset') {
+      // The owner is told that the password was reset with a link (the change is made; this is the notice for it).
+      await mail({
+        template: 'security_notice',
+        to: done.email,
+        data: { username: done.username, action: 'password_reset' },
+      })
       const settings = await readSettings(db, RegistrationSettings, onInvalidSetting)
       if (settings.notify_admin_password_change) {
         await notifyAdministrators(done.accountId, (to) => ({
@@ -233,11 +244,11 @@ export function createPublicFlows(options: {
     requestPasswordReset(login, ctx) {
       return withMinimumDuration(minimumResponseMs, async () => {
         const account = await findAccountByLogin(db, login)
-        const ticket = await limiter.begin('password_lost', { ip: ctx.ip, accountId: account?.id ?? null })
-        // An address is told. The answer does not depend on whether the account exists.
-        assertAddressNotLocked(ticket.status, clock())
-        if (account === undefined || account.status === 'disabled' || ticket.status.account.locked) {
-          // The same 202 as for an account that exists. A locked account is simply not mailed again.
+        const ticket = await limiter.begin('password_lost', { ip: ctx.ip, accountId: account?.id ?? null, login })
+        // A wait is told. The answer does not depend on whether the account exists: a name that matches none waits the same.
+        assertNotDelayed(ticket.status, clock())
+        if (account === undefined || account.status === 'disabled') {
+          // The same 202 as for an account that exists.
           return
         }
         // An account that never chose a password gets its welcome link again, not a reset link.
@@ -265,8 +276,9 @@ export function createPublicFlows(options: {
       return chooseWith('set_password', token, password, ctx)
     },
 
-    async registrationOpen() {
-      return (await readSettings(db, RegistrationSettings, onInvalidSetting)).users_can_register
+    async options() {
+      const settings = await readSettings(db, OptionsSettings, onInvalidSetting)
+      return { registrationOpen: settings.users_can_register, siteName: settings.blogname.trim() }
     },
 
     register(input, ctx) {
@@ -279,13 +291,17 @@ export function createPublicFlows(options: {
         const byEmail: AccountView | undefined = matches.find(
           (account) => account.email.toLowerCase() === input.email.toLowerCase(),
         )
-        const ticket = await limiter.begin('register', { ip: ctx.ip, accountId: byEmail?.id ?? null })
-        assertAddressNotLocked(ticket.status, clock())
+        const ticket = await limiter.begin('register', {
+          ip: ctx.ip,
+          accountId: byEmail?.id ?? null,
+          login: input.email,
+        })
+        assertNotDelayed(ticket.status, clock())
 
         if (byEmail !== undefined) {
           // The address has an account already. Its owner is told by mail; the visitor is told nothing (K-004). An account
           // that is still waiting for its first password gets the link again, a disabled one is left alone.
-          if (ticket.status.account.locked || byEmail.status === 'disabled') {
+          if (byEmail.status === 'disabled') {
             return
           }
           if (byEmail.status === 'pending') {

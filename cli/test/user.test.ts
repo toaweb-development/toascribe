@@ -67,6 +67,7 @@ describe('arguments (no database is reached)', () => {
   it('names the commands in the usage text', () => {
     expect(USAGE).toContain('user create --username')
     expect(USAGE).toContain('user reset-password')
+    expect(USAGE).toContain('user reset-login-limit')
     expect(USAGE).toContain('--password-stdin')
     expect(USAGE).toContain('DATABASE_URL')
   })
@@ -148,6 +149,20 @@ describe('arguments (no database is reached)', () => {
       expect(result.code).toBe(2)
       expect(result.stderr).toContain('exactly one of --username and --email')
     }
+  })
+
+  it('reset-login-limit needs exactly one of --username and --email, and no other option', async () => {
+    for (const argv of [
+      ['user', 'reset-login-limit'],
+      ['user', 'reset-login-limit', '--username', 'anna', '--email', 'a@example.test'],
+    ]) {
+      const result = await refused(argv)
+      expect(result.code).toBe(2)
+      expect(result.stderr).toContain('exactly one of --username and --email')
+    }
+    const extra = await refused(['user', 'reset-login-limit', '--username', 'anna', '--password-stdin'])
+    expect(extra.code).toBe(2)
+    expect(extra.stderr).toContain('Unknown option --password-stdin')
   })
 
   it('does not need NODE_ENV: there is no guard, the commands work in production', async () => {
@@ -566,6 +581,103 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa user against PostgreSQL', 
       }
       expect((await accountOf(victim.username))?.password_hash).toBe(victim.oldHash)
       expect(await sessionCount(victim.id)).toBe(2)
+    })
+  })
+
+  describe('user reset-login-limit', () => {
+    async function accountWithFailures(base: string) {
+      const username = unique(base)
+      await toa(createArgs(username, 'editor'))
+      const id = (await accountOf(username))?.id ?? ''
+      // The api's own rows: five failures of each action, as the limiter writes them.
+      for (const action of ['login', 'mfa', 'password_lost', 'register']) {
+        for (let n = 0; n < 5; n += 1) {
+          await query(db.url, `insert into login_attempt (action, ip, account_id) values ($1, '192.0.2.1', $2)`, [
+            action,
+            id,
+          ])
+        }
+      }
+      return { username, id, email: `${username}@example.test` }
+    }
+
+    const markers = (id: string) =>
+      query<{ action: string; succeeded: boolean; ip: string }>(
+        db.url,
+        `select action, succeeded, host(ip) as ip from login_attempt where account_id = $1 and succeeded order by action`,
+        [id],
+      )
+
+    it('ends the streak with one succeeded row per action, writes the audit entry, and changes nothing else', async () => {
+      const victim = await accountWithFailures('limit')
+      const bystander = await accountWithFailures('limit-other')
+      const before = await accountOf(victim.username)
+
+      const result = await toa(['user', 'reset-login-limit', '--username', victim.username])
+      expect(result.code).toBe(0)
+      expect(result.stdout).toBe('')
+      expect(result.stderr).toContain('Ended the wait after failed attempts')
+
+      expect(await markers(victim.id)).toEqual([
+        { action: 'login', succeeded: true, ip: '0.0.0.0' },
+        { action: 'mfa', succeeded: true, ip: '0.0.0.0' },
+        { action: 'password_lost', succeeded: true, ip: '0.0.0.0' },
+        { action: 'register', succeeded: true, ip: '0.0.0.0' },
+      ])
+      expect(await markers(bystander.id)).toEqual([])
+      // The failures are still there (the table is append-only), and so are the account and its password.
+      expect(
+        Number(
+          (
+            await query<{ n: string }>(
+              db.url,
+              'select count(*) as n from login_attempt where account_id = $1 and not succeeded',
+              [victim.id],
+            )
+          )[0]?.n,
+        ),
+      ).toBe(20)
+      expect(await accountOf(victim.username)).toEqual(before)
+      const entries = await auditOf(victim.id)
+      expect(entries.find((entry) => entry.action === 'login_limit.reset')).toMatchObject({
+        actor_type: 'system',
+        actor: 'cli',
+        source: 'cli',
+        account_id: victim.id,
+      })
+    })
+
+    it('finds the account by e-mail address in any case, and says which flag found no account', async () => {
+      const victim = await accountWithFailures('limit-mail')
+      expect((await toa(['user', 'reset-login-limit', '--email', victim.email.toUpperCase()])).code).toBe(0)
+      expect(await markers(victim.id)).toHaveLength(4)
+
+      const rows = Number((await query<{ n: string }>(db.url, 'select count(*) as n from login_attempt'))[0]?.n)
+      const byName = await toa(['user', 'reset-login-limit', '--username', 'nobodyhere'])
+      expect(byName.code).toBe(1)
+      expect(byName.stderr).toContain('--username: no account has that username')
+      const byMail = await toa(['user', 'reset-login-limit', '--email', 'nobody@example.test'])
+      expect(byMail.code).toBe(1)
+      expect(byMail.stderr).toContain('--email: no account has that e-mail address')
+      expect(Number((await query<{ n: string }>(db.url, 'select count(*) as n from login_attempt'))[0]?.n)).toBe(rows)
+    })
+
+    it('rolls the markers back when the audit entry cannot be written', async () => {
+      const victim = await accountWithFailures('limit-rollback')
+      await query(db.url, 'alter table audit_log rename to audit_log_away')
+      try {
+        expect((await toa(['user', 'reset-login-limit', '--username', victim.username])).code).toBe(1)
+      } finally {
+        await query(db.url, 'alter table audit_log_away rename to audit_log')
+      }
+      expect(await markers(victim.id)).toEqual([])
+    })
+
+    it('reset-password ends the streak too, for the actions about the password', async () => {
+      const victim = await accountWithFailures('limit-pw')
+      const result = await toa(['user', 'reset-password', '--username', victim.username])
+      expect(result.code).toBe(0)
+      expect((await markers(victim.id)).map((row) => row.action)).toEqual(['login', 'password_lost'])
     })
   })
 

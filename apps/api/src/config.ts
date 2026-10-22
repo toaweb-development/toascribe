@@ -21,6 +21,12 @@ const Env = z
     TOASCRIBE_ENCRYPTION_OLD_KEYS: oldEncryptionKeysEnv,
     /** Signs the CSRF tokens (HMAC-SHA256). 32 random bytes. A different key from the encryption key. */
     TOASCRIBE_SIGNING_KEY: keyMaterialEnv,
+    /**
+     * The address or network of the reverse proxy in front of the stack (the proxy container reads the same variable). The api
+     * does not use the value: it only needs to know whether it is set, to warn when it is empty and all requests come from one
+     * private address (services/proxy-check.ts).
+     */
+    TOASCRIBE_TRUSTED_PROXY: z.string().trim().max(200).default(''),
   })
   .superRefine((env, ctx) => {
     const versions = [

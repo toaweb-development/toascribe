@@ -12,6 +12,7 @@ and `documents.ts`.
 | `0001_audit_log_privileges`     | 0.2.0   | audit_log append-only for the app role, `audit_log_clear_old_ips()` (custom)            |
 | `0002_account_token_session`    | 0.3.0   | `account_token`; `session.mfa_verified_at` and `session.is_remembered` (generated)     |
 | `0003_rights_ip_retention`      | 0.3.0   | editor without `unfiltered_html`, `default_role` never administrator, IP retention from the setting (custom) |
+| `0004_login_attempt_login_hash` | 0.3.0   | `login_attempt.login_hash` and its index; removes the two lockout settings (generated; the `DELETE` is added by hand) |
 
 Drizzle has no down migrations. A published migration is never edited; a change is a new migration.
 
@@ -222,11 +223,11 @@ next migration run with the defaults below.
 | --------------------------------- | ------------ | --------------- | ------------------------------------------------------------------ |
 | `session_lifetime_days`           | 2            | 1 to 30         | Tor, as WordPress                                                  |
 | `session_lifetime_remember_days`  | 14           | 1 to 365        | Tor, as WordPress                                                  |
-| `login_limit_account_attempts`    | 5            | 1 to 100        | failures per account in the window; NIST SP 800-63B caps it at 100 |
-| `login_limit_ip_attempts`         | 20           | 1 to 1000       | failures per IP address in the window                              |
-| `login_limit_window_minutes`      | 15           | 5 to 1440       | the window attempts are counted in                                  |
-| `login_limit_lockout_minutes`     | 20           | 1 to 60         | first lockout; doubled per repeated lockout                         |
-| `login_limit_lockout_max_minutes` | 1440         | 60 to 10080     | the cap of the doubling; the bounds keep it ≥ the first lockout     |
+| `login_limit_account_attempts`    | 5            | 1 to 100        | free failures per login name or account in the window; NIST SP 800-63B caps it at 100 |
+| `login_limit_ip_attempts`         | 20           | 1 to 1000       | free failures per IP address in the window                         |
+| `login_limit_window_minutes`      | 60           | 5 to 1440       | how long a failure is remembered; it was 15 before the fix round (an install keeps the value it has) |
+| `login_limit_delay_seconds`       | 30           | 1 to 600        | the first wait once the free failures are used; doubled per further failure (no hard lock, Tor 2026-10-22) |
+| `login_limit_delay_max_minutes`   | 15           | 10 to 1440      | the cap of the doubling; the bounds keep it ≥ the first wait. The longest wait is the smaller of this and the window |
 | `mfa_required_roles`              | `[]`         | role slugs      | roles that must use a second factor (K-023)                        |
 | `ip_retention_days`               | 90           | 7 to 3650       | sessions, comments, login attempts and the audit log               |
 | `spam_comment_retention_days`     | 30           | 1 to 365        | spam comments are deleted after this                               |
@@ -236,6 +237,13 @@ next migration run with the defaults below.
 | `smtp_password`                   | null         | `EncryptedValue`| `v<n>:` ciphertext, never plain text; write-only towards clients   |
 | `notify_admin_new_user`           | true         |                 | K-017                                                              |
 | `notify_admin_password_change`    | true         |                 | K-017                                                              |
+
+`login_limit_lockout_minutes` and `login_limit_lockout_max_minutes` (the first M0.3 build) are gone: migration 0004 deletes
+their rows, and `seedCore()` inserts the two `delay` keys on the run that follows. Their meaning changed from a lock to a
+wait, so a stored value is not carried over. With `n` failures in the window and `n` at least the free attempts, the next
+attempt waits `min(delay_seconds · 2^(n − free), delay_max)` after the latest failure; a failure leaves the window after
+`login_limit_window_minutes`, so the wait shrinks by itself. Nothing is stored about a wait: it is worked out from the
+`login_attempt` rows.
 
 `default_role` (a WordPress option) can no longer be `administrator`: `CoreSettings` refuses it, and migration 0003 set
 it back to `subscriber` where a v0.2.0 database had it. Text that can reach a mail header (`mail_from_name`,
@@ -410,7 +418,14 @@ Where PLAN names a column, the schema uses its name. These are the places it dif
 - `mfa_credential`: `type` (totp, passkey, oidc), `name`, `secret_encrypted`, `issuer`, `external_id`, `data`,
   `confirmed_at`, `last_used_at`. One passkey or OIDC identity can belong to one account only.
   For a TOTP credential `data.lastStep` is the last accepted 30-second step (a number), so a code works once.
-- `recovery_code`: `code_hash`, `used_at`. `login_attempt`: `action`, `succeeded`.
+- `recovery_code`: `code_hash`, `used_at`. `login_attempt`: `action`, `succeeded`, and since `0004_login_attempt_login_hash`
+  `login_hash` (text, null): the base64url HMAC-SHA256, under the signing key, of the login name or e-mail address that was
+  typed (trimmed, lower-cased). It is written on every row that had a typed name, whether or not the name matched an
+  account, so an unknown name is delayed exactly like a known one (K-004), and a name that gets an account later (a
+  registration) keeps its history. The name itself is never stored. Index `idx_login_attempt_login_hash_created_at`
+  (partial, where `login_hash is not null`). A row with `succeeded` set ends the streak of its account and of its name; the
+  api writes such marker rows for a finished password reset and `toa user reset-login-limit` writes them for the four limited
+  flows (`login`, `mfa`, `password_lost`, `register`), because the table is append-only.
 - `content_type`, `field_group`, `global_set`, `workflow`: `key`, `name`. `menu`, `pattern`: `slug`.
 - `content_draft`, `content_autosave`, `content_revision`: `snapshot`, `account_id`.
 - `content_ref`: `kind`, `target_content_id`, `target_media_id`, `target_url`, `block_id`.

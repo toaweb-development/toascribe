@@ -83,6 +83,9 @@ const confirmEnrolmentRoute = defineRoute({
   description:
     'On the first factor of an account the ten recovery codes come back, once. In a half-signed-in session in state ' +
     '`enrolment` this also completes the login (a new session cookie is set; the CSRF token stays the same). ' +
+    'In a complete session the body must also hold `password` (the current password): 400 `password_required` without it, ' +
+    '403 `invalid_password` when it is wrong. A half-signed-in session in state `enrolment` does not send it (the password was ' +
+    'given at the login). The owner gets a notice by e-mail before the factor is added. ' +
     `A wrong code counts against the \`mfa\` limits. ${STATE_CHANGING_NOTE}`,
   policy: authenticated({ allowPendingMfa: true }),
   request: {
@@ -91,12 +94,14 @@ const confirmEnrolmentRoute = defineRoute({
   },
   responses: {
     200: { content: { 'application/json': { schema: MfaConfirmResponse } }, description: 'Enrolled' },
-    400: errorResponse('Invalid request'),
+    400: errorResponse('Invalid request, or no password in a complete session (`password_required`)'),
     401: errorResponse('Not signed in, or a second factor is required first'),
-    403: errorResponse('CSRF token missing or wrong, or the code is wrong (`invalid_code`)'),
+    403: errorResponse(
+      'CSRF token missing or wrong, the password is wrong (`invalid_password`) or the code is wrong (`invalid_code`)',
+    ),
     404: errorResponse('No such unfinished enrolment'),
     409: errorResponse('Already finished (`enrolment_finished`)'),
-    429: errorResponse('Too many wrong codes; see Retry-After'),
+    429: errorResponse('Too many wrong passwords or codes; wait Retry-After seconds'),
   },
 })
 
@@ -106,7 +111,8 @@ const removeFactorRoute = defineRoute({
   tags: ['me'],
   summary: 'Remove a second factor',
   description:
-    'The body proves it is the owner: `{ "password": "..." }` or `{ "code": "123456" }`. The last factor of an account ' +
+    'The body proves it is the owner: `{ "password": "..." }`, the current password (a code from the app is not accepted). ' +
+    'The owner gets a notice by e-mail before the factor is removed. The last factor of an account ' +
     `whose role requires one cannot be removed (409). Removing the last factor deletes the recovery codes. ${STATE_CHANGING_NOTE}`,
   policy: requireCapability('read'),
   request: {
@@ -117,10 +123,10 @@ const removeFactorRoute = defineRoute({
     204: { description: 'Removed' },
     400: errorResponse('Invalid request'),
     401: errorResponse('Not signed in'),
-    403: errorResponse('CSRF token missing or wrong, or the password or code is wrong'),
+    403: errorResponse('CSRF token missing or wrong, or the password is wrong (`invalid_password`)'),
     404: errorResponse('The account has no such factor'),
     409: errorResponse('The last factor of an account whose role requires one (`mfa_required_by_role`)'),
-    429: errorResponse('Too many wrong answers; see Retry-After'),
+    429: errorResponse('Too many wrong passwords; wait Retry-After seconds'),
   },
 })
 
@@ -129,7 +135,9 @@ const regenerateRoute = defineRoute({
   path: '/me/mfa/recovery-codes',
   tags: ['me'],
   summary: 'Make new recovery codes',
-  description: `Replaces all the recovery codes with ten new ones, returned once. The body proves it is the owner, as for removing a factor. ${STATE_CHANGING_NOTE}`,
+  description:
+    'Replaces all the recovery codes with ten new ones, returned once. The body proves it is the owner, as for removing a ' +
+    `factor: \`{ "password": "..." }\`. The owner gets a notice by e-mail before the codes change. ${STATE_CHANGING_NOTE}`,
   policy: requireCapability('read'),
   request: { body: { required: true, content: { 'application/json': { schema: ReauthRequest } } } },
   responses: {
@@ -139,9 +147,9 @@ const regenerateRoute = defineRoute({
     },
     400: errorResponse('Invalid request'),
     401: errorResponse('Not signed in'),
-    403: errorResponse('CSRF token missing or wrong, or the password or code is wrong'),
+    403: errorResponse('CSRF token missing or wrong, or the password is wrong (`invalid_password`)'),
     409: errorResponse('The account has no second factor (`no_factor`)'),
-    429: errorResponse('Too many wrong answers; see Retry-After'),
+    429: errorResponse('Too many wrong passwords; wait Retry-After seconds'),
   },
 })
 
@@ -150,7 +158,7 @@ const changePasswordRoute = defineRoute({
   path: '/me/password',
   tags: ['me'],
   summary: 'Change the password',
-  description: `Needs the current password. Signs the account out of its other sessions and voids its pending links. ${STATE_CHANGING_NOTE}`,
+  description: `Needs the current password. The owner gets a notice by e-mail before the change. Signs the account out of its other sessions and voids its pending links. ${STATE_CHANGING_NOTE}`,
   policy: requireCapability('read'),
   request: { body: { required: true, content: { 'application/json': { schema: ChangePasswordRequest } } } },
   responses: {
@@ -220,8 +228,8 @@ export function createSecurityApp(services: Services) {
     .openapi(confirmEnrolmentRoute, async (c) => {
       const auth = await requireSession(c)
       const { id } = c.req.valid('param')
-      const { code } = c.req.valid('json')
-      const done = await services.mfa.confirmEnrolment(auth, id, code, context(c, c.get('requestId')))
+      const { code, password } = c.req.valid('json')
+      const done = await services.mfa.confirmEnrolment(auth, id, code, password, context(c, c.get('requestId')))
       if (done.issued !== undefined) {
         setSessionCookie(c, done.issued.token, done.issued.cookieMaxAgeSeconds)
       }
@@ -233,14 +241,14 @@ export function createSecurityApp(services: Services) {
     .openapi(removeFactorRoute, async (c) => {
       const auth = await requireSession(c)
       const { id } = c.req.valid('param')
-      await services.mfa.remove(auth, id, c.req.valid('json'), context(c, c.get('requestId')))
+      await services.mfa.remove(auth, id, c.req.valid('json').password, context(c, c.get('requestId')))
       return c.body(null, 204)
     })
     .openapi(regenerateRoute, async (c) => {
       const auth = await requireSession(c)
       const result = await services.mfa.regenerateRecoveryCodes(
         auth,
-        c.req.valid('json'),
+        c.req.valid('json').password,
         context(c, c.get('requestId')),
       )
       return c.json(result, 200)

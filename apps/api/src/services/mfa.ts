@@ -8,6 +8,10 @@
 //   enrolment       -> POST /me/mfa/totp, then POST /me/mfa/totp/{id}/confirm -> complete session, new token
 // A session in either state may do nothing else but log out (the policy guard answers 401 `mfa_required`). A session in
 // `verification` may not enrol: otherwise a stolen password would be enough to add a factor of the thief's own.
+//
+// Re-authentication (Tor, 2026-10-22): in a complete session (`ok`) adding a factor, removing one and making new recovery codes
+// all need the current password, and each sends the owner a notice before the change. The `enrolment` state is the one place
+// where the password is not asked again: it was given at the login a moment ago, and the session can do nothing else.
 import type { Database } from '@toascribe/db'
 import { CoreSettings } from '@toascribe/shared'
 import type {
@@ -18,6 +22,7 @@ import type {
   MfaListResponse,
   MfaVerifyRequest,
   RecoveryCodesResponse,
+  SecurityNoticeAction,
 } from '@toascribe/shared'
 import type { Logger } from 'pino'
 
@@ -46,11 +51,11 @@ import {
 import type { TotpFactor } from '../repositories/mfa.ts'
 import { readSettings } from '../repositories/settings.ts'
 import { InvalidProofError } from './reauth.ts'
-import type { Proof, Reauthenticator } from './reauth.ts'
+import type { Reauthenticator } from './reauth.ts'
 import type { RateLimiter } from './rate-limit.ts'
 import type { IssuedToken, SessionService } from './sessions.ts'
-import { assertNotLocked } from './support.ts'
-import type { Auditor, RequestContext } from './support.ts'
+import { assertNotDelayed } from './support.ts'
+import type { Auditor, RequestContext, SafeMail } from './support.ts'
 import { mfaSecretAad } from './totp.ts'
 import type { TotpChecker } from './totp.ts'
 
@@ -77,10 +82,12 @@ export interface MfaService {
     auth: SessionAuth,
     credentialId: string,
     code: string,
+    /** The account's current password; required in a complete session, ignored in the `enrolment` state. */
+    password: string | undefined,
     ctx: RequestContext,
   ) => Promise<ConfirmedEnrolment>
-  remove: (auth: SessionAuth, credentialId: string, proof: Proof, ctx: RequestContext) => Promise<void>
-  regenerateRecoveryCodes: (auth: SessionAuth, proof: Proof, ctx: RequestContext) => Promise<RecoveryCodesResponse>
+  remove: (auth: SessionAuth, credentialId: string, password: string, ctx: RequestContext) => Promise<void>
+  regenerateRecoveryCodes: (auth: SessionAuth, password: string, ctx: RequestContext) => Promise<RecoveryCodesResponse>
   /** The second step of a login. */
   verify: (auth: SessionAuth, request: MfaVerifyRequest, ctx: RequestContext) => Promise<VerifiedLogin>
 }
@@ -118,13 +125,24 @@ export function createMfaService(options: {
   readonly totp: TotpChecker
   readonly reauth: Reauthenticator
   readonly audit: Auditor
+  /** For the notice to the owner before a factor or the recovery codes change. */
+  readonly mail: SafeMail
   readonly onInvalidSetting?: (key: string) => void
 }): MfaService {
-  const { db, clock, keyRing, publicOrigin, sessions, limiter, totp, reauth, audit, onInvalidSetting } = options
+  const { db, clock, keyRing, publicOrigin, sessions, limiter, totp, reauth, audit, mail, onInvalidSetting } = options
 
   async function requiredByRole(auth: SessionAuth): Promise<boolean> {
     const settings = await readSettings(db, MfaSettings, onInvalidSetting)
     return auth.roles.some((slug) => settings.mfa_required_roles.includes(slug))
+  }
+
+  /** The notice to the account's own address, queued just before the change it tells about is written. */
+  function notify(auth: SessionAuth, action: SecurityNoticeAction): Promise<void> {
+    return mail({
+      template: 'security_notice',
+      to: auth.account.email,
+      data: { username: auth.account.username, action },
+    })
   }
 
   /** A fresh set of codes, hashed into the table in the caller's transaction. Returns them as printed. */
@@ -181,10 +199,17 @@ export function createMfaService(options: {
       return { id: credentialId, secret, uri, qrSvg: qrSvg(uri) }
     },
 
-    async confirmEnrolment(auth, credentialId, code, ctx) {
+    async confirmEnrolment(auth, credentialId, code, password, ctx) {
       assertMayManageFactors(auth)
+      if (auth.mfa === 'ok') {
+        // A complete session: adding a factor of one's own is the way to lock the owner out, so the password is asked again.
+        if (password === undefined) {
+          throw new AppError(400, 'password_required', 'Enter your password to add an authenticator app')
+        }
+        await reauth.password(auth, password, ctx)
+      }
       const ticket = await limiter.begin('mfa', { ip: ctx.ip, accountId: auth.account.id })
-      assertNotLocked(ticket.status, clock())
+      assertNotDelayed(ticket.status, clock())
 
       const credential = await findUnconfirmedCredential(db, auth.account.id, credentialId)
       if (credential === undefined) {
@@ -210,6 +235,9 @@ export function createMfaService(options: {
       }
 
       return inTransaction(db, async (tx) => {
+        // The owner is told before the factor is added (in the `enrolment` state too: the password was just given, but a notice
+        // costs nothing).
+        await notify(auth, 'mfa_added')
         // The step is recorded first, so the same code cannot also be used to log in during the same 30 seconds.
         const recorded = await recordTotpStep(tx, credential.id, step, now)
         const confirmed = recorded && (await confirmCredential(tx, credential.id, now))
@@ -246,8 +274,8 @@ export function createMfaService(options: {
       })
     },
 
-    async remove(auth, credentialId, proof, ctx) {
-      await reauth.either(auth, proof, ctx)
+    async remove(auth, credentialId, password, ctx) {
+      await reauth.password(auth, password, ctx)
       await inTransaction(db, async (tx) => {
         const factor = await findConfirmedFactor(tx, auth.account.id, credentialId)
         if (factor === undefined) {
@@ -261,6 +289,7 @@ export function createMfaService(options: {
             'A role of this account requires a second factor, so the last one cannot be removed',
           )
         }
+        await notify(auth, 'mfa_removed')
         await deleteConfirmedFactor(tx, auth.account.id, credentialId)
         if (count <= 1) {
           // Recovery codes only mean something with a factor behind them.
@@ -276,12 +305,13 @@ export function createMfaService(options: {
       })
     },
 
-    async regenerateRecoveryCodes(auth, proof, ctx) {
-      await reauth.either(auth, proof, ctx)
+    async regenerateRecoveryCodes(auth, password, ctx) {
+      await reauth.password(auth, password, ctx)
       return inTransaction(db, async (tx) => {
         if ((await countConfirmedFactors(tx, auth.account.id)) === 0) {
           throw new AppError(409, 'no_factor', 'Recovery codes need a second factor first')
         }
+        await notify(auth, 'recovery_codes_regenerated')
         const recoveryCodes = await issueRecoveryCodes(tx, auth.account.id)
         await audit(tx, ctx, {
           actor: auth.account,
@@ -298,9 +328,9 @@ export function createMfaService(options: {
         throw new AppError(409, 'mfa_not_pending', 'This session has no second factor to pass')
       }
       // Counted before it is judged, like a login (see RateLimiter.begin). The person has the password already, so a
-      // lockout says so: there is nothing to keep secret.
+      // wait says so: there is nothing to keep secret.
       const ticket = await limiter.begin('mfa', { ip: ctx.ip, accountId: auth.account.id })
-      assertNotLocked(ticket.status, clock())
+      assertNotDelayed(ticket.status, clock())
 
       const result = await inTransaction(db, async (tx) => {
         let failure: string | undefined

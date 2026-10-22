@@ -82,6 +82,25 @@ describe('the auth API layer', () => {
     expect(api).toHaveBeenCalledWith('/v1/me/mfa/totp/a%2Fb/confirm', { method: 'POST', body: { code: '123456' } })
   })
 
+  it('sends the password with the first code in a complete session, where the API requires it', async () => {
+    const api = vi.fn().mockResolvedValue({
+      factor: {
+        id: '01a15f9a-26a2-73d3-8aad-c6b671836b33',
+        type: 'totp',
+        name: null,
+        createdAt: EXPIRES,
+        lastUsedAt: null,
+      },
+      recoveryCodes: null,
+      loginCompleted: false,
+    })
+    await createAuthApi(api).enrolConfirm('a/b', '123456', 'correct horse battery')
+    expect(api).toHaveBeenCalledWith('/v1/me/mfa/totp/a%2Fb/confirm', {
+      method: 'POST',
+      body: { code: '123456', password: 'correct horse battery' },
+    })
+  })
+
   it('refuses an answer that is not what the contract says, instead of passing it on', async () => {
     const api = vi.fn().mockResolvedValue({ status: 'something else' })
     await expect(createAuthApi(api).session()).rejects.toThrow()

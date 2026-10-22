@@ -5,6 +5,7 @@ const emit = defineEmits<{ loggedOut: [] }>()
 
 const { t } = useI18n()
 const auth = useAuth()
+const siteName = useSiteName()
 
 const submitting = ref(false)
 const error = ref<string>()
@@ -31,7 +32,7 @@ async function logout() {
 
 <template>
   <div class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ $t('auth.logout.question', { site: $t('brand.name') }) }}</p>
+    <p class="text-base text-default">{{ $t('auth.logout.question', { site: siteName }) }}</p>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
     <div class="flex flex-col gap-2">
       <UButton size="xl" block class="min-h-11" :loading="submitting" @click="logout">{{

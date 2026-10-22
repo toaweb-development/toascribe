@@ -20,7 +20,6 @@
     "@toascribe/nuxt-base": "workspace:*",
     "@toascribe/shared": "workspace:*",
     "nuxt": "catalog:",
-    "nuxt-security": "catalog:",
     "tailwindcss": "catalog:",
     "vue": "catalog:"
   },

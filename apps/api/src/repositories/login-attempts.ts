@@ -1,7 +1,7 @@
 // The only place that reads and writes `login_attempt` (typescript §8). Append-only; the worker deletes old rows.
 import { schema } from '@toascribe/db'
 import type { LoginAttemptAction } from '@toascribe/shared'
-import { and, desc, eq, gt, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, or, sql } from 'drizzle-orm'
 
 import type { Executor } from './executor.ts'
 
@@ -19,6 +19,8 @@ export async function insertLoginAttempt(
     readonly action: LoginAttemptAction
     readonly ip: string
     readonly accountId: string | null
+    /** The keyed hash of the login name or address that was typed; null where none was (a code, a re-authentication, a reset marker). */
+    readonly loginHash: string | null
     readonly succeeded: boolean
     readonly at: Date
   },
@@ -29,6 +31,7 @@ export async function insertLoginAttempt(
       action: input.action,
       ip: input.ip,
       accountId: input.accountId,
+      loginHash: input.loginHash,
       succeeded: input.succeeded,
       createdAt: input.at,
     })
@@ -53,7 +56,7 @@ export async function lockSubject(db: Executor, name: string): Promise<void> {
   await db.execute(sql`select pg_advisory_xact_lock(hashtextextended(${name}, 0))`)
 }
 
-/** At most this many rows are read for one subject: the newest ones. Attempts made while locked are not recorded, so it is far more than a lockout needs. */
+/** At most this many rows are read for one subject: the newest ones. Attempts that had to wait are not recorded, so it is far more than a delay needs. */
 const MAX_ROWS = 2000
 
 /** The attempts one IP address made since `since`, oldest first (the newest MAX_ROWS of them). */
@@ -72,19 +75,25 @@ export async function listAttemptsByIp(
   return rows.reverse()
 }
 
-/** The attempts made on one account since `since`, oldest first (the newest MAX_ROWS of them). */
-export async function listAttemptsByAccount(
+/**
+ * The attempts made on one account, or with one login name, since `since`, oldest first (the newest MAX_ROWS of them). Either
+ * may be missing, not both. The account side finds the attempts whatever form of its name was typed; the name side finds those
+ * of a name that has no account (yet), and a succeeded row of the account ends the streak of both.
+ */
+export async function listAttemptsByName(
   db: Executor,
   action: LoginAttemptAction,
-  accountId: string,
+  subject: { readonly accountId: string | null; readonly loginHash: string | null },
   since: Date,
 ): Promise<AttemptRecord[]> {
+  const sides = [
+    subject.accountId === null ? undefined : eq(loginAttempt.accountId, subject.accountId),
+    subject.loginHash === null ? undefined : eq(loginAttempt.loginHash, subject.loginHash),
+  ]
   const rows = await db
     .select({ at: loginAttempt.createdAt, succeeded: loginAttempt.succeeded })
     .from(loginAttempt)
-    .where(
-      and(eq(loginAttempt.action, action), eq(loginAttempt.accountId, accountId), gt(loginAttempt.createdAt, since)),
-    )
+    .where(and(eq(loginAttempt.action, action), or(...sides), gt(loginAttempt.createdAt, since)))
     .orderBy(desc(loginAttempt.createdAt), desc(loginAttempt.id))
     .limit(MAX_ROWS)
   return rows.reverse()

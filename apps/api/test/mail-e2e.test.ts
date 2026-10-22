@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createMailQueue } from '../src/adapters/mail-queue.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
+import { enrolTotp } from './flows.ts'
 import { TEST_ENCRYPTION_KEY_HEX, TEST_ORIGIN, memoryLogger, testKeyRing } from './helpers.ts'
 import { TEST_PASSWORD, startAuthApp } from './harness.ts'
 import type { AuthTestApp } from './harness.ts'
@@ -243,6 +244,33 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
       } finally {
         await env.query(`update setting set value = 'false'::jsonb where key = 'users_can_register'`)
       }
+    })
+
+    it('security notices: adding an authenticator app and changing the password each reach the owner in Mailpit, in bokmål', async () => {
+      const added = await env.createAccount({ username: 'e2e-notice-mfa', email: uniqueAddress('e2e-notice-mfa') })
+      const adder = env.client({ ip: '198.51.100.47' })
+      expect((await adder.login(added.username, TEST_PASSWORD)).status).toBe(200)
+      expect((await enrolTotp(env, adder)).response.status).toBe(200)
+      const mfaMail = await waitForMessage(config(), added.email)
+      expect(mfaMail.Subject).toBe('[cms.example.test] Sikkerhetsendring på kontoen din')
+      expect(mfaMail.Text).toContain('Hei e2e-notice-mfa,')
+      expect(mfaMail.Text).toContain('Det blir lagt til en ny autentiseringsapp (tofaktor) på kontoen din.')
+      expect(mfaMail.Text).toContain('bør du bytte passord med en gang')
+      expect(mfaMail.Text).not.toContain('mfa_added')
+      expect(mfaMail.Text).not.toContain('#token=')
+
+      const changed = await env.createAccount({ username: 'e2e-notice-pw', email: uniqueAddress('e2e-notice-pw') })
+      const changer = env.client({ ip: '198.51.100.48' })
+      expect((await changer.login(changed.username, TEST_PASSWORD)).status).toBe(200)
+      const res = await changer.patch('/api/v1/me/password', {
+        currentPassword: TEST_PASSWORD,
+        newPassword: 'a changed passphrase 7',
+      })
+      expect(res.status).toBe(204)
+      const pwMail = await waitForMessage(config(), changed.email)
+      expect(pwMail.Subject).toBe('[cms.example.test] Sikkerhetsendring på kontoen din')
+      expect(pwMail.Text).toContain('Passordet på kontoen din blir endret.')
+      expect(pwMail.HTML).toContain('<html lang="nb">')
     })
 
     it('e-mail change: the link goes to the new address, a notice to the old one, and the link switches the address', async () => {

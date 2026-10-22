@@ -21,7 +21,7 @@ import { readSettings } from '../repositories/settings.ts'
 import { deleteOtherSessions } from '../repositories/sessions.ts'
 import { InvalidTokenError, WeakPasswordError, isTooObvious } from './account-links.ts'
 import type { Reauthenticator } from './reauth.ts'
-import { assertNotLocked } from './support.ts'
+import { assertNotDelayed } from './support.ts'
 import type { Auditor, RequestContext, SafeMail } from './support.ts'
 import type { RateLimiter } from './rate-limit.ts'
 
@@ -57,6 +57,12 @@ export function createOwnAccountService(options: {
         throw new WeakPasswordError()
       }
       const passwordHash = await hashPassword(next)
+      // The owner is told before the new password is written, so a notice does not depend on the change having worked (K-013).
+      await mail({
+        template: 'security_notice',
+        to: auth.account.email,
+        data: { username: auth.account.username, action: 'password_changed' },
+      })
       await inTransaction(db, async (tx) => {
         const now = clock()
         await setPassword(tx, auth.account.id, passwordHash, now)
@@ -143,7 +149,7 @@ export function createOwnAccountService(options: {
       // Whoever holds the link still has to be signed in as the account: a link read over someone's shoulder or found in a
       // forwarded mail does nothing alone. Counted like any guess at a token.
       const ticket = await limiter.begin('password_lost', { ip: ctx.ip })
-      assertNotLocked(ticket.status, clock())
+      assertNotDelayed(ticket.status, clock())
       try {
         return await inTransaction(db, async (tx) => {
           const now = clock()

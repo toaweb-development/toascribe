@@ -70,7 +70,7 @@ catalog:
   '@iconify-json/lucide': ^1.2.147 # Nuxt UI's default icon set, served from the build instead of api.iconify.design
   tailwindcss: ^4.3.3 # Nuxt UI's peer; the module registers @tailwindcss/vite itself
   ofetch: ^1.5.1 # the fetch that Nuxt's $fetch is built on; nuxt-base's tests run the API client on the real one, not a stand-in
-  nuxt-security: ^2.6.0 # the admin's nonce-based CSP and security headers (K-314): a per-request nonce on Nuxt's inline scripts is what a static header cannot give
+  nuxt-security: ^2.6.0 # the nonce-based CSP of the site and the admin (nuxt-base) and security headers (K-314): a per-request nonce on Nuxt's inline scripts is what a static header cannot give
 
 # Dependency build scripts are denied unless listed (DEPENDENCIES_2026 / supply-chain hygiene).
 # lefthook's postinstall runs `lefthook install`, which writes git hooks: that is a per-clone,

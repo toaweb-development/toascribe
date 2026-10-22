@@ -36,7 +36,7 @@ const loginRoute = defineRoute({
   path: '/auth/login',
   tags: ['auth'],
   summary: 'Sign in with a username or e-mail address and a password',
-  description: `Sets the session cookie. A wrong password, an unknown account and a locked account all answer the same 401. ${CSRF_NOTE}`,
+  description: `Sets the session cookie. A wrong password, an unknown account and an account that is not active all answer the same 401. After a few failures the next try has to wait: 429 with Retry-After, the same for a name that exists and one that does not; the wait doubles with every further failure and ends by itself. ${CSRF_NOTE}`,
   policy: publicAccess(),
   request: { body: { required: true, content: { 'application/json': { schema: LoginRequest } } } },
   responses: {
@@ -46,7 +46,7 @@ const loginRoute = defineRoute({
     },
     400: errorResponse('Invalid request, or a cross-site request'),
     401: errorResponse('Invalid username or password'),
-    429: errorResponse('Too many attempts from this address; see Retry-After'),
+    429: errorResponse('Too many failed attempts from this address or for this name: wait Retry-After seconds'),
   },
 })
 
@@ -82,7 +82,8 @@ const optionsRoute = defineRoute({
   path: '/auth/options',
   tags: ['auth'],
   summary: 'What the login screens need to know',
-  description: 'Public. For now whether the register link is shown (the setting «Anyone can register»).',
+  description:
+    'Public. Whether the register link is shown (the setting «Anyone can register») and the name of the site (the setting `blogname`, an empty string when it is not set).',
   policy: publicAccess(),
   responses: {
     200: { content: { 'application/json': { schema: AuthOptionsResponse } }, description: 'The options' },
@@ -237,7 +238,7 @@ export function createAuthApp(services: Services) {
       }
       return c.json({ status: 'mfa_required' as const, mfa: auth.mfa, csrfToken, expiresAt }, 200)
     })
-    .openapi(optionsRoute, async (c) => c.json({ registrationOpen: await services.flows.registrationOpen() }, 200))
+    .openapi(optionsRoute, async (c) => c.json(await services.flows.options(), 200))
     .openapi(verifyMfaRoute, async (c) => {
       const auth = await requireSession(c)
       const verified = await services.mfa.verify(auth, c.req.valid('json'), {

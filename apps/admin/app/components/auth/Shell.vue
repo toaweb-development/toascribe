@@ -8,6 +8,7 @@ const props = defineProps<{
 // A new step (the login turns into «Bekreft innloggingen», a link into «Nytt passord») replaces the content under the person's
 // hands, and the focus they were on is gone. It moves to the new h1, so a screen reader reads the step and the next Tab
 // reaches its first control. Not on arrival: the browser starts at the top of a new page by itself.
+const siteName = useSiteName()
 const title = useTemplateRef<HTMLElement>('title')
 watch(
   () => props.heading,
@@ -22,7 +23,7 @@ watch(
   <main class="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-8">
     <p class="text-center text-3xl font-bold text-highlighted print:hidden">
       <NuxtLink to="/" external class="rounded-md focus-visible:outline-2 focus-visible:outline-primary">{{
-        $t('brand.name')
+        siteName
       }}</NuxtLink>
     </p>
 
@@ -45,7 +46,7 @@ watch(
         external
         class="inline-flex min-h-11 items-center text-sm text-toned underline underline-offset-4 hover:text-highlighted"
       >
-        {{ $t('auth.shell.toSite', { site: $t('brand.name') }) }}
+        {{ $t('auth.shell.toSite', { site: siteName }) }}
       </NuxtLink>
     </p>
   </main>

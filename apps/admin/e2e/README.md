@@ -2,8 +2,9 @@
 
 Playwright tests that drive the real stack in a browser: the proxy, the admin, the API, the worker and the database, with
 Mailpit catching the mail. They cover the sign-in screens (M0.3): login and logout, lost password through a mailed link, the
-second factor (set-up on the screen, a code from the app, a recovery code), registration, e-mail confirmation, the headers
-and the CSP, and an axe-core check (WCAG 2.2 AA rule sets) on every screen. Each test runs at 375 px and at 1280 px.
+second factor (set-up on the screen, a code from the app, a recovery code), registration, e-mail confirmation, the site name
+from the settings, the wait after too many wrong tries, the headers and the CSP of the admin and of the public site (`/`), and
+an axe-core check (WCAG 2.2 AA rule sets) on every screen. Each test runs at 375 px and at 1280 px.
 
 They are not part of `pnpm check`: they need Docker and a running stack, and they take a few minutes.
 
@@ -39,8 +40,8 @@ compose stack with the `mailpit` profile on `http://localhost:18080` (Mailpit on
   `http://localhost` only. Firefox does too, but the browsers are not installed by default, so the tests run in Chromium. WebKit does
   not allow it on plain http at all.
 - **The tests share the stack,** so they run one after another. They make their own accounts with `toa user create` (through
-  `docker compose exec api`), change two settings (`users_can_register`, `mfa_required_roles`; each is put back), and clear the
-  failed-login counts between tests so one test's wrong passwords never lock out the next.
+  `docker compose exec api`), change three settings (`users_can_register`, `mfa_required_roles`, `blogname`; each is put back), and clear the
+  failed-login counts between tests so one test's wrong passwords never make the next test wait.
 - **The console must stay empty.** A test fails when the page writes an error or a warning, or when the browser reports a CSP
   violation. A test that makes the API refuse something on purpose (a wrong password is a 401, which a browser logs) says so with
   `allowFailedRequests()`.

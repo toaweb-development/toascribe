@@ -26,6 +26,12 @@ interface TokenRow {
   created_at: Date
 }
 
+/** An ApiError body without the id that differs from one request to the next, or any other JSON as it is. */
+function withoutRequestId(body: unknown): unknown {
+  const parsed = ApiError.safeParse(body)
+  return parsed.success ? { code: parsed.data.error.code, message: parsed.data.error.message } : body
+}
+
 describe.skipIf(TEST_DATABASE_URL === undefined)('lost password and set password (needs TEST_DATABASE_URL)', () => {
   let env: AuthTestApp
   let ipCounter = 0
@@ -204,15 +210,26 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('lost password and set password
       expect(mailsTo(env, real.email)).toHaveLength(0)
     })
 
-    it('limits an account: after five requests nothing more is mailed, and the answer stays the same', async () => {
+    it('makes the sixth request for one name wait, 429 with Retry-After, the same for a name nobody has; nothing more is mailed', async () => {
       const account = await env.createAccount({ username: unique('flooded') })
-      for (let n = 0; n < 8; n += 1) {
-        // Different addresses, so only the account limit can act.
-        const res = await lost(account.username, ip())
-        expect(res.status).toBe(202)
-        expect(await res.text()).toBe('{"status":"accepted"}')
+      const ghost = unique('flooded-ghost')
+      const answers: string[] = []
+      for (let n = 0; n < 7; n += 1) {
+        // Different addresses, so only the limit of the name can act.
+        const real = await lost(account.username, ip())
+        const none = await lost(ghost, ip())
+        expect(real.status).toBe(none.status)
+        expect(real.headers.get('retry-after')).toBe(none.headers.get('retry-after'))
+        const without = async (res: Response) => JSON.stringify(withoutRequestId(await res.json()))
+        expect(await without(real)).toBe(await without(none))
+        answers.push(`${String(real.status)} ${real.headers.get('retry-after') ?? '-'}`)
       }
+      expect(answers).toEqual(['202 -', '202 -', '202 -', '202 -', '202 -', '429 30', '429 30'])
       expect(mailsTo(env, account.email)).toHaveLength(5)
+      // Nothing is locked: after the wait the next request is answered.
+      env.clock.advance(31_000)
+      expect((await lost(account.username, ip())).status).toBe(202)
+      expect(mailsTo(env, account.email)).toHaveLength(6)
     })
 
     it('requires a JSON body from our own origin', async () => {
@@ -474,7 +491,44 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('lost password and set password
     it('does not mail an administrator about their own reset', async () => {
       const admin = await env.createAccount({ username: unique('self-boss'), role: 'administrator' })
       expect((await reset(await linkFor(admin))).status).toBe(204)
-      expect(mailsTo(env, admin.email).map((mail) => mail.template)).toEqual(['password_reset'])
+      expect(mailsTo(env, admin.email).map((mail) => mail.template)).toEqual(['password_reset', 'security_notice'])
+    })
+
+    it('tells the owner after a reset with a link, and not after the first password of a new account', async () => {
+      const account = await env.createAccount({ username: unique('told') })
+      expect((await reset(await linkFor(account))).status).toBe(204)
+      expect(
+        mailsTo(env, account.email)
+          .filter((mail) => mail.template === 'security_notice')
+          .map((mail) => mail.data),
+      ).toEqual([{ username: account.username, action: 'password_reset' }])
+
+      const pending = await env.createAccount({ username: unique('welcome'), status: 'pending', passwordHash: null })
+      expect((await lost(pending.username)).status).toBe(202)
+      const token = tokenOf(env, 'set_password', pending.email)
+      expect(
+        (await env.client({ ip: ip() }).post('/api/v1/auth/password/set', { token, password: NEW_PASSWORD })).status,
+      ).toBe(204)
+      expect(mailsTo(env, pending.email).filter((mail) => mail.template === 'security_notice')).toHaveLength(0)
+    })
+
+    it('ends the wait after failed logins: a finished reset clears the counter of the account', async () => {
+      const account = await env.createAccount({ username: unique('cleared') })
+      const attacker = env.client({ ip: ip() })
+      for (let n = 0; n < 5; n += 1) {
+        expect((await attacker.login(account.username, `guess ${String(n)}`)).status).toBe(401)
+      }
+      expect((await env.client({ ip: ip() }).login(account.username, TEST_PASSWORD)).status).toBe(429)
+
+      expect((await reset(await linkFor(account))).status).toBe(204)
+      // At once, with no waiting: the owner is back in.
+      const owner = env.client({ ip: ip() })
+      expect((await owner.login(account.username, NEW_PASSWORD)).status).toBe(200)
+      // And the five free tries start over.
+      for (let n = 0; n < 5; n += 1) {
+        expect((await attacker.login(account.username, `again ${String(n)}`)).status).toBe(401)
+      }
+      expect((await attacker.login(account.username, 'one more')).status).toBe(429)
     })
 
     it('counts every try against the address: the 21st is 429', async () => {

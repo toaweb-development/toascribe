@@ -1,5 +1,6 @@
 // Registration (K-005): only when the setting is on, the default role and never an administrator, a pending account until the
 // link is used, and an answer that does not depend on whether the username or the address is taken (K-004).
+import { AuthOptionsResponse } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
@@ -69,11 +70,24 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
     it('says so on GET /auth/options, which anyone may read', async () => {
       const res = await env.client({ ip: ip() }).get('/api/v1/auth/options')
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ registrationOpen: false })
+      expect(await res.json()).toEqual({ registrationOpen: false, siteName: '' })
       await withRegistration(async () => {
         const open = await env.client({ ip: ip() }).get('/api/v1/auth/options')
-        expect(await open.json()).toEqual({ registrationOpen: true })
+        expect(await open.json()).toEqual({ registrationOpen: true, siteName: '' })
       })
+    })
+
+    it('gives the site name from the settings (blogname), trimmed, and an empty string when it is not set', async () => {
+      await setSetting(env, 'blogname', '  Bloggen min  ')
+      try {
+        const res = await env.client({ ip: ip() }).get('/api/v1/auth/options')
+        expect(AuthOptionsResponse.parse(await res.json()).siteName).toBe('Bloggen min')
+        await setSetting(env, 'blogname', '')
+        const empty = await env.client({ ip: ip() }).get('/api/v1/auth/options')
+        expect(AuthOptionsResponse.parse(await empty.json()).siteName).toBe('')
+      } finally {
+        await setSetting(env, 'blogname', '')
+      }
     })
   })
 
@@ -362,15 +376,22 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
       })
     })
 
-    it('limits mail to one address: after five requests no more «already have an account» goes out', async () => {
+    it('limits mail to one address: the sixth request has to wait (429), for an address with an account and one without', async () => {
       await withRegistration(async () => {
         const owner = await env.createAccount({
           username: unique('spammed'),
           email: `${unique('spammed')}@example.test`,
         })
-        for (let n = 0; n < 8; n += 1) {
-          expect((await register(unique('spammer'), owner.email)).status).toBe(202)
+        const nobody = `${unique('nobody')}@example.test`
+        const statuses: string[] = []
+        for (let n = 0; n < 7; n += 1) {
+          const known = await register(unique('spammer'), owner.email)
+          const unknown = await register(unique('spammer'), nobody)
+          expect(known.status).toBe(unknown.status)
+          expect(known.headers.get('retry-after')).toBe(unknown.headers.get('retry-after'))
+          statuses.push(`${String(known.status)} ${known.headers.get('retry-after') ?? '-'}`)
         }
+        expect(statuses).toEqual(['202 -', '202 -', '202 -', '202 -', '202 -', '429 30', '429 30'])
         expect(mailsTo(env, owner.email)).toHaveLength(5)
       })
     })

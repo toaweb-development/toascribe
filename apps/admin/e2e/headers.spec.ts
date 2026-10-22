@@ -79,14 +79,15 @@ test('the other security headers, and a page that is never cached', async ({ req
   }
 })
 
-test('the built files are served with a long cache and the pages of the site are not touched', async ({ request }) => {
+test('the built files are served with a long cache and the site keeps its own policy', async ({ request }) => {
   const html = await (await request.get('/admin/login')).text()
   const asset = /\/admin\/_nuxt\/[A-Za-z0-9_-]+\.js/.exec(html)?.[0]
   expect(asset).toBeTruthy()
   const file = await request.get(asset ?? '')
   expect(file.headers()['cache-control']).toContain('immutable')
 
-  // The site app has no nonce CSP of this kind: the admin's policy is not in its pages.
+  // The site has a CSP of its own (site-headers.spec.ts): the admin's policy is not in its pages.
   const site = await request.get('/')
-  expect(site.headers()['content-security-policy']).toBeUndefined()
+  expect(site.headers()['content-security-policy']).toContain("frame-ancestors 'self'")
+  expect(site.headers()['cache-control']).not.toBe('no-store')
 })

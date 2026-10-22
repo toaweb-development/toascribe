@@ -31,6 +31,8 @@ export type AcceptedResponse = z.infer<typeof AcceptedResponse>
 export const AuthOptionsResponse = z.object({
   /** The setting «Anyone can register» (K-005): whether to show the register link. */
   registrationOpen: z.boolean(),
+  /** The setting `blogname`, for the login screens (K-001). An empty string when it is not set: the screen falls back to its own name. */
+  siteName: z.string(),
 })
 export type AuthOptionsResponse = z.infer<typeof AuthOptionsResponse>
 
@@ -119,8 +121,13 @@ export const MfaEnrolStartResponse = z.object({
 })
 export type MfaEnrolStartResponse = z.infer<typeof MfaEnrolStartResponse>
 
-/** POST /me/mfa/totp/{id}/confirm: the first code from the app. */
-export const MfaConfirmRequest = z.strictObject({ code: TotpCode })
+/**
+ * POST /me/mfa/totp/{id}/confirm: the first code from the app, and the account's current password. The password is
+ * required in a complete session (adding a factor is a change a stolen session must not be able to make) and is not asked
+ * for in a half-signed-in session in state `enrolment`, where the password was given at the login a moment ago. Without it
+ * in a complete session the answer is 400 `password_required`.
+ */
+export const MfaConfirmRequest = z.strictObject({ code: TotpCode, password: LoginPassword.optional() })
 export type MfaConfirmRequest = z.infer<typeof MfaConfirmRequest>
 
 /**
@@ -137,9 +144,9 @@ export type MfaConfirmResponse = z.infer<typeof MfaConfirmResponse>
 
 /**
  * Proof that it is still the owner at the keyboard, for removing a factor or making new recovery codes: the account's
- * password, or a fresh code from the app.
+ * current password. A code from the app is not accepted instead: someone who holds a session and a phone is not the owner.
  */
-export const ReauthRequest = z.union([z.strictObject({ password: LoginPassword }), z.strictObject({ code: TotpCode })])
+export const ReauthRequest = z.strictObject({ password: LoginPassword })
 export type ReauthRequest = z.infer<typeof ReauthRequest>
 
 /** 200 from POST /me/mfa/recovery-codes: ten new codes, shown once; the old ones no longer work. */

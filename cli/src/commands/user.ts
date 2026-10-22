@@ -1,5 +1,5 @@
-// `toa user create` and `toa user reset-password`: the operator's way to make an account or give one a new password before the
-// setup wizard (M0.4) and without the e-mail round trip. They run in the api container as the app role (DATABASE_URL), in
+// `toa user create`, `toa user reset-password` and `toa user reset-login-limit`: the operator's way to make an account, give
+// one a new password or end the wait after failed logins, before the setup wizard (M0.4) and without the e-mail round trip. They run in the api container as the app role (DATABASE_URL), in
 // production too: unlike `dev seed tom` nothing here is destructive. The result goes to stdout (a generated password, once),
 // the sentences to stderr and the log to stderr, so `toa user create … | …` carries nothing else than the password.
 import { parseArgs } from 'node:util'
@@ -13,6 +13,7 @@ import type { Logger } from 'pino'
 import { z } from 'zod'
 
 import {
+  clearLoginAttempts,
   deleteSessions,
   findRole,
   findTaken,
@@ -31,7 +32,7 @@ import { ConfigError, loadAppDatabaseConfig } from '../config.ts'
 import type { CommandOptions } from '../options.ts'
 import type { CliResult } from '../result.ts'
 import { readProcessStdin, StdinTooLongError } from '../stdin.ts'
-import { USER_CREATE_USAGE, USER_RESET_PASSWORD_USAGE } from '../usage.ts'
+import { USER_CREATE_USAGE, USER_RESET_LOGIN_LIMIT_USAGE, USER_RESET_PASSWORD_USAGE } from '../usage.ts'
 
 const CONTROL_CHARACTER = /\p{Cc}/u
 
@@ -390,6 +391,8 @@ export async function userResetPassword(args: readonly string[], options: Comman
         const sessions = await deleteSessions(tx, found.id)
         // A lost-password link sent before this is no longer a way in, as after a reset through the api.
         const links = await voidUnusedLinks(tx, found.id, now)
+        // The owner is back in: the wait after failed logins ends too, as after a reset through the api.
+        await clearLoginAttempts(tx, found.id, ['login', 'password_lost'], now)
         await insertCliAudit(
           tx,
           { accountId: found.id, action: 'password.reset', newValue: { sessionsEnded: sessions, linksVoided: links } },
@@ -414,5 +417,70 @@ export async function userResetPassword(args: readonly string[], options: Comman
       `Set a new password for "${outcome.username}" and ended ${String(outcome.sessions)} session(s).\n` +
       (outcome.status === 'active' ? '' : `The account is ${outcome.status}; that is unchanged.\n`) +
       (chosen.generated ? 'The password is printed once, below, and kept nowhere else.\n' : ''),
+  }
+}
+
+const RESET_LIMIT_FLAGS = { username: 'string', email: 'string' } as const
+
+/**
+ * `toa user reset-login-limit`: ends the wait the api puts on an account after failed logins (and failed codes, lost-password
+ * requests and registrations that named it). The administrator's way out for an account someone is guessing at: the wait is a
+ * delay, never a lock, but an owner who is made to wait does not have to. Writes an audit entry. The wait of an IP address is
+ * not touched: it ends by itself within the window.
+ */
+export async function userResetLoginLimit(args: readonly string[], options: CommandOptions = {}): Promise<CliResult> {
+  let selector: AccountSelector
+  try {
+    const flags = parseFlags(args, RESET_LIMIT_FLAGS)
+    const problems: string[] = []
+    if ((flags['username'] === undefined) === (flags['email'] === undefined)) {
+      problems.push('Give exactly one of --username and --email.')
+    }
+    const username =
+      flags['username'] === undefined ? undefined : checked('username', Username, flags['username'], problems)
+    const email = flags['email'] === undefined ? undefined : checked('email', Email, flags['email'], problems)
+    if (problems.length > 0) {
+      throw new UsageError(problems.join('\n'))
+    }
+    if (username !== undefined) {
+      selector = { username }
+    } else if (email !== undefined) {
+      selector = { email }
+    } else {
+      throw new UsageError('Give exactly one of --username and --email.')
+    }
+  } catch (err) {
+    if (err instanceof UsageError) {
+      return usageResult(err.message, USER_RESET_LOGIN_LIMIT_USAGE)
+    }
+    throw err
+  }
+
+  const outcome = await withDatabase(options, 'user reset-login-limit', async (db, logger) => {
+    const done = await db.transaction(async (tx): Promise<{ id: string; username: string } | ResetRefusal> => {
+      const found = await lockAccount(tx, selector)
+      if (found === undefined) {
+        return {
+          refused: `--${'username' in selector ? 'username' : 'email'}: no account has that ${'username' in selector ? 'username' : 'e-mail address'}.`,
+        }
+      }
+      const now = new Date()
+      await clearLoginAttempts(tx, found.id, ['login', 'mfa', 'password_lost', 'register'], now)
+      await insertCliAudit(tx, { accountId: found.id, action: 'login_limit.reset' }, now)
+      return { id: found.id, username: found.username }
+    })
+    if ('refused' in done) {
+      return refusal(done.refused)
+    }
+    logger.info({ accountId: done.id }, 'login limit reset')
+    return done
+  })
+  if (isCliResult(outcome)) {
+    return outcome
+  }
+  return {
+    code: 0,
+    stdout: '',
+    stderr: `Ended the wait after failed attempts for "${outcome.username}". Sessions and the password are unchanged.\n`,
   }
 }

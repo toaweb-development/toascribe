@@ -61,6 +61,27 @@ separate step: say so.
   (a test reads the sources). Nuxt UI and Tailwind tokens, no `<style>` blocks, no arbitrary colours, no hard-coded user-facing
   constants that an admin should control (`app-config`: settings first).
 
+## Public site: CSP and caching
+
+The site and the admin share one security setup in `packages/nuxt-base` (`nuxt-security`: a CSP with a nonce per response, no
+`unsafe-inline`, no `unsafe-eval`, HSTS from `X-Forwarded-Proto`). Each app adds only what differs: `img-src` (the site allows
+`https:`, themes show pictures from other hosts), `frame-ancestors` (the site `'self'`, for the live preview in the admin; the
+admin `'none'`), `X-Frame-Options`, and the cache rule. Do not repeat a shared directive in an app: layers concatenate arrays.
+
+- **A nonce and a page cache do not mix.** The nonce is in the HTML and in the header of one response. A shared cache that hands
+  the same page to many visitors hands them a nonce anyone can read, and a known nonce protects nothing. So rendered pages are
+  `Cache-Control: private, no-cache` on the site (`no-store` in the admin), set in each app's `server/plugins/security.ts`;
+  `/_nuxt/**` assets are not rendered and keep their long cache.
+- **When the site gets an SSR cache (phase 1), cache under the render, not the rendered page:** the data, blocks and API answers
+  (by tag, as PLAN says), and let each request render its shell with its own nonce. If a whole page must be cached, give that
+  hashes instead of a nonce (`nuxt-security` has `ssg.hashScripts` / `hashStyles` for prerendered pages; the inline scripts of a
+  build are the same for every visitor, so their hashes are fixed; check how it behaves on a cached route before relying on it)
+  and change the cache line of that route only. The site e2e
+  (`apps/admin/e2e/site-headers.spec.ts`) pins the nonce and the cache header, so a cache that breaks the pairing fails there.
+- A new inline script or style attribute needs its reason in `nuxt.config.ts`; a new third-party host needs its directive and
+  its reason there too. Report-Only first (`security` §7) was replaced by a browser check of the built output: every e2e test fails on
+  a CSP violation.
+
 ## Database
 
 - Two roles. `toascribe_owner` owns the schema and runs migrations through `MIGRATION_DATABASE_URL`; `toascribe_app`

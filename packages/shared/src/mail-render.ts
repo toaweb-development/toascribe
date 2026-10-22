@@ -100,15 +100,21 @@ function mergeStrings(base: TemplateStrings, over: Partial<TemplateStrings> | un
   return over === undefined ? base : { ...base, ...over }
 }
 
-/** The values a placeholder can take: the site, the lifetime of a link, and the data of the message except the token. */
-function valuesFor(message: EmailMessage, context: MailContext): Record<string, string> {
+/** The values a placeholder can take: the site, the lifetime of a link, and the data of the message except the token (a notice's action as its sentence). */
+function valuesFor(
+  message: EmailMessage,
+  context: MailContext,
+  common: MailMessages['common'],
+): Record<string, string> {
   const values: Record<string, string> = {
     siteName: oneLine(context.siteName),
     siteUrl: context.origin.replace(/\/+$/, ''),
     hours: String(ONE_TIME_LINK_HOURS),
   }
   for (const [key, value] of Object.entries(message.data)) {
-    if (key !== 'token') {
+    if (key === 'action' && message.template === 'security_notice') {
+      values[key] = common.securityActions[message.data.action]
+    } else if (key !== 'token') {
       values[key] = value
     }
   }
@@ -172,5 +178,5 @@ export function renderMail(message: EmailMessage, context: MailContext, override
 
   const input: RenderInput = { message, context: { ...context, locale }, strings, common, link }
   const custom = overrides.render?.[message.template]
-  return custom === undefined ? renderDefault(input, valuesFor(message, context)) : custom(input)
+  return custom === undefined ? renderDefault(input, valuesFor(message, context, common)) : custom(input)
 }

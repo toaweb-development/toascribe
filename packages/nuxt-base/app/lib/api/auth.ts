@@ -56,9 +56,17 @@ export function createAuthApi(api: ApiCall) {
       MfaVerifyResponse.parse(await api(`${V1}/auth/mfa/verify`, { method: 'POST', body })),
     /** Starts enrolling an authenticator app: a secret, the otpauth address and the QR code as an SVG document. */
     enrolStart: async () => MfaEnrolStartResponse.parse(await api(`${V1}/me/mfa/totp`, { method: 'POST', body: {} })),
-    enrolConfirm: async (id: string, code: string) =>
+    /**
+     * The last step of adding an authenticator app. In the half-signed-in session of a login that must enrol (state
+     * `enrolment`) the password was given a moment ago and is not sent. In a complete session (adding a second factor from the
+     * profile, M0.5) the API requires the current password: pass it, or the answer is 400 `password_required`.
+     */
+    enrolConfirm: async (id: string, code: string, password?: string) =>
       MfaConfirmResponse.parse(
-        await api(`${V1}/me/mfa/totp/${encodeURIComponent(id)}/confirm`, { method: 'POST', body: { code } }),
+        await api(`${V1}/me/mfa/totp/${encodeURIComponent(id)}/confirm`, {
+          method: 'POST',
+          body: password === undefined ? { code } : { code, password },
+        }),
       ),
 
     /** Always accepted (202), whether or not the account exists. */

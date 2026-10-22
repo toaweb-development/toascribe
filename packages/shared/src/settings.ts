@@ -158,22 +158,27 @@ export const CoreSettings = z.object({
   /** Session lifetime with «Remember me», in days (WordPress: 14). */
   session_lifetime_remember_days: between(1, 365),
   /**
-   * Failed attempts per account inside the window before it is locked out. At most 100: NIST SP 800-63B §5.2.2 lets a
-   * verifier allow no more than 100 consecutive failures.
+   * Failed attempts per login name (and per account) inside the window that are answered at once. The next one has to
+   * wait (see `login_limit_delay_seconds`). Nothing is ever locked: the wait grows with the failures of the window and
+   * shrinks by itself as they age out. At most 100: NIST SP 800-63B §5.2.2 lets a verifier allow no more than 100
+   * consecutive failures.
    */
   login_limit_account_attempts: between(1, 100),
-  /** Failed attempts per IP address inside the window before it is locked out. Higher, as one address may be many people. */
+  /** The same per IP address. Higher, as one address may be many people. */
   login_limit_ip_attempts: between(1, 1000),
-  /** The window the attempts are counted in, in minutes. */
+  /**
+   * How long a failure counts, in minutes. The wait never exceeds what is left of the window, so the window is also the
+   * longest an attacker is remembered.
+   */
   login_limit_window_minutes: between(5, 1440),
   /**
-   * The first lockout, in minutes. Each further lockout of the same account or address doubles it, up to
-   * `login_limit_lockout_max_minutes`. The bounds keep the base at or below the cap (60 ≤ cap), so no pair of saved
-   * values can make the cap the smaller one.
+   * The first wait, in seconds, when the free attempts are used up. Each failure after that doubles it, up to
+   * `login_limit_delay_max_minutes`. The bounds keep the base (at most 10 minutes) at or below the cap (at least 10), so no
+   * pair of saved values can make the cap the smaller one.
    */
-  login_limit_lockout_minutes: between(1, 60),
-  /** The longest lockout the doubling reaches, in minutes (24 hours by default, at most 7 days). */
-  login_limit_lockout_max_minutes: between(60, 10_080),
+  login_limit_delay_seconds: between(1, 600),
+  /** The longest wait the doubling reaches, in minutes. */
+  login_limit_delay_max_minutes: between(10, 1440),
   /** Role slugs whose accounts must use a second factor (K-023). Empty: two-factor is optional for everyone. */
   mfa_required_roles: z.array(machineName).max(100),
 
@@ -272,13 +277,13 @@ export const CORE_SETTINGS: CoreSettings = {
   // Login and sessions
   session_lifetime_days: 2, // Tor, as WordPress
   session_lifetime_remember_days: 14, // Tor, as WordPress
-  // Limit Login Attempts Reloaded's defaults where they map (20-minute lockout, 24 hours after repeated lockouts);
-  // 5 per account and 20 per address in 15 minutes leave room for typing errors and for many people behind one NAT.
+  // No hard lock (Tor, 2026-10-22): 5 tries per login name and 20 per address answer at once, which leaves room for typing
+  // errors and for many people behind one NAT; then 30 s, 1, 2, 4, 8 minutes, and 15 minutes at most, forgotten after an hour.
   login_limit_account_attempts: 5,
   login_limit_ip_attempts: 20,
-  login_limit_window_minutes: 15,
-  login_limit_lockout_minutes: 20,
-  login_limit_lockout_max_minutes: 1440,
+  login_limit_window_minutes: 60,
+  login_limit_delay_seconds: 30,
+  login_limit_delay_max_minutes: 15,
   mfa_required_roles: [],
 
   // Privacy

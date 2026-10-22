@@ -40,8 +40,8 @@ export function useAuth() {
   }
 
   /** The last step of enrolment. When it also finished the login, the session is complete: read it again. */
-  async function confirmEnrolment(id: string, code: string): Promise<MfaConfirmResponse> {
-    const answer = await authApi.enrolConfirm(id, code)
+  async function confirmEnrolment(id: string, code: string, password?: string): Promise<MfaConfirmResponse> {
+    const answer = await authApi.enrolConfirm(id, code, password)
     if (answer.loginCompleted) {
       await refresh()
     }

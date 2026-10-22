@@ -21,10 +21,25 @@ export const EMAIL_TEMPLATE = [
   'admin_password_change',
   'account_exists',
   'email_change_notice',
+  'security_notice',
   'test',
 ] as const
 export const EmailTemplate = z.enum(EMAIL_TEMPLATE)
 export type EmailTemplate = z.infer<typeof EmailTemplate>
+
+/**
+ * What a `security_notice` tells the owner of an account has happened (or is about to): the change to their credentials
+ * that needed the password (or, for a reset, a link). An e-mail change has its own template (`email_change_notice`).
+ */
+export const SECURITY_NOTICE_ACTION = [
+  'mfa_added',
+  'mfa_removed',
+  'recovery_codes_regenerated',
+  'password_changed',
+  'password_reset',
+] as const
+export const SecurityNoticeAction = z.enum(SECURITY_NOTICE_ACTION)
+export type SecurityNoticeAction = z.infer<typeof SecurityNoticeAction>
 
 /** How long a one-time link works, in hours (Tor, M0.3). The mail says it, and the flows use it for `account_token.expires_at`. */
 export const ONE_TIME_LINK_HOURS = 24
@@ -113,6 +128,13 @@ function messages<S extends z.ZodType<string>>(secret: S) {
       template: z.literal('email_change_notice'),
       to: Recipient,
       data: z.strictObject({ username: Username, newEmail: Recipient }),
+    }),
+    // To the account's own address when its credentials change (M0.3, OWASP ASVS V7.5): a second factor added or removed, new
+    // recovery codes, a new password. Sent before the change, so the owner can react. It holds nothing secret.
+    z.strictObject({
+      template: z.literal('security_notice'),
+      to: Recipient,
+      data: z.strictObject({ username: Username, action: SecurityNoticeAction }),
     }),
     // POST /system/test-email (K-204): proves that the SMTP settings work.
     z.strictObject({

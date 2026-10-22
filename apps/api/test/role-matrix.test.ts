@@ -67,7 +67,8 @@ const CASES: readonly MatrixCase[] = [
     route: 'POST /api/v1/auth/password/lost',
     method: 'POST',
     path: '/api/v1/auth/password/lost',
-    json: { login: 'nobody-at-all' },
+    // A name of its own for each caller: the same name asked for six times in a row is made to wait.
+    body: (actor) => ({ login: `nobody-at-all-${actor}` }),
     expected: {
       ...ok,
       anonymous: 202,
@@ -162,8 +163,16 @@ const CASES: readonly MatrixCase[] = [
     route: 'POST /api/v1/me/mfa/totp/:id/confirm',
     method: 'POST',
     path: `/api/v1/me/mfa/totp/${NO_SUCH_FACTOR}/confirm`,
-    json: { code: '123456' },
+    json: { code: '123456', password: TEST_PASSWORD },
     expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 404 },
+  },
+  {
+    // Adding a factor in a complete session needs the password (Tor, 2026-10-22).
+    route: 'POST /api/v1/me/mfa/totp/:id/confirm',
+    method: 'POST',
+    path: `/api/v1/me/mfa/totp/${NO_SUCH_FACTOR}/confirm`,
+    json: { code: '123456' },
+    expected: { ...ok, administrator: 400, editor: 400, author: 400, contributor: 400, subscriber: 400 },
   },
   {
     route: 'DELETE /api/v1/me/mfa/:id',
@@ -173,11 +182,34 @@ const CASES: readonly MatrixCase[] = [
     expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 404 },
   },
   {
+    // A code from the app is not proof any more, only the password.
+    route: 'DELETE /api/v1/me/mfa/:id',
+    method: 'DELETE',
+    path: `/api/v1/me/mfa/${NO_SUCH_FACTOR}`,
+    json: { code: '123456' },
+    expected: { ...ok, administrator: 400, editor: 400, author: 400, contributor: 400, subscriber: 400 },
+  },
+  {
+    route: 'DELETE /api/v1/me/mfa/:id',
+    method: 'DELETE',
+    path: `/api/v1/me/mfa/${NO_SUCH_FACTOR}`,
+    json: { password: 'not the password at all' },
+    ownRefusal: true,
+    expected: { ...ok, administrator: 403, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
     route: 'POST /api/v1/me/mfa/recovery-codes',
     method: 'POST',
     path: '/api/v1/me/mfa/recovery-codes',
     json: { password: TEST_PASSWORD },
     expected: { ...ok, administrator: 409, editor: 409, author: 409, contributor: 409, subscriber: 409 },
+  },
+  {
+    route: 'POST /api/v1/me/mfa/recovery-codes',
+    method: 'POST',
+    path: '/api/v1/me/mfa/recovery-codes',
+    json: { code: '123456' },
+    expected: { ...ok, administrator: 400, editor: 400, author: 400, contributor: 400, subscriber: 400 },
   },
   {
     route: 'PATCH /api/v1/me/password',

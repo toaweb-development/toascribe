@@ -37,6 +37,8 @@ export function describeApiError(error: unknown, t: Translate): string {
       return t('error.forbidden')
     case 'invalid_password':
       return t('error.invalidPassword')
+    case 'password_required':
+      return t('error.passwordRequired')
     case 'invalid_code':
       return t('error.invalidCode')
     case 'registration_closed':

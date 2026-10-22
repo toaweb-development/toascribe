@@ -52,6 +52,7 @@ const app = createApp({
   version: readPackageVersion(),
   publicOrigin: config.PUBLIC_ORIGIN,
   signingKey: config.TOASCRIBE_SIGNING_KEY,
+  trustedProxy: config.TOASCRIBE_TRUSTED_PROXY,
   keyRing,
   mail: mailQueue,
 })

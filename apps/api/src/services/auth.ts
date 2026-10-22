@@ -5,7 +5,7 @@ import type { Database } from '@toascribe/db'
 
 import type { MfaStatus, SessionAuth } from '../lib/auth-context.ts'
 import { UNKNOWN_IP } from '../lib/client-ip.ts'
-import { TooManyRequestsError, UnauthorizedError } from '../lib/errors.ts'
+import { UnauthorizedError } from '../lib/errors.ts'
 import { findAccountByLogin, listRoleGrants, setPasswordHash } from '../repositories/accounts.ts'
 import type { AccountView } from '../repositories/accounts.ts'
 import { insertAuditEntry } from '../repositories/audit.ts'
@@ -14,6 +14,7 @@ import { inTransaction } from '../repositories/executor.ts'
 import type { Executor } from '../repositories/executor.ts'
 import type { RateLimiter } from './rate-limit.ts'
 import type { IssuedSession, SessionService } from './sessions.ts'
+import { assertNotDelayed } from './support.ts'
 
 export interface LoginInput {
   /** What was typed in the first field: a username or an e-mail address. */
@@ -40,7 +41,7 @@ export interface LoginSuccess {
 
 /**
  * The one answer to a failed login (K-004): the same status, code and text whether the account exists, the password was
- * wrong, the account is locked or the account is not active. The reason goes to the audit log only.
+ * wrong or the account is not active. The reason goes to the audit log only.
  */
 export class InvalidCredentialsError extends UnauthorizedError {
   constructor() {
@@ -78,27 +79,24 @@ export function createAuthService(options: {
       const account = await findAccountByLogin(db, input.login)
 
       // Counts this attempt before it is judged (see RateLimiter.begin), so a burst of parallel guesses cannot all slip in.
-      const attempt = await limiter.begin('login', { ip: input.ip, accountId: account?.id ?? null })
-      const status = attempt.status
-      if (status.ip.locked) {
-        // An address is told. This answer does not depend on whether the account exists, so it gives nothing away.
-        const wait = ((status.ip.until?.getTime() ?? 0) - clock().getTime()) / 1000
-        throw new TooManyRequestsError(wait)
-      }
+      const attempt = await limiter.begin('login', {
+        ip: input.ip,
+        accountId: account?.id ?? null,
+        login: input.login,
+      })
+      // An address or a login name that has failed too often has to wait (429, Retry-After). The wait of a name that matches no
+      // account is counted exactly like a real one, so this answer does not depend on whether the account exists (K-004).
+      assertNotDelayed(attempt.status, clock())
 
-      // The same work whether or not the account exists, has a password or is locked: always one hash check (K-004).
+      // The same work whether or not the account exists or has a password: always one hash check (K-004).
       const stored = account?.passwordHash ?? (await dummyPasswordHash())
       const check = await verifyPassword(input.password, stored)
 
-      let reason: 'ok' | 'unknown_account' | 'no_password' | 'wrong_password' | 'account_locked' | 'account_inactive' =
-        'ok'
+      let reason: 'ok' | 'unknown_account' | 'no_password' | 'wrong_password' | 'account_inactive' = 'ok'
       if (account === undefined) {
         reason = 'unknown_account'
       } else if (account.passwordHash === null) {
         reason = 'no_password'
-      } else if (status.account.locked) {
-        // A locked account refuses even the right password, and says what a wrong password says.
-        reason = 'account_locked'
       } else if (!check.valid) {
         reason = 'wrong_password'
       } else if (account.status !== 'active') {

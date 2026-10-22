@@ -74,25 +74,19 @@ export function createSafeMail(mail: MailPort, logger: Logger): SafeMail {
   }
 }
 
-/** Seconds until the later of the two lockouts ends. */
-export function secondsUntilUnlocked(status: LimitStatus, now: Date): number {
+/** Seconds until the later of the two waits ends. */
+export function secondsUntilAnswered(status: LimitStatus, now: Date): number {
   const ends = [status.ip.until, status.account.until].flatMap((until) => (until === null ? [] : [until.getTime()]))
   return (Math.max(0, ...ends) - now.getTime()) / 1000
 }
 
-/** 429 when the address or the account is locked for this flow. For flows the caller is already signed in to, so no secret to keep. */
-export function assertNotLocked(status: LimitStatus, now: Date): void {
-  if (status.ip.locked || status.account.locked) {
-    throw new TooManyRequestsError(secondsUntilUnlocked(status, now))
-  }
-}
-
 /**
- * 429 when the address is locked, whatever the account. For the flows that must not show whether an account exists: a locked
- * account is handled by the flow itself (it answers like any other), a locked address is told.
+ * 429 with Retry-After when the address, or the account or login name, has to wait for this flow. The answer is the same
+ * whether or not the account exists, because the wait of a login name that matches none is counted exactly like a real one
+ * (K-004), so it gives nothing away. Nothing is locked: the wait ends by itself.
  */
-export function assertAddressNotLocked(status: LimitStatus, now: Date): void {
-  if (status.ip.locked) {
-    throw new TooManyRequestsError(((status.ip.until?.getTime() ?? now.getTime()) - now.getTime()) / 1000)
+export function assertNotDelayed(status: LimitStatus, now: Date): void {
+  if (status.ip.delayed || status.account.delayed) {
+    throw new TooManyRequestsError(secondsUntilAnswered(status, now))
   }
 }

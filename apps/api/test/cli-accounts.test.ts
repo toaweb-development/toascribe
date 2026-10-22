@@ -153,6 +153,79 @@ describe.skipIf(TEST_DATABASE_URL === undefined)(
       expect(row?.password_hash).toMatch(/^\$argon2id\$/)
     })
 
+    /** Five wrong passwords, so that the sixth try (with any password) has to wait. */
+    async function makeWait(username: string) {
+      const attacker = env.client({ ip: ip() })
+      for (let n = 0; n < 5; n += 1) {
+        expect((await attacker.login(username, `guess ${String(n)}`)).status).toBe(401)
+      }
+      const waiting = await env.client({ ip: ip() }).login(username, TEST_PASSWORD)
+      expect(waiting.status).toBe(429)
+      expect(waiting.headers.get('retry-after')).toBe('30')
+    }
+
+    it('reset-login-limit ends the wait after failed logins at once, by username or by e-mail address, and writes an audit entry', async () => {
+      const account = await env.createAccount({ username: unique('cli-limit'), role: 'editor' })
+      await makeWait(account.username)
+
+      const done = await toa(['user', 'reset-login-limit', '--username', account.username])
+      expect(done.code).toBe(0)
+      expect(done.stderr).toContain('Ended the wait')
+      expect(done.stdout).toBe('')
+      // Nothing else changed: the right password works at once, the old one still is the password.
+      expect((await env.client({ ip: ip() }).login(account.username, TEST_PASSWORD)).status).toBe(200)
+
+      // And the five free tries are back, not a shorter allowance.
+      const attacker = env.client({ ip: ip() })
+      for (let n = 0; n < 5; n += 1) {
+        expect((await attacker.login(account.username, `again ${String(n)}`)).status).toBe(401)
+      }
+      expect((await attacker.login(account.username, 'one too many')).status).toBe(429)
+      const byMail = await toa(['user', 'reset-login-limit', '--email', account.email.toUpperCase()])
+      expect(byMail.code).toBe(0)
+      expect((await env.client({ ip: ip() }).login(account.username, TEST_PASSWORD)).status).toBe(200)
+
+      const audit = await env.query<{ action: string; actor: string; source: string }>(
+        `select action, actor, source from audit_log where account_id = $1 and action = 'login_limit.reset'`,
+        [account.id],
+      )
+      expect(audit).toEqual([
+        { action: 'login_limit.reset', actor: 'cli', source: 'cli' },
+        { action: 'login_limit.reset', actor: 'cli', source: 'cli' },
+      ])
+    })
+
+    it('reset-login-limit also ends the wait of lost-password requests and wrong codes, and refuses an account that is not there', async () => {
+      const account = await env.createAccount({ username: unique('cli-limit-all') })
+      for (let n = 0; n < 5; n += 1) {
+        expect(
+          (await env.client({ ip: ip() }).post('/api/v1/auth/password/lost', { login: account.username })).status,
+        ).toBe(202)
+      }
+      expect(
+        (await env.client({ ip: ip() }).post('/api/v1/auth/password/lost', { login: account.username })).status,
+      ).toBe(429)
+      expect((await toa(['user', 'reset-login-limit', '--username', account.username])).code).toBe(0)
+      expect(
+        (await env.client({ ip: ip() }).post('/api/v1/auth/password/lost', { login: account.username })).status,
+      ).toBe(202)
+
+      const missing = await toa(['user', 'reset-login-limit', '--username', 'nobody-by-this-name'])
+      expect(missing.code).toBe(1)
+      expect(missing.stderr).toContain('--username: no account has that username')
+    })
+
+    it('reset-password ends the wait after failed logins too: the owner is back in', async () => {
+      const account = await env.createAccount({ username: unique('cli-reset-wait') })
+      await makeWait(account.username)
+      const reset = await toa(
+        ['user', 'reset-password', '--username', account.username, '--password-stdin'],
+        `${NEW_PASSWORD}\n`,
+      )
+      expect(reset.code).toBe(0)
+      expect((await env.client({ ip: ip() }).login(account.username, NEW_PASSWORD)).status).toBe(200)
+    })
+
     it('writes the audit entries as the app role', async () => {
       const username = unique('cli-audit')
       expect((await toa(create(username, 'author'))).code).toBe(0)

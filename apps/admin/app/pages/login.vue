@@ -9,15 +9,14 @@ definePageMeta({ middleware: 'auth-screens' })
 const route = useRoute()
 const { t } = useI18n()
 const auth = useAuth()
-const authApi = useAuthApi()
 const baseURL = useRuntimeConfig().app.baseURL
 
 const action = computed(() => loginAction(route.query.action))
 const redirect = computed(() => redirectFromQuery(route.query))
 const notice = computed(() => loginNotice(route.query))
 
-// Whether to show «Registrer». If the API cannot be asked, the link is left out.
-const { data: options } = await useAsyncData('auth:options', () => authApi.options().catch(() => null))
+// Whether to show «Registrer» (if the API cannot be asked, the link is left out), and the site's name for the shell.
+const { data: options } = await useAuthOptions()
 const registrationOpen = computed(() => options.value?.registrationOpen === true)
 
 // The second step, from the session: after the password the API holds a half-open session until the code is given.

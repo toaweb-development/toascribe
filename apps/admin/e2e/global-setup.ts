@@ -5,5 +5,6 @@ import { resetLimits, setSetting } from './helpers/stack.ts'
 export default async function globalSetup(): Promise<void> {
   await setSetting('users_can_register', false)
   await setSetting('mfa_required_roles', [])
+  await setSetting('blogname', '')
   await resetLimits()
 }

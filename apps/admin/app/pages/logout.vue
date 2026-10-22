@@ -3,7 +3,8 @@
 const { t } = useI18n()
 const auth = useAuth()
 
-const session = await auth.ensure().catch(() => undefined)
+// The site's name is asked for beside the session, so the page waits for the slower of the two and not for both in turn.
+const [session] = await Promise.all([auth.ensure().catch(() => undefined), useAuthOptions()])
 if (session?.status !== 'authenticated' && session?.status !== 'mfa_required') {
   await navigateTo({ path: '/login', query: NOTICE_QUERY.loggedOut }, { replace: true })
 }

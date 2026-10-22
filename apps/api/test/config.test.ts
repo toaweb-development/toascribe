@@ -41,6 +41,14 @@ describe('loadConfig', () => {
     expect(config.TOASCRIBE_SIGNING_KEY).toHaveLength(32)
   })
 
+  it('reads TOASCRIBE_TRUSTED_PROXY as text, empty when it is not set, and trims it', () => {
+    expect(loadConfig(VALID).TOASCRIBE_TRUSTED_PROXY).toBe('')
+    expect(loadConfig({ ...VALID, TOASCRIBE_TRUSTED_PROXY: '' }).TOASCRIBE_TRUSTED_PROXY).toBe('')
+    expect(loadConfig({ ...VALID, TOASCRIBE_TRUSTED_PROXY: ' 10.231.97.250 ' }).TOASCRIBE_TRUSTED_PROXY).toBe(
+      '10.231.97.250',
+    )
+  })
+
   it('coerces PORT and accepts LOG_LEVEL', () => {
     expect(loadConfig({ ...VALID, PORT: '8080', LOG_LEVEL: 'debug' })).toMatchObject({ PORT: 8080, LOG_LEVEL: 'debug' })
   })

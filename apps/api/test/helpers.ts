@@ -75,6 +75,8 @@ export interface MakeAppOptions {
   readonly version?: string
   readonly publicOrigin?: string
   readonly clock?: () => Date
+  /** TOASCRIBE_TRUSTED_PROXY as set. Default: not given, which is the same as empty. */
+  readonly trustedProxy?: string
 }
 
 export function makeApp(connectionString: string, versionOrOptions: string | MakeAppOptions = {}) {
@@ -92,6 +94,7 @@ export function makeApp(connectionString: string, versionOrOptions: string | Mak
     keyRing: testKeyRing,
     mail,
     ...(options.clock === undefined ? {} : { clock: options.clock }),
+    ...(options.trustedProxy === undefined ? {} : { trustedProxy: options.trustedProxy }),
   })
   return { app: built.app, services: built.services, db, pool, mail, ...log }
 }

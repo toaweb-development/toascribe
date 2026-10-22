@@ -3,6 +3,7 @@ import { ApiError } from '@toascribe/shared'
 
 import type { MailRequest } from '../src/ports/mail.ts'
 import { totpCodeAt } from '../src/lib/totp.ts'
+import { TEST_PASSWORD } from './harness.ts'
 import type { AuthTestApp, TestClient } from './harness.ts'
 
 /** A base counter so every test gets addresses and names of its own. */
@@ -66,8 +67,17 @@ export function nextStep(env: AuthTestApp): void {
   env.clock.advance(30_000)
 }
 
-/** Enrols an authenticator app for the account `client` is signed in as, through the real endpoints. */
-export async function enrolTotp(env: AuthTestApp, client: TestClient, name?: string): Promise<Enrolled> {
+/**
+ * Enrols an authenticator app for the account `client` is signed in as, through the real endpoints. A complete session sends
+ * the password (adding a factor needs it); pass `password: null` for the `enrolment` state, which does not.
+ */
+export async function enrolTotp(
+  env: AuthTestApp,
+  client: TestClient,
+  name?: string,
+  options: { readonly password?: string | null } = {},
+): Promise<Enrolled> {
+  const password = options.password === undefined ? TEST_PASSWORD : options.password
   const started = await client.post('/api/v1/me/mfa/totp', name === undefined ? {} : { name })
   if (started.status !== 201) {
     throw new Error(`enrolment did not start: ${String(started.status)}`)
@@ -75,7 +85,10 @@ export async function enrolTotp(env: AuthTestApp, client: TestClient, name?: str
   const body = await readJson(started)
   const id = String(body.id)
   const secret = String(body.secret)
-  const response = await client.post(`/api/v1/me/mfa/totp/${id}/confirm`, { code: codeNow(env, secret) })
+  const response = await client.post(`/api/v1/me/mfa/totp/${id}/confirm`, {
+    code: codeNow(env, secret),
+    ...(password === null ? {} : { password }),
+  })
   const confirmed = response.status === 200 ? await readJson(response.clone()) : {}
   const codes = confirmed.recoveryCodes
   return {

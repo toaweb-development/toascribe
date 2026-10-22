@@ -41,7 +41,9 @@ export interface AppDeps {
   readonly mail: MailPort
   /** How long the account flows that hide whether an account exists take at least (ms). Tests set 0. Default: lib/timing.ts. */
   readonly minimumResponseMs?: number
-  /** The clock, for the session lifetimes and the lockouts. Tests set it; the default is the real time. */
+  /** TOASCRIBE_TRUSTED_PROXY as set (empty when it is not). Empty makes the api watch its first requests and warn (services/proxy-check.ts). */
+  readonly trustedProxy?: string
+  /** The clock, for the session lifetimes and the waits after failed logins. Tests set it; the default is the real time. */
   readonly clock?: () => Date
 }
 
@@ -68,6 +70,7 @@ export function buildApp(deps: AppDeps) {
     mail: deps.mail,
     logger: deps.logger,
     publicOrigin,
+    ...(deps.trustedProxy === undefined ? {} : { trustedProxy: deps.trustedProxy }),
     ...(deps.minimumResponseMs === undefined ? {} : { minimumResponseMs: deps.minimumResponseMs }),
     onInvalidSetting: (key) => {
       deps.logger.warn({ key }, 'a stored setting is invalid; the default is used')
@@ -92,6 +95,11 @@ export function buildApp(deps: AppDeps) {
   // Order matters: the request id first (it is on every log line), then the logger that carries it.
   app.use(requestId())
   app.use(requestLogger(deps.logger))
+  // Looks at the address the proxy says the visitor has, to warn when the stack is not told who its visitors are.
+  app.use(async (c, next) => {
+    services.proxy.observe(c.req.header('x-real-ip'))
+    await next()
+  })
   app.use(
     secureHeaders({
       xFrameOptions: 'DENY',

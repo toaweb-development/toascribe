@@ -24,6 +24,7 @@
     "mfaRequired": "Du må bekrefte med tofaktor før du kan fortsette. Logg inn på nytt.",
     "forbidden": "Handlingen ble avvist. Siden kan ha vært åpen for lenge: last den på nytt og prøv igjen.",
     "invalidPassword": "Passordet er feil. Prøv igjen.",
+    "passwordRequired": "Skriv inn passordet ditt for å bekrefte endringen.",
     "invalidCode": "Koden er feil eller har gått ut. Sjekk koden i autentiseringsappen og prøv igjen.",
     "registrationClosed": "Registrering er slått av på dette nettstedet.",
     "registrationUnavailable": "Registrering er midlertidig utilgjengelig. Prøv igjen senere, eller kontakt administratoren.",

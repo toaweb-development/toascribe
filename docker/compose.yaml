@@ -164,6 +164,8 @@ services:
       TOASCRIBE_ENCRYPTION_OLD_KEYS: ${TOASCRIBE_ENCRYPTION_OLD_KEYS:-}
       # Signs the CSRF tokens. Must differ from the encryption key; the api refuses to start if they are equal.
       TOASCRIBE_SIGNING_KEY: '${TOASCRIBE_SIGNING_KEY:?TOASCRIBE_SIGNING_KEY is empty, set it in docker/.env (openssl rand -hex 32, not the encryption key)}'
+      # Only so the api can warn when this is empty and every request comes from one private address (README, «Behind a reverse proxy»).
+      TOASCRIBE_TRUSTED_PROXY: ${TOASCRIBE_TRUSTED_PROXY:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     read_only: true
     tmpfs:

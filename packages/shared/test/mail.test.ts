@@ -6,6 +6,7 @@ import {
   EmailMessage,
   MAIL_MESSAGES,
   ONE_TIME_LINK_HOURS,
+  SECURITY_NOTICE_ACTION,
   emailTokenAad,
   formatMessage,
   mailLink,
@@ -34,6 +35,11 @@ const SAMPLES: Record<EmailTemplate, unknown> = {
     template: 'email_change_notice',
     to: 'kari@example.no',
     data: { username: 'kari', newEmail: 'ny@example.no' },
+  },
+  security_notice: {
+    template: 'security_notice',
+    to: 'kari@example.no',
+    data: { username: 'kari', action: 'mfa_added' },
   },
   test: { template: 'test', to: 'admin@example.no', data: { requestedBy: 'admin' } },
 }
@@ -150,6 +156,7 @@ describe('renderMail (bokmål)', () => {
     ['admin_password_change', '[Bloggen min] Passordet til ola er endret', 'er endret.'],
     ['account_exists', '[Bloggen min] Du har allerede en konto', 'brukernavnet kari'],
     ['email_change_notice', '[Bloggen min] E-postadressen på kontoen din skal byttes', 'til ny@example.no.'],
+    ['security_notice', '[Bloggen min] Sikkerhetsendring på kontoen din', 'en ny autentiseringsapp'],
     ['test', '[Bloggen min] Test av e-post', 'sendt etter ønske fra admin'],
   ] as const)('renders %s', (template, subject, line) => {
     const mail = render(template)
@@ -157,6 +164,30 @@ describe('renderMail (bokmål)', () => {
     expect(mail.text).toContain(line)
     expect(mail.text.endsWith('\n')).toBe(true)
     expect(mail.text).toContain('Denne e-posten er sendt fra Bloggen min (https://example.no).')
+  })
+
+  it.each(SECURITY_NOTICE_ACTION)(
+    'renders the security notice for %s with a sentence and not the action key',
+    (action) => {
+      const mail = renderMail(
+        EmailMessage.parse({ template: 'security_notice', to: 'kari@example.no', data: { username: 'kari', action } }),
+        CONTEXT,
+      )
+      expect(mail.text).toContain(MAIL_MESSAGES['nb']?.common.securityActions[action])
+      expect(mail.text).not.toContain(action)
+      expect(mail.html).not.toContain(action)
+      expect(mail.text).toContain('bør du bytte passord med en gang')
+    },
+  )
+
+  it('refuses a security notice with an action it does not know', () => {
+    expect(
+      EmailMessage.safeParse({
+        template: 'security_notice',
+        to: 'kari@example.no',
+        data: { username: 'kari', action: 'something_else' },
+      }).success,
+    ).toBe(false)
   })
 
   it('puts a link in exactly the templates that have one', () => {

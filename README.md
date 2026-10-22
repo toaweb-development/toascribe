@@ -101,6 +101,16 @@ and only to your proxy: one address, not `private_ranges` and not a network such
 which would include every container and host process that can reach the port. Empty is safe but then every request
 appears to come from the proxy.
 
+**The warning when it is empty.** The api cannot tell a stack without a proxy from one whose variable was forgotten, so
+it watches. While `TOASCRIBE_TRUSTED_PROXY` is empty it looks at the `X-Real-IP` of its first 50 requests (or, on a
+quiet site, of the first ten once ten minutes have passed). If they all carry the same private address (10.x, 172.16-31.x,
+192.168.x, 127.x, 100.64-127.x, `fc00::/7`), it writes one `warn` line to the api log, naming the variable:
+«TOASCRIBE_TRUSTED_PROXY is empty and the first 50 requests all came from the same private address». That means all your
+visitors share **one** rate-limit bucket (a few wrong logins from anyone make everyone wait) and every IP address in the
+audit log and the session list is your reverse proxy. Set the variable as described below, then run
+`docker compose up -d api proxy`. No warning is written when the variable is set, when two different addresses show up,
+or when an address is public. The setup wizard and Site Health will show the same finding later.
+
 **How the client address is found.** The stack reads `X-Forwarded-For` from the right and stops at the first address
 that is not the trusted proxy (Caddy's `trusted_proxies_strict`), so entries a visitor writes at the front are ignored.
 It then sends that one address to the apps in `X-Real-IP`, replacing any `X-Real-IP` the visitor sent. The apps read

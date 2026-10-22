@@ -14,6 +14,8 @@ import { createMfaService } from './mfa.ts'
 import type { MfaService } from './mfa.ts'
 import { createOwnAccountService } from './own-account.ts'
 import type { OwnAccountService } from './own-account.ts'
+import { createProxyCheck } from './proxy-check.ts'
+import type { ProxyCheck } from './proxy-check.ts'
 import { createRateLimiter } from './rate-limit.ts'
 import type { RateLimiter } from './rate-limit.ts'
 import { createReauthenticator } from './reauth.ts'
@@ -37,6 +39,8 @@ export interface ServiceDeps {
   readonly publicOrigin: string
   /** How long the flows that hide whether an account exists take at least, in milliseconds. Tests set 0; the default is ACCOUNT_FLOW_MINIMUM_MS. */
   readonly minimumResponseMs?: number
+  /** TOASCRIBE_TRUSTED_PROXY as set (empty when it is not): the proxy check only warns when it is empty. */
+  readonly trustedProxy?: string
   /** Told about a stored setting that failed validation, so it can be logged. */
   readonly onInvalidSetting?: (key: string) => void
 }
@@ -55,19 +59,21 @@ export interface Services {
   readonly ownAccount: OwnAccountService
   /** Per IP and per account limits for login, second factor, registration and lost password (K-026, K-313). */
   readonly limiter: RateLimiter
+  /** Whether the stack is told who its visitors are; read by the setup wizard and Site Health later. */
+  readonly proxy: ProxyCheck
   readonly keyRing: KeyRing
   readonly mail: MailPort
 }
 
 export function createServices(deps: ServiceDeps): Services {
   const { db, clock } = deps
-  const limiter = createRateLimiter(db, clock, deps.onInvalidSetting)
+  const limiter = createRateLimiter(db, clock, deps.signingKey, deps.onInvalidSetting)
   const sessions = createSessionService({ db, clock, signingKey: deps.signingKey })
   const audit = createAuditor(clock)
   const mail = createSafeMail(deps.mail, deps.logger)
   const minimumResponseMs = deps.minimumResponseMs ?? ACCOUNT_FLOW_MINIMUM_MS
   const totp = createTotpChecker({ clock, keyRing: deps.keyRing, logger: deps.logger })
-  const reauth = createReauthenticator({ db, clock, limiter, totp, audit })
+  const reauth = createReauthenticator({ db, clock, limiter, audit })
   return {
     sessions,
     auth: createAuthService({ db, clock, sessions, limiter }),
@@ -84,6 +90,7 @@ export function createServices(deps: ServiceDeps): Services {
       totp,
       reauth,
       audit,
+      mail,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     flows: createPublicFlows({
@@ -108,6 +115,7 @@ export function createServices(deps: ServiceDeps): Services {
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     limiter,
+    proxy: createProxyCheck({ trustedProxy: deps.trustedProxy ?? '', logger: deps.logger, clock }),
     keyRing: deps.keyRing,
     mail: deps.mail,
   }

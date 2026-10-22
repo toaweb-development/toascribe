@@ -110,9 +110,9 @@ describe('M0.3 settings: login, sessions, privacy and e-mail', () => {
     ['session_lifetime_remember_days', 14, 1, 365],
     ['login_limit_account_attempts', 5, 1, 100],
     ['login_limit_ip_attempts', 20, 1, 1000],
-    ['login_limit_window_minutes', 15, 5, 1440],
-    ['login_limit_lockout_minutes', 20, 1, 60],
-    ['login_limit_lockout_max_minutes', 1440, 60, 10_080],
+    ['login_limit_window_minutes', 60, 5, 1440],
+    ['login_limit_delay_seconds', 30, 1, 600],
+    ['login_limit_delay_max_minutes', 15, 10, 1440],
     ['ip_retention_days', 90, 7, 3650],
     ['spam_comment_retention_days', 30, 1, 365],
   ]
@@ -131,11 +131,17 @@ describe('M0.3 settings: login, sessions, privacy and e-mail', () => {
     expect(schema.safeParse(String(value)).success).toBe(false)
   })
 
-  it('keeps the first lockout at or below its cap for every pair of values the bounds allow', () => {
-    const base = CoreSettings.shape.login_limit_lockout_minutes
-    const cap = CoreSettings.shape.login_limit_lockout_max_minutes
-    expect(base.safeParse(61).success).toBe(false)
-    expect(cap.safeParse(59).success).toBe(false)
+  it('keeps the first wait at or below its cap for every pair of values the bounds allow', () => {
+    const base = CoreSettings.shape.login_limit_delay_seconds
+    const cap = CoreSettings.shape.login_limit_delay_max_minutes
+    // The largest base (600 s = 10 minutes) is not above the smallest cap (10 minutes).
+    expect(base.safeParse(601).success).toBe(false)
+    expect(cap.safeParse(9).success).toBe(false)
+  })
+
+  it('no longer has the hard-lockout settings', () => {
+    expect(Object.keys(CoreSettings.shape)).not.toContain('login_limit_lockout_minutes')
+    expect(Object.keys(CoreSettings.shape)).not.toContain('login_limit_lockout_max_minutes')
   })
 
   it("sets Tor's session lifetimes and retention: 2 and 14 days, IPs 90 days, spam 30 days", () => {
