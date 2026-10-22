@@ -5,10 +5,10 @@ and plugins), written in TypeScript from end to end: Nuxt 4 for the site and the
 PostgreSQL. Content is stored as structured blocks, not HTML, and background work runs on a real job queue. It ships
 as an open repository and starts with Docker; the rest of the setup is finished in a browser wizard.
 
-**Status: 0.2.0, the data model.** The whole stack starts and is healthy on one port, and the database holds the core
-data model with the five roles and the default settings in place. The API answers `/api/health` and `/api/ready`. There
-is no login or editor yet. The plan, the architecture and the phases are in [docs/PLAN.md](docs/PLAN.md) (in
-Norwegian); the tables are described in [docs/DATAMODEL.md](docs/DATAMODEL.md).
+**Status: 0.3.0, sign-in.** The whole stack starts and is healthy on one port. People can log in at `/admin/login` (and
+at `/wp-login.php`, which redirects), with sessions, a second factor, lost password and registration, and e-mail goes
+through the job queue. There is no editor yet. The plan, the architecture and the phases are in
+[docs/PLAN.md](docs/PLAN.md) (in Norwegian); the tables are described in [docs/DATAMODEL.md](docs/DATAMODEL.md).
 
 ## Run the stack
 
@@ -198,6 +198,20 @@ pnpm check
 docker stop toascribe-test-db
 ```
 
+**End-to-end tests.** `pnpm test:e2e` drives the sign-in screens in a real browser (Chromium, at 375 and 1280 px, with
+an accessibility check) against a full stack with Mailpit. It is not part of `pnpm check`, because it needs Docker and
+takes a few minutes. `apps/admin/e2e/stack.sh` starts a stack of its own (own project name, ports and volumes; your
+`docker/.env` is not touched):
+
+```sh
+pnpm --filter @toascribe/admin exec playwright install chromium   # once
+apps/admin/e2e/stack.sh up
+pnpm test:e2e
+apps/admin/e2e/stack.sh down
+```
+
+[apps/admin/e2e/README.md](apps/admin/e2e/README.md) has the details.
+
 **The apps in dev mode.** They need a database that has the toascribe roles, which the postgres image of the stack
 creates on its first start:
 
@@ -227,6 +241,8 @@ pnpm --filter @toascribe/admin dev   # http://localhost:3002/admin
 | `apps/site`, `apps/admin`      | the two Nuxt apps                                                          |
 | `packages/db`                  | Drizzle client, migrations and the migration runner                        |
 | `packages/shared`              | Zod schemas and types shared by the API and the apps                       |
+| `packages/auth`                | password hashing (argon2id, WordPress hash import) and one-time tokens     |
+| `packages/http`                | an HTTP client that refuses private addresses (SSRF-safe `safeFetch`)      |
 | `packages/nuxt-base`           | the Nuxt layer both apps share (Nuxt UI, i18n, API layer, config)          |
 | `packages/sdk`, `ui`, `blocks` | placeholders for the plugin and theme SDK, shared UI and block definitions |
 | `themes/default`               | the default theme, a Nuxt layer                                            |

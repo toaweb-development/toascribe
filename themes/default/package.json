@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/theme-default",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "The default theme, a Nuxt layer that apps/site extends. The theme SDK comes in phase 3.",

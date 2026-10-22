@@ -392,6 +392,8 @@ Where PLAN names a column, the schema uses its name. These are the places it dif
     `toascribe_owner`, with `search_path = pg_catalog, pg_temp`, and takes no argument, so a caller cannot choose
     another retention or touch another column. EXECUTE is revoked from PUBLIC and granted to `toascribe_app` only. A
     worker job calls it daily (`select audit_log_clear_old_ips()`); old rows are never deleted by the app role.
+    The worker runs three daily clean-up jobs: `cleanup.credentials` (ended sessions, spent one-time links),
+    `cleanup.ip-retention` (the IP columns and old login attempts, and this function) and `cleanup.spam-comments`.
   - The other IP columns (`session.ip`, `comment.ip`, `app_password.last_used_ip`) are cleared, and old
     `login_attempt` rows deleted, by worker jobs with the app role's ordinary UPDATE and DELETE, by the same setting.
 - `consent` is append-only, one row per decision and category; the newest row per `subject_key` and category is the
@@ -407,6 +409,7 @@ Where PLAN names a column, the schema uses its name. These are the places it dif
 - `app_password`: `name`, `password_hash`, `last_used_at`, `last_used_ip` (K-016).
 - `mfa_credential`: `type` (totp, passkey, oidc), `name`, `secret_encrypted`, `issuer`, `external_id`, `data`,
   `confirmed_at`, `last_used_at`. One passkey or OIDC identity can belong to one account only.
+  For a TOTP credential `data.lastStep` is the last accepted 30-second step (a number), so a code works once.
 - `recovery_code`: `code_hash`, `used_at`. `login_attempt`: `action`, `succeeded`.
 - `content_type`, `field_group`, `global_set`, `workflow`: `key`, `name`. `menu`, `pattern`: `slug`.
 - `content_draft`, `content_autosave`, `content_revision`: `snapshot`, `account_id`.

@@ -23,6 +23,8 @@ This file and the README come first where they are more specific.
 | `apps/site`, `apps/admin`      | `@toascribe/site`, `@toascribe/admin` | Nuxt 4. The admin has `baseURL: '/admin'`.                                   |
 | `packages/db`                  | `@toascribe/db`                       | Drizzle client, migrations, the migration runner, `PGBOSS_APP_OPTIONS`.      |
 | `packages/shared`              | `@toascribe/shared`                   | Zod schemas and types. Every API shape is defined here once.                 |
+| `packages/auth`                | `@toascribe/auth`                     | Password hashing (argon2id, WordPress hash import) and one-time tokens.      |
+| `packages/http`                | `@toascribe/http`                     | `safeFetch`: an HTTP client that refuses private addresses (SSRF).           |
 | `packages/nuxt-base`           | `@toascribe/nuxt-base`                | The Nuxt layer both apps share: Nuxt UI, i18n, API layer and plugin, config. |
 | `packages/sdk`, `ui`, `blocks` | `@toascribe/*`                        | Placeholders until M0.5 and phase 1.                                         |
 | `themes/default`               | `@toascribe/theme-default`            | A Nuxt layer that extends `nuxt-base`, linted by its own config.             |

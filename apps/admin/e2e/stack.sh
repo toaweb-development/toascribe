@@ -38,7 +38,7 @@ make_env() {
     echo "TOASCRIBE_SIGNING_KEY=$(openssl rand -hex 32)"
     echo "TOASCRIBE_HTTP_PORT=${http_port}"
     echo "TOASCRIBE_MAILPIT_PORT=${mailpit_port}"
-    echo "TOASCRIBE_VERSION=0.2.0-e2e"
+    echo "TOASCRIBE_VERSION=0.3.0-e2e"
     echo "PUBLIC_ORIGIN=http://localhost:${http_port}"
     echo "SMTP_HOST=mailpit"
     echo "SMTP_PORT=1025"
