@@ -61,7 +61,9 @@ separate step: say so.
   At start-up, while the site is not installed, the api writes a new one-time setup token to the log, once, at `warn`
   (`announceSetupToken` in `apps/api/src/services/setup.ts`), because that is how the person who started the stack gets
   into `/admin/setup`. Only its hash is stored, a restart or `toa core setup-token` replaces it, and the install deletes it.
-  It travels in the `X-Setup-Token` header, never in a query string the api or the proxy would log. Do not add a second place
+  It travels in the `X-Setup-Token` header, never in a query string the api or the proxy would log. The address that the log
+  and `toa core setup-token` print carries it in the URL fragment (`/admin/setup#token=...`), which a browser never sends to a
+  server; the wizard reads it from there. Do not add a second place
   that logs a token, and keep it out of every field of the log line (the test counts exactly one occurrence).
 - **TypeScript.** Strict, no `any`, no `@ts-ignore`, no `enum`, no `console.*`; pino for logs. Tests live in `test/`.
 - **Frontend.** Shared Nuxt code (API layer, API plugin, status component, runtime config, head basics, i18n setup) lives in

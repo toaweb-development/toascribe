@@ -21,13 +21,14 @@ does the rest.
   reload keeps the position. Until the site is installed every page of the site and the admin goes to the wizard; once it
   is, `/admin/setup` and every setup route except the status answer 404. `/setup` redirects to `/admin/setup`.
 - A one-time setup token. While the site is not installed, the api writes a new token to its log once at start-up, in the
-  address to open, and stores only its hash. It is sent in the `X-Setup-Token` header, never in a query string the api
-  or the proxy would log (the wizard removes it from the address bar at once), and wrong guesses are rate-limited per
-  address without affecting login. A restart or `toa core setup-token` replaces it; the install deletes it.
+  address to open (`/admin/setup#token=...`), and stores only its hash. The token is in the URL fragment, which a browser
+  never sends to a server, so neither the proxy nor the api can log it from a request. The wizard reads it from the
+  fragment, takes it out of the address bar at once and sends it in the `X-Setup-Token` header, never in a query string; a
+  `?token=` in the address is not read. Wrong guesses are rate-limited per address without affecting login. A restart or `toa core setup-token` replaces it; the install deletes it.
 - `toa core install | is-installed | gen-env | setup-token`. `install` does what the wizard does, from flags or by asking
   in a terminal, and prints the recovery key once; `is-installed` answers with its exit code; `gen-env` prints the
   three database passwords and the two keys, ready to append to `docker/.env`; `setup-token` prints a new token and the
-  address. Two runs of `install` at once give one winner, and a failed install changes nothing.
+  address (`#token=...`). Two runs of `install` at once give one winner, and a failed install changes nothing.
 - `--notify` on `toa user create`, `toa user reset-password` and `toa user reset-login-limit`. `create --notify` makes a
   pending account and mails a 24-hour link where the person sets their own password, so no password is printed.
   The other two tell the account owner what was done. The reset notices say the change was made by an administrator,
@@ -67,14 +68,31 @@ does the rest.
 - Migrations `0005_install_state` (the install state, `admin_notice` and `site_secret`, and the upgrade rule above) and
   `0006_setup_attempts` (the `setup` login-limit action, and `SELECT` on `drizzle.__drizzle_migrations` for the app role,
   which the system check uses to compare the applied migrations with the expected ones).
+- One password rule, enforced on the server: a password equal to the username or to the e-mail address (compared without
+  regard to case) is refused with 400 `weak_password` by the setup install, `PATCH /me/password`, the password reset and
+  the set-password link, and by `toa user create`, `toa user reset-password` and `toa core install`. The wizard goes back to
+  the administrator step and keeps what was typed. The rule is `isTooObvious` in `@toascribe/auth`; the api and the command
+  line no longer have a copy each.
+- One exit-code rule for the whole `toa` command: `0` is success, `1` is an error underway (the command was well formed,
+  and the database or a live operation decided: a taken username or e-mail, an account or role that is not there, a site
+  that is already installed, a database or mail failure), and `2` is invalid input or usage (an unknown command or flag, a
+  missing or malformed value, a refused password, a bad environment). `toa core is-installed` is the exception: `0`
+  installed, `1` not installed, `2` any error. These paths exited `1` before and now exit `2`: a missing or wrong
+  `DATABASE_URL`, `PUBLIC_ORIGIN` or `MIGRATION_DATABASE_URL` (a `ConfigError`) in every command that reads one,
+  `toa user create --notify` without `TOASCRIBE_ENCRYPTION_KEY`, `toa dev seed tom` outside development and test, and
+  `toa user reset-password` with a password equal to the username or e-mail. The usage text (`toa help`) and the README
+  state the rule.
 - The site and the admin both send `frame-ancestors 'none'` and `X-Frame-Options: DENY`; the site was allowed to frame
   itself before.
 
 ### Security
 
-- The proxy's access log drops `X-Setup-Token`, `X-Csrf-Token`, `Cookie`, `Authorization`, `Proxy-Authorization` and
-  `Set-Cookie`, and replaces the value of `token`, `key` and `code` in the query of the request address, the `Referer`
-  header and the `Location` header. Tested with the real setup token: it is in the api's start-up line and nowhere else.
+- The proxy's logs drop `X-Setup-Token`, `X-Csrf-Token`, `Cookie`, `Authorization`, `Proxy-Authorization` and
+  `Set-Cookie`, and replace the value of every query parameter in the request address, the `Referer` header and the
+  `Location` header, except `action`, `loggedout` and `checkemail` (the notices of the login screens). `token`, `key`,
+  `code`, `password`, `secret`, `signature`, `state` and `access_token` are redacted, and so is any other name. The same
+  filter now covers Caddy's error log, which writes the whole request, `X-Setup-Token` included, when an upstream does not
+  answer; it was unfiltered before. Tested with the real setup token: it is in the api's start-up line and nowhere else.
 - The setup token and the recovery key are stored as hashes only, in their own table that no settings reader can see. The
   token is compared in constant time, and parallel guesses are held by the limiter before they are judged.
 - Nothing can frame the site or the admin.

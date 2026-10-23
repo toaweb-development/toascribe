@@ -367,15 +367,13 @@ describe('docker/proxy/Caddyfile', () => {
     expect(readme).toContain('ipv4_address')
   })
 
-  it('keeps secrets out of the access log: the tokens, the cookies and the query values that carry one', () => {
+  it('keeps secrets out of both logs: the tokens, the cookies and every query value that is not known to be safe', () => {
     const code = withoutComments(caddyfile)
     // The default `log` redacts Cookie, Authorization, Proxy-Authorization and Set-Cookie but writes X-Setup-Token and
-    // X-Csrf-Token (the spelling Go gives X-CSRF-Token) and the whole address, ?token=... included, in the clear.
+    // X-Csrf-Token (the spelling Go gives X-CSRF-Token) and the whole address in the clear.
     expect(code).not.toMatch(/^\s*log\s*$/m)
-    const start = code.indexOf('log {')
-    expect(start).toBeGreaterThan(-1)
-    const block = code.slice(start, code.indexOf('handle @unnormalized'))
-    expect(block).toMatch(/format filter \{\n\s+wrap json\n/)
+    const format = code.slice(code.indexOf('(log_format) {'), code.indexOf(':8081 {'))
+    expect(format).toMatch(/format filter \{\n\s+wrap json\n/)
     for (const field of [
       'request>headers>X-Setup-Token',
       'request>headers>X-Csrf-Token',
@@ -385,17 +383,47 @@ describe('docker/proxy/Caddyfile', () => {
       'resp_headers>Set-Cookie',
       'resp_headers>X-Csrf-Token',
     ]) {
-      expect(block, field).toMatch(new RegExp(`^\\s*${field} delete$`, 'm'))
+      expect(format, field).toMatch(new RegExp(`^\\s*${field} delete$`, 'm'))
     }
     // The three places an address is logged: the request, the Referer a page sends with its assets, and the Location of a
-    // redirect (/setup?token=... is sent on to /admin/setup with the same query).
-    for (const field of ['request>uri', 'request>headers>Referer', 'resp_headers>Location']) {
-      const at = block.indexOf(`${field} query {`)
-      expect(at, field).toBeGreaterThan(-1)
-      const body = block.slice(at, block.indexOf('}', at))
-      for (const name of ['token', 'key', 'code'])
-        expect(body, `${field} ${name}`).toContain(`replace ${name} REDACTED`)
-    }
+    // redirect.
+    for (const field of ['request>uri', 'request>headers>Referer', 'resp_headers>Location'])
+      expect(format, field).toMatch(new RegExp(`^\\s*import redact_query ${field}$`, 'm'))
+    // The access log of :8080 and the error log (Caddy writes the whole request there when an upstream does not answer,
+    // X-Setup-Token header included) use that one format. The default logger drops what the error log takes.
+    expect(code).toMatch(/^\s*log error_log \{\n\s+include http\.log\.error\n\s+import log_format\n\s+\}/m)
+    expect(code.slice(code.indexOf(':8080 {'), code.indexOf('handle @unnormalized'))).toMatch(
+      /^\s*log \{\n\s+import log_format\n\s+\}/m,
+    )
+  })
+
+  it('redacts every query value except the safe names, with the three regexp steps run the way Caddy runs them', () => {
+    const code = withoutComments(caddyfile)
+    const steps = [
+      ...code.slice(code.indexOf('(redact_query) {')).matchAll(/\{args\[0\]\} regexp "([^"]+)" "([^"]+)"/g),
+    ].map((match) => ({ pattern: new RegExp(match[1] ?? '', 'g'), replacement: match[2] ?? '' }))
+    expect(steps).toHaveLength(3)
+    // Go's regexp and JavaScript's agree on these patterns and on `$1`-style replacements.
+    const redact = (address: string): string =>
+      steps.reduce((text, step) => text.replace(step.pattern, step.replacement), address)
+    const names = ['token', 'password', 'secret', 'signature', 'state', 'access_token', 'key', 'code']
+    const unsafe = names.map((name) => `${name}=CANARY_${name}`).join('&')
+    const out = redact(`/x?${unsafe}&action=rp&loggedout=true&checkemail=confirm&other=CANARY_other`)
+    expect(out).not.toContain('CANARY')
+    for (const name of names) expect(out, name).toContain(`${name}=REDACTED`)
+    expect(out).toContain('other=REDACTED')
+    expect(out).toContain('action=rp&loggedout=true&checkemail=confirm')
+    // A name that imitates the mark is redacted too, not skipped; encodings and `;` hide nothing; a value up to `#` goes.
+    expect(redact('/x?action~y=CANARY')).toBe('/x?action=y=REDACTED')
+    expect(redact('/x?%74oken=CANARY&a=1;token=CANARY')).toBe('/x?%74oken=REDACTED&a=REDACTED')
+    expect(redact('/admin/setup?token=CANARY#frag')).toBe('/admin/setup?token=REDACTED#frag')
+    expect(redact('/x?action=rp&token=CANARY&action=lostpassword')).toBe(
+      '/x?action=rp&token=REDACTED&action=lostpassword',
+    )
+    // The two lists of safe names are the same.
+    const lists = [...code.matchAll(/\(([a-z|]+)\)[=~]/g)].map((match) => match[1])
+    expect(lists).toHaveLength(2)
+    expect(lists[0]).toBe(lists[1])
   })
 
   it('keeps TLS out of the stack', () => {

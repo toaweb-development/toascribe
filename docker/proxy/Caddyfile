@@ -1,8 +1,54 @@
 # toascribe proxy (PLAN.md «Arkitektur»). An external Traefik or nginx sends all traffic here; Caddy routes by path.
 # HTTP only inside the stack: TLS belongs to the external proxy, so there is no certificate handling here.
+
+# Redacts the value of every query parameter except the ones listed below, in the field it is imported for. Caddy's
+# `query` filter can only name parameters it already knows (a wildcard is read as the literal name "*"), so this is an
+# allow-list written as three `regexp` filters, which Caddy applies in this order:
+#   1. a listed name is marked (`action=` becomes `action~`), so that the next step skips it;
+#   2. every `name=value` that is left becomes `name=REDACTED` (`;`, `%xx` and odd names are covered too, because the
+#      value is everything up to the next `&` or `#`, and a name is never decoded);
+#   3. the mark is turned back into `=`.
+# A hostile `?action~x=secret` is redacted in step 2 and comes out as `action=x=REDACTED`. A parameter without `=` has no
+# value to hide and is kept as it is. A new parameter that is safe to log (it never carries a secret, a name or an
+# address) is added to the two lists below, in the same order; until then it is logged as `name=REDACTED`.
+# The safe ones today are the notices of the login screen (`action`, `loggedout`, `checkemail`). Not `password`
+# (`?password=changed` is a notice, but Tor wants the name hidden), `token`, `key`, `code`, `secret`, `signature`,
+# `state`, `access_token` or anything else.
+(redact_query) {
+	{args[0]} regexp "([?&])(action|loggedout|checkemail)=" "$1$2~"
+	{args[0]} regexp "([?&][^=&#]*)=[^&#]*" "$1=REDACTED"
+	{args[0]} regexp "([?&])(action|loggedout|checkemail)~" "$1$2="
+}
+
+# The format of both logs: the access log (the `log` directive in :8080) and the error log (the global `log` above), which
+# Caddy writes when an upstream does not answer and which carries the same request, X-Setup-Token header included.
+(log_format) {
+	format filter {
+		wrap json
+		request>headers>X-Setup-Token delete
+		request>headers>X-Csrf-Token delete
+		request>headers>Cookie delete
+		request>headers>Authorization delete
+		request>headers>Proxy-Authorization delete
+		resp_headers>Set-Cookie delete
+		resp_headers>X-Csrf-Token delete
+		# The query of every address that is logged: the request, the Referer a page sends with its assets, and the
+		# Location of a redirect (/setup?... is sent on to /admin/setup with the same query).
+		import redact_query request>uri
+		import redact_query request>headers>Referer
+		import redact_query resp_headers>Location
+	}
+}
+
 {
 	admin off
 	auto_https off
+
+	# Errors (an upstream that does not answer) are logged with the whole request, so they get the same filter as the access log.
+	log error_log {
+		include http.log.error
+		import log_format
+	}
 
 	servers {
 		# Believe X-Forwarded-For/-Proto/-Host from exactly one address or network: TOASCRIBE_TRUSTED_PROXY, a single IP
@@ -36,37 +82,12 @@
 	# THE ACCESS LOG keeps no secret. Caddy's own default already replaces Cookie, Authorization, Proxy-Authorization and
 	# Set-Cookie with REDACTED; the filter below also deletes them, so this file does not depend on that default, and adds
 	# what the default does not know: the setup token (X-Setup-Token) and the CSRF token (X-Csrf-Token, the spelling Go
-	# gives X-CSRF-Token) are headers of the api, and the setup address carries ?token=... until the wizard has moved it
-	# out of the address bar (also `key`, as in an old WordPress /wp-login.php?action=rp&key=..., and `code`).
+	# gives X-CSRF-Token) are headers of the api. The setup address carries its token in the URL fragment
+	# (/admin/setup#token=...), which a browser never sends to a server, so it never reaches this log; the old query form
+	# (?token=...) and the query of an old WordPress /wp-login.php?action=rp&key=... are covered by the allow-list below.
 	# The names must be written the way Go spells them (X-Csrf-Token); an unknown name is ignored without an error.
 	log {
-		format filter {
-			wrap json
-			request>headers>X-Setup-Token delete
-			request>headers>X-Csrf-Token delete
-			request>headers>Cookie delete
-			request>headers>Authorization delete
-			request>headers>Proxy-Authorization delete
-			resp_headers>Set-Cookie delete
-			resp_headers>X-Csrf-Token delete
-			# The query of every address that is logged: the request, the Referer a page sends with its assets, and the
-			# Location of a redirect (/setup?token=... is sent on to /admin/setup with the same query).
-			request>uri query {
-				replace token REDACTED
-				replace key REDACTED
-				replace code REDACTED
-			}
-			request>headers>Referer query {
-				replace token REDACTED
-				replace key REDACTED
-				replace code REDACTED
-			}
-			resp_headers>Location query {
-				replace token REDACTED
-				replace key REDACTED
-				replace code REDACTED
-			}
-		}
+		import log_format
 	}
 
 	# The external proxy sets the security headers (SECURITY §7); do not advertise what runs here.

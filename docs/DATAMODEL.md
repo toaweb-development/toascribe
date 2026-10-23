@@ -281,18 +281,19 @@ it back to `subscriber` where a v0.2.0 database had it. Text that can reach a ma
 The setup wizard (`/admin/setup`) and `toa core install` share one install service; this is the data it works on. The
 helpers are exported by `@toascribe/db` (`packages/db/src/install.ts`).
 
-**Settings.** Five keys in `CoreSettings`, seeded by `seedCore()` with these defaults:
+**Settings.** Six keys in `CoreSettings`, seeded by `seedCore()` with these defaults:
 
 | Key                          | Default | Value                         | Written by                                                             |
 | ---------------------------- | ------- | ----------------------------- | ---------------------------------------------------------------------- |
 | `installed`                  | false   | boolean                       | `markInstalled()` only                                                 |
 | `installed_at`               | null    | ISO 8601 UTC (`…T…Z`)         | `markInstalled()` only                                                 |
+| `smtp_verified_at`           | null    | ISO 8601 UTC (`…T…Z`)         | a passed test mail only; every SMTP settings save clears it            |
 | `admin_email`                | null    | e-mail, at most 254           | the install (the first administrator's address), later Settings → General |
 | `default_category`           | null    | term uuid                     | `seedDefaultContent()` («Ukategorisert»), later Settings → Writing     |
 | `wp_page_for_privacy_policy` | null    | content uuid                  | `seedDefaultContent()` (the draft privacy page), later Settings → Privacy |
 
-`installed` and `installed_at` are `READ_ONLY_SETTING_KEYS`: a settings API, `toa option` or an importer must refuse to
-write them, because `installed = false` would reopen `/setup`. There is no `siteurl` or `home`: the site's address is
+`installed`, `installed_at` and `smtp_verified_at` are `READ_ONLY_SETTING_KEYS`: a settings API, `toa option` or an importer
+must refuse to write them, because `installed = false` would reopen `/setup`. There is no `siteurl` or `home`: the site's address is
 `PUBLIC_ORIGIN` in `.env`, which the proxy, the cookies and the CSRF origin check need before any database read, so a
 second copy in `setting` could only disagree with it. WordPress' options of that name can be derived from it on export.
 

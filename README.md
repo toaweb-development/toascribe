@@ -91,7 +91,10 @@ Use `toascribe_owner` for the owner password, and `postgres` for `POSTGRES_PASSW
   `SMTP_SECURE=none` and a `MAIL_FROM_ADDRESS` set (see `docker/.env.example`). Its inbox is at
   <http://127.0.0.1:8025> (`TOASCRIBE_MAILPIT_PORT` changes the port). It is the one published port besides the proxy's,
   bound to this machine's loopback only, and the page has no login: do not use the profile on a server.
-- **The CLI** runs in the API container: `docker compose -f docker/compose.yaml exec api toa --version`.
+- **The CLI** runs in the API container: `docker compose -f docker/compose.yaml exec api toa --version`. Exit codes: `0`
+  success, `1` an error underway (the database does not answer, the site is already installed, a name is taken), `2` invalid
+  input or usage (an unknown flag, a missing value, a refused password, a bad environment). `toa core is-installed` is the one
+  exception: 0 installed, 1 not installed, 2 error. `toa` with no arguments lists them.
 - **Stop.** `docker compose -f docker/compose.yaml down` (add `-v` to delete the database volume as well).
 
 ## Installer uten å klone repoet
@@ -106,10 +109,10 @@ docker compose pull                                                # first: see 
 docker compose run --rm --no-deps -T api toa core gen-env >> .env  # the passwords and keys, once
 echo 'PUBLIC_ORIGIN=https://example.com' >> .env                   # the address visitors use; default http://localhost:8080
 docker compose up -d
-docker compose logs api | grep -o 'https\?://[^ ]*/admin/setup?token=[A-Za-z0-9_-]*'
+docker compose logs api | grep -o 'https\?://[^ ]*/admin/setup#token=[A-Za-z0-9_-]*'
 ```
 
-Open the address the last command prints: `/admin/setup?token=...` is the setup wizard, and the token in it is good for
+Open the address the last command prints: `/admin/setup#token=...` is the setup wizard, and the token in it is good for
 that one setup. A new one is made at the next start of the API, or with `docker compose exec api toa core setup-token`.
 Add `TOASCRIBE_HTTP_PORT=...` (and the other settings in [docker/.env.example](docker/.env.example), also attached to each
 release as `env.example`) to `.env` the same way.
