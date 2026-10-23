@@ -549,6 +549,27 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
       expect((await env.footprint()).notices).toEqual([])
     })
 
+    it('lets the cli leave the mail to the SMTP defaults of the environment: nothing saved, no notice, and the audit says so', async () => {
+      await env.service.install({ admin: admin('env'), site: SITE, email: { fromEnvironment: true }, source: 'cli' })
+      expect(await env.setting('smtp_host')).toBeNull()
+      expect((await env.footprint()).notices).toEqual([])
+      const audit = await env.query<{ new_value: Record<string, unknown> }>(
+        `select new_value from audit_log where action = 'site.installed'`,
+      )
+      expect(audit[0]?.new_value).toMatchObject({
+        emailConfigured: false,
+        emailSkipped: false,
+        emailFromEnvironment: true,
+      })
+      expect(await env.service.status()).toEqual({ installed: true, nextStep: null })
+    })
+
+    it('still needs the e-mail step from a caller that does not say how the mail is done', async () => {
+      const err = await failure(env.service.install({ admin: admin('nomail'), site: SITE }))
+      expect(err).toMatchObject({ code: 'step_missing' })
+      expect((await env.footprint()).notices).toEqual([])
+    })
+
     it('uses the administrator’s address for admin_email when no site step set one', async () => {
       await env.service.saveSite(SITE)
       await env.service.skipEmail()

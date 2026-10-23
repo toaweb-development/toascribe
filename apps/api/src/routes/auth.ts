@@ -174,14 +174,16 @@ const registerRoute = defineRoute({
   summary: 'Register an account',
   description:
     'Only when the setting «Anyone can register» is on (403 `registration_closed` otherwise). Makes a pending account with the ' +
-    'default role and mails a link to choose the password. Always 202 with the same body, and about the same time, whether or ' +
-    `not the username or the address was free (K-004). ${CSRF_NOTE}`,
+    'default role and mails a link to choose the password. 202 with the same body, and about the same time, whether or not the ' +
+    'address was free (K-004): the owner of a taken address gets a mail about the attempt instead. A username that is taken is ' +
+    `told, as WordPress does: 409 \`username_taken\`, whether or not the address is free. ${CSRF_NOTE}`,
   policy: publicAccess(),
   request: { body: { required: true, content: { 'application/json': { schema: RegisterRequest } } } },
   responses: {
     202: { content: { 'application/json': { schema: AcceptedResponse } }, description: 'Accepted' },
     400: errorResponse('Invalid request, or a cross-site request'),
     403: errorResponse('Registration is closed (`registration_closed`)'),
+    409: errorResponse('The username is taken (`username_taken`); choose another'),
     429: errorResponse('Too many requests from this address; see Retry-After'),
     503: errorResponse('The default role cannot be given to visitors (`registration_unavailable`)'),
   },

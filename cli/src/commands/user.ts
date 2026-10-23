@@ -1,14 +1,16 @@
-// `toa user create`, `toa user reset-password`, `toa user reset-login-limit` and `toa user mfa-reset`: the operator's way to make an account, give
-// one a new password or end the wait after failed logins, before the setup wizard (M0.4) and without the e-mail round trip. They run in the api container as the app role (DATABASE_URL), in
-// production too: unlike `dev seed tom` nothing here is destructive. The result goes to stdout (a generated password, once),
-// the sentences to stderr and the log to stderr, so `toa user create … | …` carries nothing else than the password.
-import { parseArgs } from 'node:util'
-
-import { hashPassword } from '@toascribe/auth'
-import { createDb, createMailProducer } from '@toascribe/db'
-import type { Database } from '@toascribe/db'
-import { NewPassword, RegisterRequest, generatePassword } from '@toascribe/shared'
-import { pino } from 'pino'
+// `toa user create`, `toa user reset-password`, `toa user reset-login-limit` and `toa user mfa-reset`: the operator's way to make an
+// account, give one a new password, end the wait after failed logins or remove the second factors. They run in the api container as
+// the app role (DATABASE_URL), in production too: unlike `dev seed tom` nothing here is destructive. The result goes to stdout (a
+// generated password, once), the sentences to stderr and the log to stderr, so `toa user create … | …` carries nothing else than
+// the password.
+//
+// `--notify` tells the owner of the account by e-mail (queued for the worker, after the change has committed): `create` mails a
+// one-time link to choose the password, `reset-password` and `reset-login-limit` a security notice, and `mfa-reset` always sends its
+// notice. A mail that cannot be queued does not undo the change; the command says so and exits 1.
+import { generateToken, hashPassword, hashToken } from '@toascribe/auth'
+import { createMailProducer } from '@toascribe/db'
+import { ONE_TIME_LINK_HOURS, RegisterRequest } from '@toascribe/shared'
+import type { EmailMessage, KeyRing } from '@toascribe/shared'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 
@@ -22,6 +24,7 @@ import {
   freeNicename,
   insertAccountWithRole,
   insertCliAudit,
+  insertSetPasswordLink,
   listRoleSlugs,
   lockAccount,
   nicenameFor,
@@ -31,11 +34,25 @@ import {
   voidUnusedLinks,
 } from '../accounts.ts'
 import type { AccountSelector } from '../accounts.ts'
-import { ConfigError, loadAppDatabaseConfig } from '../config.ts'
+import { ConfigError, keyRingOf, loadKeyedDatabaseConfig } from '../config.ts'
 import type { AppDatabaseConfig } from '../config.ts'
+import {
+  OBVIOUS_PASSWORD,
+  UsageError,
+  checked,
+  choosePassword,
+  failureFields,
+  isCliResult,
+  isTooObvious,
+  parseFlags,
+  refusal,
+  usageResult,
+  withDatabase,
+} from '../kit.ts'
+import type { ChosenPassword } from '../kit.ts'
 import type { CommandOptions } from '../options.ts'
 import type { CliResult } from '../result.ts'
-import { readProcessStdin, StdinTooLongError } from '../stdin.ts'
+import { readProcessStdin } from '../stdin.ts'
 import {
   USER_CREATE_USAGE,
   USER_MFA_RESET_USAGE,
@@ -56,191 +73,60 @@ const DisplayName = z
   .max(250)
   .refine((value) => !CONTROL_CHARACTER.test(value), { message: 'Must be one line, without control characters' })
 
-type FlagKind = 'string' | 'boolean'
-
-type FlagValues = Readonly<Record<string, string | boolean | undefined>>
-
-/** A usage problem: a bad flag or value (exit code 2). The message names flags and rules, never values. */
-class UsageError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'UsageError'
-  }
-}
-
 /**
- * Reads `--flag value` pairs. Unknown options are reported by name only, and a stray argument is not echoed: people try
- * `--password hunter2`, and the value must not come back in a message.
+ * Queues `message` for the worker: through the producer the caller passed, or one on DATABASE_URL that is stopped when done.
+ * Returns false, after logging why, when it could not be queued; the change it reports has been made all the same.
  */
-function parseFlags(args: readonly string[], spec: Readonly<Record<string, FlagKind>>): FlagValues {
-  const { values, positionals } = parseArgs({
-    args: [...args],
-    options: Object.fromEntries(Object.entries(spec).map(([name, type]) => [name, { type }])),
-    strict: false,
-    allowPositionals: true,
-  })
-  const problems: string[] = []
-  for (const name of Object.keys(values)) {
-    if (!(name in spec)) {
-      problems.push(
-        name === 'password' || name === 'pw'
-          ? `Unknown option --${name}. A password is never taken from the command line: use --password-stdin.`
-          : `Unknown option --${name}.`,
-      )
-    }
-  }
-  if (positionals.length > 0) {
-    problems.push('Unexpected argument. Every value follows its flag, as --flag value.')
-  }
-  for (const [name, kind] of Object.entries(spec)) {
-    const value = values[name]
-    if (value === undefined) {
-      continue
-    }
-    // `--username --email x` gives the username the value "--email": a value that looks like a flag is a missing value.
-    if (kind === 'string' && (typeof value !== 'string' || value.startsWith('--'))) {
-      problems.push(`--${name} needs a value.`)
-    }
-    if (kind === 'boolean' && typeof value !== 'boolean') {
-      problems.push(`--${name} takes no value.`)
-    }
-  }
-  if (problems.length > 0) {
-    throw new UsageError(problems.join('\n'))
-  }
-  return values
-}
-
-/** One validated string flag; the problem, if any, is added to `problems` under the flag's name. */
-function checked<T>(flag: string, schema: z.ZodType<T>, value: unknown, problems: string[]): T | undefined {
-  if (value === undefined) {
-    problems.push(`--${flag} is required.`)
-    return undefined
-  }
-  const parsed = schema.safeParse(value)
-  if (!parsed.success) {
-    problems.push(`--${flag}: ${parsed.error.issues[0]?.message ?? 'invalid'}`)
-    return undefined
-  }
-  return parsed.data
-}
-
-function usageResult(message: string, usage: string): CliResult {
-  return { code: 2, stdout: '', stderr: `${message}\n\nUsage:\n${usage}\n` }
-}
-
-function refusal(message: string): CliResult {
-  return { code: 1, stdout: '', stderr: `${message}\n` }
-}
-
-/** Standard input holds the password and a line break after it; only that one line break is not part of it. */
-function stripOneLineBreak(text: string): string {
-  return text.endsWith('\r\n') ? text.slice(0, -2) : text.endsWith('\n') ? text.slice(0, -1) : text
-}
-
-interface ChosenPassword {
-  readonly password: string
-  /** True when the tool made it, so it is printed. */
-  readonly generated: boolean
-}
-
-/** The password from standard input (`--password-stdin`), or a new strong one. Throws UsageError if the input is no password. */
-async function choosePassword(fromStdin: boolean, readStdin: () => Promise<string>): Promise<ChosenPassword> {
-  if (!fromStdin) {
-    return { password: generatePassword(), generated: true }
-  }
-  let text: string
-  try {
-    text = await readStdin()
-  } catch (err) {
-    if (err instanceof StdinTooLongError) {
-      throw new UsageError('--password-stdin: standard input is too long for a password.')
-    }
-    throw err
-  }
-  const parsed = NewPassword.safeParse(stripOneLineBreak(text))
-  if (!parsed.success) {
-    throw new UsageError(
-      `--password-stdin: ${parsed.error.issues[0]?.message ?? 'invalid'} (standard input is the password)`,
-    )
-  }
-  return { password: parsed.data, generated: false }
-}
-
-/** As in the api: a password equal to the username or the e-mail address is refused. */
-function isTooObvious(password: string, account: { readonly username: string; readonly email: string }): boolean {
-  const lower = password.toLowerCase()
-  return lower === account.username.toLowerCase() || lower === account.email.toLowerCase()
-}
-
-const OBVIOUS_PASSWORD = 'The password must not be the username or the e-mail address.'
-
-/** The deepest cause of an error: the driver's own, whose message holds no query text and no parameters. */
-function rootCause(err: unknown): unknown {
-  let current: unknown = err
-  for (let depth = 0; depth < 5 && typeof current === 'object' && current !== null && 'cause' in current; depth += 1) {
-    if (current.cause === undefined || current.cause === null) {
-      break
-    }
-    current = current.cause
-  }
-  return current
-}
-
-/**
- * What the log gets of a failure. Not the error itself: Drizzle's message holds the failed query and its parameters, which for
- * these commands include the e-mail address and the password hash.
- */
-function failureFields(err: unknown): Record<string, unknown> {
-  const root = rootCause(err)
-  if (root instanceof Error) {
-    const code = 'code' in root && typeof root.code === 'string' ? root.code : undefined
-    return { error: root.name, ...(code === undefined ? {} : { code }), message: root.message }
-  }
-  return { error: 'unknown' }
-}
-
-function loggerFor(options: CommandOptions, level: string): Logger {
-  return options.logger ?? pino({ name: 'toa', level }, pino.destination(2))
-}
-
-/** Runs `work` with a one-connection database as the app role, and ends the connection. */
-async function withDatabase<T>(
+async function queueMail(
   options: CommandOptions,
-  command: string,
-  work: (db: Database, logger: Logger, config: AppDatabaseConfig) => Promise<T>,
-): Promise<T | CliResult> {
-  let config
+  config: AppDatabaseConfig,
+  logger: Logger,
+  message: EmailMessage,
+  what: string,
+  keyRing?: KeyRing,
+): Promise<boolean> {
+  const producer =
+    options.mail ??
+    createMailProducer({
+      connectionString: config.DATABASE_URL,
+      applicationName: 'toascribe-cli',
+      logger,
+      ...(keyRing === undefined ? {} : { keyRing }),
+    })
   try {
-    config = loadAppDatabaseConfig(options.env)
+    await producer.sendMail(message)
+    return true
+  } catch (err) {
+    logger.error(failureFields(err), `could not queue the ${what}`)
+    return false
+  } finally {
+    if (options.mail === undefined) {
+      await producer.stop().catch(() => undefined)
+    }
+  }
+}
+
+/** The key ring of the encryption key in the environment, for a command that queues a mail with a one-time link; undefined when the caller brings its own producer. */
+async function keyRingFor(options: CommandOptions): Promise<KeyRing | undefined | CliResult> {
+  if (options.mail !== undefined) {
+    return undefined
+  }
+  try {
+    return await keyRingOf(loadKeyedDatabaseConfig(options.env))
   } catch (err) {
     if (err instanceof ConfigError) {
       return refusal(err.message)
     }
     throw err
   }
-  const logger = loggerFor(options, config.LOG_LEVEL)
-  const { db, pool } = createDb({
-    connectionString: config.DATABASE_URL,
-    max: 1,
-    applicationName: 'toascribe-cli',
-  })
-  pool.on('error', (err) => {
-    logger.error(failureFields(err), 'database connection error')
-  })
-  try {
-    return await work(db, logger, config)
-  } catch (err) {
-    logger.fatal(failureFields(err), `${command} failed`)
-    return refusal(`${command} failed; see the log above`)
-  } finally {
-    await pool.end()
-  }
 }
 
-function isCliResult(value: unknown): value is CliResult {
-  return typeof value === 'object' && value !== null && 'code' in value && 'stderr' in value && 'stdout' in value
+/** The text after a change whose notice could not be queued: the change stands, running the command again would repeat it. */
+function notQueued(done: string): CliResult {
+  return { code: 1, stdout: '', stderr: `${done}, but the e-mail could not be queued (see the log above).\n` }
 }
+
+const HOUR_MS = 60 * 60 * 1000
 
 const CREATE_FLAGS = {
   username: 'string',
@@ -248,6 +134,7 @@ const CREATE_FLAGS = {
   role: 'string',
   'display-name': 'string',
   'password-stdin': 'boolean',
+  notify: 'boolean',
 } as const
 
 /** The outcome of the transaction of `user create`, other than success. */
@@ -257,7 +144,8 @@ interface CreateRefusal {
 
 export async function userCreate(args: readonly string[], options: CommandOptions = {}): Promise<CliResult> {
   let input: { username: string; email: string; role: string; displayName: string | undefined }
-  let chosen: ChosenPassword
+  let chosen: ChosenPassword | undefined
+  let notify = false
   try {
     const flags = parseFlags(args, CREATE_FLAGS)
     const problems: string[] = []
@@ -268,13 +156,22 @@ export async function userCreate(args: readonly string[], options: CommandOption
       flags['display-name'] === undefined
         ? undefined
         : checked('display-name', DisplayName, flags['display-name'], problems)
+    notify = flags['notify'] === true
+    if (notify && flags['password-stdin'] === true) {
+      problems.push(
+        '--notify and --password-stdin exclude each other: with --notify the person chooses the password with the link in the mail.',
+      )
+    }
     if (problems.length > 0 || username === undefined || email === undefined || role === undefined) {
       throw new UsageError(problems.join('\n'))
     }
     input = { username, email, role, displayName }
-    chosen = await choosePassword(flags['password-stdin'] === true, options.readStdin ?? readProcessStdin)
-    if (isTooObvious(chosen.password, input)) {
-      throw new UsageError(OBVIOUS_PASSWORD)
+    // With --notify there is no password to choose here: the account waits for its owner to follow the link.
+    if (!notify) {
+      chosen = await choosePassword(flags['password-stdin'] === true, options.readStdin ?? readProcessStdin)
+      if (isTooObvious(chosen.password, input)) {
+        throw new UsageError(OBVIOUS_PASSWORD)
+      }
     }
   } catch (err) {
     if (err instanceof UsageError) {
@@ -283,8 +180,14 @@ export async function userCreate(args: readonly string[], options: CommandOption
     throw err
   }
 
-  const passwordHash = await hashPassword(chosen.password)
-  const outcome = await withDatabase(options, 'user create', async (db, logger) => {
+  // The token of the link is sealed with the encryption key before the job is stored: checked now, before anything is made.
+  const keyRing = notify ? await keyRingFor(options) : undefined
+  if (isCliResult(keyRing)) {
+    return keyRing
+  }
+  const passwordHash = chosen === undefined ? null : await hashPassword(chosen.password)
+  const token = notify ? generateToken() : undefined
+  const outcome = await withDatabase(options, 'user create', async (db, logger, config) => {
     try {
       const created = await db.transaction(async (tx): Promise<{ id: string } | CreateRefusal> => {
         const role = await findRole(tx, input.role)
@@ -308,16 +211,53 @@ export async function userCreate(args: readonly string[], options: CommandOption
           displayName: input.displayName ?? input.username,
           nicename: await freeNicename(tx, nicenameFor(input.username)),
           passwordHash,
+          status: passwordHash === null ? 'pending' : 'active',
           roleId: role.id,
           now,
         })
-        await insertCliAudit(tx, { accountId: id, action: 'account.created', newValue: { role: role.slug } }, now)
+        if (token !== undefined) {
+          await insertSetPasswordLink(tx, {
+            accountId: id,
+            tokenHash: hashToken(token),
+            expiresAt: new Date(now.getTime() + ONE_TIME_LINK_HOURS * HOUR_MS),
+            now,
+          })
+        }
+        await insertCliAudit(
+          tx,
+          {
+            accountId: id,
+            action: 'account.created',
+            newValue: { role: role.slug, ...(notify ? { welcomeMail: true } : {}) },
+          },
+          now,
+        )
         return { id }
       })
       if ('refused' in created) {
         return refusal(created.refused.join('\n'))
       }
       logger.info({ accountId: created.id, role: input.role }, 'account created')
+      if (token !== undefined) {
+        const queued = await queueMail(
+          options,
+          config,
+          logger,
+          { template: 'set_password', to: input.email, data: { username: input.username, token } },
+          'welcome mail',
+          keyRing,
+        )
+        if (!queued) {
+          return {
+            code: 1,
+            stdout: '',
+            stderr:
+              `Created the account "${input.username}" with the role ${input.role}, waiting for its first password, ` +
+              'but the welcome mail could not be queued (see the log above). The person can ask for a new link with «Lost your password?» ' +
+              'on the login page.\n',
+          }
+        }
+      }
       return created
     } catch (err) {
       // Two creations of one name at once: the second finds it taken.
@@ -339,14 +279,18 @@ export async function userCreate(args: readonly string[], options: CommandOption
   }
   return {
     code: 0,
-    stdout: chosen.generated ? `${chosen.password}\n` : '',
+    stdout: chosen?.generated === true ? `${chosen.password}\n` : '',
     stderr:
       `Created the account "${input.username}" with the role ${input.role}.\n` +
-      (chosen.generated ? 'Its password is printed once, below, and kept nowhere else.\n' : ''),
+      (notify
+        ? `It has no password yet: a mail with a link to choose one (valid ${String(ONE_TIME_LINK_HOURS)} hours) is queued to the address of the account.\n`
+        : chosen?.generated === true
+          ? 'Its password is printed once, below, and kept nowhere else.\n'
+          : ''),
   }
 }
 
-const RESET_FLAGS = { username: 'string', email: 'string', 'password-stdin': 'boolean' } as const
+const RESET_FLAGS = { username: 'string', email: 'string', 'password-stdin': 'boolean', notify: 'boolean' } as const
 
 interface ResetRefusal {
   readonly refused: string
@@ -355,6 +299,7 @@ interface ResetRefusal {
 export async function userResetPassword(args: readonly string[], options: CommandOptions = {}): Promise<CliResult> {
   let selector: AccountSelector
   let chosen: ChosenPassword
+  let notify = false
   try {
     const flags = parseFlags(args, RESET_FLAGS)
     const problems: string[] = []
@@ -374,6 +319,7 @@ export async function userResetPassword(args: readonly string[], options: Comman
     } else {
       throw new UsageError('Give exactly one of --username and --email.')
     }
+    notify = flags['notify'] === true
     chosen = await choosePassword(flags['password-stdin'] === true, options.readStdin ?? readProcessStdin)
   } catch (err) {
     if (err instanceof UsageError) {
@@ -383,9 +329,11 @@ export async function userResetPassword(args: readonly string[], options: Comman
   }
 
   const passwordHash = await hashPassword(chosen.password)
-  const outcome = await withDatabase(options, 'user reset-password', async (db, logger) => {
+  const outcome = await withDatabase(options, 'user reset-password', async (db, logger, config) => {
     const done = await db.transaction(
-      async (tx): Promise<{ id: string; username: string; status: string; sessions: number } | ResetRefusal> => {
+      async (
+        tx,
+      ): Promise<{ id: string; username: string; email: string; status: string; sessions: number } | ResetRefusal> => {
         const found = await lockAccount(tx, selector)
         if (found === undefined) {
           return {
@@ -407,13 +355,37 @@ export async function userResetPassword(args: readonly string[], options: Comman
           { accountId: found.id, action: 'password.reset', newValue: { sessionsEnded: sessions, linksVoided: links } },
           now,
         )
-        return { id: found.id, username: found.username, status: found.status, sessions }
+        return { id: found.id, username: found.username, email: found.email, status: found.status, sessions }
       },
     )
     if ('refused' in done) {
       return refusal(done.refused)
     }
     logger.info({ accountId: done.id, sessionsEnded: done.sessions }, 'password reset')
+    if (notify) {
+      const queued = await queueMail(
+        options,
+        config,
+        logger,
+        {
+          template: 'security_notice',
+          to: done.email,
+          data: { username: done.username, action: 'password_reset_by_admin' },
+        },
+        'security notice',
+      )
+      if (!queued) {
+        // The new password is the result of the command and exists nowhere else: it is printed all the same.
+        return {
+          code: 1,
+          stdout: chosen.generated ? `${chosen.password}\n` : '',
+          stderr:
+            `Set a new password for "${done.username}" and ended ${String(done.sessions)} session(s)` +
+            (chosen.generated ? ' (the password is printed once, below)' : '') +
+            ', but the security notice could not be queued (see the log above).\n',
+        }
+      }
+    }
     return done
   })
   if (isCliResult(outcome)) {
@@ -425,11 +397,12 @@ export async function userResetPassword(args: readonly string[], options: Comman
     stderr:
       `Set a new password for "${outcome.username}" and ended ${String(outcome.sessions)} session(s).\n` +
       (outcome.status === 'active' ? '' : `The account is ${outcome.status}; that is unchanged.\n`) +
+      (notify ? 'A security notice is queued to the e-mail address of the account.\n' : '') +
       (chosen.generated ? 'The password is printed once, below, and kept nowhere else.\n' : ''),
   }
 }
 
-const RESET_LIMIT_FLAGS = { username: 'string', email: 'string' } as const
+const RESET_LIMIT_FLAGS = { username: 'string', email: 'string', notify: 'boolean' } as const
 
 /**
  * `toa user reset-login-limit`: ends the wait the api puts on an account after failed logins (and failed codes, lost-password
@@ -439,6 +412,7 @@ const RESET_LIMIT_FLAGS = { username: 'string', email: 'string' } as const
  */
 export async function userResetLoginLimit(args: readonly string[], options: CommandOptions = {}): Promise<CliResult> {
   let selector: AccountSelector
+  let notify = false
   try {
     const flags = parseFlags(args, RESET_LIMIT_FLAGS)
     const problems: string[] = []
@@ -458,6 +432,7 @@ export async function userResetLoginLimit(args: readonly string[], options: Comm
     } else {
       throw new UsageError('Give exactly one of --username and --email.')
     }
+    notify = flags['notify'] === true
   } catch (err) {
     if (err instanceof UsageError) {
       return usageResult(err.message, USER_RESET_LOGIN_LIMIT_USAGE)
@@ -465,23 +440,37 @@ export async function userResetLoginLimit(args: readonly string[], options: Comm
     throw err
   }
 
-  const outcome = await withDatabase(options, 'user reset-login-limit', async (db, logger) => {
-    const done = await db.transaction(async (tx): Promise<{ id: string; username: string } | ResetRefusal> => {
-      const found = await lockAccount(tx, selector)
-      if (found === undefined) {
-        return {
-          refused: `--${'username' in selector ? 'username' : 'email'}: no account has that ${'username' in selector ? 'username' : 'e-mail address'}.`,
+  const outcome = await withDatabase(options, 'user reset-login-limit', async (db, logger, config) => {
+    const done = await db.transaction(
+      async (tx): Promise<{ id: string; username: string; email: string } | ResetRefusal> => {
+        const found = await lockAccount(tx, selector)
+        if (found === undefined) {
+          return {
+            refused: `--${'username' in selector ? 'username' : 'email'}: no account has that ${'username' in selector ? 'username' : 'e-mail address'}.`,
+          }
         }
-      }
-      const now = new Date()
-      await clearLoginAttempts(tx, found.id, ['login', 'mfa', 'password_lost', 'register'], now)
-      await insertCliAudit(tx, { accountId: found.id, action: 'login_limit.reset' }, now)
-      return { id: found.id, username: found.username }
-    })
+        const now = new Date()
+        await clearLoginAttempts(tx, found.id, ['login', 'mfa', 'password_lost', 'register'], now)
+        await insertCliAudit(tx, { accountId: found.id, action: 'login_limit.reset' }, now)
+        return { id: found.id, username: found.username, email: found.email }
+      },
+    )
     if ('refused' in done) {
       return refusal(done.refused)
     }
     logger.info({ accountId: done.id }, 'login limit reset')
+    if (notify) {
+      const queued = await queueMail(
+        options,
+        config,
+        logger,
+        { template: 'security_notice', to: done.email, data: { username: done.username, action: 'login_limit_reset' } },
+        'security notice',
+      )
+      if (!queued) {
+        return notQueued(`Ended the wait after failed attempts for "${done.username}"`)
+      }
+    }
     return done
   })
   if (isCliResult(outcome)) {
@@ -490,7 +479,9 @@ export async function userResetLoginLimit(args: readonly string[], options: Comm
   return {
     code: 0,
     stdout: '',
-    stderr: `Ended the wait after failed attempts for "${outcome.username}". Sessions and the password are unchanged.\n`,
+    stderr:
+      `Ended the wait after failed attempts for "${outcome.username}". Sessions and the password are unchanged.\n` +
+      (notify ? 'A notice is queued to the e-mail address of the account.\n' : ''),
   }
 }
 
@@ -586,27 +577,20 @@ export async function userMfaReset(args: readonly string[], options: CommandOpti
       },
       'second factors reset',
     )
-    const producer =
-      options.mail ??
-      createMailProducer({ connectionString: config.DATABASE_URL, applicationName: 'toascribe-cli', logger })
-    try {
-      await producer.sendMail({
-        template: 'security_notice',
-        to: done.email,
-        data: { username: done.username, action: 'mfa_reset' },
-      })
-    } catch (err) {
-      logger.error(failureFields(err), 'could not queue the security notice')
+    const queued = await queueMail(
+      options,
+      config,
+      logger,
+      { template: 'security_notice', to: done.email, data: { username: done.username, action: 'mfa_reset' } },
+      'security notice',
+    )
+    if (!queued) {
       return {
         code: 1,
         stdout: '',
         stderr:
           `The second factors of "${done.username}" are removed and its ${String(done.sessions)} session(s) ended, ` +
           'but the security notice could not be queued (see the log above). Run the command again to queue it.\n',
-      }
-    } finally {
-      if (options.mail === undefined) {
-        await producer.stop().catch(() => undefined)
       }
     }
     return done

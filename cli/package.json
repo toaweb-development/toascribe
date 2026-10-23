@@ -19,6 +19,7 @@
   "dependencies": {
     "@toascribe/auth": "workspace:*",
     "@toascribe/db": "workspace:*",
+    "@toascribe/install": "workspace:*",
     "@toascribe/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "pino": "catalog:",

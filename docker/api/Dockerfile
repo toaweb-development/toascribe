@@ -54,6 +54,7 @@ COPY --from=prod-deps /app/apps/worker/node_modules ./apps/worker/node_modules
 COPY --from=prod-deps /app/cli/node_modules ./cli/node_modules
 COPY --from=prod-deps /app/packages/auth/node_modules ./packages/auth/node_modules
 COPY --from=prod-deps /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=prod-deps /app/packages/install/node_modules ./packages/install/node_modules
 COPY --from=prod-deps /app/packages/shared/node_modules ./packages/shared/node_modules
 
 # Compiled code and package.json (the version is read from apps/api and cli at run time).
@@ -66,6 +67,8 @@ COPY --from=build /app/packages/auth/dist ./packages/auth/dist
 COPY --from=build /app/packages/db/package.json ./packages/db/package.json
 COPY --from=build /app/packages/db/dist ./packages/db/dist
 COPY --from=build /app/packages/db/migrations ./packages/db/migrations
+COPY --from=build /app/packages/install/package.json ./packages/install/package.json
+COPY --from=build /app/packages/install/dist ./packages/install/dist
 COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/cli/package.json ./cli/package.json

@@ -106,12 +106,14 @@ export interface NewAccount {
   readonly email: string
   readonly displayName: string
   readonly nicename: string
-  readonly passwordHash: string
+  /** Null for an account that is to choose its own password with a one-time link (status `pending`). */
+  readonly passwordHash: string | null
+  readonly status: 'active' | 'pending'
   readonly roleId: string
   readonly now: Date
 }
 
-/** Inserts an active account with its role. A name or address that is already taken makes PostgreSQL refuse (23505). */
+/** Inserts an account with its role. A name or address that is already taken makes PostgreSQL refuse (23505). */
 export async function insertAccountWithRole(db: Executor, input: NewAccount): Promise<string> {
   const rows = await db
     .insert(account)
@@ -121,7 +123,7 @@ export async function insertAccountWithRole(db: Executor, input: NewAccount): Pr
       displayName: input.displayName,
       nicename: input.nicename,
       passwordHash: input.passwordHash,
-      status: 'active',
+      status: input.status,
       createdAt: input.now,
       modifiedAt: input.now,
     })
@@ -222,6 +224,25 @@ export async function voidUnusedLinks(db: Executor, accountId: string, now: Date
     .where(and(eq(accountToken.accountId, accountId), isNull(accountToken.usedAt)))
     .returning({ id: accountToken.id })
   return rows.length
+}
+
+/**
+ * Stores a one-time link to choose the first password (`set_password`, as registration makes one): only the token's hash is
+ * kept. The caller mails the token, which is shown nowhere else.
+ */
+export async function insertSetPasswordLink(
+  db: Executor,
+  input: { readonly accountId: string; readonly tokenHash: string; readonly expiresAt: Date; readonly now: Date },
+): Promise<void> {
+  await db.insert(accountToken).values({
+    accountId: input.accountId,
+    purpose: 'set_password',
+    tokenHash: input.tokenHash,
+    newEmail: null,
+    expiresAt: input.expiresAt,
+    createdAt: input.now,
+    modifiedAt: input.now,
+  })
 }
 
 export interface AuditInput {

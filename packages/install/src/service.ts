@@ -132,8 +132,12 @@ export interface InstallInput {
   readonly admin: { readonly username: string; readonly email: string; readonly password: string }
   /** The «Nettstedet» step, for a caller that does not save steps one by one (the cli). It is saved in the install transaction. */
   readonly site?: SetupSite
-  /** The «E-post» step, or `{ skip: true }`, for the same caller. */
-  readonly email?: SetupEmail | { readonly skip: true }
+  /**
+   * The «E-post» step, for the same caller: the settings to save, `{ skip: true }` (the notice the dashboard shows), or
+   * `{ fromEnvironment: true }` for a caller that leaves the mail to the SMTP defaults of the environment (`SMTP_HOST`, ...): nothing is
+   * saved, no notice is raised, and the caller has checked that the defaults are there.
+   */
+  readonly email?: SetupEmail | { readonly skip: true } | { readonly fromEnvironment: true }
   /**
    * The recovery key the person was shown, and their statement that they saved it. Without it (the cli) a key is made here
    * and returned in the result, for the caller to show once.
@@ -571,8 +575,12 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
       const admin = parse(SetupAdmin, input.admin)
       const site = input.site === undefined ? undefined : parse(SetupSite, input.site)
       const emailInput = input.email
-      const email = emailInput === undefined || 'skip' in emailInput ? undefined : parse(SetupEmail, emailInput)
+      const email =
+        emailInput === undefined || 'skip' in emailInput || 'fromEnvironment' in emailInput
+          ? undefined
+          : parse(SetupEmail, emailInput)
       const skipEmail = emailInput !== undefined && 'skip' in emailInput
+      const emailFromEnvironment = emailInput !== undefined && 'fromEnvironment' in emailInput
       const source = input.source ?? 'setup'
 
       // Slow work first, so the transaction (and the lock the other installs wait on) is short: the password hash, and the
@@ -603,7 +611,7 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
         if (step === 'check') {
           throw new InstallError('step_missing', 'The site step is not saved yet')
         }
-        if (step === 'email') {
+        if (step === 'email' && !emailFromEnvironment) {
           throw new InstallError('step_missing', 'The e-mail step is neither saved nor skipped')
         }
 
@@ -684,6 +692,7 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
             timezone: settings.timezone_string,
             emailConfigured: (await readEmail(tx)) !== null,
             emailSkipped: await hasAdminNotice(tx, SETUP_EMAIL_SKIPPED_NOTICE.key),
+            ...(emailFromEnvironment ? { emailFromEnvironment: true } : {}),
           },
           source,
           ...(input.context?.requestId === undefined ? {} : { correlationId: input.context.requestId }),
