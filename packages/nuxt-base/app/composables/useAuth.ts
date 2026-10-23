@@ -33,6 +33,15 @@ export function useAuth() {
     return answer
   }
 
+  /**
+   * A sign-in that another call made: the install of the setup wizard answers with the same body as a login and sets the
+   * session cookie itself. Keeps the answer and the CSRF token, as `login` does.
+   */
+  function adopt(answer: LoginResponse): void {
+    $csrf.set(answer.csrfToken)
+    session.value = toSessionView(answer)
+  }
+
   async function verifyMfa(body: MfaVerifyRequest): Promise<MfaVerifyResponse> {
     const answer = await authApi.verifyMfa(body)
     session.value = toSessionView(answer)
@@ -81,6 +90,7 @@ export function useAuth() {
     refresh,
     ensure,
     login,
+    adopt,
     verifyMfa,
     enrolStart: authApi.enrolStart,
     confirmEnrolment,

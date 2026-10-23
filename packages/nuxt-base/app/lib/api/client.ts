@@ -7,6 +7,10 @@ import type { CsrfStore } from './csrf.ts'
 export interface ApiCallOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   body?: Record<string, unknown>
+  /** Headers for this call only (the setup wizard's `X-Setup-Token`). */
+  headers?: Record<string, string>
+  /** Milliseconds to wait for this call, when the default is too short (the wizard's test e-mail waits for the worker). */
+  timeout?: number
 }
 
 /** A call to the API: a path under the API base in, the parsed JSON (or undefined for 204) out. Throws ApiRequestError. */
@@ -69,7 +73,7 @@ export function createApiClient(deps: ApiClientDeps): ApiCall {
       if (!isStateChanging(options.method)) {
         return
       }
-      options.timeout = WRITE_TIMEOUT_MS
+      options.timeout = Math.max(options.timeout ?? 0, WRITE_TIMEOUT_MS)
       const path = pathOf(request)
       if (path.endsWith('/auth/login')) {
         return // makes the session: there is nothing to protect yet

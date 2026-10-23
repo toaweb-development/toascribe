@@ -3,14 +3,235 @@
     "name": "toascribe admin",
     "home": {
       "description": "Administrasjon for toascribe.",
-      "intro": "Administrasjonen kommer i en senere versjon.",
-      "setupLink": "Gå til oppsett"
+      "intro": "Administrasjonen kommer i en senere versjon."
+    }
+  },
+  "setup": {
+    "title": "Oppsett — toascribe admin",
+    "heading": "Sett opp nettstedet",
+    "intro": "Velkommen til toascribe. Svar på noen få spørsmål, så er nettstedet klart.",
+    "starting": "Starter oppsettet …",
+    "stepHeading": "Steg {n} av {total}: {title}",
+    "stepper": {
+      "done": "Fullført",
+      "current": "Gjeldende steg",
+      "todo": "Ikke nådd ennå"
     },
-    "setup": {
-      "heading": "Oppsett",
-      "title": "Oppsett — toascribe admin",
-      "description": "Oppsett av toascribe.",
-      "intro": "Veiviseren for oppsett kommer i en senere versjon."
+    "nav": {
+      "back": "Tilbake",
+      "next": "Fortsett"
+    },
+    "steps": {
+      "token": {
+        "title": "Oppsettskode",
+        "heading": "Oppsettskode"
+      },
+      "check": {
+        "title": "Systemsjekk",
+        "heading": "Sjekk av systemet"
+      },
+      "site": {
+        "title": "Nettstedet",
+        "heading": "Om nettstedet"
+      },
+      "email": {
+        "title": "E-post",
+        "heading": "E-post"
+      },
+      "admin": {
+        "title": "Administrator",
+        "heading": "Første administrator"
+      },
+      "content": {
+        "title": "Innhold",
+        "heading": "Standardinnhold"
+      },
+      "finish": {
+        "title": "Fullfør",
+        "heading": "Fullfør installasjonen"
+      }
+    },
+    "token": {
+      "hint": "Oppsettskoden står i loggen til api-tjenesten, i adressen som slutter med «token=». Kjør {logs} for å se loggen. Har du ikke koden lenger, lager {renew} en ny.",
+      "label": "Oppsettskode",
+      "help": "Koden kan bare brukes til dette oppsettet, og slutter å virke når nettstedet er installert.",
+      "submit": "Kontroller koden",
+      "accepted": "Oppsettskoden er godtatt.",
+      "badAddress": "Adressen hadde en oppsettskode som ikke kan stemme. Lim inn koden fra loggen i stedet."
+    },
+    "validation": {
+      "token": "Lim inn hele oppsettskoden fra loggen. Den består av bokstaver, tall, bindestrek og understrek, uten mellomrom.",
+      "title": "Skriv inn en tittel for nettstedet, på én linje og med høyst 200 tegn.",
+      "timezone": "Velg en tidssone fra listen.",
+      "host": "Skriv inn adressen til e-postserveren, for eksempel smtp.eksempel.no.",
+      "port": "Skriv inn et portnummer mellom 1 og 65535, eller la feltet stå tomt.",
+      "smtpUsername": "Brukernavnet kan ikke ha linjeskift og har høyst 320 tegn.",
+      "fromName": "Navnet må stå på én linje og ha høyst 200 tegn.",
+      "passwordSame": "Passordet kan ikke være det samme som brukernavnet eller e-postadressen."
+    },
+    "check": {
+      "intro": "Før nettstedet settes opp, sjekker vi at tjenestene rundt det er i orden.",
+      "working": "Sjekker systemet …",
+      "passed": "Sjekken er ferdig, og alt som må være i orden, er det.",
+      "failed": "Sjekken er ferdig. Antall punkter som må rettes før du kan gå videre: {n}.",
+      "blocked": "Rett det som står som «Må rettes», start tjenestene på nytt om det trengs, og velg «Kontroller på nytt». Du kan ikke gå videre før alt er i orden.",
+      "again": "Kontroller på nytt",
+      "level": {
+        "ok": "I orden",
+        "problem": "Må rettes",
+        "warning": "Advarsel",
+        "info": "Til info"
+      },
+      "database": {
+        "title": "Database",
+        "ok": "Databasen svarer.",
+        "problem": "Får ikke kontakt med databasen. Sjekk at tjenesten «postgres» kjører og at passordene i docker/.env stemmer, og start api-tjenesten på nytt."
+      },
+      "migrations": {
+        "title": "Databaseoppsett",
+        "ok": "Databasen er oppdatert: {applied} av {expected} migreringer er kjørt.",
+        "problem": "Databasen er ikke oppdatert: {applied} av {expected} migreringer er kjørt. Kjør tjenesten «migrate» på nytt og kontroller igjen."
+      },
+      "encryption": {
+        "title": "Krypteringsnøkkel",
+        "ok": "TOASCRIBE_ENCRYPTION_KEY er satt og gyldig (versjon {version}).",
+        "problem": "TOASCRIBE_ENCRYPTION_KEY mangler eller er ugyldig. Lag nøkler med «toa core gen-env», legg dem i docker/.env og start tjenestene på nytt."
+      },
+      "signing": {
+        "title": "Signeringsnøkkel",
+        "ok": "TOASCRIBE_SIGNING_KEY er satt og gyldig.",
+        "problem": "TOASCRIBE_SIGNING_KEY mangler, er ugyldig eller er lik krypteringsnøkkelen. Lag nøkler med «toa core gen-env», legg dem i docker/.env og start tjenestene på nytt."
+      },
+      "origin": {
+        "title": "Nettadresse",
+        "ok": "Nettleseren bruker {origin}, som er det PUBLIC_ORIGIN sier.",
+        "unknown": "Adressen nettleseren bruker, kunne ikke kontrolleres. PUBLIC_ORIGIN er {configured}.",
+        "mismatch": "Nettleseren bruker {observed}, men PUBLIC_ORIGIN er {configured}. Innlogging og lenker i e-post virker bare på den ene adressen. Rett PUBLIC_ORIGIN i docker/.env, start tjenestene på nytt og åpne oppsettet på riktig adresse."
+      },
+      "proxy": {
+        "title": "Proxy foran nettstedet",
+        "configured": "TOASCRIBE_TRUSTED_PROXY er satt. Adressene til de besøkende leses fra proxyen din.",
+        "ok": "Besøkende kommer fra ulike adresser, så proxyen oppgir riktig adresse for hver av dem.",
+        "watching": "Vi ser fortsatt på hvilke adresser besøkende kommer fra ({n} forespørsler så langt). Det er ikke noe du må gjøre nå.",
+        "warning": "TOASCRIBE_TRUSTED_PROXY er tom, og alle forespørsler så langt har kommet fra samme interne adresse ({address}). Alle besøkende deler da én grense for innloggingsforsøk, og adressene i loggen er proxyens. Sett variabelen til proxyens adresse i docker/.env og start proxy-tjenesten på nytt. Du kan fortsette uten å gjøre det nå."
+      }
+    },
+    "site": {
+      "intro": "Dette er innstillinger du kan endre senere.",
+      "title": "Nettstedstittel",
+      "titleHelp": "Navnet på nettstedet. Det vises på innloggingssidene og i e-post fra nettstedet.",
+      "language": {
+        "label": "Språk for nettstedet",
+        "help": "Språket bestemmer også teksten i standardinnholdet som lages til slutt.",
+        "nb": "Norsk bokmål",
+        "en": "English"
+      },
+      "timezone": {
+        "label": "Tidssone",
+        "help": "Velg byen din eller en by i samme tidssone. Du kan skrive for å søke.",
+        "search": "Søk etter tidssone"
+      },
+      "adminEmail": "E-postadresse for administrasjon",
+      "adminEmailHelp": "Hit sender nettstedet varsler. Adressen vises ikke for besøkende.",
+      "visibility": {
+        "legend": "Synlighet for søkemotorer",
+        "label": "Be søkemotorer om ikke å indeksere dette nettstedet",
+        "help": "Det er opp til søkemotorene å respektere denne forespørselen."
+      }
+    },
+    "email": {
+      "intro": "Nettstedet sender e-post, for eksempel lenker for å velge nytt passord. Fyll ut e-postserveren (SMTP) og send en test-e-post for å se at det virker.",
+      "skippedBefore": "Du hoppet over e-post tidligere. Fyll ut skjemaet og send en test-e-post hvis du vil sette det opp nå.",
+      "host": "SMTP-server",
+      "hostHelp": "For eksempel smtp.eksempel.no.",
+      "encryption": {
+        "label": "Kryptering",
+        "starttls": "STARTTLS (vanligvis port 587)",
+        "tls": "TLS (SSL, vanligvis port 465)",
+        "none": "Ingen (vanligvis port 25)"
+      },
+      "port": "Port",
+      "portHelp": "La feltet stå tomt for å bruke standardporten for valgt kryptering ({port}).",
+      "username": "Brukernavn",
+      "usernameHelp": "La feltet stå tomt hvis serveren ikke krever innlogging.",
+      "password": "Passord",
+      "passwordSaved": "Lagret",
+      "passwordKeep": "Et passord er lagret og vises ikke. La feltet stå tomt for å beholde det, eller skriv et nytt.",
+      "passwordHelp": "La feltet stå tomt hvis serveren ikke krever innlogging. Passordet lagres kryptert og vises ikke igjen.",
+      "fromAddress": "Avsenderadresse",
+      "fromAddressHelp": "Adressen e-posten sendes fra, for eksempel nettsted{'@'}eksempel.no.",
+      "fromName": "Avsendernavn",
+      "fromNameHelp": "Valgfritt. Hvis du lar feltet stå tomt, brukes nettstedstittelen.",
+      "test": {
+        "legend": "Test e-postoppsettet",
+        "to": "Send test-e-post til",
+        "toHelp": "Adressen får en kort melding fra nettstedet.",
+        "submit": "Send test-e-post",
+        "sending": "Lagrer og sender test-e-posten …",
+        "sent": "Test-e-posten er sendt til {to}. Sjekk innboksen. Du kan gå videre.",
+        "failed": {
+          "sendFailed": "E-postserveren tok ikke imot meldingen. Sjekk server, port, kryptering, brukernavn og passord, og prøv igjen.",
+          "mailConfig": "E-postinnstillingene er ufullstendige. Fyll ut serveren og avsenderadressen og prøv igjen.",
+          "timeout": "Sendingen tok for lang tid. Sjekk at serveren og porten stemmer og at worker-tjenesten kjører, og prøv igjen.",
+          "queueUnavailable": "Meldingen kom ikke i køen. Sjekk at databasen og worker-tjenesten kjører, og prøv igjen.",
+          "busy": "En test-e-post er allerede på vei. Vent noen sekunder og prøv igjen."
+        }
+      },
+      "mustTest": "Send en test-e-post først. Du kan gå videre når den er sendt, eller hoppe over e-post nedenfor.",
+      "skip": {
+        "heading": "Hopp over e-post",
+        "warning": "Hvis du hopper over, kan ikke nettstedet sende e-post, for eksempel lenker for å velge nytt passord, før du har satt opp e-post. Kontrollpanelet viser et varsel om dette til det er gjort.",
+        "button": "Hopp over e-post"
+      }
+    },
+    "admin": {
+      "intro": "Dette blir den første kontoen, og den får alle rettigheter. Når oppsettet er ferdig, blir du logget inn med den.",
+      "username": "Brukernavn",
+      "usernameHelp": "3 til 60 tegn: bokstaver og tall, og eventuelt punktum, understrek, bindestrek eller {'@'}.",
+      "email": "E-postadresse",
+      "emailHelp": "Brukes til varsler, og hvis du mister passordet.",
+      "password": "Passord",
+      "toKey": "Fortsett til gjenopprettingsnøkkelen"
+    },
+    "key": {
+      "title": "Gjenopprettingsnøkkel",
+      "intro": "Nøkkelen skal beskytte sikkerhetskopiene av nettstedet, og du trenger den for å flytte nettstedet til en ny server. Lagre den i en passordbehandler, eller skriv den ut og ta vare på papiret.",
+      "once": "Vi viser nøkkelen bare nå. Serveren lagrer bare en kontrollverdi, så nøkkelen kan ikke lages på nytt hvis du mister den. Laster du siden på nytt før installasjonen er ferdig, lager vi en ny nøkkel, og den gamle slutter å virke.",
+      "copy": "Kopier nøkkelen",
+      "download": "Last ned som tekstfil",
+      "copied": "Nøkkelen er kopiert.",
+      "copyFailed": "Kunne ikke kopiere. Marker nøkkelen og kopier den for hånd.",
+      "downloaded": "Tekstfilen er lastet ned.",
+      "saved": "Jeg har lagret gjenopprettingsnøkkelen",
+      "mustConfirm": "Bekreft at du har lagret nøkkelen for å gå videre.",
+      "file": "Gjenopprettingsnøkkel for {site}\nLaget {date}\n\n{key}\n\nTa vare på nøkkelen et trygt sted, atskilt fra sikkerhetskopiene. Den kan ikke lages på nytt.\n"
+    },
+    "content": {
+      "intro": "Som i WordPress får nettstedet litt innhold å starte med, slik at det ikke er tomt. Du kan endre eller slette alt senere. Dette blir laget:",
+      "post": "Et innlegg, «{title}», med én kommentar.",
+      "page": "En side, «{title}».",
+      "privacy": "Et utkast til personvernside, «{title}», som er satt som nettstedets personvernside.",
+      "category": "Kategorien «{title}».",
+      "outro": "Ingenting av dette blir laget før du fullfører installasjonen i siste steg."
+    },
+    "finish": {
+      "intro": "Dette blir satt opp. Sjekk at det stemmer, og velg «Fullfør installasjonen».",
+      "siteTitle": "Nettstedstittel",
+      "language": "Språk",
+      "timezone": "Tidssone",
+      "search": "Søkemotorer",
+      "searchAllowed": "Nettstedet kan indekseres",
+      "searchDiscouraged": "Søkemotorer blir bedt om ikke å indeksere nettstedet",
+      "email": "E-post",
+      "emailTested": "Satt opp, og test-e-posten er sendt",
+      "emailSkipped": "Hoppet over. Et varsel minner deg på det.",
+      "admin": "Administrator",
+      "adminValue": "{username} ({email})",
+      "key": "Gjenopprettingsnøkkel",
+      "keyValue": "Du har bekreftet at den er lagret",
+      "submit": "Fullfør installasjonen",
+      "working": "Installerer. Dette kan ta noen sekunder …",
+      "signin": "Nettstedet er installert, men vi kunne ikke logge deg inn automatisk. Logg inn med brukernavnet og passordet du valgte."
     }
   },
   "auth": {

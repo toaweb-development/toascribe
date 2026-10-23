@@ -4,7 +4,8 @@ Playwright tests that drive the real stack in a browser: the proxy, the admin, t
 Mailpit catching the mail. They cover the sign-in screens (M0.3): login and logout, lost password through a mailed link, the
 second factor (set-up on the screen, a code from the app, a recovery code), registration, e-mail confirmation, the site name
 from the settings, the wait after too many wrong tries, the headers and the CSP of the admin and of the public site (`/`), and
-an axe-core check (WCAG 2.2 AA rule sets) on every screen. Each test runs at 375 px and at 1280 px.
+an axe-core check (WCAG 2.2 AA rule sets) on every screen. The setup wizard (M0.4) is tested from an empty database to a signed-in
+administrator (`wizard.spec.ts`). Each test runs at 375 px and at 1280 px.
 
 They are not part of `pnpm check`: they need Docker and a running stack, and they take a few minutes.
 
@@ -35,6 +36,14 @@ compose stack with the `mailpit` profile on `http://localhost:18080` (Mailpit on
 `E2E_PROJECT`, `E2E_HTTP_PORT` and `E2E_MAILPIT_PORT` for `stack.sh`, and export what `stack.sh env` prints before the tests.
 
 ## What to know
+
+- **The wizard has a stack of its own.** An installed site cannot be installed twice, so `wizard.spec.ts` takes a second stack
+  (project `toascribe-e2e-setup`, ports 18081 and 18026, its own subnet for the `edge` network, its own env file) down with its
+  volumes and starts it again before each width, through `stack.sh`. Start the main stack first (`stack.sh up`) as before; the
+  wizard's is made by the test and left running afterwards. Remove it with
+  `E2E_PROJECT=toascribe-e2e-setup E2E_HTTP_PORT=18081 E2E_MAILPIT_PORT=18026 apps/admin/e2e/stack.sh down`.
+- **The other specs need an installed site,** because until it is installed every page goes to the wizard. The global setup
+  installs the main stack through the CLI (`toa core install --skip-email`) when it is not installed yet.
 
 - **`localhost`, not `127.0.0.1`.** The session cookie is `__Host-toa_session`, `Secure`; Chromium accepts that on
   `http://localhost` only. Firefox does too, but the browsers are not installed by default, so the tests run in Chromium. WebKit does

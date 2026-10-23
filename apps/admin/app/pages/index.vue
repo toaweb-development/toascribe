@@ -19,9 +19,6 @@ const { data, status, error, refresh } = await useAsyncData('health', () => heal
       <h1 class="text-3xl font-bold text-highlighted sm:text-5xl">{{ $t('admin.name') }}</h1>
       <p class="mt-4 mb-8 max-w-prose text-base text-muted sm:text-lg">
         {{ $t('admin.home.intro') }}
-        <NuxtLink to="/setup" class="text-primary underline underline-offset-4">{{
-          $t('admin.home.setupLink')
-        }}</NuxtLink>
       </p>
       <p v-if="account" class="mb-8 text-base text-default">
         {{ $t('auth.signedInAs', { name: account.displayName }) }}

@@ -18,6 +18,8 @@ state="${E2E_STATE_DIR:-${TMPDIR:-/tmp}/${project}}"
 env_file="${state}/env"
 http_port="${E2E_HTTP_PORT:-18080}"
 mailpit_port="${E2E_MAILPIT_PORT:-18025}"
+# The proxy's `edge` network has a fixed subnet (compose.yaml), so two stacks at once need two: the wizard test's stack sets this.
+edge_subnet="${E2E_EDGE_SUBNET:-}"
 
 compose() {
   docker compose -p "${project}" -f "${root}/docker/compose.yaml" --env-file "${env_file}" --profile mailpit "$@"
@@ -44,6 +46,9 @@ make_env() {
     echo "SMTP_PORT=1025"
     echo "SMTP_SECURE=none"
     echo "MAIL_FROM_ADDRESS=toascribe@example.test"
+    if [ -n "${edge_subnet}" ]; then
+      echo "TOASCRIBE_EDGE_SUBNET=${edge_subnet}"
+    fi
   } >"${env_file}"
 }
 
