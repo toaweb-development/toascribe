@@ -62,7 +62,7 @@ describe('the guard', () => {
   ])('refuses with NODE_ENV %s and makes no connection', async (_label, nodeEnv, message) => {
     const { logger, lines } = memoryLogger()
     const result = await run([...ARGV], VERSION, { env: { ...nodeEnv, MIGRATION_DATABASE_URL: probe.url }, logger })
-    expect(result.code).toBe(1)
+    expect(result.code).toBe(2)
     expect(result.stdout).toBe('')
     expect(result.stderr).toContain('Refusing to reset the database')
     expect(result.stderr).toContain(message)
@@ -74,7 +74,7 @@ describe('the guard', () => {
 
   it('refuses before the configuration is read, so a missing MIGRATION_DATABASE_URL does not matter', async () => {
     const result = await run([...ARGV], VERSION, { env: { NODE_ENV: 'production' } })
-    expect(result.code).toBe(1)
+    expect(result.code).toBe(2)
     expect(result.stderr).toContain('Refusing to reset the database')
     expect(result.stderr).not.toContain('MIGRATION_DATABASE_URL')
   })
@@ -106,7 +106,7 @@ describe('the guard', () => {
       // Asynchronous: the probe lives in this process, so a blocking spawn would stop it from ever answering.
       const child = await execNode([...ARGV], { ...env, ...nodeEnv, MIGRATION_DATABASE_URL: probe.url })
       await new Promise((resolve) => setImmediate(resolve)) // let the probe see a connection that was made
-      expect(child.code).toBe(1)
+      expect(child.code).toBe(2)
       expect(child.stderr).toContain('Refusing to reset the database')
       expect(child.stdout + child.stderr).not.toContain('probe-secret-pw')
       expect(probe.connections()).toBe(before)
@@ -115,13 +115,13 @@ describe('the guard', () => {
 
   it('names the variable, never its value, when MIGRATION_DATABASE_URL is missing or not a postgres URL', async () => {
     const missing = await run([...ARGV], VERSION, { env: { NODE_ENV: 'development' } })
-    expect(missing.code).toBe(1)
+    expect(missing.code).toBe(2)
     expect(missing.stderr).toContain('MIGRATION_DATABASE_URL')
 
     const bad = await run([...ARGV], VERSION, {
       env: { NODE_ENV: 'development', MIGRATION_DATABASE_URL: 'mysql://u:hunter2@h/db' },
     })
-    expect(bad.code).toBe(1)
+    expect(bad.code).toBe(2)
     expect(bad.stderr).toContain('MIGRATION_DATABASE_URL')
     expect(bad.stderr).not.toContain('hunter2')
   })
@@ -317,7 +317,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa dev seed tom against Postg
        values ('prod', 'prod@example.com', 'Prod', 'prod', 'active')`,
     )
     const { result } = await seedTom('production')
-    expect(result.code).toBe(1)
+    expect(result.code).toBe(2)
     expect(await count('account')).toBe(1)
   })
 })

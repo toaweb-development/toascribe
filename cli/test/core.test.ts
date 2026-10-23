@@ -255,7 +255,7 @@ describe('toa core: arguments and refusals (no database is reached)', () => {
         env: { DATABASE_URL: probe.url, PUBLIC_ORIGIN: 'not-a-url' },
         prompt: noTerminal,
       })
-      expect(result.code).toBe(1)
+      expect(result.code).toBe(2)
       expect(result.stderr).toContain('PUBLIC_ORIGIN')
       expect(result.stderr).not.toContain('not-a-url')
       expect(result.stderr).not.toContain('probe-secret-pw')
@@ -392,7 +392,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa core against PostgreSQL', 
       expect(result.code).toBe(0)
       const token = /^Setup token: (\S+)$/m.exec(result.stdout)?.[1] ?? ''
       expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/)
-      expect(result.stdout).toContain(`Setup address: ${ORIGIN}/admin/setup?token=${token}\n`)
+      expect(result.stdout).toContain(`Setup address: ${ORIGIN}/admin/setup#token=${token}\n`)
       expect(result.stderr).not.toContain(token)
       expect(JSON.stringify(result.lines)).not.toContain(token)
       const rows = await query<{ secret_hash: string }>(

@@ -86,11 +86,28 @@ export function checked<T>(flag: string, schema: z.ZodType<T>, value: unknown, p
 }
 
 export function usageResult(message: string, usage: string): CliResult {
-  return { code: 2, stdout: '', stderr: `${message}\n\nUsage:\n${usage}\n` }
+  return { code: EXIT_INVALID, stdout: '', stderr: `${message}\n\nUsage:\n${usage}\n` }
 }
 
+/**
+ * The exit codes of every `toa` command (the «Exit codes» block of the usage text, and README). 0 success. 1 an error
+ * underway: the database does not answer, the mail queue failed, the site is already installed, a name is taken or an account
+ * is not there (the state of the database decided), a lost race. 2 invalid input or usage: an unknown command or flag, a missing
+ * or malformed value, a password the rules refuse, a bad environment (config). The test is whether the input is wrong by itself
+ * (2) or only against what the database holds (1). One exception, `core is-installed`: 0 installed, 1 not installed, 2 any error.
+ */
+export const EXIT_OK = 0
+export const EXIT_ERROR = 1
+export const EXIT_INVALID = 2
+
+/** An error underway (exit 1): the command was well formed, the work did not succeed. */
 export function refusal(message: string): CliResult {
-  return { code: 1, stdout: '', stderr: `${message}\n` }
+  return { code: EXIT_ERROR, stdout: '', stderr: `${message}\n` }
+}
+
+/** Invalid input found without the usage text (exit 2): a bad environment, a refused setting. */
+export function invalidInput(message: string): CliResult {
+  return { code: EXIT_INVALID, stdout: '', stderr: `${message}\n` }
 }
 
 /** Standard input holds the password and a line break after it; only that one line break is not part of it. */
@@ -125,15 +142,6 @@ export async function choosePassword(fromStdin: boolean, readStdin: () => Promis
     )
   }
   return { password: parsed.data, generated: false }
-}
-
-/** As in the api: a password equal to the username or the e-mail address is refused. */
-export function isTooObvious(
-  password: string,
-  account: { readonly username: string; readonly email: string },
-): boolean {
-  const lower = password.toLowerCase()
-  return lower === account.username.toLowerCase() || lower === account.email.toLowerCase()
 }
 
 export const OBVIOUS_PASSWORD = 'The password must not be the username or the e-mail address.'
@@ -178,7 +186,7 @@ export function withDatabase<T>(
 
 /**
  * As `withDatabase`, for a command that needs more of the environment than DATABASE_URL: `load` reads and validates it (and
- * throws a ConfigError, which is a refusal that names variables and never values) before any connection is made.
+ * throws a ConfigError, which is invalid input, exit 2, that names variables and never values) before any connection is made.
  */
 export async function withConfiguredDatabase<C extends AppDatabaseConfig, T>(
   options: CommandOptions,
@@ -191,7 +199,7 @@ export async function withConfiguredDatabase<C extends AppDatabaseConfig, T>(
     config = load(options.env)
   } catch (err) {
     if (err instanceof ConfigError) {
-      return refusal(err.message)
+      return invalidInput(err.message)
     }
     throw err
   }

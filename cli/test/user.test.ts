@@ -211,13 +211,13 @@ describe('arguments (no database is reached)', () => {
 
   it('names DATABASE_URL, never its value, when it is missing or not a postgres URL; MIGRATION_DATABASE_URL does not stand in', async () => {
     const missing = await run([...create], VERSION, { env: { MIGRATION_DATABASE_URL: probe.url } })
-    expect(missing.code).toBe(1)
+    expect(missing.code).toBe(2)
     expect(missing.stderr).toContain('DATABASE_URL')
 
     const bad = await run(['user', 'reset-password', '--username', 'anna'], VERSION, {
       env: { DATABASE_URL: 'mysql://u:hunter2@h/db' },
     })
-    expect(bad.code).toBe(1)
+    expect(bad.code).toBe(2)
     expect(bad.stderr).toContain('DATABASE_URL')
     expect(bad.stderr).not.toContain('hunter2')
   })
@@ -568,7 +568,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa user against PostgreSQL', 
         ['user', 'reset-password', '--username', victim.username, '--password-stdin'],
         `${victim.email}\n`,
       )
-      expect(result.code).toBe(1)
+      expect(result.code).toBe(2)
       expect(result.stderr).toContain('must not be the username or the e-mail address')
       expect((await accountOf(victim.username))?.password_hash).toBe(victim.oldHash)
       expect(await sessionCount(victim.id)).toBe(2)

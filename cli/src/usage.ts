@@ -48,15 +48,24 @@ export const CORE_GEN_ENV_USAGE = `  core gen-env
 
 export const CORE_SETUP_TOKEN_USAGE = `  core setup-token
                          Make a new setup token (the old one stops working) and print it with the address of the wizard,
-                         PUBLIC_ORIGIN/admin/setup?token=... For a site that is not installed yet; exit 1 when it is.
+                         PUBLIC_ORIGIN/admin/setup#token=... For a site that is not installed yet; exit 1 when it is.
                          Needs DATABASE_URL and PUBLIC_ORIGIN.`
+
+/** The one exit-code rule of every command. kit.ts holds the constants and says how 1 is told from 2. */
+export const EXIT_CODES_USAGE = `Exit codes:
+  0   Success.
+  1   An error underway: the database does not answer, the mail queue failed, the site is already installed, a name is
+      taken or an account is not found, a conflict with another run.
+  2   Invalid input or usage: an unknown command or flag, a missing or malformed value, a password the rules refuse,
+      a bad environment (a variable that is missing or wrong).
+  One exception: \`core is-installed\` is a question. It exits 0 when the site is installed, 1 when it is not and 2 on any error.`
 
 export const USAGE = `Usage: toa <command>
 
 Commands:
   version, --version     Print the toascribe version
   dev seed tom           Empty a development database, run the migrations and seed the roles and settings.
-                         Refuses unless NODE_ENV is development or test. Needs MIGRATION_DATABASE_URL (owner role).
+                         Refuses (exit 2) unless NODE_ENV is development or test. Needs MIGRATION_DATABASE_URL (owner role).
 ${CORE_INSTALL_USAGE}
 ${CORE_IS_INSTALLED_USAGE}
 ${CORE_GEN_ENV_USAGE}
@@ -65,4 +74,6 @@ ${USER_CREATE_USAGE}
 ${USER_RESET_PASSWORD_USAGE}
 ${USER_RESET_LOGIN_LIMIT_USAGE}
 ${USER_MFA_RESET_USAGE}
+
+${EXIT_CODES_USAGE}
 `

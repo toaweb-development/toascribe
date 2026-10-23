@@ -69,7 +69,7 @@ describe('--notify: arguments (no database is reached)', () => {
         VERSION,
         { env },
       )
-      expect(result.code).toBe(1)
+      expect(result.code).toBe(2)
       expect(result.stderr).toContain('TOASCRIBE_ENCRYPTION_KEY')
       expect(result.stderr).not.toContain('too-short-secret-value')
     }

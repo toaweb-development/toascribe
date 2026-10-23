@@ -7,7 +7,7 @@
 // `--notify` tells the owner of the account by e-mail (queued for the worker, after the change has committed): `create` mails a
 // one-time link to choose the password, `reset-password` and `reset-login-limit` a security notice, and `mfa-reset` always sends its
 // notice. A mail that cannot be queued does not undo the change; the command says so and exits 1.
-import { generateToken, hashPassword, hashToken } from '@toascribe/auth'
+import { generateToken, hashPassword, hashToken, isTooObvious } from '@toascribe/auth'
 import { createMailProducer } from '@toascribe/db'
 import { ONE_TIME_LINK_HOURS, RegisterRequest } from '@toascribe/shared'
 import type { EmailMessage, KeyRing } from '@toascribe/shared'
@@ -42,8 +42,8 @@ import {
   checked,
   choosePassword,
   failureFields,
+  invalidInput,
   isCliResult,
-  isTooObvious,
   parseFlags,
   refusal,
   usageResult,
@@ -115,7 +115,7 @@ async function keyRingFor(options: CommandOptions): Promise<KeyRing | undefined 
     return await keyRingOf(loadKeyedDatabaseConfig(options.env))
   } catch (err) {
     if (err instanceof ConfigError) {
-      return refusal(err.message)
+      return invalidInput(err.message)
     }
     throw err
   }
@@ -294,6 +294,8 @@ const RESET_FLAGS = { username: 'string', email: 'string', 'password-stdin': 'bo
 
 interface ResetRefusal {
   readonly refused: string
+  /** The input is wrong by itself (a password the rules refuse): exit 2 with the usage. Otherwise the database decided: exit 1. */
+  readonly invalid?: true
 }
 
 export async function userResetPassword(args: readonly string[], options: CommandOptions = {}): Promise<CliResult> {
@@ -341,7 +343,7 @@ export async function userResetPassword(args: readonly string[], options: Comman
           }
         }
         if (isTooObvious(chosen.password, found)) {
-          return { refused: OBVIOUS_PASSWORD }
+          return { refused: OBVIOUS_PASSWORD, invalid: true }
         }
         const now = new Date()
         await setPasswordHash(tx, found.id, passwordHash, now)
@@ -359,7 +361,7 @@ export async function userResetPassword(args: readonly string[], options: Comman
       },
     )
     if ('refused' in done) {
-      return refusal(done.refused)
+      return done.invalid === true ? usageResult(done.refused, USER_RESET_PASSWORD_USAGE) : refusal(done.refused)
     }
     logger.info({ accountId: done.id, sessionsEnded: done.sessions }, 'password reset')
     if (notify) {

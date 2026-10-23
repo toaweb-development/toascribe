@@ -9,6 +9,7 @@
 // generated password are shown once and kept nowhere.
 import { randomBytes } from 'node:crypto'
 
+import { isTooObvious } from '@toascribe/auth'
 import { getInstallState } from '@toascribe/db'
 import { AlreadyInstalledError, InstallError, createInstallService } from '@toascribe/install'
 import type { InstallService } from '@toascribe/install'
@@ -25,7 +26,6 @@ import {
   checked,
   choosePassword,
   isCliResult,
-  isTooObvious,
   parseFlags,
   refusal,
   usageResult,
@@ -147,7 +147,7 @@ export async function coreSetupToken(args: readonly string[], options: CommandOp
     async (db, logger, config) => {
       try {
         const token = await installService(db, config, logger).issueSetupToken()
-        return { token, url: `${new URL(config.PUBLIC_ORIGIN).origin}${SETUP_PATH}?token=${encodeURIComponent(token)}` }
+        return { token, url: `${new URL(config.PUBLIC_ORIGIN).origin}${SETUP_PATH}#token=${encodeURIComponent(token)}` }
       } catch (err) {
         if (err instanceof AlreadyInstalledError) {
           return refusal('The site is already installed, so there is no setup token to make.')
@@ -385,6 +385,7 @@ function installRefusal(err: InstallError): CliResult {
         'The database already has some of the default content (a post or page with the same address). Nothing was changed.',
       )
     case 'invalid_input':
+    case 'weak_password':
       return { code: 2, stdout: '', stderr: `${err.message}\n` }
     case 'step_missing':
     case 'recovery_key_mismatch':
