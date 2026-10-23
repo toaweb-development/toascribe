@@ -15,6 +15,7 @@ and `documents.ts`.
 | `0003_rights_ip_retention`      | 0.3.0   | editor without `unfiltered_html`, `default_role` never administrator, IP retention from the setting (custom) |
 | `0004_login_attempt_login_hash` | 0.3.0   | `login_attempt.login_hash` and its index; removes the two lockout settings (generated; the `DELETE` is added by hand) |
 | `0005_install_state`            | 0.4.0   | `site_secret` and `admin_notice` (generated); a site from before M0.4 with an active administrator counts as installed (added by hand) |
+| `0006_setup_attempts`           | 0.4.0   | `login_attempt.action` also accepts `setup` (generated); `SELECT` on `drizzle.__drizzle_migrations` for the app role (added by hand) |
 
 Drizzle has no down migrations. A published migration is never edited; a change is a new migration.
 
@@ -41,7 +42,11 @@ Drizzle has no down migrations. A published migration is never edited; a change 
   Both are in the hand-written custom migration `0001_audit_log_privileges.sql` (`drizzle-kit generate --custom`), so a
   regenerate of `0000_core` cannot drop them; `0003_rights_ip_retention.sql` replaces the function's body. Every other
   table, `account_token`, `site_secret` and `admin_notice` included, has the default DML, which is all the worker's
-  clean-up jobs and the install service need.
+  clean-up jobs and the install service need. The one exception that adds rights is `0006_setup_attempts.sql`: `USAGE` on
+  the schema `drizzle` and `SELECT` on `drizzle.__drizzle_migrations` (the migrator's own table of hashes and timestamps) for
+  the app role, so the system check of the setup wizard can compare the applied migrations with the journal
+  (`getMigrationStatus()`). The app role still cannot change or create anything there. The grant sits in a block that does
+  nothing when the role does not exist (a database set up without `docker/postgres/init.sql`).
 
 ## Diagram
 
@@ -247,6 +252,12 @@ wait, so a stored value is not carried over. With `n` failures in the window and
 attempt waits `min(delay_seconds · 2^(n − free), delay_max)` after the latest failure; a failure leaves the window after
 `login_limit_window_minutes`, so the wait shrinks by itself. Nothing is stored about a wait: it is worked out from the
 `login_attempt` rows.
+
+`login_attempt.action` is `login`, `mfa`, `register`, `password_lost`, `comment` or, since `0006_setup_attempts`, `setup`.
+`setup` counts the guesses at the one-time setup token (every `/api/v1/setup` route that takes the `X-Setup-Token` header), per IP
+address by the same limiter and the same settings, in a bucket of its own: wrong tokens never delay a login from that address,
+and a correct token writes a succeeded row, which ends the streak so the wizard's own requests use up nothing. The rows go with
+the other login attempts at the IP retention. Nothing is stored about the token that was typed (`login_hash` is null).
 
 **Who shares a counter (accepted, Tor 2026-10-23).** A failed attempt is stored with the `account_id` of the account the typed
 name belongs to and with the `login_hash` of the name as it was typed, and the wait is worked out from every row that matches

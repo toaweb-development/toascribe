@@ -126,7 +126,9 @@ arrays.
 - **One exception to "only the proxy publishes a port":** the `mailpit` compose profile (development only, off by default,
   nothing depends on it) publishes its web page on `127.0.0.1` only, through `TOASCRIBE_MAILPIT_PORT`; the SMTP port stays
   on the internal network. A test pins the loopback address. The worker's mail settings come from `SMTP_*` and
-  `MAIL_FROM_*` in `docker/.env`; `TOASCRIBE_ENCRYPTION_KEY` and `TOASCRIBE_SIGNING_KEY` are required in compose.
+  `MAIL_FROM_*` in `docker/.env`. The five secrets (three passwords, `TOASCRIBE_ENCRYPTION_KEY`, `TOASCRIBE_SIGNING_KEY`)
+  have an empty default in compose (no `:?`), so `toa core gen-env` can run before `.env` exists; the postgres entrypoint
+  and the app configs refuse empty values.
 - CI (`.github/workflows/`): third-party actions are pinned to a full commit SHA with the version in a comment, checked
   against the action's own repository; `permissions: contents: read` at the top; `persist-credentials: false` wherever
   third-party code runs; event values go through `env:`, never inline `${{ }}` in a script. Run `actionlint` on every
@@ -144,8 +146,11 @@ arrays.
 
 Spor: ingen ennå — produkt; tag ved merge (VERSIONING §5)
 
-toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml`, no server and no image
-push yet. `release.yml` tags `vX.Y.Z` and creates the GitHub Release when a new version reaches `main`. Version source
+toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml` and no server. When a new
+version reaches `main`, `release.yml` builds the six images, scans them with Trivy and pushes them to
+`ghcr.io/toaweb/toascribe-*` (`packages: write` on the `images` job only), then tags `vX.Y.Z` and creates the GitHub
+Release; a failed scan leaves no image and no tag. `ci.yml` runs the same build, scan and copy without a push on every
+pull request (`release-dry-run`). Version source
 of truth: the root `package.json`; every workspace `package.json` and the `TOASCRIBE_VERSION` default in
 `docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example` mirror it (tests check this). A change to
 what is shipped bumps the version and adds a CHANGELOG entry in the same branch. Tests are not shipped: a change only to

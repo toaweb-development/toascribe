@@ -33,7 +33,7 @@ x-hardened: &hardened
 
 # The one api image runs the api, the worker, the migrate step and the `toa` CLI with different commands.
 x-api-image: &api-image
-  image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.3.0}
+  image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.4.0}
 
 # NO VARIABLE HERE IS `:?` (required). Compose reads this whole file for every command, so one required variable would
 # stop `docker compose run --rm --no-deps api toa core gen-env >> .env` on a fresh folder, the command that makes the
@@ -51,7 +51,7 @@ services:
   # ── Entry point ──────────────────────────────────────────
   proxy:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.3.0}
+    image: ghcr.io/toaweb/toascribe-proxy:${TOASCRIBE_VERSION:-0.4.0}
     build:
       context: ..
       dockerfile: docker/proxy/Dockerfile
@@ -89,7 +89,7 @@ services:
   # ── Web apps ─────────────────────────────────────────────
   site:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.3.0}
+    image: ghcr.io/toaweb/toascribe-site:${TOASCRIBE_VERSION:-0.4.0}
     build:
       context: ..
       dockerfile: docker/nuxt/Dockerfile
@@ -124,7 +124,7 @@ services:
 
   admin:
     <<: *hardened
-    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.3.0}
+    image: ghcr.io/toaweb/toascribe-admin:${TOASCRIBE_VERSION:-0.4.0}
     build:
       context: ..
       dockerfile: docker/nuxt/Dockerfile
@@ -272,7 +272,7 @@ services:
     restart: unless-stopped
     init: true
     logging: *logging
-    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.3.0}
+    image: ghcr.io/toaweb/toascribe-postgres:${TOASCRIBE_VERSION:-0.4.0}
     build:
       context: ..
       dockerfile: docker/postgres/Dockerfile
@@ -351,7 +351,7 @@ services:
       - mailpit
     # Mailpit v1.31.6 with its binary rebuilt on a current Go (docker/mailpit/Dockerfile): the official image fails the
     # image scan on a Go standard-library finding.
-    image: ghcr.io/toaweb/toascribe-mailpit:${TOASCRIBE_VERSION:-0.3.0}
+    image: ghcr.io/toaweb/toascribe-mailpit:${TOASCRIBE_VERSION:-0.4.0}
     build:
       context: ..
       dockerfile: docker/mailpit/Dockerfile

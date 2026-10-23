@@ -5,9 +5,11 @@ and plugins), written in TypeScript from end to end: Nuxt 4 for the site and the
 PostgreSQL. Content is stored as structured blocks, not HTML, and background work runs on a real job queue. It ships
 as an open repository and starts with Docker; the rest of the setup is finished in a browser wizard.
 
-**Status: 0.3.0, sign-in.** The whole stack starts and is healthy on one port. People can log in at `/admin/login` (and
-at `/wp-login.php`, which redirects), with sessions, a second factor, lost password and registration, and e-mail goes
-through the job queue. There is no editor yet. The plan, the architecture and the phases are in
+**Status: 0.4.0, setup.** The whole stack starts and is healthy on one port, and a fresh install is finished in a browser
+wizard at `/admin/setup` (or with `toa core install`): system check, site, e-mail, the administrator and a recovery key, with
+a WordPress-style first post and page. People can log in at `/admin/login` (and at `/wp-login.php`, which redirects), with
+sessions, a second factor, lost password and registration, and e-mail goes through the job queue. The images are published
+to `ghcr.io/toaweb`. There is no editor yet. The plan, the architecture and the phases are in
 [docs/PLAN.md](docs/PLAN.md) (in Norwegian); the tables are described in [docs/DATAMODEL.md](docs/DATAMODEL.md).
 
 ## Run the stack
@@ -146,7 +148,7 @@ quiet site, of the first ten once ten minutes have passed). If they all carry th
 visitors share **one** rate-limit bucket (a few wrong logins from anyone make everyone wait) and every IP address in the
 audit log and the session list is your reverse proxy. Set the variable as described below, then run
 `docker compose up -d api proxy`. No warning is written when the variable is set, when two different addresses show up,
-or when an address is public. The setup wizard and Site Health will show the same finding later.
+or when an address is public. The system check in the setup wizard shows the same finding, and Site Health will later.
 
 **How the client address is found.** The stack reads `X-Forwarded-For` from the right and stops at the first address
 that is not the trusted proxy (Caddy's `trusted_proxies_strict`), so entries a visitor writes at the front are ignored.
