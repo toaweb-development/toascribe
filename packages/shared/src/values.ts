@@ -134,3 +134,17 @@ export type PrivacyRequestStatus = z.infer<typeof PrivacyRequestStatus>
 export const CONSENT_CATEGORY = ['necessary', 'preferences', 'statistics', 'marketing'] as const
 export const ConsentCategory = z.enum(CONSENT_CATEGORY)
 export type ConsentCategory = z.infer<typeof ConsentCategory>
+
+/**
+ * site_secret.purpose (M0.4): the site's one-of-a-kind secrets, of which only a hash is stored. `setup_token` is the
+ * one-time token that opens /setup until the site is installed (deleted by the install); `backup_recovery_key` is the
+ * verifier of the recovery key the first administrator saves (PLAN «Setup-wizarden» step 6).
+ */
+export const SITE_SECRET_PURPOSE = ['setup_token', 'backup_recovery_key'] as const
+export const SiteSecretPurpose = z.enum(SITE_SECRET_PURPOSE)
+export type SiteSecretPurpose = z.infer<typeof SiteSecretPurpose>
+
+/** admin_notice.level: WordPress' admin notice types (notice-error, -warning, -success, -info). */
+export const ADMIN_NOTICE_LEVEL = ['error', 'warning', 'success', 'info'] as const
+export const AdminNoticeLevel = z.enum(ADMIN_NOTICE_LEVEL)
+export type AdminNoticeLevel = z.infer<typeof AdminNoticeLevel>

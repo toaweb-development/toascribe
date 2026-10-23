@@ -100,3 +100,7 @@ export type WorkflowSteps = z.infer<typeof WorkflowSteps>
 /** extension_state.settings (K-150, K-166): a theme's or plugin's settings, validated by its own schema. */
 export const ExtensionSettings = JsonObject
 export type ExtensionSettings = JsonObject
+
+/** admin_notice.data (M0.4): the values the notice's message interpolates, e.g. `{ "count": 3 }`. Never a secret. */
+export const AdminNoticeData = JsonObject
+export type AdminNoticeData = JsonObject

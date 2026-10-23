@@ -1,0 +1,3 @@
+Hei, dette er en kommentar.
+For å starte med moderering, redigering og sletting av kommentarer, gå til Kommentar-skjermen i kontrollpanelet.
+Kommentator-avatarer kommer fra <a href="https://nb.gravatar.com/">Gravatar</a>.

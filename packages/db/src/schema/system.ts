@@ -1,6 +1,8 @@
-// Installation state and records: extensions, backups, the audit log, privacy requests and consent.
+// Installation state and records: extensions, backups, the audit log, privacy requests and consent; since M0.4 the site's
+// hashed secrets (setup token, recovery key) and the admin notices.
 import { sql } from 'drizzle-orm'
 import {
+  ADMIN_NOTICE_LEVEL,
   AUDIT_ACTOR_TYPE,
   AUDIT_SOURCE,
   BACKUP_STATUS,
@@ -10,8 +12,9 @@ import {
   EXTENSION_KIND,
   PRIVACY_REQUEST_STATUS,
   PRIVACY_REQUEST_TYPE,
+  SITE_SECRET_PURPOSE,
 } from '@toascribe/shared'
-import type { ExtensionSettings, JsonValue } from '@toascribe/shared'
+import type { AdminNoticeData, ExtensionSettings, JsonValue } from '@toascribe/shared'
 import { bigint, boolean, check, foreignKey, index, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import type { PgTableExtraConfigValue } from 'drizzle-orm/pg-core'
 
@@ -179,5 +182,55 @@ export const consent = pgTable(
     index('idx_consent_account_id')
       .on(t.accountId)
       .where(sql`${t.accountId} is not null`),
+  ],
+)
+
+/**
+ * The site's one-of-a-kind secrets, as hashes only (M0.4): the one-time setup token and the verifier of the backup
+ * recovery key. A table of its own rather than `setting` rows, so that no settings reader, settings API, `toa option`
+ * or settings export can return one by accident. One row per purpose; the hash is 64 lower-case hex characters (a
+ * SHA-256 or HMAC-SHA256), which also stops a raw token from being stored by mistake. See docs/DATAMODEL.md.
+ */
+export const siteSecret = pgTable(
+  'site_secret',
+  {
+    id: id(),
+    purpose: text('purpose').notNull(),
+    secretHash: text('secret_hash').notNull(),
+    ...timestamps(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    unique('uq_site_secret_purpose').on(t.purpose),
+    check('ck_site_secret_purpose', oneOf(t.purpose, SITE_SECRET_PURPOSE)),
+    check('ck_site_secret_secret_hash', sql`${t.secretHash} ~ '^[0-9a-f]{64}$'`),
+  ],
+)
+
+/**
+ * A site-wide notice for the admin dashboard (M0.4 stores the first, M0.5 shows them): one row per key, with the i18n
+ * key of its text and the values the text interpolates. Raising a notice again updates the row and clears the
+ * dismissal; resolving it deletes the row. Per-account dismissal, if it comes, belongs in account.preferences.
+ */
+export const adminNotice = pgTable(
+  'admin_notice',
+  {
+    id: id(),
+    key: text('key').notNull(),
+    level: text('level').notNull(),
+    /** The admin's i18n key, e.g. notices.setupEmailSkipped. Never screen text. */
+    messageKey: text('message_key').notNull(),
+    data: jsonb('data').$type<AdminNoticeData>().notNull().default({}),
+    /** Who sees it: accounts holding this capability. */
+    capability: text('capability').notNull().default('manage_options'),
+    isDismissible: boolean('is_dismissible').notNull().default(true),
+    /** Dismissed for everyone; null while it shows. */
+    dismissedAt: timestamptz('dismissed_at'),
+    ...timestamps(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    unique('uq_admin_notice_key').on(t.key),
+    check('ck_admin_notice_level', oneOf(t.level, ADMIN_NOTICE_LEVEL)),
+    check('ck_admin_notice_key', sql`${t.key} ~ '^[a-z0-9_.-]+$'`),
+    check('ck_admin_notice_message_key', sql`${t.messageKey} <> ''`),
   ],
 )

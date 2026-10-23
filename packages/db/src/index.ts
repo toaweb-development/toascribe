@@ -10,4 +10,26 @@ export type { MailProducer, MailProducerOptions, MailProducerReceipt } from './m
 export { PGBOSS_APP_OPTIONS, PGBOSS_SCHEMA } from './pgboss.ts'
 export { seedCore } from './seed.ts'
 export type { SeedCoreResult } from './seed.ts'
+export type { DbExecutor, DbTransaction } from './executor.ts'
+export {
+  AlreadyInstalledError,
+  INSTALL_LOCK_KEY,
+  deleteSiteSecret,
+  dismissAdminNotice,
+  getInstallState,
+  getSiteSecret,
+  lockInstall,
+  markInstalled,
+  raiseAdminNotice,
+  resolveAdminNotice,
+  setSiteSecret,
+  writeSetting,
+} from './install.ts'
+export type { InstallState, SiteSecretRow } from './install.ts'
+export { DefaultContentExistsError, seedDefaultContent } from './default-content/seed.ts'
+export type { SeedDefaultContentInput, SeedDefaultContentResult } from './default-content/seed.ts'
+export { DEFAULT_CONTENT_STRINGS, defaultContentStrings } from './default-content/strings.ts'
+export type { DefaultContentLocale, DefaultContentStrings } from './default-content/strings.ts'
+export { parseBlockMarkup } from './default-content/blocks.ts'
+export type { ParsedBlock } from './default-content/blocks.ts'
 export * as schema from './schema/index.ts'

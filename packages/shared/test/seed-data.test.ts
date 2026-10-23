@@ -12,7 +12,13 @@ import {
   Capability,
   CoreSettings,
   DEFAULT_ROLES,
+  DEFAULT_TAXONOMIES,
   EncryptedValue,
+  READ_ONLY_SETTING_KEYS,
+  SETUP_EMAIL_SKIPPED_NOTICE,
+  SITE_SECRET_PURPOSE,
+  AdminNoticeLevel,
+  BUILT_IN_TAXONOMIES,
 } from '../src/index.ts'
 import type { CoreSettingKey } from '../src/index.ts'
 
@@ -82,8 +88,15 @@ describe('core settings', () => {
     expect(CoreSettings.shape.thread_comments.safeParse('1').success).toBe(false)
   })
 
-  it('leaves out what toascribe drops and what only the installer knows', () => {
-    for (const key of ['default_ping_status', 'default_pingback_flag', 'ping_sites', 'mailserver_url', 'admin_email']) {
+  it('leaves out what toascribe drops, and siteurl and home (PUBLIC_ORIGIN is the address)', () => {
+    for (const key of [
+      'default_ping_status',
+      'default_pingback_flag',
+      'ping_sites',
+      'mailserver_url',
+      'siteurl',
+      'home',
+    ]) {
       expect(CORE_SETTING_KEYS, key).not.toContain(key)
     }
     expect(CORE_SETTING_KEYS).not.toContain('WPLANG')
@@ -246,5 +259,74 @@ describe('one-time link purposes', () => {
   it('are the three flows of M0.3', () => {
     expect(ACCOUNT_TOKEN_PURPOSE).toEqual(['password_reset', 'set_password', 'email_change'])
     expect(AccountTokenPurpose.safeParse('login').success).toBe(false)
+  })
+})
+
+describe('M0.4 install settings, taxonomies and notices', () => {
+  const UUID = '0199f3a0-0000-7000-8000-000000000000'
+
+  it('starts uninstalled, with the installer-only options null', () => {
+    expect(CORE_SETTINGS).toMatchObject({
+      installed: false,
+      installed_at: null,
+      admin_email: null,
+      default_category: null,
+      wp_page_for_privacy_policy: null,
+    })
+  })
+
+  it('takes a boolean flag and an ISO 8601 UTC time, nothing else', () => {
+    const s = CoreSettings.shape
+    expect(s.installed.safeParse(true).success).toBe(true)
+    expect(s.installed.safeParse('true').success).toBe(false)
+    expect(s.installed.safeParse(1).success).toBe(false)
+    expect(s.installed_at.safeParse('2026-10-23T06:00:00.000Z').success).toBe(true)
+    expect(s.installed_at.safeParse(null).success).toBe(true)
+    expect(s.installed_at.safeParse('2026-10-23').success).toBe(false)
+    expect(s.installed_at.safeParse('i går').success).toBe(false)
+  })
+
+  it('takes an e-mail address of at most 254 characters, and uuids for the category and the privacy page', () => {
+    const s = CoreSettings.shape
+    expect(s.admin_email.safeParse('admin@example.test').success).toBe(true)
+    expect(s.admin_email.safeParse('admin').success).toBe(false)
+    expect(s.admin_email.safeParse(`${'a'.repeat(64)}@${'b'.repeat(186)}.test`).success).toBe(false)
+    for (const key of ['default_category', 'wp_page_for_privacy_policy'] as const) {
+      expect(s[key].safeParse(UUID).success, key).toBe(true)
+      expect(s[key].safeParse(null).success, key).toBe(true)
+      expect(s[key].safeParse(3).success, key).toBe(false) // a WordPress post id
+      expect(s[key].safeParse('ukategorisert').success, key).toBe(false)
+    }
+  })
+
+  it('marks only the install flag and its time read-only', () => {
+    expect([...READ_ONLY_SETTING_KEYS]).toEqual(['installed', 'installed_at'])
+    for (const key of READ_ONLY_SETTING_KEYS) {
+      expect(CORE_SETTING_KEYS).toContain(key)
+    }
+  })
+
+  it('has no secret among the settings: those are site_secret rows', () => {
+    expect(CORE_SETTING_KEYS.filter((k) => /token|recovery|secret/.test(k))).toEqual([])
+    expect([...SITE_SECRET_PURPOSE]).toEqual(['setup_token', 'backup_recovery_key'])
+  })
+
+  it("lists WordPress' two built-in taxonomies, for posts, with English names", () => {
+    expect(DEFAULT_TAXONOMIES.map((t) => t.slug)).toEqual([...BUILT_IN_TAXONOMIES])
+    expect(DEFAULT_TAXONOMIES).toEqual([
+      { slug: 'category', name: 'Categories', isHierarchical: true, contentTypes: ['post'] },
+      { slug: 'post_tag', name: 'Tags', isHierarchical: false, contentTypes: ['post'] },
+    ])
+  })
+
+  it('defines the skipped e-mail notice as a dismissible warning for administrators', () => {
+    expect(SETUP_EMAIL_SKIPPED_NOTICE).toEqual({
+      key: 'setup.email_skipped',
+      level: 'warning',
+      messageKey: 'notices.setupEmailSkipped',
+      capability: 'manage_options',
+      isDismissible: true,
+    })
+    expect(AdminNoticeLevel.safeParse(SETUP_EMAIL_SKIPPED_NOTICE.level).success).toBe(true)
   })
 })
