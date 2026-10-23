@@ -245,6 +245,19 @@ attempt waits `min(delay_seconds · 2^(n − free), delay_max)` after the latest
 `login_limit_window_minutes`, so the wait shrinks by itself. Nothing is stored about a wait: it is worked out from the
 `login_attempt` rows.
 
+**Who shares a counter (accepted, Tor 2026-10-23).** A failed attempt is stored with the `account_id` of the account the typed
+name belongs to and with the `login_hash` of the name as it was typed, and the wait is worked out from every row that matches
+either. For a real account that means the counter is shared between the username and the e-mail form: five wrong passwords
+typed as `anna` and the next attempt typed as `anna@example.no` waits too, because both are `anna`'s account. A name that
+matches no account has no `account_id`, so it counts per typed form only (by `login_hash`): two unknown names never share a
+counter. Someone who already knows both forms of one account can therefore see that they belong together (the wait on one
+form shows at once on the other), and someone who knows one form and guesses the other gets a yes or no for the guess after
+using up the free attempts on the first. This is accepted because: it needs one identifier already; keying a real account per
+form would let an attacker double the free attempts (the username and the e-mail address each get their own five) and the
+two forms of one account would then behave unlike each other, so a shared counter is the rule that protects the password
+best; and the only thing the wait gives away is a link between two identifiers the asker already holds, never a password or
+whether a name exists (an unknown name is delayed exactly like a known one, K-004).
+
 `default_role` (a WordPress option) can no longer be `administrator`: `CoreSettings` refuses it, and migration 0003 set
 it back to `subscriber` where a v0.2.0 database had it. Text that can reach a mail header (`mail_from_name`,
 `smtp_username`) may not contain control characters, so CR/LF cannot inject a header.

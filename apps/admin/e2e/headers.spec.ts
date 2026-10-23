@@ -88,6 +88,6 @@ test('the built files are served with a long cache and the site keeps its own po
 
   // The site has a CSP of its own (site-headers.spec.ts): the admin's policy is not in its pages.
   const site = await request.get('/')
-  expect(site.headers()['content-security-policy']).toContain("frame-ancestors 'self'")
+  expect(site.headers()['content-security-policy']).toContain("frame-ancestors 'none'")
   expect(site.headers()['cache-control']).not.toBe('no-store')
 })

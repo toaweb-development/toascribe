@@ -68,6 +68,7 @@ describe('arguments (no database is reached)', () => {
     expect(USAGE).toContain('user create --username')
     expect(USAGE).toContain('user reset-password')
     expect(USAGE).toContain('user reset-login-limit')
+    expect(USAGE).toContain('user mfa-reset (--username <name> | --email <address>) [--notify]')
     expect(USAGE).toContain('--password-stdin')
     expect(USAGE).toContain('DATABASE_URL')
   })
@@ -163,6 +164,23 @@ describe('arguments (no database is reached)', () => {
     const extra = await refused(['user', 'reset-login-limit', '--username', 'anna', '--password-stdin'])
     expect(extra.code).toBe(2)
     expect(extra.stderr).toContain('Unknown option --password-stdin')
+  })
+
+  it('mfa-reset needs exactly one of --username and --email, and no other option', async () => {
+    for (const argv of [
+      ['user', 'mfa-reset'],
+      ['user', 'mfa-reset', '--username', 'anna', '--email', 'a@example.test'],
+    ]) {
+      const result = await refused(argv)
+      expect(result.code).toBe(2)
+      expect(result.stderr).toContain('exactly one of --username and --email')
+      expect(result.stderr).toContain('user mfa-reset')
+    }
+    const extra = await refused(['user', 'mfa-reset', '--username', 'anna', '--password-stdin'])
+    expect(extra.code).toBe(2)
+    expect(extra.stderr).toContain('Unknown option --password-stdin')
+    const valued = await refused(['user', 'mfa-reset', '--username', 'anna', '--notify', 'yes'])
+    expect(valued.code).toBe(2)
   })
 
   it('does not need NODE_ENV: there is no guard, the commands work in production', async () => {
@@ -681,6 +699,222 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa user against PostgreSQL', 
     })
   })
 
+  describe('user mfa-reset', () => {
+    interface Queued {
+      name: string
+      data: { template: string; to: string; data: Record<string, unknown> }
+    }
+    const queuedFor = (to: string) =>
+      query<Queued>(
+        db.url,
+        `select name, data from pgboss.job where name = 'email.send' and data->>'to' = $1 order by created_on`,
+        [to],
+      )
+    const count = async (table: string, id: string) =>
+      Number(
+        (await query<{ n: string }>(db.url, `select count(*) as n from ${table} where account_id = $1`, [id]))[0]?.n,
+      )
+
+    /** An account with a confirmed app, an unfinished enrolment, a used and an unused recovery code, and two sessions. */
+    async function accountWithMfa(base: string, role = 'editor') {
+      const username = unique(base)
+      const email = `${username}@example.test`
+      await toa(createArgs(username, role, email))
+      const id = (await accountOf(username))?.id ?? ''
+      await query(
+        db.url,
+        `insert into mfa_credential (account_id, type, name, secret_encrypted, confirmed_at)
+         values ($1, 'totp', 'phone', 'v1:secret-ciphertext', now()), ($1, 'totp', null, 'v1:other-ciphertext', null)`,
+        [id],
+      )
+      await query(
+        db.url,
+        `insert into recovery_code (account_id, code_hash, used_at) values ($1, 'hash-a', null), ($1, 'hash-b', now())`,
+        [id],
+      )
+      for (const suffix of ['a', 'b']) {
+        await query(
+          db.url,
+          "insert into session (account_id, token_hash, expires_at) values ($1, $2, now() + interval '1 day')",
+          [id, `${username}-${suffix}`],
+        )
+      }
+      return { username, email, id }
+    }
+
+    it('removes every factor and recovery code, ends the sessions, audits and queues the notice', async () => {
+      const victim = await accountWithMfa('mfareset')
+      const bystander = await accountWithMfa('mfareset-other')
+      const before = await accountOf(victim.username)
+
+      const result = await toa(['user', 'mfa-reset', '--username', victim.username])
+      expect(result.code).toBe(0)
+      expect(result.stdout).toBe('')
+      expect(result.stderr).toContain('Removed 2 second factor(s) and 2 recovery code(s)')
+      expect(result.stderr).toContain('ended 2 session(s)')
+      expect(result.stderr).toContain('A security notice is queued')
+      expect(result.stderr).toContain('needs only the password')
+
+      expect(await count('mfa_credential', victim.id)).toBe(0)
+      expect(await count('recovery_code', victim.id)).toBe(0)
+      expect(await count('session', victim.id)).toBe(0)
+      // Nobody else's rows, and the account itself, its password included, are as they were.
+      expect(await count('mfa_credential', bystander.id)).toBe(2)
+      expect(await count('recovery_code', bystander.id)).toBe(2)
+      expect(await count('session', bystander.id)).toBe(2)
+      expect(await accountOf(victim.username)).toEqual(before)
+
+      const entry = (await auditOf(victim.id)).find((row) => row.action === 'mfa.reset')
+      expect(entry).toMatchObject({
+        actor_type: 'system',
+        actor: 'cli',
+        source: 'cli',
+        account_id: victim.id,
+        ip: null,
+        new_value: { factorsRemoved: { totp: 2 }, recoveryCodesRemoved: 2, sessionsEnded: 2 },
+      })
+
+      const jobs = await queuedFor(victim.email)
+      expect(jobs).toHaveLength(1)
+      expect(jobs[0]?.data).toEqual({
+        template: 'security_notice',
+        to: victim.email,
+        data: { username: victim.username, action: 'mfa_reset' },
+      })
+      expect(await queuedFor(bystander.email)).toEqual([])
+
+      // Nothing secret anywhere in what the command said.
+      const everything = JSON.stringify([result, jobs])
+      for (const secret of ['secret-ciphertext', 'other-ciphertext', 'hash-a', 'hash-b']) {
+        expect(everything).not.toContain(secret)
+      }
+      // pg-boss's own log lines are the only ones, and they hold no address.
+      expect(JSON.stringify(result.lines)).not.toContain(victim.email)
+    })
+
+    it('finds the account by e-mail address in any case, and --notify changes nothing', async () => {
+      const victim = await accountWithMfa('mfareset-mail')
+      const result = await toa(['user', 'mfa-reset', '--email', victim.email.toUpperCase(), '--notify'])
+      expect(result.code).toBe(0)
+      expect(await count('mfa_credential', victim.id)).toBe(0)
+      expect(await queuedFor(victim.email)).toHaveLength(1)
+    })
+
+    it('says that the next login is an enrolment when a role of the account requires 2FA', async () => {
+      const victim = await accountWithMfa('mfareset-required', 'editor')
+      await query(
+        db.url,
+        `insert into setting (key, value) values ('mfa_required_roles', '["editor"]'::jsonb)
+         on conflict (key) do update set value = excluded.value`,
+      )
+      try {
+        const result = await toa(['user', 'mfa-reset', '--username', victim.username])
+        expect(result.code).toBe(0)
+        expect(result.stderr).toContain('The role editor requires a second factor (mfa_required_roles)')
+        expect(result.stderr).toContain('next login lands in enrolment')
+      } finally {
+        await query(db.url, `delete from setting where key = 'mfa_required_roles'`)
+      }
+    })
+
+    it('an account without factors still ends its sessions and gets the notice; a repeat is dropped as a duplicate', async () => {
+      const username = unique('mfareset-none')
+      await toa(createArgs(username, 'author'))
+      const id = (await accountOf(username))?.id ?? ''
+      await query(
+        db.url,
+        "insert into session (account_id, token_hash, expires_at) values ($1, $2, now() + interval '1 day')",
+        [id, `${username}-s`],
+      )
+      const result = await toa(['user', 'mfa-reset', '--username', username])
+      expect(result.code).toBe(0)
+      expect(result.stderr).toContain('Removed 0 second factor(s) and 0 recovery code(s)')
+      expect(await count('session', id)).toBe(0)
+      expect(await queuedFor(`${username}@example.test`)).toHaveLength(1)
+      // The queue drops the same notice within a minute, so a repeated command does not flood the inbox.
+      expect((await toa(['user', 'mfa-reset', '--username', username])).code).toBe(0)
+      expect(await queuedFor(`${username}@example.test`)).toHaveLength(1)
+    })
+
+    it('an unknown account exits 1, says which flag found nothing, and changes and queues nothing', async () => {
+      const bystander = await accountWithMfa('mfareset-bystander')
+      const jobs = Number((await query<{ n: string }>(db.url, 'select count(*) as n from pgboss.job'))[0]?.n)
+      const audits = Number((await query<{ n: string }>(db.url, 'select count(*) as n from audit_log'))[0]?.n)
+      const byName = await toa(['user', 'mfa-reset', '--username', 'nobodyhere'])
+      expect(byName.code).toBe(1)
+      expect(byName.stdout).toBe('')
+      expect(byName.stderr).toContain('--username: no account has that username')
+      const byMail = await toa(['user', 'mfa-reset', '--email', 'nobody@example.test'])
+      expect(byMail.code).toBe(1)
+      expect(byMail.stderr).toContain('--email: no account has that e-mail address')
+      expect(Number((await query<{ n: string }>(db.url, 'select count(*) as n from pgboss.job'))[0]?.n)).toBe(jobs)
+      expect(Number((await query<{ n: string }>(db.url, 'select count(*) as n from audit_log'))[0]?.n)).toBe(audits)
+      expect(await count('mfa_credential', bystander.id)).toBe(2)
+    })
+
+    it('rolls everything back when the audit entry cannot be written, and queues no notice', async () => {
+      const victim = await accountWithMfa('mfareset-rollback')
+      await query(db.url, 'alter table audit_log rename to audit_log_away')
+      try {
+        const result = await toa(['user', 'mfa-reset', '--username', victim.username])
+        expect(result.code).toBe(1)
+        expect(result.stderr).toContain('user mfa-reset failed')
+      } finally {
+        await query(db.url, 'alter table audit_log_away rename to audit_log')
+      }
+      expect(await count('mfa_credential', victim.id)).toBe(2)
+      expect(await count('recovery_code', victim.id)).toBe(2)
+      expect(await count('session', victim.id)).toBe(2)
+      expect(await queuedFor(victim.email)).toEqual([])
+    })
+
+    it('exits 1 and says the reset stands when the notice cannot be queued, without printing the address', async () => {
+      const victim = await accountWithMfa('mfareset-queue')
+      const log = memoryLogger()
+      const result = await run(['user', 'mfa-reset', '--username', victim.username], VERSION, {
+        env: { DATABASE_URL: db.url, NODE_ENV: 'production' },
+        logger: log.logger,
+        mail: {
+          sendMail: () => Promise.reject(new Error(`queue down for ${victim.email}`)),
+          stop: () => Promise.resolve(),
+        },
+      })
+      expect(result.code).toBe(1)
+      expect(result.stdout).toBe('')
+      expect(result.stderr).toContain('are removed')
+      expect(result.stderr).toContain('could not be queued')
+      expect(result.stderr).toContain('Run the command again')
+      expect(result.stderr).not.toContain(victim.email)
+      expect(await count('mfa_credential', victim.id)).toBe(0)
+      expect(await count('session', victim.id)).toBe(0)
+      expect((await auditOf(victim.id)).some((row) => row.action === 'mfa.reset')).toBe(true)
+    })
+
+    it('hands the notice to the injected queue exactly as the api would send it', async () => {
+      const victim = await accountWithMfa('mfareset-inject')
+      const sent: unknown[] = []
+      const result = await run(['user', 'mfa-reset', '--email', victim.email], VERSION, {
+        env: { DATABASE_URL: db.url, NODE_ENV: 'production' },
+        logger: memoryLogger().logger,
+        mail: {
+          sendMail: (message) => {
+            sent.push(message)
+            return Promise.resolve({ jobId: 'job-1' })
+          },
+          stop: () => Promise.resolve(),
+        },
+      })
+      expect(result.code).toBe(0)
+      expect(sent).toEqual([
+        {
+          template: 'security_notice',
+          to: victim.email,
+          data: { username: victim.username, action: 'mfa_reset' },
+        },
+      ])
+    })
+  })
+
   describe('the real entry point', () => {
     function execNode(
       args: readonly string[],
@@ -720,6 +954,26 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa user against PostgreSQL', 
       expect(reset.stderr).not.toContain(reset.stdout.trim())
       const after = await accountOf(username)
       expect((await verifyPassword(reset.stdout.trim(), after?.password_hash ?? '')).valid).toBe(true)
+    })
+
+    it('mfa-reset through the real entry point queues the notice and the process ends by itself', async () => {
+      const username = unique('entry-mfa')
+      await execNode(createArgs(username, 'editor'))
+      const id = (await accountOf(username))?.id ?? ''
+      await query(
+        db.url,
+        "insert into mfa_credential (account_id, type, secret_encrypted, confirmed_at) values ($1, 'totp', 'v1:entry-secret', now())",
+        [id],
+      )
+      const result = await execNode(['user', 'mfa-reset', '--username', username])
+      expect(result.code).toBe(0)
+      expect(result.stdout).toBe('')
+      expect(result.stderr).not.toContain('entry-secret')
+      expect(result.stderr).toContain('e-mail queued')
+      const jobs = await query(db.url, `select 1 from pgboss.job where name = 'email.send' and data->>'to' = $1`, [
+        `${username}@example.test`,
+      ])
+      expect(jobs).toHaveLength(1)
     })
 
     it('exits 2 with the usage for bad arguments and 1 for a refusal', async () => {

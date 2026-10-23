@@ -16,7 +16,11 @@ packages:
 # customConditions; Vitest sets ssr.resolve.conditions; the Nuxt packages cannot use the condition (Nuxt UI's own
 # dependencies export one too), so packages/nuxt-base aliases each library to its src/index.ts instead. Node and the
 # images still run the compiled dist/ (api, worker, cli); only the `dev` scripts of the api and worker build the
-# libraries first. Nothing runs a build that writes into a dist/ another process reads, so there is no concurrency limit.
+# libraries first. Nothing runs a build that writes into a dist/ another process reads, so there is no concurrency limit
+# for lint, typecheck and build (`workspaceConcurrency` is not set). Only the root `test` script passes
+# `--workspace-concurrency=1`: the database tests of db, api, worker and cli create the cluster-wide roles toascribe_owner and
+# toascribe_app and queue behind one server-wide advisory lock, so run in parallel the last package waits past its hook
+# timeout. One package at a time keeps the timeouts short enough to catch a real hang; files inside a package still run in parallel.
 
 # One version per dependency across the workspace (TYPESCRIPT_STANDARD_2026 §7).
 # Packages write "catalog:" and never carry their own version.

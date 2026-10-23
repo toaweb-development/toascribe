@@ -30,6 +30,7 @@ export type EmailTemplate = z.infer<typeof EmailTemplate>
 /**
  * What a `security_notice` tells the owner of an account has happened (or is about to): the change to their credentials
  * that needed the password (or, for a reset, a link). An e-mail change has its own template (`email_change_notice`).
+ * `mfa_reset` is the one an operator causes: `toa user mfa-reset` removed the second factors, and the notice is sent after it.
  */
 export const SECURITY_NOTICE_ACTION = [
   'mfa_added',
@@ -37,6 +38,7 @@ export const SECURITY_NOTICE_ACTION = [
   'recovery_codes_regenerated',
   'password_changed',
   'password_reset',
+  'mfa_reset',
 ] as const
 export const SecurityNoticeAction = z.enum(SECURITY_NOTICE_ACTION)
 export type SecurityNoticeAction = z.infer<typeof SecurityNoticeAction>

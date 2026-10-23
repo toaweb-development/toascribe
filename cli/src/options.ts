@@ -1,3 +1,4 @@
+import type { MailProducer } from '@toascribe/db'
 import type { Logger } from 'pino'
 
 import type { EnvSource } from './config.ts'
@@ -10,4 +11,6 @@ export interface CommandOptions {
   readonly logger?: Logger
   /** Reads standard input to its end, for `--password-stdin`. Defaults to the process' stdin. */
   readonly readStdin?: () => Promise<string>
+  /** The mail queue the commands that send a notice use. Defaults to a pg-boss producer on DATABASE_URL, stopped when the command ends. */
+  readonly mail?: MailProducer
 }

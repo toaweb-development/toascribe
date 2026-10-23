@@ -1,11 +1,11 @@
-// `toa user create`, `toa user reset-password` and `toa user reset-login-limit`: the operator's way to make an account, give
+// `toa user create`, `toa user reset-password`, `toa user reset-login-limit` and `toa user mfa-reset`: the operator's way to make an account, give
 // one a new password or end the wait after failed logins, before the setup wizard (M0.4) and without the e-mail round trip. They run in the api container as the app role (DATABASE_URL), in
 // production too: unlike `dev seed tom` nothing here is destructive. The result goes to stdout (a generated password, once),
 // the sentences to stderr and the log to stderr, so `toa user create … | …` carries nothing else than the password.
 import { parseArgs } from 'node:util'
 
 import { hashPassword } from '@toascribe/auth'
-import { createDb } from '@toascribe/db'
+import { createDb, createMailProducer } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
 import { NewPassword, RegisterRequest, generatePassword } from '@toascribe/shared'
 import { pino } from 'pino'
@@ -14,6 +14,8 @@ import { z } from 'zod'
 
 import {
   clearLoginAttempts,
+  deleteMfaCredentials,
+  deleteRecoveryCodes,
   deleteSessions,
   findRole,
   findTaken,
@@ -23,16 +25,23 @@ import {
   listRoleSlugs,
   lockAccount,
   nicenameFor,
+  rolesRequiringMfa,
   setPasswordHash,
   uniqueViolation,
   voidUnusedLinks,
 } from '../accounts.ts'
 import type { AccountSelector } from '../accounts.ts'
 import { ConfigError, loadAppDatabaseConfig } from '../config.ts'
+import type { AppDatabaseConfig } from '../config.ts'
 import type { CommandOptions } from '../options.ts'
 import type { CliResult } from '../result.ts'
 import { readProcessStdin, StdinTooLongError } from '../stdin.ts'
-import { USER_CREATE_USAGE, USER_RESET_LOGIN_LIMIT_USAGE, USER_RESET_PASSWORD_USAGE } from '../usage.ts'
+import {
+  USER_CREATE_USAGE,
+  USER_MFA_RESET_USAGE,
+  USER_RESET_LOGIN_LIMIT_USAGE,
+  USER_RESET_PASSWORD_USAGE,
+} from '../usage.ts'
 
 const CONTROL_CHARACTER = /\p{Cc}/u
 
@@ -199,7 +208,7 @@ function loggerFor(options: CommandOptions, level: string): Logger {
 async function withDatabase<T>(
   options: CommandOptions,
   command: string,
-  work: (db: Database, logger: Logger) => Promise<T>,
+  work: (db: Database, logger: Logger, config: AppDatabaseConfig) => Promise<T>,
 ): Promise<T | CliResult> {
   let config
   try {
@@ -220,7 +229,7 @@ async function withDatabase<T>(
     logger.error(failureFields(err), 'database connection error')
   })
   try {
-    return await work(db, logger)
+    return await work(db, logger, config)
   } catch (err) {
     logger.fatal(failureFields(err), `${command} failed`)
     return refusal(`${command} failed; see the log above`)
@@ -482,5 +491,138 @@ export async function userResetLoginLimit(args: readonly string[], options: Comm
     code: 0,
     stdout: '',
     stderr: `Ended the wait after failed attempts for "${outcome.username}". Sessions and the password are unchanged.\n`,
+  }
+}
+
+const MFA_RESET_FLAGS = { username: 'string', email: 'string', notify: 'boolean' } as const
+
+/**
+ * `toa user mfa-reset`: for an owner who has lost the authenticator app and the recovery codes. Removes every second factor
+ * and recovery code of the account, ends all its sessions (so a stolen session cannot go on) and writes the audit entry, in
+ * one transaction; then queues the `security_notice` mail to the account's own address. The notice is always sent (Tor):
+ * `--notify` is accepted so the `toa user` commands take the same flags, and changes nothing.
+ *
+ * The mail is queued after the commit. If the queue is unreachable the reset stands (it is the security action), the command
+ * says so and exits 1, and running it again queues the notice. Nothing secret is printed: there is no secret here.
+ */
+export async function userMfaReset(args: readonly string[], options: CommandOptions = {}): Promise<CliResult> {
+  let selector: AccountSelector
+  try {
+    const flags = parseFlags(args, MFA_RESET_FLAGS)
+    const problems: string[] = []
+    if ((flags['username'] === undefined) === (flags['email'] === undefined)) {
+      problems.push('Give exactly one of --username and --email.')
+    }
+    const username =
+      flags['username'] === undefined ? undefined : checked('username', Username, flags['username'], problems)
+    const email = flags['email'] === undefined ? undefined : checked('email', Email, flags['email'], problems)
+    if (problems.length > 0) {
+      throw new UsageError(problems.join('\n'))
+    }
+    if (username !== undefined) {
+      selector = { username }
+    } else if (email !== undefined) {
+      selector = { email }
+    } else {
+      throw new UsageError('Give exactly one of --username and --email.')
+    }
+  } catch (err) {
+    if (err instanceof UsageError) {
+      return usageResult(err.message, USER_MFA_RESET_USAGE)
+    }
+    throw err
+  }
+
+  interface Done {
+    readonly id: string
+    readonly username: string
+    readonly email: string
+    readonly factors: number
+    readonly recoveryCodes: number
+    readonly sessions: number
+    readonly requiredBy: readonly string[]
+  }
+  const outcome = await withDatabase(options, 'user mfa-reset', async (db, logger, config) => {
+    const done = await db.transaction(async (tx): Promise<Done | ResetRefusal> => {
+      const found = await lockAccount(tx, selector)
+      if (found === undefined) {
+        return {
+          refused: `--${'username' in selector ? 'username' : 'email'}: no account has that ${'username' in selector ? 'username' : 'e-mail address'}.`,
+        }
+      }
+      const now = new Date()
+      const byType = await deleteMfaCredentials(tx, found.id)
+      const recoveryCodes = await deleteRecoveryCodes(tx, found.id)
+      const sessions = await deleteSessions(tx, found.id)
+      const factors = Object.values(byType).reduce((sum, n) => sum + n, 0)
+      await insertCliAudit(
+        tx,
+        {
+          accountId: found.id,
+          action: 'mfa.reset',
+          newValue: { factorsRemoved: byType, recoveryCodesRemoved: recoveryCodes, sessionsEnded: sessions },
+        },
+        now,
+      )
+      return {
+        id: found.id,
+        username: found.username,
+        email: found.email,
+        factors,
+        recoveryCodes,
+        sessions,
+        requiredBy: await rolesRequiringMfa(tx, found.id),
+      }
+    })
+    if ('refused' in done) {
+      return refusal(done.refused)
+    }
+    logger.info(
+      {
+        accountId: done.id,
+        factorsRemoved: done.factors,
+        recoveryCodesRemoved: done.recoveryCodes,
+        sessionsEnded: done.sessions,
+      },
+      'second factors reset',
+    )
+    const producer =
+      options.mail ??
+      createMailProducer({ connectionString: config.DATABASE_URL, applicationName: 'toascribe-cli', logger })
+    try {
+      await producer.sendMail({
+        template: 'security_notice',
+        to: done.email,
+        data: { username: done.username, action: 'mfa_reset' },
+      })
+    } catch (err) {
+      logger.error(failureFields(err), 'could not queue the security notice')
+      return {
+        code: 1,
+        stdout: '',
+        stderr:
+          `The second factors of "${done.username}" are removed and its ${String(done.sessions)} session(s) ended, ` +
+          'but the security notice could not be queued (see the log above). Run the command again to queue it.\n',
+      }
+    } finally {
+      if (options.mail === undefined) {
+        await producer.stop().catch(() => undefined)
+      }
+    }
+    return done
+  })
+  if (isCliResult(outcome)) {
+    return outcome
+  }
+  return {
+    code: 0,
+    stdout: '',
+    stderr:
+      `Removed ${String(outcome.factors)} second factor(s) and ${String(outcome.recoveryCodes)} recovery code(s) from ` +
+      `"${outcome.username}" and ended ${String(outcome.sessions)} session(s).\n` +
+      'A security notice is queued to the e-mail address of the account.\n' +
+      (outcome.requiredBy.length > 0
+        ? `The role ${outcome.requiredBy.join(', ')} requires a second factor (mfa_required_roles), so the next login lands in enrolment: the owner signs in with the password and sets up a new factor.\n`
+        : 'No role of the account requires a second factor, so the next login needs only the password.\n'),
   }
 }

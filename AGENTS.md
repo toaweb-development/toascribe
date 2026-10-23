@@ -50,7 +50,9 @@ separate step: say so.
   The Nuxt packages do not use the condition (Nuxt UI's own dependencies export a `source` condition too, and
   TypeScript or Vite would then take their `.ts` files): `packages/nuxt-base/nuxt.config.ts` has an `alias` from each
   library a Nuxt package imports to its `src/index.ts`, which the typecheck, the Vite build and the Nitro build all use.
-  A Nuxt package therefore needs no `build:deps`, and `workspaceConcurrency` is not set. A test checks both.
+  A Nuxt package therefore needs no `build:deps`, and `workspaceConcurrency` is not set. A test checks both. Only the root
+  `test` script runs the packages one at a time (`--workspace-concurrency=1`), because the database tests of db, api, worker and
+  cli share one server-wide role lock; a test checks that too.
 - **No `process.env` outside `config.ts`** (each app has one; `packages/db/src/migrate.ts` is the entry point that reads
   `MIGRATION_DATABASE_URL`). Config is validated with Zod at start-up and errors name variables, never values.
 - **No secrets in the repo, an image, a compose file or a workflow.** `docker/.env.example` lists names with empty values.
@@ -65,8 +67,10 @@ separate step: say so.
 
 The site and the admin share one security setup in `packages/nuxt-base` (`nuxt-security`: a CSP with a nonce per response, no
 `unsafe-inline`, no `unsafe-eval`, HSTS from `X-Forwarded-Proto`). Each app adds only what differs: `img-src` (the site allows
-`https:`, themes show pictures from other hosts), `frame-ancestors` (the site `'self'`, for the live preview in the admin; the
-admin `'none'`), `X-Frame-Options`, and the cache rule. Do not repeat a shared directive in an app: layers concatenate arrays.
+`https:`, themes show pictures from other hosts), `frame-ancestors` (`'none'` on both, with `X-Frame-Options: DENY`: by Tor's
+decision nothing is framed, the admin showing the site included, until the live preview of «Tilpass» in phase 3, which opens
+the site to `'self'` and `SAMEORIGIN`), and the cache rule. Do not repeat a shared directive in an app: layers concatenate
+arrays.
 
 - **A nonce and a page cache do not mix.** The nonce is in the HTML and in the header of one response. A shared cache that hands
   the same page to many visitors hands them a nonce anyone can read, and a known nonce protects nothing. So rendered pages are

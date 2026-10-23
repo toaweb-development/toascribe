@@ -12,6 +12,12 @@ export const USER_RESET_LOGIN_LIMIT_USAGE = `  user reset-login-limit (--usernam
                          registrations. Nothing is locked; this lets the owner try at once. Writes an audit entry; the
                          password and the sessions stay as they are. Needs DATABASE_URL.`
 
+export const USER_MFA_RESET_USAGE = `  user mfa-reset (--username <name> | --email <address>) [--notify]
+                         Remove every second factor and every recovery code of the account, end all its sessions and write
+                         an audit entry (mfa.reset). The account always gets a security notice by e-mail (queued for the
+                         worker); --notify is accepted and changes nothing. If a role of the account is in mfa_required_roles,
+                         its next login is an enrolment. Needs DATABASE_URL.`
+
 export const USAGE = `Usage: toa <command>
 
 Commands:
@@ -21,4 +27,5 @@ Commands:
 ${USER_CREATE_USAGE}
 ${USER_RESET_PASSWORD_USAGE}
 ${USER_RESET_LOGIN_LIMIT_USAGE}
+${USER_MFA_RESET_USAGE}
 `

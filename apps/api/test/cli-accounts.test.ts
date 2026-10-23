@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
-import { unique } from './flows.ts'
+import { enrolTotp, nextStep, readJson, setSetting, unique } from './flows.ts'
 import { TEST_PASSWORD, startAuthApp } from './harness.ts'
 import type { AuthTestApp } from './harness.ts'
 
@@ -224,6 +224,53 @@ describe.skipIf(TEST_DATABASE_URL === undefined)(
       )
       expect(reset.code).toBe(0)
       expect((await env.client({ ip: ip() }).login(account.username, NEW_PASSWORD)).status).toBe(200)
+    })
+
+    it('mfa-reset, run as the app role, ends a stolen session, removes the factor and the recovery codes, and the next login is an enrolment where the role requires one', async () => {
+      await setSetting(env, 'mfa_required_roles', ['editor'])
+      try {
+        const account = await env.createAccount({ username: unique('cli-mfa'), role: 'editor' })
+        // The owner enrols an app (the role requires one, so the first login is an enrolment) and keeps a second session.
+        const owner = env.client({ ip: ip() })
+        expect((await readJson(await owner.login(account.username, TEST_PASSWORD))).mfa).toBe('enrolment')
+        const enrolled = await enrolTotp(env, owner, undefined, { password: null })
+        expect(enrolled.response.status).toBe(200)
+        expect(enrolled.recoveryCodes).toHaveLength(10)
+        nextStep(env)
+        expect((await owner.get('/api/v1/me')).status).toBe(200)
+
+        const reset = await toa(['user', 'mfa-reset', '--username', account.username])
+        expect(reset.code).toBe(0)
+        expect(reset.stdout).toBe('')
+        expect(reset.stderr).toContain('Removed 1 second factor(s) and 10 recovery code(s)')
+        expect(reset.stderr).toContain('next login lands in enrolment')
+
+        // The session that was open does not go on, and nothing of the second factor is left.
+        expect((await owner.get('/api/v1/me')).status).toBe(401)
+        for (const table of ['mfa_credential', 'recovery_code', 'session']) {
+          expect(await env.query(`select 1 from ${table} where account_id = $1`, [account.id])).toEqual([])
+        }
+        // The password alone gets the account to the enrolment, not into the admin.
+        const again = await env.client({ ip: ip() }).login(account.username, TEST_PASSWORD)
+        expect(again.status).toBe(200)
+        expect((await readJson(again)).mfa).toBe('enrolment')
+
+        const audit = await env.query<{ action: string; actor: string; source: string }>(
+          `select action, actor, source from audit_log where account_id = $1 and action = 'mfa.reset'`,
+          [account.id],
+        )
+        expect(audit).toEqual([{ action: 'mfa.reset', actor: 'cli', source: 'cli' }])
+        // The notice is a job for the worker, queued with DML only.
+        const jobs = await env.query<{ data: unknown }>(
+          `select data from pgboss.job where name = 'email.send' and data->>'to' = $1`,
+          [account.email],
+        )
+        expect(jobs.map((job) => job.data)).toEqual([
+          { template: 'security_notice', to: account.email, data: { username: account.username, action: 'mfa_reset' } },
+        ])
+      } finally {
+        await setSetting(env, 'mfa_required_roles', [])
+      }
     })
 
     it('writes the audit entries as the app role', async () => {

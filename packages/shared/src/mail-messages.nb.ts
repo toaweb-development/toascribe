@@ -14,6 +14,8 @@ export const MAIL_MESSAGES_NB: MailMessages = {
       recovery_codes_regenerated: 'Det blir laget nye gjenopprettingskoder for kontoen din. De gamle slutter å virke.',
       password_changed: 'Passordet på kontoen din blir endret.',
       password_reset: 'Passordet på kontoen din er tilbakestilt med en lenke fra «Mistet passordet?».',
+      mfa_reset:
+        'Tofaktor og gjenopprettingskoder er fjernet fra kontoen din av en administrator, og du er logget ut overalt.',
     },
   },
   templates: {

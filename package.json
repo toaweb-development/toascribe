@@ -12,7 +12,7 @@
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "lint": "pnpm -r lint && eslint eslint.config.ts vitest.config.ts test",
     "typecheck": "pnpm -r typecheck && tsc --noEmit",
-    "test": "pnpm -r test && vitest run --project root",
+    "test": "pnpm -r --workspace-concurrency=1 test && vitest run --project root",
     "build": "pnpm -r build",
     "test:e2e": "pnpm --filter @toascribe/admin test:e2e",
     "format": "prettier --write .",

@@ -12,16 +12,16 @@ export default defineNuxtConfig({
   // - `img-src` takes any https image: themes and posts show pictures from other hosts (an avatar, an embedded post's
   //   picture) and the host is not known when the theme is written. Images cannot run script, and `data:` is for small inline ones.
   //   Scripts, styles, fonts and connections stay at 'self' (a theme that needs another host says so in its own manifest, later).
-  // - `frame-ancestors 'self'`: the admin will show the site in a frame for the live preview of «Tilpass» (PLAN, phase 3), and
-  //   admin and site share one origin behind Caddy. No other site may frame it. `X-Frame-Options: SAMEORIGIN` says the same to
-  //   old browsers.
+  // - `frame-ancestors 'none'`: nobody frames the site, the admin included, until the live preview of «Tilpass» (PLAN, phase 3)
+  //   needs it (Tor's decision, M0.4). Then it becomes 'self' (admin and site share one origin behind Caddy) together with
+  //   `X-Frame-Options: SAMEORIGIN`, and the site e2e changes with it. `X-Frame-Options: DENY` says the same to old browsers.
   security: {
     headers: {
       contentSecurityPolicy: {
         'img-src': ["'self'", 'data:', 'https:'],
-        'frame-ancestors': ["'self'"],
+        'frame-ancestors': ["'none'"],
       },
-      xFrameOptions: 'SAMEORIGIN',
+      xFrameOptions: 'DENY',
     },
   },
 })

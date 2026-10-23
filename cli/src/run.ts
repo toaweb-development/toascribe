@@ -1,7 +1,7 @@
 // The command logic, free of process I/O so tests can call it directly. No CLI framework is pulled in; the command
 // set (docs/PLAN.md, «toa-CLI») grows with the features it operates on.
 import { devSeedTom } from './commands/dev-seed.ts'
-import { userCreate, userResetLoginLimit, userResetPassword } from './commands/user.ts'
+import { userCreate, userMfaReset, userResetLoginLimit, userResetPassword } from './commands/user.ts'
 import type { CommandOptions } from './options.ts'
 import type { CliResult } from './result.ts'
 import { USAGE } from './usage.ts'
@@ -35,6 +35,9 @@ export async function run(argv: readonly string[], version: string, options: Com
   }
   if (command === 'user' && rest[0] === 'reset-login-limit') {
     return await userResetLoginLimit(rest.slice(1), options)
+  }
+  if (command === 'user' && rest[0] === 'mfa-reset') {
+    return await userMfaReset(rest.slice(1), options)
   }
   return { code: 2, stdout: '', stderr: USAGE }
 }
