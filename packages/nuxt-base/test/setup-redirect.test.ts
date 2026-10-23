@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { ADMIN_SETUP_ADDRESS, decideSetupRedirect, tokenFromQuery } from '../app/lib/setup/redirect.ts'
+import { ADMIN_SETUP_ADDRESS, decideSetupRedirect } from '../app/lib/setup/redirect.ts'
 import type { SetupRedirectInput } from '../app/lib/setup/redirect.ts'
 
 const TOKEN = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ' // 43 characters, as the api makes them
 
-const base: SetupRedirectInput = { installed: false, hostsWizard: true, path: '/', query: {} }
+const base: SetupRedirectInput = { installed: false, hostsWizard: true, path: '/' }
 
 describe('before the install', () => {
   it('sends every page of the admin to the wizard', () => {
     for (const path of ['/', '/login', '/login/', '/register', '/logout', '/anything/else']) {
-      expect(decideSetupRedirect({ ...base, path })).toEqual({ kind: 'route', to: { path: '/setup', query: {} } })
+      expect(decideSetupRedirect({ ...base, path })).toEqual({ kind: 'route', to: { path: '/setup' } })
     }
   })
 
@@ -26,7 +26,6 @@ describe('before the install', () => {
   it('shows the wizard itself, with or without a trailing slash: it is the one page that never goes anywhere', () => {
     expect(decideSetupRedirect({ ...base, path: '/setup' })).toEqual({ kind: 'none' })
     expect(decideSetupRedirect({ ...base, path: '/setup/' })).toEqual({ kind: 'none' })
-    expect(decideSetupRedirect({ ...base, path: '/setup', query: { token: TOKEN } })).toEqual({ kind: 'none' })
   })
 
   it('does not loop: the site never treats /setup as the wizard, and the wizard page never redirects', () => {
@@ -36,24 +35,21 @@ describe('before the install', () => {
     expect(decideSetupRedirect({ ...base, path: '/setup' }).kind).toBe('none')
   })
 
-  it('keeps the setup code of the address on the way, and nothing else of the query', () => {
-    expect(decideSetupRedirect({ ...base, path: '/login', query: { token: TOKEN, action: 'register' } })).toEqual({
-      kind: 'route',
-      to: { path: '/setup', query: { token: TOKEN } },
-    })
-    expect(decideSetupRedirect({ ...base, hostsWizard: false, query: { token: TOKEN, utm: 'x' } })).toEqual({
-      kind: 'external',
-      href: `${ADMIN_SETUP_ADDRESS}?token=${TOKEN}`,
-    })
-  })
-
-  it('does not pass on a value that cannot be a setup code', () => {
-    for (const token of ['', 'short', 'has spaces in it that is not a code at all', '<script>alert(1)</script>']) {
-      expect(decideSetupRedirect({ ...base, hostsWizard: false, query: { token } })).toEqual({
+  it('carries nothing of the address on: no query, and no setup code (it is in the fragment, which stays with the browser)', () => {
+    expect(
+      decideSetupRedirect({
+        ...base,
+        path: '/login',
+        query: { token: TOKEN, action: 'register' },
+      } as SetupRedirectInput),
+    ).toEqual({ kind: 'route', to: { path: '/setup' } })
+    expect(decideSetupRedirect({ ...base, hostsWizard: false, query: { token: TOKEN } } as SetupRedirectInput)).toEqual(
+      {
         kind: 'external',
         href: ADMIN_SETUP_ADDRESS,
-      })
-    }
+      },
+    )
+    expect(JSON.stringify(decideSetupRedirect({ ...base, path: '/login' }))).not.toContain('token')
   })
 })
 
@@ -67,25 +63,12 @@ describe('after the install', () => {
     }
   })
 
-  it('answers the wizard with a 404, whatever the query says', () => {
+  it('answers the wizard with a 404', () => {
     expect(decideSetupRedirect({ ...installed, path: '/setup' })).toEqual({ kind: 'not-found' })
     expect(decideSetupRedirect({ ...installed, path: '/setup/' })).toEqual({ kind: 'not-found' })
-    expect(decideSetupRedirect({ ...installed, path: '/setup', query: { token: TOKEN } })).toEqual({
-      kind: 'not-found',
-    })
   })
 
   it('leaves /setup of the site alone: the site has no wizard', () => {
     expect(decideSetupRedirect({ ...installed, hostsWizard: false, path: '/setup' })).toEqual({ kind: 'none' })
-  })
-})
-
-describe('tokenFromQuery', () => {
-  it('reads a code, the first of several, and ignores anything that cannot be one', () => {
-    expect(tokenFromQuery({ token: TOKEN })).toBe(TOKEN)
-    expect(tokenFromQuery({ token: [TOKEN, 'second'] })).toBe(TOKEN)
-    expect(tokenFromQuery({})).toBeUndefined()
-    expect(tokenFromQuery({ token: 'nope' })).toBeUndefined()
-    expect(tokenFromQuery({ token: 7 })).toBeUndefined()
   })
 })

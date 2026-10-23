@@ -132,12 +132,12 @@ export function serviceLog(service: string, stack: Stack): Promise<string> {
 
 /**
  * The setup code, read from the api's log like the person who started the stack reads it (`docker compose logs api`): the
- * address in the one line the api writes at start-up, while the site is not installed.
+ * address (`/admin/setup#token=...`) in the one line the api writes at start-up, while the site is not installed.
  */
 export async function setupTokenFromLog(stack: Stack): Promise<string> {
   const deadline = Date.now() + 60_000
   while (Date.now() < deadline) {
-    const found = /\/admin\/setup\?token=([A-Za-z0-9_-]+)/.exec(await serviceLog('api', stack))
+    const found = /\/admin\/setup#token=([A-Za-z0-9_-]+)/.exec(await serviceLog('api', stack))
     if (found?.[1] !== undefined) {
       return found[1]
     }

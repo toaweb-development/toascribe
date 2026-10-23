@@ -52,7 +52,7 @@
       }
     },
     "token": {
-      "hint": "Oppsettskoden står i loggen til api-tjenesten, i adressen som slutter med «token=». Kjør {logs} for å se loggen. Har du ikke koden lenger, lager {renew} en ny.",
+      "hint": "Oppsettskoden står i loggen til api-tjenesten, i adressen som slutter med «#token=». Kjør {logs} for å se loggen. Har du ikke koden lenger, lager {renew} en ny.",
       "label": "Oppsettskode",
       "help": "Koden kan bare brukes til dette oppsettet, og slutter å virke når nettstedet er installert.",
       "submit": "Kontroller koden",

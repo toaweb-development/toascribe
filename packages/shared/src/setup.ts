@@ -28,8 +28,8 @@ const line = (max: number) =>
 
 /**
  * The header that carries the one-time setup token. A header and never a query string: the api's own log and the proxy's log
- * would otherwise keep the token. The wizard reads `?token=` from its own address once, moves it into memory and removes it
- * from the address bar.
+ * would otherwise keep the token. The address that is printed and logged carries it in the fragment (`/admin/setup#token=…`), which a browser never sends;
+ * the wizard reads it from there once, moves it into memory and removes it from the address bar.
  */
 export const SETUP_TOKEN_HEADER = 'x-setup-token'
 

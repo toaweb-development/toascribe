@@ -168,7 +168,8 @@ export async function announceSetupToken(options: {
   }
   const token = await install.issueSetupToken()
   const url = new URL(SETUP_PATH, publicOrigin)
-  url.searchParams.set('token', token)
+  // In the fragment: a browser never sends it to the proxy or the api, so neither log can hold it. The wizard reads it from there.
+  url.hash = `token=${token}`
   logger.warn(
     `The site is not installed yet. Open ${url.toString()} to set it up. This setup token is shown only now; ` +
       'a new one is made at the next start, or with `toa core setup-token`.',

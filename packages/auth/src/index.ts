@@ -9,5 +9,6 @@ export {
   verifyPassword,
 } from './passwords.ts'
 export type { PasswordCheck } from './passwords.ts'
+export { WEAK_PASSWORD_MESSAGE, isTooObvious } from './policy.ts'
 export { verifyPhpass } from './phpass.ts'
 export { constantTimeEqual, csrfTokenFor, generateToken, hashToken } from './tokens.ts'

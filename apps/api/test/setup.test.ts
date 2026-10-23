@@ -1,6 +1,6 @@
 // The setup wizard's API (M0.4) on a real app and PostgreSQL: the one-time token and what it guards, every step, the install
 // and its concurrency and rollback, and the 404s after it. The mail itself is in setup-e2e.test.ts (a real worker and Mailpit).
-import { hashToken } from '@toascribe/auth'
+import { WEAK_PASSWORD_MESSAGE, hashToken } from '@toascribe/auth'
 import {
   ApiError,
   LoginResponse,
@@ -583,6 +583,33 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the setup API (needs TEST_DATA
       }
     })
 
+    it('answers 400 weak_password for a password equal to the username or the address, writes nothing and keeps the token', async () => {
+      const key = await prepareInstall(client, token)
+      for (const password of [
+        'administrator',
+        'ADMINISTRATOR',
+        'administrator@example.test',
+        'Administrator@Example.TEST',
+      ]) {
+        const res = await install(client, key, {
+          admin: { username: 'administrator', email: 'administrator@example.test', password },
+        })
+        expect(res.status, password).toBe(400)
+        const error = await errorOf(res)
+        expect(error.code).toBe('weak_password')
+        expect(error.message).toBe(WEAK_PASSWORD_MESSAGE)
+        expect(res.headers.getSetCookie()).toEqual([])
+      }
+      expect(await env.query('select 1 from account')).toHaveLength(0)
+      expect(await env.query('select 1 from content')).toHaveLength(0)
+      expect((await env.query<{ value: boolean }>(`select value from setting where key = 'installed'`))[0]?.value).toBe(
+        false,
+      )
+      expect((await setupCall(client, 'POST', '/token/verify', token)).status).toBe(200)
+      // A password that is not the username installs.
+      expect((await install(client, key)).status).toBe(200)
+    })
+
     it('rolls back all of it when the e-mail address is taken, and the token still works', async () => {
       const key = await prepareInstall(client, token)
       await env.createAccount({ username: 'already', email: ADMIN.email, role: 'subscriber' })
@@ -659,7 +686,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the setup API (needs TEST_DATA
       expect(text.split(issued).length - 1).toBe(1)
       expect(lines).toHaveLength(1)
       expect(lines[0]).toMatchObject({ level: 40 })
-      expect(String(lines[0]?.['msg'])).toContain(`${TEST_ORIGIN}/admin/setup?token=${issued}`)
+      expect(String(lines[0]?.['msg'])).toContain(`${TEST_ORIGIN}/admin/setup#token=${issued}`)
       // And it is the token that works.
       const c = freshClient()
       expect((await setupCall(c, 'POST', '/token/verify', issued)).status).toBe(200)

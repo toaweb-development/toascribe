@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 
-// Step 1: the setup code. The api wrote it to its log (as an address with `?token=`) when it started; opening that address
+// Step 1: the setup code. The api wrote it to its log (as an address with `#token=`) when it started; opening that address
 // skips this form, because the wizard has already read the code from it. Pasting is for the person who has only the code.
 const props = defineProps<{
   /** The code is known and was accepted by the api. */

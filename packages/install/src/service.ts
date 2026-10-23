@@ -11,7 +11,14 @@
 //   after the install, a second install and a new token cannot change an installed site.
 import { randomUUID } from 'node:crypto'
 
-import { generateToken, constantTimeEqual, hashPassword, hashToken } from '@toascribe/auth'
+import {
+  WEAK_PASSWORD_MESSAGE,
+  generateToken,
+  constantTimeEqual,
+  hashPassword,
+  hashToken,
+  isTooObvious,
+} from '@toascribe/auth'
 import {
   getInstallState,
   getMigrationStatus,
@@ -593,6 +600,9 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
 
     async install(input) {
       const admin = parse(SetupAdmin, input.admin)
+      if (isTooObvious(admin.password, admin)) {
+        throw new InstallError('weak_password', WEAK_PASSWORD_MESSAGE)
+      }
       const site = input.site === undefined ? undefined : parse(SetupSite, input.site)
       const emailInput = input.email
       const email =

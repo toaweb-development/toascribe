@@ -28,6 +28,7 @@ const INSTALL_STATUS: Readonly<Record<InstallErrorCode, ContentfulStatusCode>> =
   email_taken: 409,
   recovery_key_mismatch: 400,
   content_exists: 409,
+  weak_password: 400,
   invalid_input: 400,
 }
 

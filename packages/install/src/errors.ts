@@ -15,6 +15,8 @@ export const INSTALL_ERROR_CODE = [
   'recovery_key_mismatch',
   /** The database already holds some of the default content (a post or page with the same address). */
   'content_exists',
+  /** The administrator's password is the username or the e-mail address (the same rule as every other way to choose a password). */
+  'weak_password',
   /** The input does not pass its schema (only the CLI can get here: the api validates before it calls). */
   'invalid_input',
 ] as const

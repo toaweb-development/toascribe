@@ -198,7 +198,7 @@ const installRoute = defineRoute({
   responses: {
     200: { content: { 'application/json': { schema: SetupInstallResponse } }, description: 'Installed' },
     400: errorResponse(
-      'Invalid request (`confirmed` must be true), a cross-site request, or a recovery key that is not the one made last (`recovery_key_mismatch`)',
+      'Invalid request (`confirmed` must be true), a password the site refuses because it is the username or the e-mail address (`weak_password`), a cross-site request, or a recovery key that is not the one made last (`recovery_key_mismatch`)',
     ),
     409: errorResponse(
       'Already installed (`already_installed`), a step is not saved (`step_missing`), the username or e-mail address is taken (`username_taken`, `email_taken`)',

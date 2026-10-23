@@ -44,9 +44,11 @@ export function classifySetupFailure(caught: unknown): SetupFailure {
 }
 
 /**
- * Whether a failed install is the administrator step's to fix: a taken name or address, or a key that is not the last one
- * made. The wizard goes back there with the message. (`step_missing` is another step's: the wizard asks the api which.)
+ * Whether a failed install is the administrator step's to fix: a taken name or address, a password that is the username or the
+ * e-mail address (`weak_password`), or a key that is not the last one made. The wizard goes back there with the message. (`step_missing` is another step's: the wizard asks the api which.)
  */
 export function isAdminStepFailure(code: string): boolean {
-  return code === 'username_taken' || code === 'email_taken' || code === 'recovery_key_mismatch'
+  return (
+    code === 'username_taken' || code === 'email_taken' || code === 'weak_password' || code === 'recovery_key_mismatch'
+  )
 }

@@ -42,7 +42,7 @@ describe('classifySetupFailure', () => {
 
 describe('isAdminStepFailure', () => {
   it('is true for what the administrator step can fix', () => {
-    for (const code of ['username_taken', 'email_taken', 'recovery_key_mismatch']) {
+    for (const code of ['username_taken', 'email_taken', 'weak_password', 'recovery_key_mismatch']) {
       expect(isAdminStepFailure(code)).toBe(true)
     }
     for (const code of ['step_missing', 'content_exists', 'validation_error']) {

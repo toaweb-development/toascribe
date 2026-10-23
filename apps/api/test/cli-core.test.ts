@@ -136,7 +136,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa core, used through the api
     const made = await toa(['core', 'setup-token'])
     expect(made.code).toBe(0)
     const token = /^Setup token: (\S+)$/m.exec(made.stdout)?.[1] ?? ''
-    expect(made.stdout).toContain(`Setup address: ${TEST_ORIGIN}/admin/setup?token=${token}`)
+    expect(made.stdout).toContain(`Setup address: ${TEST_ORIGIN}/admin/setup#token=${token}`)
 
     const verify = (value: string) =>
       env.client({ ip: ip() }).request('POST', '/api/v1/setup/token/verify', {

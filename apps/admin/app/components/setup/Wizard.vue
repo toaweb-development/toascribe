@@ -8,8 +8,9 @@ import type { AdminDraft } from './StepAdmin.vue'
 // are done; a reload asks it where to start. The administrator and the default content are made at the very end, in one
 // transaction, by «Fullfør installasjonen».
 //
-// The setup code comes with the address (`?token=`), is moved into this tab's session storage and removed from the address
-// bar at once (utils/setup-token.ts), and is sent in the `X-Setup-Token` header only.
+// The setup code comes with the address as a fragment (`#token=`, which a browser never sends to a server), is moved into this
+// tab's session storage and removed from the address bar at once (utils/setup-token.ts), and is sent in the `X-Setup-Token`
+// header only.
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
@@ -158,10 +159,10 @@ async function onTokenPasted(code: string) {
 }
 
 async function start() {
-  const taken = takeTokenFromQuery(route.query)
+  const taken = takeTokenFromHash(route.hash)
   if (taken.present) {
     // Out of the address bar before anything else, and without adding a history entry.
-    await router.replace({ path: route.path, query: taken.rest, hash: route.hash })
+    await router.replace({ path: route.path, query: route.query, hash: taken.rest })
   }
   const code = taken.token ?? readStoredToken()
   if (code === undefined) {

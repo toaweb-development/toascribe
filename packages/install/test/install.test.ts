@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { hashToken, verifyPassword } from '@toascribe/auth'
+import { WEAK_PASSWORD_MESSAGE, hashToken, verifyPassword } from '@toascribe/auth'
 import { DefaultContentExistsError, readMigrationJournal, seedDefaultContent } from '@toascribe/db'
 import { CoreSettings, SETUP_EMAIL_SKIPPED_NOTICE, SMTP_PASSWORD_AAD } from '@toascribe/shared'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -694,6 +694,31 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
         recovery: { key: second.toLowerCase().replaceAll('-', ' '), confirmed: true },
       })
       expect(await env.setting('installed')).toBe(true)
+    })
+
+    it('refuses a password equal to the username or the e-mail address, case aside, and writes nothing', async () => {
+      const key = await prepare(env)
+      const token = await env.service.issueSetupToken()
+      for (const password of [
+        'administrator',
+        'ADMINISTRATOR',
+        'Administrator@Example.Test',
+        'administrator@example.test',
+      ]) {
+        const err = await failure(
+          env.service.install({
+            admin: { username: 'administrator', email: 'administrator@example.test', password },
+            recovery: { key, confirmed: true },
+          }),
+        )
+        expect(err).toBeInstanceOf(InstallError)
+        expect((err as InstallError).code).toBe('weak_password')
+        expect((err as InstallError).message).toBe(WEAK_PASSWORD_MESSAGE)
+        expect((err as InstallError).message).not.toContain(password)
+      }
+      expect((await env.footprint()).accounts).toBe(0)
+      expect(await env.setting('installed')).toBe(false)
+      expect(await env.service.verifySetupToken(token)).toBe(true)
     })
 
     it('validates the administrator with the rules of every other account, and shows no value', async () => {

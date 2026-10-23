@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The setup wizard (M0.4), at /admin/setup. The page is drawn on the server (the heading and a short "starting" line); the
-// wizard itself runs in the browser only, because the setup code lives there (the address, then this tab's session storage)
-// and is never part of the page the server sends. The middleware in the shared layer (setup-redirect.global.ts) sends every
+// wizard itself runs in the browser only, because the setup code lives there: it arrives in the fragment of the address (`#token=`,
+// which a browser never sends to a server), then it is in this tab's session storage. So it is never part of the page the
+// server draws, and no log of the proxy or the app can have it. The middleware in the shared layer (setup-redirect.global.ts) sends every
 // page here until the site is installed, and answers 404 here afterwards.
 const { t } = useI18n()
 

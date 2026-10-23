@@ -12,6 +12,8 @@ import { installedIsKnown, rememberInstalled } from '../lib/setup/installed.ts'
 //   remembers "installed" for good (lib/setup/installed.ts) and so asks nothing on an installed site.
 // - If the api cannot be asked, the page is shown as it is: the api being down is not a reason to send a visitor to a wizard
 //   that cannot work either, and the pages show their own "no contact" state.
+// - A setup code in the fragment of the address (`#token=`) is not part of the request and not in `Location`; the browser keeps a
+//   fragment across a redirect that has none, so the wizard still gets it.
 // - No loop: the wizard page is the one page that is never sent anywhere before the install, and the site's redirect leaves
 //   the site for the admin, whose middleware shows the wizard.
 // Static files, `/_nuxt/**` and `/api/**` are not Nuxt routes (the proxy sends `/api` to the api, and Nitro serves the assets
@@ -46,7 +48,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
     installed: state.value,
     hostsWizard,
     path: to.path,
-    query: to.query,
   })
 
   switch (decision.kind) {

@@ -5,7 +5,7 @@
 // the same status and body, take about the same time (padded to a minimum, see lib/timing.ts), and when an account does exist
 // the difference is only a mail in its owner's inbox. The one exception, by Tor's decision (M0.4): registration says 409
 // `username_taken` for a name that is taken, as WordPress does; a name is public anyway.
-import { generateToken, hashPassword, hashToken } from '@toascribe/auth'
+import { WEAK_PASSWORD_MESSAGE, generateToken, hashPassword, hashToken, isTooObvious } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 import { CoreSettings, ONE_TIME_LINK_HOURS } from '@toascribe/shared'
 import type { AccountTokenPurpose, AuthOptionsResponse } from '@toascribe/shared'
@@ -68,7 +68,7 @@ export class UsernameTakenError extends AppError {
 /** The new password is a choice the site refuses (the same as the username or the address). */
 export class WeakPasswordError extends AppError {
   constructor() {
-    super(400, 'weak_password', 'Choose a password that is not your username or your e-mail address.')
+    super(400, 'weak_password', WEAK_PASSWORD_MESSAGE)
   }
 }
 
@@ -90,15 +90,6 @@ export function nicenameFor(username: string): string {
     .replace(/[^a-z0-9_-]+/g, '-')
     .replace(/^-+|-+$/g, '')
   return slug === '' ? 'user' : slug
-}
-
-/** The new password must not be the account's own username or address. (The length rule is NewPassword in the schema.) */
-export function isTooObvious(
-  password: string,
-  account: { readonly username: string; readonly email: string },
-): boolean {
-  const lower = password.toLowerCase()
-  return lower === account.username.toLowerCase() || lower === account.email.toLowerCase()
 }
 
 export interface PublicFlows {

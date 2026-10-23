@@ -577,5 +577,33 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('lost password and set password
       const admin = await env.createAccount({ username: unique('watcher'), role: 'administrator' })
       expect(mailsTo(env, admin.email)).toHaveLength(0)
     })
+
+    it('refuses the username or the address as the first password, and keeps the link usable', async () => {
+      const account = await env.createAccount({
+        username: unique('firstchoice'),
+        email: `${unique('first')}@example.test`,
+        status: 'pending',
+        passwordHash: null,
+      })
+      expect((await lost(account.username)).status).toBe(202)
+      const token = tokenOf(env, 'set_password', account.email)
+      for (const same of [
+        account.username,
+        account.username.toUpperCase(),
+        account.email,
+        account.email.toUpperCase(),
+      ]) {
+        const res = await env.client({ ip: ip() }).post('/api/v1/auth/password/set', { token, password: same })
+        expect(res.status, same).toBe(400)
+        expect(await errorCode(res), same).toBe('weak_password')
+      }
+      const [row] = await env.query<{ status: string; password_hash: string | null }>(
+        'select status, password_hash from account where id = $1',
+        [account.id],
+      )
+      expect(row).toMatchObject({ status: 'pending', password_hash: null })
+      const ok = await env.client({ ip: ip() }).post('/api/v1/auth/password/set', { token, password: NEW_PASSWORD })
+      expect(ok.status).toBe(204)
+    })
   })
 })

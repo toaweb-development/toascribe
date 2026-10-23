@@ -8,7 +8,7 @@ import type { Page } from '@playwright/test'
 // name and ports, `WIZARD_STACK_ENV`), which is taken down with its volumes and started again before each width, because an
 // installed site cannot be installed twice. The tests run in order and share that one run of the wizard:
 //
-//   1. before the install every page goes to the wizard, with the code in the address kept and then taken out of it;
+//   1. before the install every page goes to the wizard, with the code in the fragment of the address kept through the redirects and then taken out of the address bar;
 //   2. the seven steps, with axe on each, a test mail that reaches Mailpit and the recovery key saved as a file;
 //   3. after the install the wizard is a 404, the site is open and has the default content, and the code is nowhere in the logs.
 //
@@ -68,9 +68,9 @@ test('before the install every page goes to the wizard, and a wrong code is refu
   await page.goto('/admin/login?redirectTo=%2Fadmin')
   await expect(page).toHaveURL(/\/admin\/setup$/)
 
-  // A code in the address of the site is kept on the way.
+  // A code in the query is not read and not passed on: the redirect carries nothing of the address.
   await page.goto('/?token=abc')
-  await expect(page).toHaveURL(/\/admin\/setup(\?token=abc)?$/)
+  await expect(page).toHaveURL(/\/admin\/setup$/)
 
   await page.goto('/admin/setup')
   await expectStep(page, 1, 'Oppsettskode')
@@ -83,17 +83,64 @@ test('before the install every page goes to the wizard, and a wrong code is refu
   await expect(page).toHaveURL(/\/admin\/setup$/)
 })
 
-test('the seven steps, from the code in the address to the administrator signed in', async ({ page, context }) => {
-  test.setTimeout(240_000)
+test('a code in the fragment survives the redirects to the wizard, and a code in the query is not read', async ({
+  context,
+  request,
+}) => {
+  test.setTimeout(120_000)
 
-  // 1. The code arrives in the address, is moved into this tab and taken out of the address bar.
-  await page.goto(`/admin/setup?token=${setupToken}`)
-  await expect(page).toHaveURL(/\/admin\/setup$/)
-  expect(page.url()).not.toContain(setupToken)
+  // The server never sees a fragment, so the redirect cannot carry it; the browser keeps it across a `Location` without one
+  // (the proxy's 308 for /setup and the app's 302 for the other pages). Each page is a new tab, so none starts with a code in
+  // its session storage.
+  for (const start of ['/', '/admin/login', '/admin/login?redirectTo=%2Fadmin', '/setup', '/blog']) {
+    const tab = await context.newPage()
+    await tab.goto(`${start}#token=${setupToken}`)
+    await expectStep(tab, 2, 'Sjekk av systemet')
+    expect(tab.url(), start).toMatch(/\/admin\/setup$/)
+    expect(await sessionStorageHolds(tab, setupToken), start).toBe(true)
+    await tab.close()
+  }
+
+  // A code in the query is neither used nor kept: the wizard asks for it on the first step.
+  const queried = await context.newPage()
+  await queried.goto(`/admin/setup?token=${setupToken}`)
+  await expectStep(queried, 1, 'Oppsettskode')
+  expect(await sessionStorageHolds(queried, setupToken)).toBe(false)
+  await queried.close()
+
+  // The pages the server draws never hold the code: it is not in the request the server gets.
+  for (const path of ['/admin/setup', '/']) {
+    const response = await request.get(path, { maxRedirects: 0 })
+    expect(await response.text()).not.toContain(setupToken)
+    expect(JSON.stringify(response.headers())).not.toContain(setupToken)
+  }
+})
+
+test('the seven steps, from the code in the address to the administrator signed in', async ({
+  page,
+  context,
+  allowFailedRequests,
+}) => {
+  test.setTimeout(240_000)
+  // The install is refused once on purpose (a weak password), and the browser logs a 400 as an error.
+  allowFailedRequests()
+
+  // The number of history entries of a tab that opened the wizard without a code: the baseline for «no extra entry».
+  const plain = await context.newPage()
+  await plain.goto('/admin/setup')
+  const baseline = await plain.evaluate(() => window.history.length)
+  await plain.close()
+
+  // 1. The code arrives in the fragment of the address, is moved into this tab and taken out of the address bar, without a
+  // history entry. The page the server drew did not have it (a fragment is never sent), and the page now does not show it.
+  await page.goto(`/admin/setup#token=${setupToken}`)
   await expectStep(page, 2, 'Sjekk av systemet')
+  expect(page.url()).toMatch(/\/admin\/setup$/)
+  expect(page.url()).not.toContain(setupToken)
+  expect(await page.evaluate(() => window.location.hash)).toBe('')
   expect(await sessionStorageHolds(page, setupToken)).toBe(true)
-  const entries = await page.evaluate(() => window.history.length)
-  expect(entries).toBeLessThanOrEqual(3)
+  expect(await page.evaluate(() => window.history.length)).toBe(baseline)
+  expect(await page.content()).not.toContain(setupToken)
 
   // 2. The system check.
   await expect(page.getByText('Sjekken er ferdig, og alt som må være i orden, er det.')).toBeVisible()
@@ -147,6 +194,41 @@ test('the seven steps, from the code in the address to the administrator signed 
   await expectNoAxeViolations(page, 'wizard, step 5 (account)')
   await page.getByLabel('Brukernavn', { exact: true }).fill(ADMIN.username)
   await page.getByLabel('E-postadresse', { exact: true }).fill(ADMIN.email)
+  // A password that is the e-mail address is refused by the form, before any key is made.
+  await page.getByLabel('Passord', { exact: true }).fill(ADMIN.email)
+  await page.getByRole('button', { name: 'Fortsett til gjenopprettingsnøkkelen' }).click()
+  await expect(page.getByText('Passordet kan ikke være det samme som brukernavnet eller e-postadressen.')).toBeVisible()
+  await expect(page.getByTestId('recovery-key')).toHaveCount(0)
+
+  // The api says no to such a password too (400 `weak_password`, tested against the real api in apps/api). Here the answer is
+  // played once, to see what the wizard does with it: back on this step with the reason, the code and the saved steps kept, and
+  // what was typed still there.
+  await page.getByLabel('Passord', { exact: true }).fill(ADMIN.password)
+  await page.getByRole('button', { name: 'Fortsett til gjenopprettingsnøkkelen' }).click()
+  await expect(page.getByTestId('recovery-key')).toBeVisible()
+  await page.getByLabel('Jeg har lagret gjenopprettingsnøkkelen').check()
+  await page.getByRole('button', { name: 'Fortsett' }).click()
+  await expectStep(page, 6, 'Standardinnhold')
+  await page.getByRole('button', { name: 'Fortsett' }).click()
+  await expectStep(page, 7, 'Fullfør installasjonen')
+  await page.route(
+    '**/api/v1/setup/install',
+    (route) =>
+      route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'weak_password', message: 'weak', requestId: 'e2e' } }),
+      }),
+    { times: 1 },
+  )
+  await page.getByRole('button', { name: 'Fullfør installasjonen' }).click()
+  await expectStep(page, 5, 'Første administrator')
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Passordet kan ikke være det samme som brukernavnet' }),
+  ).toBeVisible()
+  expect(await sessionStorageHolds(page, setupToken)).toBe(true)
+  await expect(page.getByLabel('Brukernavn', { exact: true })).toHaveValue(ADMIN.username)
+  await expectNoAxeViolations(page, 'wizard, step 5 (weak password refused)')
   await page.getByLabel('Passord', { exact: true }).fill(ADMIN.password)
   await page.getByRole('button', { name: 'Fortsett til gjenopprettingsnøkkelen' }).click()
 

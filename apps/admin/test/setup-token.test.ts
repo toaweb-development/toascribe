@@ -5,7 +5,7 @@ import {
   clearStoredToken,
   readStoredToken,
   storeToken,
-  takeTokenFromQuery,
+  takeTokenFromHash,
 } from '../app/utils/setup-token.ts'
 import type { TokenStorage } from '../app/utils/setup-token.ts'
 
@@ -33,27 +33,31 @@ const broken: TokenStorage = {
   },
 }
 
-describe('takeTokenFromQuery', () => {
-  it('takes the code out of the query and leaves the rest', () => {
-    expect(takeTokenFromQuery({ token: TOKEN, keep: 'me' })).toEqual({
-      token: TOKEN,
-      present: true,
-      rest: { keep: 'me' },
-    })
+describe('takeTokenFromHash', () => {
+  it('takes the code out of the fragment and leaves the rest', () => {
+    expect(takeTokenFromHash(`#token=${TOKEN}`)).toEqual({ token: TOKEN, present: true, rest: '' })
+    expect(takeTokenFromHash(`#token=${TOKEN}&keep=me`)).toEqual({ token: TOKEN, present: true, rest: '#keep=me' })
+    expect(takeTokenFromHash(`token=${TOKEN}`).token).toBe(TOKEN)
   })
 
   it('removes a `token` that cannot be a code too, and says there was one', () => {
     for (const token of ['', 'short', '<script>', `${TOKEN}${TOKEN}${TOKEN}`]) {
-      expect(takeTokenFromQuery({ token })).toEqual({ token: undefined, present: true, rest: {} })
+      expect(takeTokenFromHash(`#token=${encodeURIComponent(token)}`)).toEqual({
+        token: undefined,
+        present: true,
+        rest: '',
+      })
     }
   })
 
   it('takes the first of several', () => {
-    expect(takeTokenFromQuery({ token: [TOKEN, 'x'] }).token).toBe(TOKEN)
+    expect(takeTokenFromHash(`#token=${TOKEN}&token=x`).token).toBe(TOKEN)
   })
 
-  it('finds nothing in a query without `token`', () => {
-    expect(takeTokenFromQuery({ other: '1' })).toEqual({ token: undefined, present: false, rest: { other: '1' } })
+  it('finds nothing in a fragment without `token`, or without a fragment', () => {
+    expect(takeTokenFromHash('#other=1')).toEqual({ token: undefined, present: false, rest: '#other=1' })
+    expect(takeTokenFromHash('#section')).toEqual({ token: undefined, present: false, rest: '#section' })
+    expect(takeTokenFromHash('')).toEqual({ token: undefined, present: false, rest: '' })
   })
 })
 

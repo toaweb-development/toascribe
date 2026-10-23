@@ -1,14 +1,18 @@
 import { SetupToken } from '@toascribe/shared'
 
-// The one-time setup token in the browser (M0.4). The api writes it to its log as an address, `/admin/setup?token=...`, and a
-// person who opens that address lands in the wizard. The token is a secret until the install, so it must not stay where the
-// address bar, the history and a screenshot keep it:
-// - it is read once from the address and the address is replaced with one that has no token (the page does this with the
-//   router; `withoutToken` makes the query);
+// The one-time setup token in the browser (M0.4). The api writes it to its log as an address with the token in the fragment,
+// `/admin/setup#token=...`, and a person who opens that address lands in the wizard. The token is a secret until the install,
+// so it must not stay where the address bar, the history and a screenshot keep it, and it must not reach a server or a log:
+// - it is in the fragment because a browser never sends the fragment: not to the proxy, not to the admin app, not in a
+//   `Referer`. So the page the server draws cannot contain it, and no access log can. The browser keeps the fragment across a
+//   redirect whose `Location` has none (the proxy's 308 and the app's 302 from `/` or `/admin/login` to the wizard);
+// - it is read once, in the browser, from the fragment (`takeTokenFromHash`), and the address is replaced with one without it
+//   (the wizard does this with the router, so no history entry is added);
 // - it is kept for this tab only, in `sessionStorage`, so a reload does not ask for it again. It is not in a cookie, not in
-//   `localStorage` (other tabs, later visits) and not in the page payload. The install deletes the token on the server, and the
-//   wizard clears it here.
-// - it goes to the api in the `X-Setup-Token` header only.
+//   `localStorage` (other tabs, later visits) and not in the server-drawn page. The install deletes the token on the server,
+//   and the wizard clears it here;
+// - it goes to the api in the `X-Setup-Token` header only. A token in the query (`?token=`) is not read: the paste form is the
+//   other way in.
 
 export const SETUP_TOKEN_STORAGE_KEY = 'toascribe:setup-token'
 
@@ -57,17 +61,23 @@ export function clearStoredToken(storage: TokenStorage | undefined = tabStorage(
   }
 }
 
-/** What the address carried: the token, if it can be one, and whether there was a `token` at all (it is removed either way). */
-export interface TokenInQuery {
+/** What the fragment of the address carried: the token, if it can be one, and whether there was a `token` at all. */
+export interface TokenInHash {
   token: string | undefined
   present: boolean
-  /** The rest of the query, without `token`. */
-  rest: Record<string, string | (string | null)[] | null | undefined>
+  /** The fragment without `token`, in the form the router takes (`#a=1`, or `''` when nothing is left). */
+  rest: string
 }
 
-export function takeTokenFromQuery(query: Record<string, string | (string | null)[] | null | undefined>): TokenInQuery {
-  const { token: raw, ...rest } = query
-  const value = Array.isArray(raw) ? raw[0] : raw
-  const parsed = SetupToken.safeParse(value)
-  return { token: parsed.success ? parsed.data : undefined, present: 'token' in query, rest }
+/** Reads `#token=...` (a fragment of `key=value` pairs, as `URLSearchParams` reads it). It is removed from the address either way. */
+export function takeTokenFromHash(hash: string): TokenInHash {
+  const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash)
+  const present = params.has('token')
+  if (!present) {
+    return { token: undefined, present: false, rest: hash === '#' ? '' : hash }
+  }
+  const parsed = SetupToken.safeParse(params.get('token'))
+  params.delete('token')
+  const rest = params.toString()
+  return { token: parsed.success ? parsed.data : undefined, present, rest: rest === '' ? '' : `#${rest}` }
 }
