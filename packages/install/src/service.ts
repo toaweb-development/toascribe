@@ -286,11 +286,15 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
   }
 
   async function nextStepOf(exec: Executor): Promise<SetupStep> {
-    const { blogname, smtp_host } = await readSettings(exec, CoreSettings.pick({ blogname: true, smtp_host: true }))
+    const { blogname, smtp_verified_at } = await readSettings(
+      exec,
+      CoreSettings.pick({ blogname: true, smtp_verified_at: true }),
+    )
     if (blogname.trim() === '') {
       return 'check'
     }
-    const emailDone = smtp_host !== null || (await hasAdminNotice(exec, SETUP_EMAIL_SKIPPED_NOTICE.key))
+    // Saved settings are not enough: a test mail has to have gone through with them (smtp_verified_at), or the step is skipped.
+    const emailDone = smtp_verified_at !== null || (await hasAdminNotice(exec, SETUP_EMAIL_SKIPPED_NOTICE.key))
     return emailDone ? 'admin' : 'email'
   }
 
@@ -360,6 +364,8 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
       ['smtp_password', password],
       ['mail_from_address', email.fromAddress],
       ['mail_from_name', email.fromName === undefined || email.fromName === '' ? null : email.fromName],
+      // Other settings than the ones that were tested: the earlier test no longer counts.
+      ['smtp_verified_at', null],
     ])
   }
 
@@ -368,6 +374,8 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
     const timeoutMs = deps.emailTest?.timeoutMs ?? EMAIL_TEST_TIMEOUT_MS
     const pollMs = deps.emailTest?.pollMs ?? EMAIL_TEST_POLL_MS
     const { locale } = await readSettings(db, CoreSettings.pick({ locale: true }))
+    // What the worker will test: the SMTP settings as saved now. A save while the test runs makes the answer one about other settings.
+    const tested = JSON.stringify(await readSettings(db, EmailSettings))
 
     let jobId: string | null
     try {
@@ -404,8 +412,20 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
         return { ok: false, error: 'queue_unavailable' }
       }
       if (job?.state === 'completed') {
-        // The earlier skip no longer holds: the site can send mail.
-        await resolveAdminNotice(db, SETUP_EMAIL_SKIPPED_NOTICE.key)
+        // The earlier skip no longer holds: the site can send mail. The e-mail step is done for these settings, and only if they are
+        // still the ones that were tested. (The site may have been installed meanwhile; the answer is still true, nothing is marked.)
+        try {
+          await whileOpen(async (tx) => {
+            if (JSON.stringify(await readSettings(tx, EmailSettings)) === tested) {
+              await writeSettings(tx, [['smtp_verified_at', clock().toISOString()]])
+            }
+            await resolveAdminNotice(tx, SETUP_EMAIL_SKIPPED_NOTICE.key)
+          })
+        } catch (err) {
+          if (!(err instanceof AlreadyInstalledError)) {
+            throw err
+          }
+        }
         return { ok: true }
       }
       if (job === null || job.state === 'failed' || job.state === 'cancelled') {
@@ -612,7 +632,7 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
           throw new InstallError('step_missing', 'The site step is not saved yet')
         }
         if (step === 'email' && !emailFromEnvironment) {
-          throw new InstallError('step_missing', 'The e-mail step is neither saved nor skipped')
+          throw new InstallError('step_missing', 'The e-mail step is neither tested nor skipped')
         }
 
         // The recovery key: the one the person was shown must be the one the server made last. Without one (the cli) a key is made now.

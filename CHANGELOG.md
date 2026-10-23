@@ -60,8 +60,10 @@ does the rest.
   password, before it creates anything, and the api and worker refuse empty keys. The role URLs are empty when their
   password is, so the apps stop at their own config check. `up` now shows «unhealthy» for postgres; the reason is in
   `docker compose logs postgres`.
-- `installed` and `installed_at` are read-only settings; the settings API refuses to write them. New settings:
-  `admin_email`, `default_category` and `wp_page_for_privacy_policy`.
+- `installed`, `installed_at` and `smtp_verified_at` are read-only settings; the settings API refuses to write them.
+  `smtp_verified_at` is when a test mail went through with the saved SMTP settings: the setup's e-mail step is done on that
+  or on a skip, never on saved settings alone, and saving the settings again clears it. New settings: `admin_email`,
+  `default_category` and `wp_page_for_privacy_policy`.
 - Migrations `0005_install_state` (the install state, `admin_notice` and `site_secret`, and the upgrade rule above) and
   `0006_setup_attempts` (the `setup` login-limit action, and `SELECT` on `drizzle.__drizzle_migrations` for the app role,
   which the system check uses to compare the applied migrations with the expected ones).

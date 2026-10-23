@@ -8,7 +8,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { SetupEmailTestResponse, SetupRecoveryKeyResponse } from '@toascribe/shared'
+import {
+  SetupEmailResponse,
+  SetupEmailTestResponse,
+  SetupRecoveryKeyResponse,
+  SetupStateResponse,
+} from '@toascribe/shared'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { createMailQueue } from '../src/adapters/mail-queue.ts'
@@ -188,6 +193,43 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
       expect(workerOutput).not.toContain('smtp-secret-pw-9')
       expect(JSON.stringify(await env.query('select data, output from pgboss.job'))).not.toContain('smtp-secret-pw-9')
       expect(JSON.stringify(env.lines)).not.toContain('smtp-secret-pw-9')
+    })
+
+    it('the e-mail step is done only on a passed test: a failed one survives a reload, install is refused, and a changed save undoes a pass', async () => {
+      const client = wizard()
+      await setupCall(client, 'PUT', '/site', token, SITE)
+      const nextStep = async () =>
+        SetupStateResponse.parse(await (await setupCall(client, 'GET', '/state', token)).json()).nextStep
+      const unreachable = mailpitSettings({ host: '127.0.0.1', port: 1 })
+      const saved = SetupEmailResponse.parse(
+        await (await setupCall(client, 'PUT', '/email', token, unreachable)).json(),
+      )
+      expect(saved.nextStep).toBe('email')
+
+      const failed = await setupCall(client, 'POST', '/email/test', token, { to: uniqueAddress('setup-m1') })
+      expect(SetupEmailTestResponse.parse(await failed.json())).toEqual({ ok: false, error: 'send_failed' })
+      // A reload: the saved settings are shown, and the step is still the e-mail step. No notice was stored.
+      expect(await nextStep()).toBe('email')
+      expect(await env.query('select 1 from admin_notice')).toHaveLength(0)
+      const { recoveryKey } = SetupRecoveryKeyResponse.parse(
+        await (await setupCall(client, 'POST', '/recovery-key', token)).json(),
+      )
+      const refused = await setupCall(client, 'POST', '/install', token, { admin: ADMIN, recoveryKey, confirmed: true })
+      expect(refused.status).toBe(409)
+      expect(await refused.json()).toMatchObject({ error: { code: 'step_missing' } })
+
+      // Corrected settings and a test that goes through.
+      await setupCall(client, 'PUT', '/email', token, mailpitSettings())
+      const to = uniqueAddress('setup-m1-ok')
+      expect(
+        SetupEmailTestResponse.parse(await (await setupCall(client, 'POST', '/email/test', token, { to })).json()),
+      ).toEqual({ ok: true })
+      await waitForMessage(config(), to)
+      expect(await nextStep()).toBe('admin')
+
+      // Saving the settings again means they have to be tested again.
+      await setupCall(client, 'PUT', '/email', token, mailpitSettings({ fromName: 'Annet navn' }))
+      expect(await nextStep()).toBe('email')
     })
 
     it('says mail_config when no server is set anywhere', async () => {

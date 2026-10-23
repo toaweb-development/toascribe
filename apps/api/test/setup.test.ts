@@ -307,14 +307,15 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the setup API (needs TEST_DATA
           fromAddress: 'noreply@cms.example.test',
           fromName: 'Min blogg',
         },
-        nextStep: 'admin',
+        // Saved, not tested: the step is not done until a test mail goes through, or it is skipped.
+        nextStep: 'email',
       })
 
       const state = await setupCall(client, 'GET', '/state', token)
       const body = SetupStateResponse.parse(await state.json())
       expect(body.site).toEqual(SITE)
       expect(body.email).toEqual(saved.email)
-      expect(body.nextStep).toBe('admin')
+      expect(body.nextStep).toBe('email')
       // The password is in no response and in no table in the clear.
       for (const text of [JSON.stringify(saved), JSON.stringify(body)]) {
         expect(text).not.toContain('smtp-secret-pw')

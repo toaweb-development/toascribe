@@ -31,7 +31,8 @@ import { COMMENT_STATUS } from './values.ts'
 // install writes (null until then). `installed` and `installed_at` are toascribe's own: the flag that closes /setup
 // (PLAN «Installasjon og drift»: «låses med et flagg i databasen»). They are in READ_ONLY_SETTING_KEYS: only the install
 // service writes them, never a settings page, `toa option` or an import, because `installed = false` would reopen /setup
-// to anyone holding a setup token. Secrets of the install (the setup token, the recovery key) are not settings at all:
+// to anyone holding a setup token. `smtp_verified_at` (set by a passed test mail of the setup wizard) is read-only for the
+// same reason: it is what lets the wizard's e-mail step count as done. Secrets of the install (the setup token, the recovery key) are not settings at all:
 // they are hashes in the `site_secret` table, which no settings reader sees.
 //
 // toascribe's own keys, which WordPress has no option for (M0.3, PLAN «Innlogging og kontoer»; Tor 2026-10-21): session
@@ -227,6 +228,12 @@ export const CoreSettings = z.object({
   smtp_username: line(320).nullable(),
   /** Encrypted with the site key, never plain text, and never sent back to a client (app-config 3b). */
   smtp_password: EncryptedValue.nullable(),
+  /**
+   * When a test mail went through with exactly the SMTP settings now saved (M0.4, read-only: only the install service writes
+   * it). The setup wizard's e-mail step counts as done on this or on the skip notice, never on the saved host alone; saving
+   * the SMTP settings again clears it. Null: never verified, or changed since.
+   */
+  smtp_verified_at: z.iso.datetime().nullable(),
   /** E-mail the administrators when an account is registered or made (K-017). */
   notify_admin_new_user: z.boolean(),
   /** E-mail the administrators when a user changes or resets a password (K-017). */
@@ -333,6 +340,7 @@ export const CORE_SETTINGS: CoreSettings = {
   smtp_secure: null,
   smtp_username: null,
   smtp_password: null,
+  smtp_verified_at: null,
   notify_admin_new_user: true, // K-017
   notify_admin_password_change: true, // K-017
 }
@@ -344,4 +352,4 @@ export const CORE_SETTING_KEYS: readonly CoreSettingKey[] = CoreSettings.keyof()
  * Settings that only the install service writes (inside the install transaction, under the install lock). A settings
  * API, `toa option` and an importer must refuse them; a settings API may still show them.
  */
-export const READ_ONLY_SETTING_KEYS: readonly CoreSettingKey[] = ['installed', 'installed_at']
+export const READ_ONLY_SETTING_KEYS: readonly CoreSettingKey[] = ['installed', 'installed_at', 'smtp_verified_at']

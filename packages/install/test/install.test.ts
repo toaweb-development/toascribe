@@ -6,7 +6,7 @@ import { join } from 'node:path'
 
 import { hashToken, verifyPassword } from '@toascribe/auth'
 import { DefaultContentExistsError, readMigrationJournal, seedDefaultContent } from '@toascribe/db'
-import { SETUP_EMAIL_SKIPPED_NOTICE, SMTP_PASSWORD_AAD } from '@toascribe/shared'
+import { CoreSettings, SETUP_EMAIL_SKIPPED_NOTICE, SMTP_PASSWORD_AAD } from '@toascribe/shared'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { AlreadyInstalledError, InstallError } from '../src/errors.ts'
@@ -221,7 +221,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
       expect(await env.setting('smtp_host')).toBeNull()
     })
 
-    it('skipping stores the dashboard notice, and saving a server counts as the step too', async () => {
+    it('skipping stores the dashboard notice, and saving a server does not count as the step', async () => {
       await env.service.saveSite(SITE)
       await env.service.skipEmail()
       const rows = await env.query<{ key: string; level: string; message_key: string; capability: string }>(
@@ -242,7 +242,88 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
       await resetInstall(env)
       await env.service.saveSite(SITE)
       await env.service.saveEmail(SMTP)
-      expect((await env.service.status()).nextStep).toBe('admin')
+      // Saved is not enough: the settings are tested, or the step is skipped.
+      expect((await env.service.status()).nextStep).toBe('email')
+    })
+
+    describe('the e-mail step is done on a passed test mail or a skip, never on saved settings alone', () => {
+      const fast = { timeoutMs: 400, pollMs: 5 }
+      const failing = () => stubMail({ states: [{ state: 'failed' }] })
+      const passing = () => stubMail({ states: [{ state: 'completed', output: { sent: true } }] })
+
+      it('save, failed test, reload: still the e-mail step, install refused with step_missing and no notice', async () => {
+        await env.service.saveSite(SITE)
+        await env.service.saveEmail(SMTP)
+        expect(await env.service.testEmail('me@example.test')).toEqual({ ok: false, error: 'queue_unavailable' }) // no mail producer
+        expect(await env.service.status()).toEqual({ installed: false, nextStep: 'email' })
+
+        const service = env.service2({ mail: failing(), emailTest: fast })
+        expect(await service.testEmail('me@example.test')).toEqual({ ok: false, error: 'send_failed' })
+        expect(await env.setting('smtp_verified_at')).toBeNull()
+        expect(await service.status()).toEqual({ installed: false, nextStep: 'email' })
+        expect(await service.state()).toMatchObject({ nextStep: 'email', emailSkipped: false })
+        expect((await service.state()).email).toMatchObject({ host: SMTP.host })
+
+        const key = await env.service.generateRecoveryKey()
+        const err = await failure(service.install({ admin: admin(), recovery: { key, confirmed: true } }))
+        expect(err).toMatchObject({ code: 'step_missing' })
+        expect((await env.footprint()).notices).toEqual([])
+        expect(await service.status()).toEqual({ installed: false, nextStep: 'email' })
+      })
+
+      it('a passed test completes the step; saving the settings again undoes it; a later passed test redoes it', async () => {
+        await env.service.saveSite(SITE)
+        await env.service.saveEmail(SMTP)
+        const service = env.service2({ mail: passing(), emailTest: fast })
+        expect(await service.testEmail('me@example.test')).toEqual({ ok: true })
+        expect(CoreSettings.shape.smtp_verified_at.parse(await env.setting('smtp_verified_at'))).not.toBeNull()
+        expect(await service.status()).toEqual({ installed: false, nextStep: 'admin' })
+
+        await env.service.saveEmail({ ...SMTP, port: 2525 })
+        expect(await env.setting('smtp_verified_at')).toBeNull()
+        expect(await env.service.status()).toEqual({ installed: false, nextStep: 'email' })
+
+        expect(await service.testEmail('me@example.test')).toEqual({ ok: true })
+        expect(await env.service.status()).toEqual({ installed: false, nextStep: 'admin' })
+      })
+
+      it('a passed test lets the install through', async () => {
+        await env.service.saveSite(SITE)
+        await env.service.saveEmail(SMTP)
+        const key = await env.service.generateRecoveryKey()
+        await env.service2({ mail: passing(), emailTest: fast }).testEmail('me@example.test')
+        const result = await env.service.install({ admin: admin(), recovery: { key, confirmed: true } })
+        expect(result.username).toBe('tor')
+        expect(await env.service.status()).toEqual({ installed: true, nextStep: null })
+      })
+
+      it('a failed test leaves a skip standing, and a passed one still removes the notice', async () => {
+        await env.service.saveSite(SITE)
+        await env.service.saveEmail(SMTP)
+        await env.service.skipEmail()
+        await env.service2({ mail: failing(), emailTest: fast }).testEmail('me@example.test')
+        expect((await env.footprint()).notices).toEqual([SETUP_EMAIL_SKIPPED_NOTICE.key])
+        expect(await env.service.status()).toEqual({ installed: false, nextStep: 'admin' })
+        await env.service2({ mail: passing(), emailTest: fast }).testEmail('me@example.test')
+        expect((await env.footprint()).notices).toEqual([])
+        expect(await env.service.status()).toEqual({ installed: false, nextStep: 'admin' })
+      })
+
+      it('does not mark settings that were saved again while the test was running', async () => {
+        await env.service.saveSite(SITE)
+        await env.service.saveEmail(SMTP)
+        const mail = passing()
+        const racing: typeof mail = {
+          ...mail,
+          jobState: async (id: string) => {
+            await env.service.saveEmail({ ...SMTP, port: 2525 })
+            return mail.jobState(id)
+          },
+        }
+        await env.service2({ mail: racing, emailTest: fast }).testEmail('me@example.test')
+        expect(await env.setting('smtp_verified_at')).toBeNull()
+        expect(await env.service.status()).toEqual({ installed: false, nextStep: 'email' })
+      })
     })
   })
 
@@ -540,8 +621,13 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
       expect(audit).toEqual([{ source: 'cli' }])
     })
 
-    it('does the whole install in one call with an SMTP server too, the password encrypted', async () => {
-      await env.service.install({ admin: admin(), site: SITE, email: SMTP })
+    it('does the whole install with an SMTP server too once it is tested, the password encrypted', async () => {
+      await env.service.saveSite(SITE)
+      await env.service.saveEmail(SMTP)
+      await env
+        .service2({ mail: stubMail({ states: [{ state: 'completed' }] }), emailTest: { timeoutMs: 400, pollMs: 5 } })
+        .testEmail('me@example.test')
+      await env.service.install({ admin: admin(), site: SITE })
       expect(await env.setting('smtp_host')).toBe('smtp.example.test')
       expect(await testKeyRing.decrypt(String(await env.setting('smtp_password')), SMTP_PASSWORD_AAD)).toBe(
         SMTP.password,
@@ -698,7 +784,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
       await env.service.issueSetupToken()
       const before = await env.footprint()
 
-      const err = await failure(env.service.install({ admin: admin('tor'), site: SITE, email: SMTP }))
+      const err = await failure(env.service.install({ admin: admin('tor'), site: SITE, email: { skip: true } }))
       expect(err).toMatchObject({ code: 'email_taken' })
 
       // Nothing of the one-shot install is left: no site settings, no SMTP, no key, no content, no flag.

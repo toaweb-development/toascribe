@@ -299,8 +299,8 @@ describe('M0.4 install settings, taxonomies and notices', () => {
     }
   })
 
-  it('marks only the install flag and its time read-only', () => {
-    expect([...READ_ONLY_SETTING_KEYS]).toEqual(['installed', 'installed_at'])
+  it('marks only the install flag, its time and the verified-mail time read-only', () => {
+    expect([...READ_ONLY_SETTING_KEYS]).toEqual(['installed', 'installed_at', 'smtp_verified_at'])
     for (const key of READ_ONLY_SETTING_KEYS) {
       expect(CORE_SETTING_KEYS).toContain(key)
     }
