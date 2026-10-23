@@ -1,5 +1,5 @@
 # Checks on every pull request and every push to main (DEPENDENCIES_2026 «GitHub Actions», DOCKER_STANDARD «CI-bygg»).
-# Nothing is published or deployed from here: toascribe M0.1 has no server and no registry push.
+# Nothing is published or deployed from here, and no job has write access to packages: images are published by release.yml.
 name: CI
 
 on:
@@ -113,10 +113,9 @@ jobs:
           fi
           echo "TOASCRIBE_VERSION=${version}" >> "$GITHUB_ENV"
 
-      # compose.yaml stops when a password or a key is empty (there are no defaults), so give it throwaway ones. They exist
-      # only for this run and are masked. The two keys must differ. This step is before the build and the scans on
-      # purpose: «Show the container logs» and «Stop the stack» run after a failed scan too, and compose needs these
-      # variables just to read the file.
+      # The containers refuse to start when a password or a key is empty (there are no defaults), so give them throwaway
+      # ones. They exist only for this run and are masked. The two keys must differ. This step is before the build and the
+      # scans on purpose: «Show the container logs» and «Stop the stack» run after a failed scan too.
       - name: Make throwaway passwords and keys
         run: |
           for name in POSTGRES_PASSWORD POSTGRES_OWNER_PASSWORD POSTGRES_APP_PASSWORD TOASCRIBE_ENCRYPTION_KEY TOASCRIBE_SIGNING_KEY; do
@@ -128,8 +127,8 @@ jobs:
       # The images users run: proxy, site, admin, api and postgres (worker and migrate use the api image), and the
       # development-only mailpit. The build file is docker/compose.build.yaml, which has the same images as
       # compose.yaml (a test checks that).
-      # Nothing is pushed, so there are no provenance or SBOM attestations either; they come with the push step
-      # when images are published.
+      # Nothing is pushed here, so there are no provenance or SBOM attestations either; the job «release-dry-run»
+      # below builds them, as release.yml does.
       - name: Build the images
         uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
         with:
@@ -242,3 +241,38 @@ jobs:
       - name: Stop the stack
         if: always()
         run: docker compose -f docker/compose.yaml down -v
+
+  # The release workflow without its last step: the same build with attestations into a throwaway registry, the same scans,
+  # and the same copy script into a second throwaway registry instead of ghcr.io. A mistake in release.yml's build, scan or
+  # copy shows up in the pull request, before the first tag. No login and no packages: write (this workflow has contents:
+  # read only), so a pull request cannot publish anything. The layer cache is read, not written (the job «images» writes it).
+  release-dry-run:
+    name: Release dry run (no push)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build and scan
+        id: build
+        uses: ./.github/actions/build-scan-images
+
+      - name: Start a second registry as the target
+        run: |
+          set -euo pipefail
+          docker run -d --name target-registry -p 127.0.0.1:5001:5000 \
+            registry:3.1.1@sha256:325b4b29b041e82803abeb703e201655e4e23ab83264ec1a7c9ddb0a5b14a6e0
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:5001/v2/ > /dev/null && exit 0
+            sleep 1
+          done
+          echo "::error::the second registry did not start"
+          exit 1
+
+      - name: Copy the scanned images
+        env:
+          VERSION: ${{ steps.build.outputs.version }}
+        run: |
+          .github/scripts/copy-images.sh localhost:5000/toaweb localhost:5001/toaweb "${VERSION}" "sha-${GITHUB_SHA::7}"

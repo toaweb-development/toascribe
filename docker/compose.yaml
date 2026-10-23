@@ -1,6 +1,6 @@
 # toascribe: the whole stack on one port.
 #
-#   cp docker/.env.example docker/.env      # then fill in the three passwords (see the file)
+#   docker compose -f docker/compose.yaml run --rm --no-deps -T --quiet-build api toa core gen-env >> docker/.env
 #   docker compose -f docker/compose.yaml up -d --build
 #
 # Open http://localhost:8080. Only the proxy publishes a port (the optional, development-only mailpit profile is the one
@@ -35,8 +35,17 @@ x-hardened: &hardened
 x-api-image: &api-image
   image: ghcr.io/toaweb/toascribe-api:${TOASCRIBE_VERSION:-0.3.0}
 
+# NO VARIABLE HERE IS `:?` (required). Compose reads this whole file for every command, so one required variable would
+# stop `docker compose run --rm --no-deps api toa core gen-env >> .env` on a fresh folder, the command that makes the
+# secrets. The check is made where the secret is used instead, and a start with a secret missing still stops at once:
+#   POSTGRES_PASSWORD, POSTGRES_OWNER_PASSWORD, POSTGRES_APP_PASSWORD  the postgres image's entrypoint (docker/postgres),
+#       before the data directory is made; it names the variable
+#   TOASCRIBE_ENCRYPTION_KEY, TOASCRIBE_SIGNING_KEY                     the api and the worker, which exit with
+#       "Invalid environment: TOASCRIBE_..." (config.ts); the api also refuses two equal keys
+#   the two role URLs below: empty when their password is empty, so the api, worker and migrate step exit naming
+#       DATABASE_URL or MIGRATION_DATABASE_URL (never a URL with an empty password that would only fail to log in)
 # The database roles' passwords sit in URLs, so they must be URL-safe: `openssl rand -hex 32` (see .env.example).
-x-database-url: &database-url 'postgres://toascribe_app:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}@postgres:5432/${POSTGRES_DB:-toascribe}'
+x-database-url: &database-url '${POSTGRES_APP_PASSWORD:+postgres://toascribe_app:${POSTGRES_APP_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-toascribe}}'
 
 services:
   # ── Entry point ──────────────────────────────────────────
@@ -159,11 +168,11 @@ services:
       PORT: '3001'
       DATABASE_URL: *database-url
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:${TOASCRIBE_HTTP_PORT:-8080}}
-      TOASCRIBE_ENCRYPTION_KEY: '${TOASCRIBE_ENCRYPTION_KEY:?TOASCRIBE_ENCRYPTION_KEY is empty, set it in docker/.env (openssl rand -hex 32, and back it up)}'
+      TOASCRIBE_ENCRYPTION_KEY: ${TOASCRIBE_ENCRYPTION_KEY:-}
       TOASCRIBE_ENCRYPTION_KEY_VERSION: ${TOASCRIBE_ENCRYPTION_KEY_VERSION:-1}
       TOASCRIBE_ENCRYPTION_OLD_KEYS: ${TOASCRIBE_ENCRYPTION_OLD_KEYS:-}
       # Signs the CSRF tokens. Must differ from the encryption key; the api refuses to start if they are equal.
-      TOASCRIBE_SIGNING_KEY: '${TOASCRIBE_SIGNING_KEY:?TOASCRIBE_SIGNING_KEY is empty, set it in docker/.env (openssl rand -hex 32, not the encryption key)}'
+      TOASCRIBE_SIGNING_KEY: ${TOASCRIBE_SIGNING_KEY:-}
       # Only so the api can warn when this is empty and every request comes from one private address (README, «Behind a reverse proxy»).
       TOASCRIBE_TRUSTED_PROXY: ${TOASCRIBE_TRUSTED_PROXY:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -195,7 +204,7 @@ services:
       DATABASE_URL: *database-url
       # Links in e-mails are built from this and nothing else.
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:${TOASCRIBE_HTTP_PORT:-8080}}
-      TOASCRIBE_ENCRYPTION_KEY: '${TOASCRIBE_ENCRYPTION_KEY:?TOASCRIBE_ENCRYPTION_KEY is empty, set it in docker/.env (openssl rand -hex 32, and back it up)}'
+      TOASCRIBE_ENCRYPTION_KEY: ${TOASCRIBE_ENCRYPTION_KEY:-}
       TOASCRIBE_ENCRYPTION_KEY_VERSION: ${TOASCRIBE_ENCRYPTION_KEY_VERSION:-1}
       TOASCRIBE_ENCRYPTION_OLD_KEYS: ${TOASCRIBE_ENCRYPTION_OLD_KEYS:-}
       # Defaults behind the smtp_* and mail_from_* settings (an empty value counts as unset).
@@ -236,7 +245,7 @@ services:
     <<: *api-image
     command: ['node', 'packages/db/dist/migrate.js']
     environment:
-      MIGRATION_DATABASE_URL: 'postgres://toascribe_owner:${POSTGRES_OWNER_PASSWORD:?POSTGRES_OWNER_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}@postgres:5432/${POSTGRES_DB:-toascribe}'
+      MIGRATION_DATABASE_URL: '${POSTGRES_OWNER_PASSWORD:+postgres://toascribe_owner:${POSTGRES_OWNER_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-toascribe}}'
       LOG_LEVEL: ${LOG_LEVEL:-info}
     restart: 'no'
     init: true
@@ -270,12 +279,12 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-toascribe}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}'
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
       # Used once, by 10-init.sh, on the first start of an empty volume. Changing them later changes nothing in
       # the database (ALTER ROLE does that).
-      POSTGRES_OWNER_PASSWORD: '${POSTGRES_OWNER_PASSWORD:?POSTGRES_OWNER_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}'
-      POSTGRES_APP_PASSWORD: '${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is empty, set it in docker/.env (openssl rand -hex 32)}'
+      POSTGRES_OWNER_PASSWORD: ${POSTGRES_OWNER_PASSWORD:-}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-}
     volumes:
       # PostgreSQL 18 and newer: mount on /var/lib/postgresql, not /var/lib/postgresql/data (POSTGRESQL_STANDARD).
       - postgres_data:/var/lib/postgresql

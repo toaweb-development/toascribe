@@ -24,6 +24,12 @@ RUN mkdir -p /etc/toascribe/postgres
 COPY --chmod=0555 docker/postgres/10-init.sh /docker-entrypoint-initdb.d/10-init.sh
 COPY --chmod=0444 docker/postgres/init.sql /etc/toascribe/postgres/init.sql
 
+# Refuses to start when a password is empty, before the data directory is made (entrypoint.sh says why), then runs the
+# official entrypoint with the same arguments.
+COPY --chmod=0555 docker/postgres/entrypoint.sh /usr/local/bin/toascribe-entrypoint.sh
+ENTRYPOINT ["toascribe-entrypoint.sh"]
+CMD ["postgres"]
+
 # 127.0.0.1, not the socket: while the image runs the init scripts a temporary server listens on the socket only,
 # so a socket check would report ready before the roles exist.
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \

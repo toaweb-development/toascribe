@@ -8,6 +8,9 @@
 # The passwords reach psql with \getenv (psql 15 and newer), not with -v: a -v value sits in psql's command
 # line, which anyone in the container can read from the process list while the script runs.
 #
+# entrypoint.sh (the image's entrypoint) has already refused to start the server with a password empty, before the data
+# directory was made. The checks below stay for a script run some other way.
+#
 # Environment (the image already sets POSTGRES_USER and POSTGRES_DB):
 #   POSTGRES_OWNER_PASSWORD  password for toascribe_owner (migrations)
 #   POSTGRES_APP_PASSWORD    password for toascribe_app (api and worker)

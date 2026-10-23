@@ -32,7 +32,42 @@
 	# THE CLIENT IP. Every `reverse_proxy` below sets `X-Real-IP {client_ip}`, and `header_up` replaces whatever the
 	# visitor sent under that name. The apps read the client IP from X-Real-IP only and never parse X-Forwarded-For
 	# (the audit log and the login rate limits depend on it: M0.3). Keep that header in every new `reverse_proxy`.
-	log
+
+	# THE ACCESS LOG keeps no secret. Caddy's own default already replaces Cookie, Authorization, Proxy-Authorization and
+	# Set-Cookie with REDACTED; the filter below also deletes them, so this file does not depend on that default, and adds
+	# what the default does not know: the setup token (X-Setup-Token) and the CSRF token (X-Csrf-Token, the spelling Go
+	# gives X-CSRF-Token) are headers of the api, and the setup address carries ?token=... until the wizard has moved it
+	# out of the address bar (also `key`, as in an old WordPress /wp-login.php?action=rp&key=..., and `code`).
+	# The names must be written the way Go spells them (X-Csrf-Token); an unknown name is ignored without an error.
+	log {
+		format filter {
+			wrap json
+			request>headers>X-Setup-Token delete
+			request>headers>X-Csrf-Token delete
+			request>headers>Cookie delete
+			request>headers>Authorization delete
+			request>headers>Proxy-Authorization delete
+			resp_headers>Set-Cookie delete
+			resp_headers>X-Csrf-Token delete
+			# The query of every address that is logged: the request, the Referer a page sends with its assets, and the
+			# Location of a redirect (/setup?token=... is sent on to /admin/setup with the same query).
+			request>uri query {
+				replace token REDACTED
+				replace key REDACTED
+				replace code REDACTED
+			}
+			request>headers>Referer query {
+				replace token REDACTED
+				replace key REDACTED
+				replace code REDACTED
+			}
+			resp_headers>Location query {
+				replace token REDACTED
+				replace key REDACTED
+				replace code REDACTED
+			}
+		}
+	}
 
 	# The external proxy sets the security headers (SECURITY §7); do not advertise what runs here.
 	header {

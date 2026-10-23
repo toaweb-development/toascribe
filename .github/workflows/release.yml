@@ -1,11 +1,37 @@
-# Tag on merge (VERSIONING_STANDARD_2026 §5, «Tag ved merge»): toascribe has no deploy yet, so the release is made
-# when a version lands on main. If v<version> does not exist, create an annotated tag on the commit that was merged
-# and a GitHub Release with that version's CHANGELOG section as its text. No images are published from here.
+# Release when a new version reaches main (VERSIONING_STANDARD_2026 §5, «Tag ved merge»): toascribe is a product that others
+# run, so it deploys nowhere. When v<version> does not exist yet, this workflow
+#
+#   1. builds every image with provenance and SBOM attestations into a throwaway registry on the runner and scans each one
+#      there with the rules of the image gate in ci.yml (job «images», first half),
+#   2. only if every scan is clean, logs in to ghcr.io and copies the scanned images there as they are, tagged <version>
+#      and sha-<short> (job «images», second half),
+#   3. only after that, creates the annotated tag v<version> and the GitHub Release with that version's CHANGELOG section
+#      and the files an installation without a clone needs (job «release»).
+#
+# So a failed scan leaves no image and no tag. A run that fails after some images were pushed can be re-run: no tag exists
+# yet, so the jobs run again; an image whose version tag is already in ghcr.io is left as it is (copy-images.sh).
+#
+# Tags made with the workflow token do not start other workflows, which is why the images are published by this workflow
+# and not by one that listens for the tag.
+#
+# Rights: contents: read for everything; packages: write for the job «images» only (it also builds and scans, so the token
+# exists while pinned third-party actions run; the login happens after the scans and nothing else gets the password);
+# contents: write for the job «release» only, which runs no third-party code.
+#
+# DRY RUN. «Run workflow» (workflow_dispatch) with push left at false does steps 1 and the copy into a second throwaway
+# registry, and skips the login, the push to ghcr.io and the tag. The same build, scan and copy also run on every pull
+# request (ci.yml, job «release-dry-run»), where packages: write is never granted.
 name: Release
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      push:
+        description: 'Really release: push to ghcr.io and tag. Only from main, and only if v<version> does not exist. Leave off for a dry run.'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,7 +41,122 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      publish: ${{ steps.plan.outputs.publish }}
+      real: ${{ steps.plan.outputs.real }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the tags
+          persist-credentials: false
+      - name: Decide what this run does
+        id: plan
+        env:
+          VERSION_FILE: package.json # same as in version.yml
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_INPUT: ${{ inputs.push }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          version="$(jq -er .version "${VERSION_FILE}")"
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::${VERSION_FILE} version '${version}' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          tag="v${version}"
+          exists=false
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then exists=true; fi
+
+          # real: this run publishes (a merge to main, or a manual run with push on). Otherwise it is a dry run.
+          real=false
+          if [ "${EVENT_NAME}" = push ]; then
+            real=true
+          elif [ "${PUSH_INPUT}" = true ]; then
+            if [ "${REF}" != refs/heads/main ]; then
+              echo "::error::push can only be turned on for a run on main, not on ${REF}"
+              exit 1
+            fi
+            real=true
+          fi
+
+          # A real run for a version that is already tagged has nothing to do. A dry run always runs.
+          publish=true
+          if [ "${real}" = true ] && [ "${exists}" = true ]; then
+            echo "::notice::${tag} already exists - nothing to publish."
+            publish=false
+          fi
+          {
+            echo "version=${version}"
+            echo "publish=${publish}"
+            echo "real=${real}"
+          } >> "$GITHUB_OUTPUT"
+
+  images:
+    name: Build, scan and publish the images
+    needs: plan
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write # this job only: the copy to ghcr.io
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # the job runs third-party code
+
+      # Build with attestations into localhost:5000, scan every image there. No login yet.
+      - name: Build and scan
+        id: build
+        uses: ./.github/actions/build-scan-images
+        with:
+          cache-to: 'true'
+
+      # Everything below runs only after every scan passed.
+      - name: Log in to ghcr.io
+        if: needs.plan.outputs.real == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish the scanned images
+        if: needs.plan.outputs.real == 'true'
+        env:
+          VERSION: ${{ steps.build.outputs.version }}
+        run: |
+          .github/scripts/copy-images.sh localhost:5000/toaweb ghcr.io/toaweb "${VERSION}" "sha-${GITHUB_SHA::7}"
+
+      # Dry run: the same copy, into a second throwaway registry, so only the login and the target differ from a release.
+      - name: Dry run - start a second registry
+        if: needs.plan.outputs.real != 'true'
+        run: |
+          set -euo pipefail
+          docker run -d --name target-registry -p 127.0.0.1:5001:5000 \
+            registry:3.1.1@sha256:325b4b29b041e82803abeb703e201655e4e23ab83264ec1a7c9ddb0a5b14a6e0
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:5001/v2/ > /dev/null && exit 0
+            sleep 1
+          done
+          echo "::error::the second registry did not start"
+          exit 1
+      - name: Dry run - copy the scanned images (nothing is pushed to ghcr.io)
+        if: needs.plan.outputs.real != 'true'
+        env:
+          VERSION: ${{ steps.build.outputs.version }}
+        run: |
+          .github/scripts/copy-images.sh localhost:5000/toaweb localhost:5001/toaweb "${VERSION}" "sha-${GITHUB_SHA::7}"
+
   release:
+    name: Tag and release
+    needs: [plan, images]
+    if: needs.plan.outputs.real == 'true' && needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -48,8 +189,19 @@ jobs:
             echo "::error::CHANGELOG.md has no section for ${version}"
             exit 1
           fi
+          {
+            printf '\n### Images\n\n'
+            printf 'ghcr.io/toaweb/toascribe-{proxy,site,admin,api,postgres,mailpit}:%s, scanned before they were published.\n' "${version}"
+            cat <<'TEXT'
+          `compose.yaml` and `env.example` (the `.env.example`) start them without cloning the repository: see «Installer uten å klone repoet» in the README.
+          TEXT
+          } >> "${RUNNER_TEMP}/notes.md"
+          # GitHub renames an asset whose name starts with a dot, so .env.example is attached as env.example.
+          cp docker/compose.yaml "${RUNNER_TEMP}/compose.yaml"
+          cp docker/.env.example "${RUNNER_TEMP}/env.example"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${tag}" -m "${tag}" "${GITHUB_SHA}"
           git push origin "${tag}"
-          gh release create "${tag}" --verify-tag --title "${tag}" --notes-file "${RUNNER_TEMP}/notes.md"
+          gh release create "${tag}" --verify-tag --title "${tag}" --notes-file "${RUNNER_TEMP}/notes.md" \
+            "${RUNNER_TEMP}/compose.yaml" "${RUNNER_TEMP}/env.example"
