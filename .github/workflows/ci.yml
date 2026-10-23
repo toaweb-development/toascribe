@@ -209,7 +209,69 @@ jobs:
       - name: Start the stack
         run: docker compose -f docker/compose.yaml up -d --wait --no-build
 
-      - name: Check the routes
+      # The P1 flow of docs/PLAN.md, in three steps: the stack as a first-time user finds it (not installed: the site and the
+      # admin send every visitor to the wizard), `toa core install` as the person who runs the stack does it from a
+      # terminal, and the same stack installed. «Check the routes after install» holds only after the install and «before»
+      # only before it, so each step also proves the other one's checks are not vacuous.
+      - name: Check the routes before install
+        run: |
+          set -euo pipefail
+          base="http://127.0.0.1:8080"
+          check() {
+            code="$(curl -s -o /dev/null -w '%{http_code}' "${base}$1")"
+            echo "$1 -> ${code}"
+            if [ "${code}" != "$2" ]; then
+              echo "::error::$1 returned ${code}, expected $2"
+              exit 1
+            fi
+          }
+          # A redirect to the wizard: the code and the end of Location (the app sends a relative or an absolute address).
+          check_wizard() {
+            out="$(curl -s -o /dev/null -w '%{http_code} %header{location}' "${base}$1")"
+            echo "$1 -> ${out}"
+            code="${out%% *}"
+            location="${out#* }"
+            if [ "${code}" != "302" ] || [ "${location%/admin/setup}" = "${location}" ]; then
+              echo "::error::$1 returned '${out}', expected 302 with a Location ending in /admin/setup"
+              exit 1
+            fi
+          }
+          check_wizard /
+          check_wizard /admin
+          status="$(curl -s "${base}/api/v1/setup/status")"
+          echo "/api/v1/setup/status -> ${status}"
+          if [ "$(jq -r '.installed' <<< "${status}")" != "false" ]; then
+            echo "::error::/api/v1/setup/status does not say installed=false"
+            exit 1
+          fi
+          check /api/health 200
+          check /api/ready 200
+          check /setup 308
+          check /login 308
+          check '/wp-login.php?action=lostpassword' 308
+          check /wp-admin/edit.php 308
+          check /admin/setup 200
+          # A path that Caddy would route by one reading and forward by another is refused (docker/proxy/Caddyfile).
+          check /api/..%2Fadmin 400
+          check /api/%2e%2e/admin 400
+
+      # The command-line install, with no questions: every value is a flag and the password comes on standard input (never
+      # as an argument), made here and masked. --url is the stack's PUBLIC_ORIGIN (compose.yaml: http://localhost:8080 when
+      # it is not set, as here). --skip-email: there is no mail server in this stack.
+      - name: Install the site
+        run: |
+          set -euo pipefail
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::${password}"
+          printf '%s' "${password}" | docker compose -f docker/compose.yaml exec -T api toa core install \
+            --url http://localhost:8080 \
+            --title 'CI site' \
+            --admin-user ci-admin \
+            --admin-email ci-admin@example.com \
+            --admin-password-stdin \
+            --skip-email
+
+      - name: Check the routes after install
         run: |
           set -euo pipefail
           base="http://127.0.0.1:8080"
@@ -222,15 +284,23 @@ jobs:
             fi
           }
           check / 200
-          check /admin 200
+          check /admin/login 200
+          # The wizard is gone: no token is sent, and it must still be 404 (the setup routes do not exist once installed).
+          check /admin/setup 404
+          check /api/v1/setup/state 404
+          status="$(curl -s "${base}/api/v1/setup/status")"
+          echo "/api/v1/setup/status -> ${status}"
+          if [ "$(jq -r '.installed' <<< "${status}")" != "true" ]; then
+            echo "::error::/api/v1/setup/status does not say installed=true"
+            exit 1
+          fi
+          check /api/health 200
+          check /api/ready 200
+          # The redirects and the refused paths do not depend on the install; they hold here too.
           check /setup 308
           check /login 308
           check '/wp-login.php?action=lostpassword' 308
           check /wp-admin/edit.php 308
-          check /admin/setup 200
-          check /api/health 200
-          check /api/ready 200
-          # A path that Caddy would route by one reading and forward by another is refused (docker/proxy/Caddyfile).
           check /api/..%2Fadmin 400
           check /api/%2e%2e/admin 400
 
