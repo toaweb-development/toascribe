@@ -1,4 +1,6 @@
 import type { Context, ErrorHandler, NotFoundHandler } from 'hono'
+import { AlreadyInstalledError, InstallError } from '@toascribe/install'
+import type { InstallErrorCode } from '@toascribe/install'
 import { HTTPException } from 'hono/http-exception'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
@@ -19,6 +21,16 @@ const CODE_BY_STATUS: Readonly<Record<number, string>> = {
   429: 'too_many_requests',
 }
 
+/** What each refusal of the install service is to an HTTP client. The messages of InstallError are safe to show (they name steps and fields). */
+const INSTALL_STATUS: Readonly<Record<InstallErrorCode, ContentfulStatusCode>> = {
+  step_missing: 409,
+  username_taken: 409,
+  email_taken: 409,
+  recovery_key_mismatch: 400,
+  content_exists: 409,
+  invalid_input: 400,
+}
+
 /** A response in the common ApiError format. */
 export function errorResponse(c: Context<AppEnv>, status: ContentfulStatusCode, code: string, message: string) {
   return c.json(apiError(code, message, c.get('requestId')), status)
@@ -35,6 +47,12 @@ export const onError: ErrorHandler<AppEnv> = (err, c) => {
       c.header('Retry-After', String(err.retryAfterSeconds))
     }
     return errorResponse(c, err.status, err.code, err.message)
+  }
+  if (err instanceof AlreadyInstalledError) {
+    return errorResponse(c, 409, 'already_installed', 'The site is already installed')
+  }
+  if (err instanceof InstallError) {
+    return errorResponse(c, INSTALL_STATUS[err.code], err.code, err.message)
   }
   if (err instanceof HTTPException && err.status >= 400 && err.status < 500) {
     return errorResponse(

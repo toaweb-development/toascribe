@@ -3,10 +3,12 @@ import type { RouteConfig } from '@hono/zod-openapi'
 import type { MiddlewareHandler } from 'hono'
 import { COMPOSED_HANDLER } from 'hono/utils/constants'
 import { constantTimeEqual } from '@toascribe/auth'
+import { SETUP_TOKEN_HEADER } from '@toascribe/shared'
 
 import type { AppEnv } from '../lib/env.ts'
 import { describePolicy } from '../lib/policy.ts'
 import type { BodyType, Policy } from '../lib/policy.ts'
+import { getClientIp } from '../lib/client-ip.ts'
 import { BadRequestError, ForbiddenError, UnauthorizedError } from '../lib/errors.ts'
 import { currentAuth } from './auth.ts'
 
@@ -70,6 +72,21 @@ export function policyGuard(policy: Policy, bodyType: BodyType = 'json'): Middle
     const stateChanging = !SAFE_METHODS.has(c.req.method)
     if (policy.kind !== 'public') {
       c.header('Cache-Control', 'no-store')
+    }
+    if (policy.kind === 'setup-token') {
+      // The setup wizard's routes. Installed: they do not exist (404 before anything else is looked at, so the answer says
+      // nothing about a token). Not installed: where-from checks, then the token. There is no session yet, so there is
+      // no CSRF token either; the setup token takes its place. It is a secret in a header that a page on another site
+      // cannot make the browser send (a cross-site form or a simple request cannot set a custom header, and a script
+      // that does gets a preflight that the api, with no CORS, never allows), so it carries the same proof as the CSRF token.
+      const { setupGate } = c.get('security')
+      await setupGate.assertOpen()
+      if (stateChanging) {
+        checkRequestOrigin(c, bodyType)
+      }
+      await setupGate.authorize({ token: c.req.header(SETUP_TOKEN_HEADER), ip: getClientIp(c) })
+      await next()
+      return
     }
     if (stateChanging) {
       checkRequestOrigin(c, bodyType)
@@ -168,7 +185,7 @@ export function listRoutePolicies(app: RouteLister): Map<string, string> {
   return policies
 }
 
-const POLICY_KINDS = ['public', 'authenticated', 'capability'] as const
+const POLICY_KINDS = ['public', 'authenticated', 'capability', 'setup-token'] as const
 
 /**
  * `defineRoute` leaves `policy` and `bodyType` on the route config, and the OpenAPI generator copies unknown keys into the

@@ -1,0 +1,40 @@
+{
+  "name": "@toascribe/install",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "The install service: the one-time setup token, the system check, the wizard's saved steps and the install transaction. Called by the setup API and by `toa core install`. Node only; no HTTP framework.",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@toascribe/auth": "workspace:*",
+    "@toascribe/db": "workspace:*",
+    "@toascribe/shared": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "pino": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@toascribe/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "eslint": "catalog:",
+    "pg": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

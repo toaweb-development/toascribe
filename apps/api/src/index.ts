@@ -6,13 +6,18 @@ import { createKeyRing } from '@toascribe/shared'
 import { pino } from 'pino'
 
 import { createMailQueue } from './adapters/mail-queue.ts'
-import { createApp } from './app.ts'
+import { buildApp } from './app.ts'
 import { ConfigError, loadConfig } from './config.ts'
 import { createLogger } from './lib/logger.ts'
 import { readPackageVersion } from './lib/version.ts'
+import { announceSetupToken } from './services/setup.ts'
 
 /** After this long a shutdown that has not finished is abandoned and the process exits non-zero. */
 const SHUTDOWN_TIMEOUT_MS = 10_000
+
+/** How many times, and how far apart, the start-up tries to make the setup token if the database does not answer. */
+const SETUP_TOKEN_ATTEMPTS = 10
+const SETUP_TOKEN_RETRY_MS = 3000
 
 function loadConfigOrExit() {
   try {
@@ -45,7 +50,7 @@ pool.on('error', (err) => {
 
 const mailQueue = createMailQueue({ connectionString: config.DATABASE_URL, keyRing, logger })
 
-const app = createApp({
+const { app, services } = buildApp({
   pool,
   db,
   logger,
@@ -59,6 +64,25 @@ const app = createApp({
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   logger.info({ port: info.port, env: config.NODE_ENV }, 'api listening')
 })
+
+/**
+ * A site that is not installed gets a new setup token, written to the log (services/setup.ts). It is made after the server
+ * is listening and tried again a few times: the api serves /api/health with the database down, and a database that is a
+ * moment late (a restart, the migrate step finishing) should not leave the wizard without a token until the next start.
+ */
+async function prepareSetup(): Promise<void> {
+  for (let attempt = 1; attempt <= SETUP_TOKEN_ATTEMPTS; attempt += 1) {
+    try {
+      await announceSetupToken({ install: services.install, logger, publicOrigin: config.PUBLIC_ORIGIN })
+      return
+    } catch (err) {
+      logger.error({ err, attempt }, 'could not make the setup token')
+      await new Promise<void>((resolve) => setTimeout(resolve, SETUP_TOKEN_RETRY_MS))
+    }
+  }
+  logger.error('the setup token could not be made; restart the api, or run `toa core setup-token`')
+}
+void prepareSetup()
 
 let shuttingDown = false
 

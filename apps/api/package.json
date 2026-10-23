@@ -21,6 +21,7 @@
     "@hono/zod-openapi": "catalog:",
     "@toascribe/auth": "workspace:*",
     "@toascribe/db": "workspace:*",
+    "@toascribe/install": "workspace:*",
     "@toascribe/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",

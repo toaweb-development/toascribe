@@ -13,7 +13,7 @@ import type { KeyRing } from '@toascribe/shared'
 import { PgBoss } from 'pg-boss'
 import type { Logger } from 'pino'
 
-import type { MailOptions, MailPort, MailReceipt, MailRequest } from '../ports/mail.ts'
+import type { MailJobState, MailOptions, MailPort, MailReceipt, MailRequest } from '../ports/mail.ts'
 
 export interface MailQueueDeps {
   /** DATABASE_URL: the app role. */
@@ -86,6 +86,8 @@ export function createMailQueue(deps: MailQueueDeps): MailQueue {
       const boss = await ready()
       const jobId = await boss.send(EMAIL_QUEUE, payload, {
         ...EMAIL_JOB_OPTIONS,
+        ...(options?.retryLimit === undefined ? {} : { retryLimit: options.retryLimit }),
+        ...(options?.retentionSeconds === undefined ? {} : { retentionSeconds: options.retentionSeconds }),
         ...(options?.throttle === undefined
           ? { singletonKey: contentKey(message), singletonSeconds: EMAIL_DEDUPE_SECONDS }
           : { singletonKey: options.throttle.key, singletonSeconds: options.throttle.seconds }),
@@ -96,6 +98,12 @@ export function createMailQueue(deps: MailQueueDeps): MailQueue {
         jobId === null ? 'e-mail not queued: duplicate or throttled' : 'e-mail queued',
       )
       return { jobId }
+    },
+
+    async jobState(jobId: string): Promise<MailJobState | null> {
+      const boss = await ready()
+      const [job] = await boss.findJobs(EMAIL_QUEUE, { id: jobId, limit: 1 })
+      return job === undefined ? null : { state: job.state, output: job.output }
     },
 
     async stop() {

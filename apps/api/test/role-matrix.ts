@@ -34,6 +34,10 @@ export function mustBeRefusedFor(policy: string, actor: Actor): 'ok-or-other' | 
   if (policy === 'public') {
     return 'ok-or-other'
   }
+  if (policy === 'setup-token') {
+    // Nobody is let in by who they are, a signed-in administrator included: only the setup token opens these routes.
+    return 401
+  }
   if (actor === 'anonymous') {
     return 401
   }

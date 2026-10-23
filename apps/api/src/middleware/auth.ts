@@ -3,7 +3,7 @@ import type { Context, MiddlewareHandler } from 'hono'
 import { ANONYMOUS } from '../lib/auth-context.ts'
 import type { AuthContext, SessionAuth } from '../lib/auth-context.ts'
 import { clearSessionCookie, readSessionCookie } from '../lib/cookies.ts'
-import type { AppEnv } from '../lib/env.ts'
+import type { AppEnv, SetupGate } from '../lib/env.ts'
 import { UnauthorizedError } from '../lib/errors.ts'
 import type { SessionService } from '../services/sessions.ts'
 
@@ -17,10 +17,11 @@ import type { SessionService } from '../services/sessions.ts'
 export function authContext(options: {
   readonly sessions: SessionService
   readonly publicOrigin: string
+  readonly setupGate: SetupGate
 }): MiddlewareHandler<AppEnv> {
-  const { sessions, publicOrigin } = options
+  const { sessions, publicOrigin, setupGate } = options
   return async (c, next) => {
-    c.set('security', { publicOrigin, csrfTokenFor: (sessionId) => sessions.csrfToken(sessionId) })
+    c.set('security', { publicOrigin, csrfTokenFor: (sessionId) => sessions.csrfToken(sessionId), setupGate })
     let pending: Promise<AuthContext> | undefined
     c.set('resolveAuth', () => {
       pending ??= (async () => {

@@ -29,4 +29,15 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'POST /api/v1/me/email-change': 'capability:read',
   'POST /api/v1/me/email-change/confirm': 'capability:read',
   'POST /api/v1/system/test-email': 'capability:manage_options',
+  // The setup wizard (M0.4): open only until the site is installed, and then only with the one-time setup token.
+  'GET /api/v1/setup/status': 'public',
+  'GET /api/v1/setup/state': 'setup-token',
+  'POST /api/v1/setup/token/verify': 'setup-token',
+  'GET /api/v1/setup/check': 'setup-token',
+  'PUT /api/v1/setup/site': 'setup-token',
+  'PUT /api/v1/setup/email': 'setup-token',
+  'POST /api/v1/setup/email/test': 'setup-token',
+  'POST /api/v1/setup/email/skip': 'setup-token',
+  'POST /api/v1/setup/recovery-key': 'setup-token',
+  'POST /api/v1/setup/install': 'setup-token',
 }

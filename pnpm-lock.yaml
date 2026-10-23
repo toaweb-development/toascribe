@@ -401,6 +401,9 @@ importers:
       '@toascribe/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@toascribe/install':
+        specifier: workspace:*
+        version: link:../../packages/install
       '@toascribe/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -684,6 +687,49 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.13.0(jiti@2.7.0)(supports-color@10.2.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/install:
+    dependencies:
+      '@toascribe/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@toascribe/db':
+        specifier: workspace:*
+        version: link:../db
+      '@toascribe/shared':
+        specifier: workspace:*
+        version: link:../shared
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)
+      pino:
+        specifier: 'catalog:'
+        version: 10.4.0
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@toascribe/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.23.1
+      eslint:
+        specifier: 'catalog:'
+        version: 10.13.0(jiti@2.7.0)(supports-color@10.2.2)
+      pg:
+        specifier: 'catalog:'
+        version: 8.23.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

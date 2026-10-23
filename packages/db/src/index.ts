@@ -3,6 +3,8 @@
 // is exported too for the CLI (`toa core install`, `toa dev`), which must pass it the owner role's URL, never the app's.
 export { checkConnection, createDb } from './client.ts'
 export type { CreateDbOptions, Database, Db, Schema } from './client.ts'
+export { getMigrationStatus, readMigrationJournal } from './migration-status.ts'
+export type { MigrationStatus } from './migration-status.ts'
 export { runMigrations } from './migrator.ts'
 export type { RunMigrationsOptions } from './migrator.ts'
 export { createMailProducer } from './mail-queue.ts'

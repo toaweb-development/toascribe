@@ -23,6 +23,7 @@ This file and the README come first where they are more specific.
 | `apps/site`, `apps/admin`      | `@toascribe/site`, `@toascribe/admin` | Nuxt 4. The admin has `baseURL: '/admin'`.                                   |
 | `packages/db`                  | `@toascribe/db`                       | Drizzle client, migrations, the migration runner, `PGBOSS_APP_OPTIONS`.      |
 | `packages/shared`              | `@toascribe/shared`                   | Zod schemas and types. Every API shape is defined here once.                 |
+| `packages/install`             | `@toascribe/install`                  | Install service (setup token, steps, install). The api and the cli call it.  |
 | `packages/auth`                | `@toascribe/auth`                     | Password hashing (argon2id, WordPress hash import) and one-time tokens.      |
 | `packages/http`                | `@toascribe/http`                     | `safeFetch`: an HTTP client that refuses private addresses (SSRF).           |
 | `packages/nuxt-base`           | `@toascribe/nuxt-base`                | The Nuxt layer both apps share: Nuxt UI, i18n, API layer and plugin, config. |
@@ -56,6 +57,12 @@ separate step: say so.
 - **No `process.env` outside `config.ts`** (each app has one; `packages/db/src/migrate.ts` is the entry point that reads
   `MIGRATION_DATABASE_URL`). Config is validated with Zod at start-up and errors name variables, never values.
 - **No secrets in the repo, an image, a compose file or a workflow.** `docker/.env.example` lists names with empty values.
+- **One token is logged, on purpose: the setup token.** Everywhere else a token, a password or a key stays out of every log.
+  At start-up, while the site is not installed, the api writes a new one-time setup token to the log, once, at `warn`
+  (`announceSetupToken` in `apps/api/src/services/setup.ts`), because that is how the person who started the stack gets
+  into `/admin/setup`. Only its hash is stored, a restart or `toa core setup-token` replaces it, and the install deletes it.
+  It travels in the `X-Setup-Token` header, never in a query string the api or the proxy would log. Do not add a second place
+  that logs a token, and keep it out of every field of the log line (the test counts exactly one occurrence).
 - **TypeScript.** Strict, no `any`, no `@ts-ignore`, no `enum`, no `console.*`; pino for logs. Tests live in `test/`.
 - **Frontend.** Shared Nuxt code (API layer, API plugin, status component, runtime config, head basics, i18n setup) lives in
   `packages/nuxt-base`, once; an app keeps only what differs. Screen text goes through i18n: bokmål in
