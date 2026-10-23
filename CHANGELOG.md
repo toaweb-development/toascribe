@@ -6,6 +6,97 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-23
+
+First run: a fresh stack now ends in a setup wizard in the browser, or in `toa core install`, and the images are published
+for installation from two files. **No action is needed on upgrade.** A 0.3.0 site with an active administrator is marked
+installed by migration `0005_install_state`, so it never shows the wizard and gets no default content; the migration run
+does the rest.
+
+### Added
+
+- A setup wizard at `/admin/setup` in seven steps: the one-time code, a system check (database, migrations, keys, proxy
+  and the address the site is served on), the site (language, title, time zone, administrator e-mail, search engines),
+  e-mail (with a test mail, or skip), the administrator account, the recovery key, and a summary before it installs. A
+  reload keeps the position. Until the site is installed every page of the site and the admin goes to the wizard; once it
+  is, `/admin/setup` and every setup route except the status answer 404. `/setup` redirects to `/admin/setup`.
+- A one-time setup token. While the site is not installed, the api writes a new token to its log once at start-up, in the
+  address to open (`/admin/setup#token=...`), and stores only its hash. The token is in the URL fragment, which a browser
+  never sends to a server, so neither the proxy nor the api can log it from a request. The wizard reads it from the
+  fragment, takes it out of the address bar at once and sends it in the `X-Setup-Token` header, never in a query string; a
+  `?token=` in the address is not read. Wrong guesses are rate-limited per address without affecting login. A restart or `toa core setup-token` replaces it; the install deletes it.
+- `toa core install | is-installed | gen-env | setup-token`. `install` does what the wizard does, from flags or by asking
+  in a terminal, and prints the recovery key once; `is-installed` answers with its exit code; `gen-env` prints the
+  three database passwords and the two keys, ready to append to `docker/.env`; `setup-token` prints a new token and the
+  address (`#token=...`). Two runs of `install` at once give one winner, and a failed install changes nothing.
+- `--notify` on `toa user create`, `toa user reset-password` and `toa user reset-login-limit`. `create --notify` makes a
+  pending account and mails a 24-hour link where the person sets their own password, so no password is printed.
+  The other two tell the account owner what was done. The reset notices say the change was made by an administrator,
+  not by a link from «Mistet passordet?».
+- `toa user mfa-reset`: removes every second factor and recovery code of an account, ends its sessions, writes an audit
+  entry and tells the owner by e-mail.
+- Default content, as in a Norwegian WordPress: the category «Ukategorisert», the post «Hei, verden!» with its comment, the page
+  «Testside» and a draft «Personvernerklæring» page, all in blocks and made in the install transaction. Another
+  locale gets WordPress' English texts. `category` and `post_tag` exist as built-in taxonomies.
+- A recovery key, shown once in the wizard (with a download) and by `toa core install`. Only a verifier is stored, never
+  the key; the wizard asks for it back before it installs.
+- Images are published to `ghcr.io/toaweb/toascribe-proxy`, `-site`, `-admin`, `-api`, `-postgres` and `-mailpit` when a
+  version reaches `main`, tagged with the version and `sha-<short>`, after Trivy has scanned every one (Critical and High
+  with a fix fail the release, and then there is no tag). They carry provenance and an SBOM. Pull requests run the same
+  build and scan without a push.
+- Installing from `compose.yaml` and `.env` only, without cloning the repo: pull the images, make the secrets with
+  `toa core gen-env`, then `up -d`. The GitHub Release attaches `compose.yaml` and `env.example`, and the README has the
+  steps.
+- `GET /api/v1/setup/status`, `/state`, `/check` and the other setup routes, with a `setup-token` policy kind in the
+  OpenAPI document; the `setup` action in the login limiter.
+- `@toascribe/install`: the install service that the api and the command line share.
+
+### Changed
+
+- `POST /api/v1/auth/register` answers 409 `username_taken` when the name is taken (case-insensitively), with the same
+  answer whether or not the e-mail address is. A free name with a taken address still answers 202, and the owner of the
+  address gets the "account exists" mail either way.
+- Compose no longer uses `:?`. The three database passwords and the two keys have an empty default so that
+  `toa core gen-env` can run through compose before `.env` exists. The postgres image refuses to start on an empty
+  password, before it creates anything, and the api and worker refuse empty keys. The role URLs are empty when their
+  password is, so the apps stop at their own config check. `up` now shows «unhealthy» for postgres; the reason is in
+  `docker compose logs postgres`.
+- `installed`, `installed_at` and `smtp_verified_at` are read-only settings; the settings API refuses to write them.
+  `smtp_verified_at` is when a test mail went through with the saved SMTP settings: the setup's e-mail step is done on that
+  or on a skip, never on saved settings alone, and saving the settings again clears it. New settings: `admin_email`,
+  `default_category` and `wp_page_for_privacy_policy`.
+- Migrations `0005_install_state` (the install state, `admin_notice` and `site_secret`, and the upgrade rule above) and
+  `0006_setup_attempts` (the `setup` login-limit action, and `SELECT` on `drizzle.__drizzle_migrations` for the app role,
+  which the system check uses to compare the applied migrations with the expected ones).
+- One password rule, enforced on the server: a password equal to the username or to the e-mail address (compared without
+  regard to case) is refused with 400 `weak_password` by the setup install, `PATCH /me/password`, the password reset and
+  the set-password link, and by `toa user create`, `toa user reset-password` and `toa core install`. The wizard goes back to
+  the administrator step and keeps what was typed. The rule is `isTooObvious` in `@toascribe/auth`; the api and the command
+  line no longer have a copy each.
+- One exit-code rule for the whole `toa` command: `0` is success, `1` is an error underway (the command was well formed,
+  and the database or a live operation decided: a taken username or e-mail, an account or role that is not there, a site
+  that is already installed, a database or mail failure), and `2` is invalid input or usage (an unknown command or flag, a
+  missing or malformed value, a refused password, a bad environment). `toa core is-installed` is the exception: `0`
+  installed, `1` not installed, `2` any error. These paths exited `1` before and now exit `2`: a missing or wrong
+  `DATABASE_URL`, `PUBLIC_ORIGIN` or `MIGRATION_DATABASE_URL` (a `ConfigError`) in every command that reads one,
+  `toa user create --notify` without `TOASCRIBE_ENCRYPTION_KEY`, `toa dev seed tom` outside development and test, and
+  `toa user reset-password` with a password equal to the username or e-mail. The usage text (`toa help`) and the README
+  state the rule.
+- The site and the admin both send `frame-ancestors 'none'` and `X-Frame-Options: DENY`; the site was allowed to frame
+  itself before.
+
+### Security
+
+- The proxy's logs drop `X-Setup-Token`, `X-Csrf-Token`, `Cookie`, `Authorization`, `Proxy-Authorization` and
+  `Set-Cookie`, and replace the value of every query parameter in the request address, the `Referer` header and the
+  `Location` header, except `action`, `loggedout` and `checkemail` (the notices of the login screens). `token`, `key`,
+  `code`, `password`, `secret`, `signature`, `state` and `access_token` are redacted, and so is any other name. The same
+  filter now covers Caddy's error log, which writes the whole request, `X-Setup-Token` included, when an upstream does not
+  answer; it was unfiltered before. Tested with the real setup token: it is in the api's start-up line and nowhere else.
+- The setup token and the recovery key are stored as hashes only, in their own table that no settings reader can see. The
+  token is compared in constant time, and parallel guesses are held by the limiter before they are judged.
+- Nothing can frame the site or the admin.
+
 ## [0.3.0] - 2026-10-22
 
 Sign-in: people can now log in, stay logged in safely, reset a lost password and use a second factor. **Action needed on
@@ -159,7 +250,8 @@ The skeleton: everything runs end to end, nothing is a feature yet.
   dependencies, a start of the full stack, and a version gate that asks for a new version and CHANGELOG entry when
   released files change.
 
-[Unreleased]: https://github.com/toaweb/toascribe/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/toaweb/toascribe/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/toaweb/toascribe/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/toaweb/toascribe/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/toaweb/toascribe/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/toaweb/toascribe/releases/tag/v0.1.0

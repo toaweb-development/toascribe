@@ -2,10 +2,22 @@
 // (DML only). The rules are the api's: usernames, e-mail addresses and URL names are unique without regard to case.
 import { schema } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
+import { CoreSettings } from '@toascribe/shared'
 import type { AuditSource, JsonValue } from '@toascribe/shared'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 
-const { account, accountRole, accountToken, auditLog, loginAttempt, role, session } = schema
+const {
+  account,
+  accountRole,
+  accountToken,
+  auditLog,
+  loginAttempt,
+  mfaCredential,
+  recoveryCode,
+  role,
+  session,
+  setting,
+} = schema
 
 /** The database, or the transaction a command opened. */
 export type Executor = Parameters<Parameters<Database['transaction']>[0]>[0] | Database
@@ -94,12 +106,14 @@ export interface NewAccount {
   readonly email: string
   readonly displayName: string
   readonly nicename: string
-  readonly passwordHash: string
+  /** Null for an account that is to choose its own password with a one-time link (status `pending`). */
+  readonly passwordHash: string | null
+  readonly status: 'active' | 'pending'
   readonly roleId: string
   readonly now: Date
 }
 
-/** Inserts an active account with its role. A name or address that is already taken makes PostgreSQL refuse (23505). */
+/** Inserts an account with its role. A name or address that is already taken makes PostgreSQL refuse (23505). */
 export async function insertAccountWithRole(db: Executor, input: NewAccount): Promise<string> {
   const rows = await db
     .insert(account)
@@ -109,7 +123,7 @@ export async function insertAccountWithRole(db: Executor, input: NewAccount): Pr
       displayName: input.displayName,
       nicename: input.nicename,
       passwordHash: input.passwordHash,
-      status: 'active',
+      status: input.status,
       createdAt: input.now,
       modifiedAt: input.now,
     })
@@ -156,6 +170,52 @@ export async function deleteSessions(db: Executor, accountId: string): Promise<n
   return rows.length
 }
 
+/** Deletes every row of `mfa_credential` of the account (confirmed or not, any type). Returns how many there were of each type. */
+export async function deleteMfaCredentials(db: Executor, accountId: string): Promise<Record<string, number>> {
+  const rows = await db
+    .delete(mfaCredential)
+    .where(eq(mfaCredential.accountId, accountId))
+    .returning({ type: mfaCredential.type })
+  const counts: Record<string, number> = {}
+  for (const row of rows) {
+    counts[row.type] = (counts[row.type] ?? 0) + 1
+  }
+  return counts
+}
+
+/** Deletes every recovery code of the account, used or not. Returns how many there were. */
+export async function deleteRecoveryCodes(db: Executor, accountId: string): Promise<number> {
+  const rows = await db
+    .delete(recoveryCode)
+    .where(eq(recoveryCode.accountId, accountId))
+    .returning({ id: recoveryCode.id })
+  return rows.length
+}
+
+/**
+ * The slugs of the account's roles that `mfa_required_roles` names: the roles that make the next login an enrolment. The
+ * setting is read as the api reads it: a missing or invalid value is the default (none).
+ */
+export async function rolesRequiringMfa(db: Executor, accountId: string): Promise<string[]> {
+  const rows = await db
+    .select({ value: setting.value })
+    .from(setting)
+    .where(eq(setting.key, 'mfa_required_roles'))
+    .limit(1)
+  const parsed = CoreSettings.shape.mfa_required_roles.safeParse(rows[0]?.value)
+  const required = parsed.success ? parsed.data : []
+  if (required.length === 0) {
+    return []
+  }
+  const held = await db
+    .select({ slug: role.slug })
+    .from(accountRole)
+    .innerJoin(role, eq(role.id, accountRole.roleId))
+    .where(eq(accountRole.accountId, accountId))
+    .orderBy(role.slug)
+  return held.map((row) => row.slug).filter((slug) => required.includes(slug))
+}
+
 /** Uses up the account's unused one-time links (lost password, welcome, e-mail change), as a password reset in the api does. */
 export async function voidUnusedLinks(db: Executor, accountId: string, now: Date): Promise<number> {
   const rows = await db
@@ -164,6 +224,25 @@ export async function voidUnusedLinks(db: Executor, accountId: string, now: Date
     .where(and(eq(accountToken.accountId, accountId), isNull(accountToken.usedAt)))
     .returning({ id: accountToken.id })
   return rows.length
+}
+
+/**
+ * Stores a one-time link to choose the first password (`set_password`, as registration makes one): only the token's hash is
+ * kept. The caller mails the token, which is shown nowhere else.
+ */
+export async function insertSetPasswordLink(
+  db: Executor,
+  input: { readonly accountId: string; readonly tokenHash: string; readonly expiresAt: Date; readonly now: Date },
+): Promise<void> {
+  await db.insert(accountToken).values({
+    accountId: input.accountId,
+    purpose: 'set_password',
+    tokenHash: input.tokenHash,
+    newEmail: null,
+    expiresAt: input.expiresAt,
+    createdAt: input.now,
+    modifiedAt: input.now,
+  })
 }
 
 export interface AuditInput {

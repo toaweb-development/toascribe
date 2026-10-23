@@ -1,6 +1,7 @@
 # Data model
 
-The core tables of toascribe in PostgreSQL 18, as built in M0.2 and extended in M0.3 (login and accounts). The
+The core tables of toascribe in PostgreSQL 18, as built in M0.2 and extended in M0.3 (login and accounts) and M0.4
+(installation). The
 specification is the table in [PLAN.md](PLAN.md) («Datamodell i PostgreSQL»); this file explains how it was turned into
 a schema and lists every place the schema differs from it. The schema is in `packages/db/src/schema/` (one file per
 domain), the migrations in `packages/db/migrations/`, the value sets and JSON shapes in `packages/shared/src/values.ts`
@@ -13,6 +14,8 @@ and `documents.ts`.
 | `0002_account_token_session`    | 0.3.0   | `account_token`; `session.mfa_verified_at` and `session.is_remembered` (generated)     |
 | `0003_rights_ip_retention`      | 0.3.0   | editor without `unfiltered_html`, `default_role` never administrator, IP retention from the setting (custom) |
 | `0004_login_attempt_login_hash` | 0.3.0   | `login_attempt.login_hash` and its index; removes the two lockout settings (generated; the `DELETE` is added by hand) |
+| `0005_install_state`            | 0.4.0   | `site_secret` and `admin_notice` (generated); a site from before M0.4 with an active administrator counts as installed (added by hand) |
+| `0006_setup_attempts`           | 0.4.0   | `login_attempt.action` also accepts `setup` (generated); `SELECT` on `drizzle.__drizzle_migrations` for the app role (added by hand) |
 
 Drizzle has no down migrations. A published migration is never edited; a change is a new migration.
 
@@ -38,7 +41,12 @@ Drizzle has no down migrations. A published migration is never edited; a change 
   else. The IP clean-up is the function `audit_log_clear_old_ips()` (below), which the app role may only execute.
   Both are in the hand-written custom migration `0001_audit_log_privileges.sql` (`drizzle-kit generate --custom`), so a
   regenerate of `0000_core` cannot drop them; `0003_rights_ip_retention.sql` replaces the function's body. Every other
-  table, `account_token` included, has the default DML, which is all the worker's clean-up jobs need.
+  table, `account_token`, `site_secret` and `admin_notice` included, has the default DML, which is all the worker's
+  clean-up jobs and the install service need. The one exception that adds rights is `0006_setup_attempts.sql`: `USAGE` on
+  the schema `drizzle` and `SELECT` on `drizzle.__drizzle_migrations` (the migrator's own table of hashes and timestamps) for
+  the app role, so the system check of the setup wizard can compare the applied migrations with the journal
+  (`getMigrationStatus()`). The app role still cannot change or create anything there. The grant sits in a block that does
+  nothing when the role does not exist (a database set up without `docker/postgres/init.sql`).
 
 ## Diagram
 
@@ -173,7 +181,7 @@ erDiagram
 ```
 
 Tables without links to the others: `content_type`, `field_group`, `template`, `menu`, `area`, `global_set`, `pattern`,
-`setting`, `oembed_cache`, `not_found_log`, `workflow`, `extension_state`, `backup`.
+`setting`, `oembed_cache`, `not_found_log`, `workflow`, `extension_state`, `backup`, `site_secret`, `admin_notice`.
 
 ## Sessions and one-time links (M0.3)
 
@@ -245,9 +253,147 @@ attempt waits `min(delay_seconds · 2^(n − free), delay_max)` after the latest
 `login_limit_window_minutes`, so the wait shrinks by itself. Nothing is stored about a wait: it is worked out from the
 `login_attempt` rows.
 
+`login_attempt.action` is `login`, `mfa`, `register`, `password_lost`, `comment` or, since `0006_setup_attempts`, `setup`.
+`setup` counts the guesses at the one-time setup token (every `/api/v1/setup` route that takes the `X-Setup-Token` header), per IP
+address by the same limiter and the same settings, in a bucket of its own: wrong tokens never delay a login from that address,
+and a correct token writes a succeeded row, which ends the streak so the wizard's own requests use up nothing. The rows go with
+the other login attempts at the IP retention. Nothing is stored about the token that was typed (`login_hash` is null).
+
+**Who shares a counter (accepted, Tor 2026-10-23).** A failed attempt is stored with the `account_id` of the account the typed
+name belongs to and with the `login_hash` of the name as it was typed, and the wait is worked out from every row that matches
+either. For a real account that means the counter is shared between the username and the e-mail form: five wrong passwords
+typed as `anna` and the next attempt typed as `anna@example.no` waits too, because both are `anna`'s account. A name that
+matches no account has no `account_id`, so it counts per typed form only (by `login_hash`): two unknown names never share a
+counter. Someone who already knows both forms of one account can therefore see that they belong together (the wait on one
+form shows at once on the other), and someone who knows one form and guesses the other gets a yes or no for the guess after
+using up the free attempts on the first. This is accepted because: it needs one identifier already; keying a real account per
+form would let an attacker double the free attempts (the username and the e-mail address each get their own five) and the
+two forms of one account would then behave unlike each other, so a shared counter is the rule that protects the password
+best; and the only thing the wait gives away is a link between two identifiers the asker already holds, never a password or
+whether a name exists (an unknown name is delayed exactly like a known one, K-004).
+
 `default_role` (a WordPress option) can no longer be `administrator`: `CoreSettings` refuses it, and migration 0003 set
 it back to `subscriber` where a v0.2.0 database had it. Text that can reach a mail header (`mail_from_name`,
 `smtp_username`) may not contain control characters, so CR/LF cannot inject a header.
+
+## Installation (M0.4)
+
+The setup wizard (`/admin/setup`) and `toa core install` share one install service; this is the data it works on. The
+helpers are exported by `@toascribe/db` (`packages/db/src/install.ts`).
+
+**Settings.** Six keys in `CoreSettings`, seeded by `seedCore()` with these defaults:
+
+| Key                          | Default | Value                         | Written by                                                             |
+| ---------------------------- | ------- | ----------------------------- | ---------------------------------------------------------------------- |
+| `installed`                  | false   | boolean                       | `markInstalled()` only                                                 |
+| `installed_at`               | null    | ISO 8601 UTC (`…T…Z`)         | `markInstalled()` only                                                 |
+| `smtp_verified_at`           | null    | ISO 8601 UTC (`…T…Z`)         | a passed test mail only; every SMTP settings save clears it            |
+| `admin_email`                | null    | e-mail, at most 254           | the install (the first administrator's address), later Settings → General |
+| `default_category`           | null    | term uuid                     | `seedDefaultContent()` («Ukategorisert»), later Settings → Writing     |
+| `wp_page_for_privacy_policy` | null    | content uuid                  | `seedDefaultContent()` (the draft privacy page), later Settings → Privacy |
+
+`installed`, `installed_at` and `smtp_verified_at` are `READ_ONLY_SETTING_KEYS`: a settings API, `toa option` or an importer
+must refuse to write them, because `installed = false` would reopen `/setup`. There is no `siteurl` or `home`: the site's address is
+`PUBLIC_ORIGIN` in `.env`, which the proxy, the cookies and the CSRF origin check need before any database read, so a
+second copy in `setting` could only disagree with it. WordPress' options of that name can be derived from it on export.
+
+**`site_secret`** holds the site's one-of-a-kind secrets as hashes: one row per `purpose` (`uq_site_secret_purpose`;
+CHECK from `SITE_SECRET_PURPOSE`), with `secret_hash`, `created_at` and `modified_at`. `ck_site_secret_secret_hash` takes
+64 lower-case hex characters only, so a raw token (base64url) cannot be stored by mistake. It is a table rather than
+`setting` rows (with `autoload = false`) because every settings reader, the settings cache, a settings API, `toa option`
+and a settings export would otherwise have to remember to leave two keys out; here none of them can see one.
+
+| `purpose`             | Lifetime                                                                 | `secret_hash`                                                                                        |
+| --------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `setup_token`         | made at api start while not installed and by `toa core setup-token` (each replaces the last); deleted by `markInstalled()` | `hashToken(token)` from `@toascribe/auth`: SHA-256, hex, of a 256-bit random token, as sessions and one-time links |
+| `backup_recovery_key` | written by the install, kept; replaced if the key is ever regenerated    | HMAC-SHA256, hex, with the fixed key `toascribe backup-recovery-key verifier v1` (UTF-8) over the recovery key as shown to the user |
+
+Why a fast hash is enough for both: the token and the recovery key are random and long (at least 128 bits, 256 for the
+token), so nobody can search for them from the hash, and argon2id would add cost without adding safety. The recovery key's
+verifier is not keyed with the signing key on purpose: the key is needed exactly when `.env` is lost or the site moves to a
+new server (PLAN «Flytte nettsted»), and the verifier must still check it then. The fixed HMAC key separates the verifier
+from the key that backup encryption will derive from the same recovery key (phase 1, which must use another derivation
+label), so the stored value is not that key. A presented value is compared with the stored hash in constant time
+(`constantTimeEqual` in `@toascribe/auth`). Helpers: `setSiteSecret()` (insert or replace; resets `created_at`),
+`getSiteSecret()`, `deleteSiteSecret()`.
+
+**`admin_notice`** is a site-wide notice for the dashboard, which M0.5 shows: one row per `key` (`uq_admin_notice_key`,
+lower-case machine name), with `level` (`error`, `warning`, `success`, `info`, as WordPress' notice types; CHECK from
+`ADMIN_NOTICE_LEVEL`), `message_key` (the admin's i18n key, never screen text), `data` (JSONB values the text
+interpolates, never a secret), `capability` (who sees it, default `manage_options`), `is_dismissible` and `dismissed_at`
+(null while it shows). `raiseAdminNotice()` inserts it or, if the key is there, replaces level, text, capability and data
+and shows it again; `dismissAdminNotice()` hides a dismissible one for everyone; `resolveAdminNotice()` deletes it when the
+condition is gone. The first is `SETUP_EMAIL_SKIPPED_NOTICE` in `@toascribe/shared` (`setup.email_skipped`, a warning,
+`notices.setupEmailSkipped`), stored when the e-mail step is skipped. A table rather than a setting array, so the
+dashboard can query by capability and dismissal without a migration in M0.5, and two writers never overwrite each other's
+array. Per-account dismissal, if it is wanted, belongs in `account.preferences`.
+
+**The install lock.** `INSTALL_LOCK_KEY` is `1953456489` (0x746f6169, «toai»; the migration runner's session lock is
+«toas»). The install service runs everything in one transaction on one connection:
+
+1. `lockInstall(tx)`: `pg_advisory_xact_lock(INSTALL_LOCK_KEY)`, then reads `installed`. A second install waits here until
+   the first commits or rolls back. The lock is released by the commit or rollback, never by hand. The type takes a
+   transaction only, because a transaction-level lock outside one ends with its statement.
+2. If `installed` is true: stop with `AlreadyInstalledError` (409 in the api, exit 1 in the CLI).
+3. The first administrator, the recovery key verifier, `seedDefaultContent()`, `admin_email`, `audit_log`.
+4. `markInstalled(tx)`: `installed = true`, `installed_at`, and the `setup_token` row is deleted. It refuses to flip a flag
+   that is already true (`AlreadyInstalledError`), so even an install that skipped step 2 cannot commit twice.
+
+The read in step 1 sees the other install's commit because it runs after the lock is granted and READ COMMITTED (the
+default) takes a new snapshot per statement. Under REPEATABLE READ or SERIALIZABLE the snapshot would be older than the
+lock; step 4 would then fail with a serialization error instead, so the result is still one install, but the api should
+use the default level. `getInstallState()` reads the state without a lock (`GET /setup/status`, the middleware). Anything
+but JSON `true`, a missing row included, reads as not installed.
+
+**Upgrading from v0.3.0.** Such a database has no `installed` row, and `seedCore()` would insert `false`, which would send
+every page of a site already in use to `/setup`. Migration 0005 therefore writes `installed = true` and `installed_at` when
+an active account holds the `administrator` role, before the seed runs, with an `audit_log` row each (actor_type `system`,
+actor `migration 0005_install_state`, source `setup`). Such a site gets no default content and keeps `admin_email` null
+until it is set. A database with no active administrator stays uninstalled and goes through `/setup`.
+
+## Default content (M0.4)
+
+`seedDefaultContent(tx, { siteUrl, adminAccountId, locale })` writes what WordPress' `wp_install_defaults()` writes, in
+the site's language. `siteUrl` is the site's origin (`PUBLIC_ORIGIN`; a trailing slash is dropped, a path is refused).
+The strings are data in `packages/db/src/default-content/strings.ts`, one entry per locale: `nb` (and `nb-*`) gets WordPress'
+nb_NO translation, every other locale WordPress' English strings. `markup.ts` builds the block markup from them exactly as
+WordPress 7.1.3 concatenates it; a test compares it byte for byte with WordPress' output (`packages/db/test/fixtures/`).
+
+| Row                                           | Values (nb)                                                                                                           |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `term` in `category`                          | name «Ukategorisert», slug `ukategorisert`; becomes `default_category`                                                |
+| `content` post, `short_id` 1 on a new site    | «Hei, verden!», `hei-verden`, `publish`, comments `open`, published now; one paragraph block                          |
+| `content_term`                                | the post in «Ukategorisert»                                                                                           |
+| `comment` on the post                         | author «En WordPress-kommentator», `wapuu@wordpress.example`, `https://nb.wordpress.org/`, type `comment`, `approved`, no account, no IP; the text links to `https://nb.gravatar.com/` |
+| `content` page, `short_id` 2                  | «Testside», `testside`, `publish`, comments `closed`; the dashboard link is `<siteUrl>/admin/`                         |
+| `content` page, `short_id` 3                  | «Personvernerklæring», `personvernerklæring`, `draft` (no `published_at`), comments `closed`; WordPress' suggested policy with the site address filled in; becomes `wp_page_for_privacy_policy` |
+| `content_author`                              | the administrator, `sort` 0, on all three                                                                             |
+
+The slugs are the ones WordPress stores: the category and post slug through `sanitize_title()`, the page slugs as the raw
+translation, so `personvernerklæring` keeps its «æ». The schema allows that (a content slug only has to be non-empty);
+whoever builds URLs (M1.4) percent-encodes it, and routing decodes before the lookup. WordPress' `_wp_page_template =
+default` is `template` null here. Left out: WordPress' default widgets (no widget areas before phase 3) and the
+`show_welcome_panel` user meta (the dashboard is M0.5).
+
+**Blocks.** toascribe's own block format comes with the editor (M0.6, M1.3). Until then `content.blocks` holds the tree
+WordPress' `parse_blocks()` returns (`blockName` with `core/`, `attrs`, `innerBlocks`, `innerHTML`, `innerContent` with
+null where a child goes), without the whitespace-only freeform blocks between top-level blocks. It loses nothing that
+renders (a test serialises it back to the same markup), and the WXR importer starts from the same shape. M1.3 converts
+these rows with a data migration when the format is fixed.
+
+**Search.** The rows get `content.search` as the content service will build it (title A, block text C) with the
+configuration `norwegian` for `nb`/`nn`, `english` for `en`, `simple` otherwise (K-240 is still open).
+
+**Upstream typos (Tor: «samme tekst som den norske oversettelsen»).** The wording is WordPress' nb_NO translation verbatim,
+typos included: «forskjellig fra ert innlegg», «har vært levert kvalitetsduppeditter», «Pi&#241;a colada», and the missing
+full stop in «Vår nettstedsadresse er: …». The one change is in the privacy policy's cookie paragraph: the translation has
+`&lauot;Husk meg&raquot;`, two broken entities that a browser shows as `&lauot;Husk meg»t;`, so toascribe stores «Husk meg»
+with real guillemets, as the rest of the translation writes them.
+
+**Once only.** It is not idempotent: if the category term or any of the three items exists (same slug, type and locale),
+it throws `DefaultContentExistsError` and writes nothing. It runs in a savepoint of the caller's transaction (or its own
+transaction), so an error half-way leaves nothing either. It inserts the built-in taxonomies if they are missing, so it does
+not depend on `seedCore()`. The app role can run it.
 
 ## content, content_draft and content_revision
 
@@ -325,8 +471,8 @@ Only `account_id` changes; `actor`, written on every row, still names who did it
 
 `seedCore(db)` in `@toascribe/db` writes the rows a site needs before anyone logs in. The migration step calls it after
 the Drizzle migrations and pg-boss, under the same lock and as the owner role, so `docker compose up` on an empty volume
-ends with them in place; `toa core install` and the tests call it as well. It seeds no accounts, no content and no
-secrets.
+ends with them in place; `toa dev seed` and the tests call it as well. It seeds no accounts, no content and no secrets
+(the default content is the install's, see «Default content»).
 
 - **`role`:** the five built-in roles, `administrator`, `editor`, `author`, `contributor` and `subscriber`, with WordPress'
   English display names and capability lists (WordPress 7.1.3 `populate_roles()`), except that the editor has no
@@ -339,9 +485,13 @@ secrets.
   `WPLANG`), day-and-name permalinks, and the date format, time format, week start and time zone of WordPress' nb_NO
   translation. The mapping is listed in `packages/shared/src/settings.ts`.
 
-It only inserts what is missing (`ON CONFLICT DO NOTHING` on `role.slug` and `setting.key`), in one transaction. A run
-never updates a row: a setting an administrator changed and a role whose capabilities were edited keep their values. A
-deleted built-in role or core setting comes back on the next run. It needs INSERT only, so the app role can run it too.
+- **`taxonomy`** (M0.4): WordPress' two built-in taxonomies, `category` (hierarchical) and `post_tag`, both for `post`,
+  with WordPress' English names «Categories» and «Tags» (`DEFAULT_TAXONOMIES`); the admin translates them by slug.
+
+It only inserts what is missing (`ON CONFLICT DO NOTHING` on `role.slug`, `setting.key` and `taxonomy.slug`), in one
+transaction. A run never updates a row: a setting an administrator changed, a role whose capabilities were edited and a
+renamed taxonomy keep their values. A deleted built-in role, core setting or taxonomy comes back on the next run. It needs
+INSERT only, so the app role can run it too.
 
 Because the seed never changes a row, a change to a default that existing installs must get is a data migration.
 `0003_rights_ip_retention` is the first: it removes `unfiltered_html` from the built-in `editor` row and sets
@@ -414,6 +564,8 @@ Where PLAN names a column, the schema uses its name. These are the places it dif
   (see «Sessions and one-time links»).
 - `account_token` (M0.3): a table PLAN does not list, made on Tor's decision for one-time links. Every column is listed
   under «Sessions and one-time links».
+- `site_secret` and `admin_notice` (M0.4): tables PLAN does not list, for the install's hashed secrets and the dashboard's
+  notices. Every column is listed under «Installation».
 - `app_password`: `name`, `password_hash`, `last_used_at`, `last_used_ip` (K-016).
 - `mfa_credential`: `type` (totp, passkey, oidc), `name`, `secret_encrypted`, `issuer`, `external_id`, `data`,
   `confirmed_at`, `last_used_at`. One passkey or OIDC identity can belong to one account only.

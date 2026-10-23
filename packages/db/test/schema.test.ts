@@ -5,6 +5,7 @@ import { join } from 'node:path'
 
 import {
   ACCOUNT_STATUS,
+  ADMIN_NOTICE_LEVEL,
   ACCOUNT_TOKEN_PURPOSE,
   AUDIT_ACTOR_TYPE,
   AUDIT_SOURCE,
@@ -27,6 +28,7 @@ import {
   REDIRECT_ORIGIN,
   REDIRECT_STATUS_CODE,
   RELEASE_STATUS,
+  SITE_SECRET_PURPOSE,
   TEMPLATE_TYPE,
   WEBHOOK_DELIVERY_STATUS,
 } from '@toascribe/shared'
@@ -94,6 +96,10 @@ const PLAN_TABLES = [
 const ADDED_TABLES = [
   // M0.3, Tor 2026-10-21: «Engangslenker lagres i en egen tabell».
   'account_token',
+  // M0.4: the setup token's and the recovery key's hashes, out of `setting` so no settings reader can return them.
+  'site_secret',
+  // M0.4, Tor: «lagres et varsel som kontrollpanelet viser i M0.5».
+  'admin_notice',
 ]
 
 const TABLES = [...PLAN_TABLES, ...ADDED_TABLES].sort()
@@ -125,6 +131,8 @@ const VALUE_SET_CHECKS: Readonly<Record<string, readonly (string | number)[]>> =
   ck_privacy_request_type: PRIVACY_REQUEST_TYPE,
   ck_privacy_request_status: PRIVACY_REQUEST_STATUS,
   ck_consent_category: CONSENT_CATEGORY,
+  ck_site_secret_purpose: SITE_SECRET_PURPOSE,
+  ck_admin_notice_level: ADMIN_NOTICE_LEVEL,
 }
 
 const logger = pino({ level: 'silent' })

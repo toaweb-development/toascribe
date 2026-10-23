@@ -1,0 +1,27 @@
+<!-- wp:paragraph -->
+<p>Dette er en eksempelside. Den er forskjellig fra ert innlegg fordi det vil forbli på samme plass og vil vises i navigasjonsmenyen (i de fleste tema). De fleste starter med en Om-side som introduserer dem for mulige besøkende. Den kan si noe omtrent som følger:</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:quote -->
+<blockquote class="wp-block-quote">
+<!-- wp:paragraph -->
+<p>Hei der! Jeg er et sykkelbud om dagen, fremadstormende skuespiller om natten, og dette er min blogg. Jeg bor i Oslo, har en stor hund som heter Kim Roger, og jeg liker Pi&#241;a colada. (Og å skrive rare kommentarer til nettnyheter.)</p>
+<!-- /wp:paragraph -->
+</blockquote>
+<!-- /wp:quote -->
+
+<!-- wp:paragraph -->
+<p>...eller noe slikt som dette:</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:quote -->
+<blockquote class="wp-block-quote">
+<!-- wp:paragraph -->
+<p>Selskapet XYZ ble stiftet i 1971, og har vært levert kvalitetsduppeditter siden da. Ligger i Kristiansund, og sysselsetter over 2000 mennesker som gjør alle slags bra ting for samfunnet.</p>
+<!-- /wp:paragraph -->
+</blockquote>
+<!-- /wp:quote -->
+
+<!-- wp:paragraph -->
+<p>Som ny WordPress-bruker bør du gå til <a href="ADMINURL">ditt kontrollpanel</a> for å slette denne siden og lage en ny side med ditt innhold. Ha det gøy!</p>
+<!-- /wp:paragraph -->

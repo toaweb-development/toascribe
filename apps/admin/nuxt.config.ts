@@ -15,8 +15,23 @@ export default defineNuxtConfig({
   css: ['~/assets/theme/globals.css'],
 
   // Nuxt UI draws its own icons by name, and the scan of the sources does not see those: the ones the sign-in screens
-  // show are listed. They come from the build, never from api.iconify.design.
-  icon: { clientBundle: { icons: ['lucide:eye', 'lucide:eye-off', 'lucide:check'] } },
+  // and the setup wizard show are listed. They come from the build, never from api.iconify.design.
+  icon: {
+    clientBundle: {
+      icons: [
+        'lucide:eye',
+        'lucide:eye-off',
+        'lucide:check',
+        'lucide:circle-check',
+        'lucide:circle-x',
+        'lucide:triangle-alert',
+        'lucide:info',
+      ],
+    },
+  },
+
+  // This app has the setup wizard; the site sends visitors here until the site is installed (nuxt-base: setup-redirect.global.ts).
+  runtimeConfig: { public: { hostsSetupWizard: true } },
 
   // The admin's part of the security headers (K-314); the rest is in nuxt-base. Nobody frames the admin, and its pages show
   // only its own images and inline `data:` ones (the QR code of the two-factor set-up).

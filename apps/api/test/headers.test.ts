@@ -99,6 +99,16 @@ describe('the OpenAPI document', () => {
         '/api/v1/me/password',
         '/api/v1/me/sessions',
         '/api/v1/me/sessions/{id}',
+        '/api/v1/setup/check',
+        '/api/v1/setup/email',
+        '/api/v1/setup/email/skip',
+        '/api/v1/setup/email/test',
+        '/api/v1/setup/install',
+        '/api/v1/setup/recovery-key',
+        '/api/v1/setup/site',
+        '/api/v1/setup/state',
+        '/api/v1/setup/status',
+        '/api/v1/setup/token/verify',
         '/api/v1/system/test-email',
       ].sort(),
     )
@@ -112,6 +122,8 @@ describe('the OpenAPI document', () => {
     // Each operation says who may call it.
     expect(doc.paths['/api/v1/me']?.['get']?.['x-policy']).toBe('capability:read')
     expect(doc.paths['/api/v1/auth/login']?.['post']?.['x-policy']).toBe('public')
+    expect(doc.paths['/api/v1/setup/status']?.['get']?.['x-policy']).toBe('public')
+    expect(doc.paths['/api/v1/setup/install']?.['post']?.['x-policy']).toBe('setup-token')
     expect(doc.paths['/api/v1/auth/logout']?.['post']?.['x-policy']).toBe('authenticated')
     expect(doc.paths['/api/v1/system/test-email']?.['post']?.['x-policy']).toBe('capability:manage_options')
     expect(doc.paths['/api/health']?.['get']?.['x-policy']).toBe('public')

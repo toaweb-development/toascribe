@@ -1,4 +1,5 @@
-// seedCore(): the built-in roles and the core settings, written by the migration step and never overwritten.
+// seedCore(): the built-in roles, the core settings and the built-in taxonomies, written by the migration step and never
+// overwritten.
 import { CAPABILITIES, CORE_SETTINGS, DEFAULT_ROLES, CoreSettings } from '@toascribe/shared'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import pg from 'pg'
@@ -125,8 +126,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('seedCore (needs TEST_DATABASE_
       `select (select count(*)::int from role where modified_at <> created_at)
             + (select count(*)::int from setting where modified_at <> created_at) as n`,
     )
-    expect(await seedCore(drizzle({ client: owner }))).toEqual({ roles: 0, settings: 0 })
-    expect(await seedCore(drizzle({ client: owner }))).toEqual({ roles: 0, settings: 0 })
+    expect(await seedCore(drizzle({ client: owner }))).toEqual({ roles: 0, settings: 0, taxonomies: 0 })
+    expect(await seedCore(drizzle({ client: owner }))).toEqual({ roles: 0, settings: 0, taxonomies: 0 })
     expect({ roles: await roles(), settings: await settings() }).toEqual(before)
     expect(stamps).toEqual([{ n: 0 }])
   })
@@ -139,7 +140,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('seedCore (needs TEST_DATABASE_
         where slug = 'editor'`,
     )
 
-    expect(await seedCore(drizzle({ client: owner }))).toEqual({ roles: 0, settings: 0 })
+    expect(await seedCore(drizzle({ client: owner }))).toEqual({ roles: 0, settings: 0, taxonomies: 0 })
 
     const values = Object.fromEntries((await settings()).map((s) => [s.key, s.value]))
     expect(values).toMatchObject({ blogname: 'Min blogg', show_avatars: false })
@@ -154,7 +155,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('seedCore (needs TEST_DATABASE_
     await app.query(`delete from role where slug = 'subscriber'`)
     await app.query(`delete from setting where key in ('tag_base', 'site_icon')`)
 
-    expect(await seedCore(drizzle({ client: app }))).toEqual({ roles: 1, settings: 2 })
+    expect(await seedCore(drizzle({ client: app }))).toEqual({ roles: 1, settings: 2, taxonomies: 0 })
     expect(await counts()).toEqual({ roles: 5, settings: Object.keys(CORE_SETTINGS).length })
     const { rows } = await owner.query<{ key: string; type: string }>(
       `select key, jsonb_typeof(value) as type from setting where key in ('site_icon', 'tag_base') order by key`,
@@ -162,6 +163,22 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('seedCore (needs TEST_DATABASE_
     expect(rows).toEqual([
       { key: 'site_icon', type: 'null' },
       { key: 'tag_base', type: 'string' },
+    ])
+  })
+
+  it('seeds category and post_tag once, keeps a renamed one and puts back a deleted one', async () => {
+    const { rows } = await owner.query('select slug, name, is_hierarchical, content_types from taxonomy order by slug')
+    expect(rows).toEqual([
+      { slug: 'category', name: 'Categories', is_hierarchical: true, content_types: ['post'] },
+      { slug: 'post_tag', name: 'Tags', is_hierarchical: false, content_types: ['post'] },
+    ])
+    await app.query(`update taxonomy set name = 'Emner', modified_at = now() where slug = 'category'`)
+    await app.query(`delete from taxonomy where slug = 'post_tag'`)
+    expect(await seedCore(drizzle({ client: app }))).toEqual({ roles: 0, settings: 0, taxonomies: 1 })
+    const after = await owner.query<{ slug: string; name: string }>('select slug, name from taxonomy order by slug')
+    expect(after.rows).toEqual([
+      { slug: 'category', name: 'Emner' },
+      { slug: 'post_tag', name: 'Tags' },
     ])
   })
 
@@ -176,6 +193,6 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('seedCore (needs TEST_DATABASE_
     } finally {
       await owner.query('alter table setting drop constraint ck_setting_seed_test')
     }
-    expect(await seedCore(drizzle({ client: owner }))).toEqual({ roles: 1, settings: 1 })
+    expect(await seedCore(drizzle({ client: owner }))).toEqual({ roles: 1, settings: 1, taxonomies: 0 })
   })
 })

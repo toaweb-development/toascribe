@@ -184,9 +184,17 @@ describe('the root scripts', () => {
     expect(String(scripts['lint'])).toContain('eslint ')
     expect(String(scripts['typecheck'])).toContain('pnpm -r typecheck')
     expect(String(scripts['typecheck'])).toContain('tsc --noEmit')
-    expect(String(scripts['test'])).toContain('pnpm -r test')
+    expect(String(scripts['test'])).toContain('pnpm -r --workspace-concurrency=1 test')
     expect(String(scripts['test'])).toContain('--project root')
     expect(String(scripts['build'])).toContain('pnpm -r build')
+  })
+
+  it('runs the package tests one at a time, because their database tests share one server-wide role lock', () => {
+    // Lint, typecheck and build stay parallel. In parallel the last package in the lock queue waits past its hookTimeout.
+    expect(String(scripts['test'])).toMatch(/^pnpm -r --workspace-concurrency=1 test /)
+    for (const name of ['lint', 'typecheck', 'build']) {
+      expect(String(scripts[name]), name).not.toContain('workspace-concurrency')
+    }
   })
 
   it('is what CI runs', () => {

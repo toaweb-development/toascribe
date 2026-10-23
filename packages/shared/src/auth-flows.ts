@@ -59,7 +59,7 @@ export const Username = z
   .regex(/^[A-Za-z0-9][A-Za-z0-9._@-]*$/)
 export type Username = z.infer<typeof Username>
 
-/** POST /auth/register. Always answers 202, whether or not the username or the address was free. */
+/** POST /auth/register. 202 whether or not the address was free; 409 `username_taken` when the username is (Tor, M0.4: as WordPress). */
 export const RegisterRequest = z.strictObject({ username: Username, email: Email })
 export type RegisterRequest = z.infer<typeof RegisterRequest>
 

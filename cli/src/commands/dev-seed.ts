@@ -44,7 +44,8 @@ function databaseName(connectionString: string): string {
 export async function devSeedTom(options: DevSeedOptions = {}): Promise<CliResult> {
   const refusal = devGuard(readNodeEnv(options.env))
   if (refusal !== undefined) {
-    return { code: 1, stdout: '', stderr: refusal }
+    // The environment is wrong for this command (exit 2, a bad environment), not a failure underway.
+    return { code: 2, stdout: '', stderr: refusal }
   }
 
   let config
@@ -52,7 +53,7 @@ export async function devSeedTom(options: DevSeedOptions = {}): Promise<CliResul
     config = loadDatabaseConfig(options.env)
   } catch (err) {
     if (err instanceof ConfigError) {
-      return { code: 1, stdout: '', stderr: `${err.message}\n` }
+      return { code: 2, stdout: '', stderr: `${err.message}\n` }
     }
     throw err
   }

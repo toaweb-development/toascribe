@@ -86,9 +86,9 @@ test('shows and hides the password', async ({ page }) => {
 
 test('goes where redirectTo says, and nowhere else', async ({ page, context }) => {
   const user = await createUser('editor', 'redirect')
-  await page.goto('/admin/login?redirectTo=%2Fadmin%2Fsetup')
+  await page.goto('/admin/login?redirectTo=%2Fadmin%2Flogout')
   await fillLogin(page, user)
-  await expect(page).toHaveURL(/\/admin\/setup$/)
+  await expect(page).toHaveURL(/\/admin\/logout$/)
   await waitForSessionCookie(context)
 
   // Already signed in: the login screen sends the person on at once, and an address on another site is refused.

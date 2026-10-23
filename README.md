@@ -5,9 +5,11 @@ and plugins), written in TypeScript from end to end: Nuxt 4 for the site and the
 PostgreSQL. Content is stored as structured blocks, not HTML, and background work runs on a real job queue. It ships
 as an open repository and starts with Docker; the rest of the setup is finished in a browser wizard.
 
-**Status: 0.3.0, sign-in.** The whole stack starts and is healthy on one port. People can log in at `/admin/login` (and
-at `/wp-login.php`, which redirects), with sessions, a second factor, lost password and registration, and e-mail goes
-through the job queue. There is no editor yet. The plan, the architecture and the phases are in
+**Status: 0.4.0, setup.** The whole stack starts and is healthy on one port, and a fresh install is finished in a browser
+wizard at `/admin/setup` (or with `toa core install`): system check, site, e-mail, the administrator and a recovery key, with
+a WordPress-style first post and page. People can log in at `/admin/login` (and at `/wp-login.php`, which redirects), with
+sessions, a second factor, lost password and registration, and e-mail goes through the job queue. The images are published
+to `ghcr.io/toaweb`. There is no editor yet. The plan, the architecture and the phases are in
 [docs/PLAN.md](docs/PLAN.md) (in Norwegian); the tables are described in [docs/DATAMODEL.md](docs/DATAMODEL.md).
 
 ## Run the stack
@@ -15,11 +17,17 @@ through the job queue. There is no editor yet. The plan, the architecture and th
 You need Docker with Compose v2.
 
 ```sh
-cp docker/.env.example docker/.env
-# Put a value in each of the three PASSWORD lines and in TOASCRIBE_ENCRYPTION_KEY and TOASCRIBE_SIGNING_KEY of
-# docker/.env (a different one each):  openssl rand -hex 32
+# 1. Make the three passwords and the two keys, once. The lines are appended to docker/.env (made if it is not there):
+docker compose -f docker/compose.yaml run --rm --no-deps -T --quiet-build api toa core gen-env >> docker/.env
+# 2. Start everything:
 docker compose -f docker/compose.yaml up -d --build
 ```
+
+Step 1 needs no database and no other setting; the first time it builds the `api` image, which takes a few minutes
+(`--quiet-build` keeps the build output out of the file, `-T` keeps terminal control characters out of it). Run it once per
+installation: a second run would repeat the five names, and the passwords and the keys that are already in use must not
+be replaced this way. `docker/.env.example` lists every other setting (e-mail, ports, the reverse proxy); copy the lines you
+need into `docker/.env`. Do not copy the whole file over it: it has the five names with empty values.
 
 Then open <http://localhost:8080>.
 
@@ -31,8 +39,11 @@ Then open <http://localhost:8080>.
 | `/api/health` | 200 when the API is up                                      |
 | `/api/ready`  | 200 when the API can reach the database, 503 when it cannot |
 
-Compose stops with a clear message when a password or a key is empty; there are no defaults. The migrations run in
-their own step (`migrate`) before the API and the worker start.
+There are no default passwords or keys. A start with one missing stops at once, with the name of the variable: postgres says
+`toascribe-postgres: POSTGRES_APP_PASSWORD is empty` (see `docker compose logs postgres`), and the API and the worker say
+`Invalid environment: TOASCRIBE_ENCRYPTION_KEY: ...` in their logs. Compose itself reads the file without them, which is
+what lets step 1 run on a fresh folder. The migrations run in their own step (`migrate`) before the API and the worker
+start.
 
 **Two keys, made once.** `TOASCRIBE_ENCRYPTION_KEY` encrypts the secrets the database holds (TOTP secrets, the SMTP
 password); `TOASCRIBE_SIGNING_KEY` signs the CSRF tokens, and must be a different value. **Back the encryption key up
@@ -71,16 +82,47 @@ Use `toascribe_owner` for the owner password, and `postgres` for `POSTGRES_PASSW
 
 - **Behind Traefik or nginx.** See "Behind a reverse proxy" below: the port is bound to `127.0.0.1` by default and you
   tell the stack which proxy to believe.
-- **Update.** `docker compose -f docker/compose.yaml pull && docker compose -f docker/compose.yaml up -d` once images are
-  published. Nothing is published yet, so for now update with `git pull` and `up -d --build`.
+- **Update.** `docker compose -f docker/compose.yaml pull && docker compose -f docker/compose.yaml up -d`, with
+  `TOASCRIBE_VERSION` in `docker/.env` set to the new version. Images are published at each release (from 0.4.0); a clone can
+  also `git pull` and `up -d --build`.
 - **Valkey** (cache) is optional and not used yet: `COMPOSE_PROFILES=valkey` in `docker/.env`.
 - **Mailpit** (for development) catches every mail instead of sending it: `COMPOSE_PROFILES=mailpit` in `docker/.env`, or
   `docker compose -f docker/compose.yaml --profile mailpit up -d`, with `SMTP_HOST=mailpit`, `SMTP_PORT=1025`,
   `SMTP_SECURE=none` and a `MAIL_FROM_ADDRESS` set (see `docker/.env.example`). Its inbox is at
   <http://127.0.0.1:8025> (`TOASCRIBE_MAILPIT_PORT` changes the port). It is the one published port besides the proxy's,
   bound to this machine's loopback only, and the page has no login: do not use the profile on a server.
-- **The CLI** runs in the API container: `docker compose -f docker/compose.yaml exec api toa --version`.
+- **The CLI** runs in the API container: `docker compose -f docker/compose.yaml exec api toa --version`. Exit codes: `0`
+  success, `1` an error underway (the database does not answer, the site is already installed, a name is taken), `2` invalid
+  input or usage (an unknown flag, a missing value, a refused password, a bad environment). `toa core is-installed` is the one
+  exception: 0 installed, 1 not installed, 2 error. `toa` with no arguments lists them.
 - **Stop.** `docker compose -f docker/compose.yaml down` (add `-v` to delete the database volume as well).
+
+## Installer uten å klone repoet
+
+The images are published to `ghcr.io/toaweb/toascribe-*` at each release, so a server needs only `compose.yaml` and `.env`
+(Docker with Compose v2):
+
+```sh
+mkdir toascribe && cd toascribe
+curl -fsSLO https://github.com/toaweb/toascribe/releases/latest/download/compose.yaml
+docker compose pull                                                # first: see below
+docker compose run --rm --no-deps -T api toa core gen-env >> .env  # the passwords and keys, once
+echo 'PUBLIC_ORIGIN=https://example.com' >> .env                   # the address visitors use; default http://localhost:8080
+docker compose up -d
+docker compose logs api | grep -o 'https\?://[^ ]*/admin/setup#token=[A-Za-z0-9_-]*'
+```
+
+Open the address the last command prints: `/admin/setup#token=...` is the setup wizard, and the token in it is good for
+that one setup. A new one is made at the next start of the API, or with `docker compose exec api toa core setup-token`.
+Add `TOASCRIBE_HTTP_PORT=...` (and the other settings in [docker/.env.example](docker/.env.example), also attached to each
+release as `env.example`) to `.env` the same way.
+
+- **Pull first.** `compose.yaml` also carries the build instructions of a clone. In a folder with no sources, `run` or `up`
+  with an image missing would try to build and fail; `docker compose pull` fetches the images and nothing builds.
+- **A specific version** instead of the newest: use `releases/download/v<version>/compose.yaml`, or set
+  `TOASCRIBE_VERSION=<version>` in `.env`.
+- **Behind Traefik or nginx:** see the next section; `PUBLIC_ORIGIN`, `TOASCRIBE_HTTP_BIND` and `TOASCRIBE_TRUSTED_PROXY`
+  go in `.env` as above.
 
 ## Behind a reverse proxy
 
@@ -109,7 +151,7 @@ quiet site, of the first ten once ten minutes have passed). If they all carry th
 visitors share **one** rate-limit bucket (a few wrong logins from anyone make everyone wait) and every IP address in the
 audit log and the session list is your reverse proxy. Set the variable as described below, then run
 `docker compose up -d api proxy`. No warning is written when the variable is set, when two different addresses show up,
-or when an address is public. The setup wizard and Site Health will show the same finding later.
+or when an address is public. The system check in the setup wizard shows the same finding, and Site Health will later.
 
 **How the client address is found.** The stack reads `X-Forwarded-For` from the right and stops at the first address
 that is not the trusted proxy (Caddy's `trusted_proxies_strict`), so entries a visitor writes at the front are ignored.

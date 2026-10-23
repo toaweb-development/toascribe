@@ -46,8 +46,18 @@ const PUBLIC_PATHS = [
   '/auth/password/set',
 ]
 
+/**
+ * The setup wizard's calls (`/v1/setup/*`) are public too, in a different way: before the site is installed there is no
+ * session, and the one-time setup token in `X-Setup-Token` (a header a cross-site form cannot send) takes the place of the
+ * CSRF token. Asking for a session first would only be a call that answers `anonymous`.
+ */
+const PUBLIC_PREFIXES = ['/v1/setup/']
+
 export function isPublicPath(path: string): boolean {
-  return PUBLIC_PATHS.some((entry) => path === entry || path.endsWith(entry))
+  return (
+    PUBLIC_PATHS.some((entry) => path === entry || path.endsWith(entry)) ||
+    PUBLIC_PREFIXES.some((prefix) => path.includes(prefix))
+  )
 }
 
 /** The calls whose answer carries `csrfToken` (and so replaces the one held). */

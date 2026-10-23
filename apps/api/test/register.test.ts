@@ -1,5 +1,6 @@
 // Registration (K-005): only when the setting is on, the default role and never an administrator, a pending account until the
-// link is used, and an answer that does not depend on whether the username or the address is taken (K-004).
+// link is used, and an answer that does not depend on whether the address is taken (K-004). A taken username is told: 409
+// `username_taken`, as WordPress does (Tor, M0.4).
 import { AuthOptionsResponse } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
@@ -203,15 +204,13 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
   })
 
   describe('the same answer whatever exists (no enumeration)', () => {
-    it('answers a free name, a taken name, a taken address and both taken with the same status and body', async () => {
+    it('answers a free name and address, and a free name with a taken address, with the same status and body', async () => {
       await withRegistration(async () => {
         const taken = await env.createAccount({ username: unique('taken'), email: `${unique('taken')}@example.test` })
         const fresh = unique('fresh')
         const answers = await Promise.all([
           register(fresh, `${fresh}@example.test`),
-          register(taken.username, `${unique('other')}@example.test`),
           register(unique('another'), taken.email),
-          register(taken.username, taken.email),
         ])
         const shapes = await Promise.all(
           answers.map(async (res) => ({
@@ -224,6 +223,50 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
           expect(shape).toEqual(shapes[0])
         }
         expect(shapes[0]).toMatchObject({ status: 202, body: '{"status":"accepted"}' })
+      })
+    })
+
+    it('a taken username is told: 409 username_taken, whether or not the address is free or taken too', async () => {
+      await withRegistration(async () => {
+        const holder = await env.createAccount({
+          username: unique('holder'),
+          email: `${unique('holder')}@example.test`,
+        })
+        const other = await env.createAccount({ username: unique('other'), email: `${unique('other')}@example.test` })
+        const answers = await Promise.all([
+          register(holder.username, `${unique('free')}@example.test`),
+          register(holder.username.toUpperCase(), `${unique('free')}@example.test`),
+          // The address of another account, and the holder's own: still the same answer, so the address is not given away.
+          register(holder.username, other.email),
+          register(holder.username, holder.email),
+        ])
+        for (const res of answers) {
+          expect(res.status).toBe(409)
+          expect(await errorCode(res.clone())).toBe('username_taken')
+        }
+        const bodies = await Promise.all(
+          answers.map(async (res) => (await res.text()).replace(/"requestId":"[^"]*"/, '')),
+        )
+        for (const body of bodies) {
+          expect(body).toEqual(bodies[0])
+        }
+        expect(await accountsNamed(holder.username)).toHaveLength(1)
+      })
+    })
+
+    it('the owner of an address is told about the attempt, also when the username was taken (the answer is 409 either way)', async () => {
+      await withRegistration(async () => {
+        const holder = await env.createAccount({
+          username: unique('holder'),
+          email: `${unique('holder')}@example.test`,
+        })
+        const owner = await env.createAccount({ username: unique('owner'), email: `${unique('owner')}@example.test` })
+        expect((await register(holder.username, owner.email)).status).toBe(409)
+        expect(mailsTo(env, owner.email).map((mail) => mail.template)).toEqual(['account_exists'])
+        // Nothing to the visitor's side: the taken name gets no mail to a free address.
+        const address = `${unique('wanter')}@example.test`
+        expect((await register(holder.username, address)).status).toBe(409)
+        expect(mailsTo(env, address)).toHaveLength(0)
       })
     })
 
@@ -245,7 +288,9 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
       await withRegistration(async () => {
         const holder = await env.createAccount({ username: unique('holder') })
         const address = `${unique('wanter')}@example.test`
-        expect((await register(holder.username.toUpperCase(), address)).status).toBe(202)
+        const res = await register(holder.username.toUpperCase(), address)
+        expect(res.status).toBe(409)
+        expect(await errorCode(res)).toBe('username_taken')
         expect(mailsTo(env, address)).toHaveLength(0)
         expect(await env.query('select 1 from account where lower(email) = lower($1)', [address])).toHaveLength(0)
         expect(await accountsNamed(holder.username)).toHaveLength(1)
@@ -281,22 +326,22 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
       })
     })
 
-    it('two registrations for one name at once make one account and answer alike', async () => {
+    it('two registrations for one name at once make one account, and the second is told the name is taken', async () => {
       await withRegistration(async () => {
         const name = unique('twin')
         const results = await Promise.all([
           register(name, `${name}-a@example.test`),
           register(name, `${name}-b@example.test`),
         ])
-        expect(results.map((res) => res.status)).toEqual([202, 202])
+        expect(results.map((res) => res.status).sort()).toEqual([202, 409])
         expect(await accountsNamed(name)).toHaveLength(1)
       })
     })
 
-    it('takes about the same time for a free and a taken name', async () => {
+    it('takes about the same time for a free and a taken address', async () => {
       await withRegistration(async () => {
         const slow = env.variant({ minimumResponseMs: 300 })
-        const taken = await env.createAccount({ username: unique('timed') })
+        const taken = await env.createAccount({ username: unique('timed'), email: `${unique('timed')}@example.test` })
         const client = slow.client({ ip: ip() })
         const time = async (username: string, email: string) => {
           const started = performance.now()
@@ -308,7 +353,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
         for (let n = 0; n < 3; n += 1) {
           const name = unique('timedfree')
           free.push(await time(name, `${name}@example.test`))
-          used.push(await time(taken.username, `${unique('t')}@example.test`))
+          used.push(await time(unique('timedused'), taken.email))
         }
         const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0
         expect(Math.min(...free, ...used)).toBeGreaterThanOrEqual(290)

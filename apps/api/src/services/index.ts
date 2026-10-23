@@ -1,4 +1,6 @@
 import type { Database } from '@toascribe/db'
+import { createInstallService } from '@toascribe/install'
+import type { InstallMail, InstallService } from '@toascribe/install'
 import type { KeyRing } from '@toascribe/shared'
 import type { Logger } from 'pino'
 
@@ -22,8 +24,11 @@ import { createReauthenticator } from './reauth.ts'
 import { createSessionService } from './sessions.ts'
 import type { SessionService } from './sessions.ts'
 import { createAuditor, createSafeMail } from './support.ts'
+import { createSetupGate, createSetupService } from './setup.ts'
+import type { SetupService } from './setup.ts'
 import { createSystemService } from './system.ts'
 import type { SystemService } from './system.ts'
+import type { SetupGate } from '../lib/env.ts'
 import { createTotpChecker } from './totp.ts'
 
 export interface ServiceDeps {
@@ -63,6 +68,24 @@ export interface Services {
   readonly proxy: ProxyCheck
   readonly keyRing: KeyRing
   readonly mail: MailPort
+  /** The install service of the setup wizard (and of `toa core install`): the setup token, the saved steps, the install. */
+  readonly install: InstallService
+  /** The wizard's last act: install and sign the new administrator in. */
+  readonly setup: SetupService
+  /** In front of every setup route: 404 once installed, the setup token otherwise. */
+  readonly setupGate: SetupGate
+}
+
+/** The test mail of the wizard needs to see how its job ended; a mail port without a queue behind it cannot tell, and the check says so. */
+function installMailOf(mail: MailPort): InstallMail | undefined {
+  const jobState = mail.jobState?.bind(mail)
+  if (jobState === undefined) {
+    return undefined
+  }
+  return {
+    sendMail: (message, options) => mail.sendMail(message, options),
+    jobState,
+  }
 }
 
 export function createServices(deps: ServiceDeps): Services {
@@ -74,7 +97,22 @@ export function createServices(deps: ServiceDeps): Services {
   const minimumResponseMs = deps.minimumResponseMs ?? ACCOUNT_FLOW_MINIMUM_MS
   const totp = createTotpChecker({ clock, keyRing: deps.keyRing, logger: deps.logger })
   const reauth = createReauthenticator({ db, clock, limiter, audit })
+  const proxy = createProxyCheck({ trustedProxy: deps.trustedProxy ?? '', logger: deps.logger, clock })
+  const installMail = installMailOf(deps.mail)
+  const install = createInstallService({
+    db,
+    keyRing: deps.keyRing,
+    publicOrigin: deps.publicOrigin,
+    logger: deps.logger,
+    clock,
+    ...(installMail === undefined ? {} : { mail: installMail }),
+    signingKeyBytes: deps.signingKey.length,
+    proxyStatus: () => proxy.status(),
+  })
   return {
+    install,
+    setup: createSetupService({ db, install, sessions, clock, logger: deps.logger }),
+    setupGate: createSetupGate({ install, limiter, clock }),
     sessions,
     auth: createAuthService({ db, clock, sessions, limiter }),
     me: createMeService({ db, clock }),
@@ -115,7 +153,7 @@ export function createServices(deps: ServiceDeps): Services {
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     limiter,
-    proxy: createProxyCheck({ trustedProxy: deps.trustedProxy ?? '', logger: deps.logger, clock }),
+    proxy,
     keyRing: deps.keyRing,
     mail: deps.mail,
   }

@@ -240,6 +240,34 @@ const CASES: readonly MatrixCase[] = [
     json: {},
     expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403, administrator: 202 },
   },
+  // The setup wizard (M0.4): no role opens the token-gated routes, an administrator included. Only the setup token does, and
+  // the matrix sends none. After the install they would all be 404 (setup.test.ts).
+  {
+    route: 'GET /api/v1/setup/status',
+    method: 'GET',
+    path: '/api/v1/setup/status',
+    expected: { ...ok, anonymous: 200 },
+  },
+  ...(
+    [
+      ['GET /api/v1/setup/state', 'GET', '/api/v1/setup/state', undefined],
+      ['POST /api/v1/setup/token/verify', 'POST', '/api/v1/setup/token/verify', undefined],
+      ['GET /api/v1/setup/check', 'GET', '/api/v1/setup/check', undefined],
+      ['PUT /api/v1/setup/site', 'PUT', '/api/v1/setup/site', {}],
+      ['PUT /api/v1/setup/email', 'PUT', '/api/v1/setup/email', {}],
+      ['POST /api/v1/setup/email/test', 'POST', '/api/v1/setup/email/test', { to: 'me@example.test' }],
+      ['POST /api/v1/setup/email/skip', 'POST', '/api/v1/setup/email/skip', undefined],
+      ['POST /api/v1/setup/recovery-key', 'POST', '/api/v1/setup/recovery-key', undefined],
+      ['POST /api/v1/setup/install', 'POST', '/api/v1/setup/install', {}],
+    ] as const
+  ).map(([route, method, path, json]): MatrixCase => ({
+    route,
+    method,
+    path,
+    ...(json === undefined ? {} : { json }),
+    ownRefusal: true,
+    expected: { anonymous: 401, administrator: 401, editor: 401, author: 401, contributor: 401, subscriber: 401 },
+  })),
   // Routes that exist for this test: the matrix has to tell capabilities apart
   {
     route: 'GET /api/v1/test/manage-options',

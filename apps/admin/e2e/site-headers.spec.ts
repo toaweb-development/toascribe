@@ -1,7 +1,7 @@
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
 
 // What the public site sends with its pages (K-314). Like the admin, the site makes a CSP with a nonce for each response. What
-// differs from the admin is `img-src` (any https image, for themes), `frame-ancestors` ('self', for the live preview) and the
+// differs from the admin is `img-src` (any https image, for themes), `frame-ancestors` ('none' until the live preview of phase 3, Tor's decision) and the
 // cache rule (the page is private: a nonce that a shared cache hands to many is no nonce).
 
 const NONCE = /'nonce-([A-Za-z0-9+/=_-]+)'/
@@ -59,8 +59,8 @@ test('the CSP is strict where it matters, and open where a public site needs it'
   expect(directives.get('font-src')).toBe("'self'")
   // Images from any https host (themes show them) and small inline ones; nothing else is opened.
   expect(directives.get('img-src')).toBe("'self' data: https:")
-  // The admin frames the site for the live preview; no other site may.
-  expect(directives.get('frame-ancestors')).toBe("'self'")
+  // Nobody frames the site, the admin included, until the live preview of phase 3 (Tor's decision).
+  expect(directives.get('frame-ancestors')).toBe("'none'")
   expect(csp).not.toContain('unsafe-inline')
   expect(csp).not.toContain('unsafe-eval')
   expect(csp).not.toContain('upgrade-insecure-requests')
@@ -70,7 +70,7 @@ test('the other security headers, and a page that no shared cache may keep', asy
   const headers = (await request.get('/')).headers()
   expect(headers['x-content-type-options']).toBe('nosniff')
   expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
-  expect(headers['x-frame-options']).toBe('SAMEORIGIN')
+  expect(headers['x-frame-options']).toBe('DENY')
   expect(headers['permissions-policy']).toContain('camera=()')
   expect(headers['cache-control']).toBe('private, no-cache')
   // The public site is meant to be found.

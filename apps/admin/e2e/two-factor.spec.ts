@@ -85,7 +85,7 @@ test('set up on the screen, keep the recovery codes, then log in with a code fro
 
   // Log out and in again: now the code is asked for, and the redirect target is kept through the step.
   await signOut(page)
-  await page.goto('/admin/login?redirectTo=%2Fadmin%2Fsetup')
+  await page.goto('/admin/login?redirectTo=%2Fadmin%2Flogout')
   await fillLogin(page, user)
   const heading = page.getByRole('heading', { level: 1, name: 'Bekreft innloggingen' })
   await expect(heading).toBeVisible()
@@ -107,7 +107,7 @@ test('set up on the screen, keep the recovery codes, then log in with a code fro
   await expectNoAxeViolations(page, 'second step with a wrong code')
   await page.getByLabel('Kode fra appen').fill(totpCode(secret, Date.now() + NEXT_STEP_MS))
   await page.getByRole('button', { name: 'Bekreft' }).click()
-  await expect(page).toHaveURL(/\/admin\/setup$/)
+  await expect(page).toHaveURL(/\/admin\/logout$/)
 })
 
 test('a recovery code works instead of the app, and a warning comes when few are left', async ({

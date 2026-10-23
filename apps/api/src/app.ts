@@ -21,6 +21,7 @@ import { createAuthApp } from './routes/auth.ts'
 import { createHealthApp } from './routes/health.ts'
 import { createMeApp } from './routes/me.ts'
 import { createSecurityApp } from './routes/security.ts'
+import { createSetupApp } from './routes/setup.ts'
 import { createSystemApp } from './routes/system.ts'
 import { createServices } from './services/index.ts'
 
@@ -121,7 +122,7 @@ export function buildApp(deps: AppDeps) {
 
   // CORS stays off (PLAN.md, «API-versjonering»): the browser calls the api from its own origin only. CSRF is checked per
   // route by the policy guard (middleware/policy.ts), because it depends on the route's policy and not on the path.
-  app.use(authContext({ sessions: services.sessions, publicOrigin }))
+  app.use(authContext({ sessions: services.sessions, publicOrigin, setupGate: services.setupGate }))
   // Nothing under /auth or /me is cached by a browser or a proxy (security §3, §7). The guard adds the same header for
   // every route that needs a session, so an error response from either carries it too.
   const noStore: MiddlewareHandler<AppEnv> = async (c, next) => {
@@ -132,12 +133,16 @@ export function buildApp(deps: AppDeps) {
   app.use('/api/v1/me', noStore)
   app.use('/api/v1/me/*', noStore)
   app.use('/api/v1/system/*', noStore)
+  // Whether the site is installed is the one answer that must never come from a cache (the Nuxt apps' middleware and the wizard
+  // read it), and the setup steps are as private as the pages they serve.
+  app.use('/api/v1/setup/*', noStore)
 
   app.route('/api', createHealthApp({ pool: deps.pool, version: deps.version }))
   app.route('/api/v1', createAuthApp(services))
   app.route('/api/v1', createMeApp(services))
   app.route('/api/v1', createSecurityApp(services))
   app.route('/api/v1', createSystemApp(services))
+  app.route('/api/v1', createSetupApp(services))
 
   const document = { openapi: '3.1.0', info: { title: 'toascribe API', version: deps.version } } as const
   app.get(OPENAPI_PATH, policyGuard(publicAccess()), (c) =>

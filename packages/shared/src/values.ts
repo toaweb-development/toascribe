@@ -42,8 +42,11 @@ export const MFA_CREDENTIAL_TYPE = ['totp', 'passkey', 'oidc'] as const
 export const MfaCredentialType = z.enum(MFA_CREDENTIAL_TYPE)
 export type MfaCredentialType = z.infer<typeof MfaCredentialType>
 
-/** login_attempt.action: the rate-limited flows (K-026, K-313). */
-export const LOGIN_ATTEMPT_ACTION = ['login', 'mfa', 'register', 'password_lost', 'comment'] as const
+/**
+ * login_attempt.action: the rate-limited flows (K-026, K-313). `setup` counts the guesses at the one-time setup token
+ * (M0.4), per address, so they cannot use up the allowance of real logins.
+ */
+export const LOGIN_ATTEMPT_ACTION = ['login', 'mfa', 'register', 'password_lost', 'comment', 'setup'] as const
 export const LoginAttemptAction = z.enum(LOGIN_ATTEMPT_ACTION)
 export type LoginAttemptAction = z.infer<typeof LoginAttemptAction>
 
@@ -134,3 +137,17 @@ export type PrivacyRequestStatus = z.infer<typeof PrivacyRequestStatus>
 export const CONSENT_CATEGORY = ['necessary', 'preferences', 'statistics', 'marketing'] as const
 export const ConsentCategory = z.enum(CONSENT_CATEGORY)
 export type ConsentCategory = z.infer<typeof ConsentCategory>
+
+/**
+ * site_secret.purpose (M0.4): the site's one-of-a-kind secrets, of which only a hash is stored. `setup_token` is the
+ * one-time token that opens /setup until the site is installed (deleted by the install); `backup_recovery_key` is the
+ * verifier of the recovery key the first administrator saves (PLAN «Setup-wizarden» step 6).
+ */
+export const SITE_SECRET_PURPOSE = ['setup_token', 'backup_recovery_key'] as const
+export const SiteSecretPurpose = z.enum(SITE_SECRET_PURPOSE)
+export type SiteSecretPurpose = z.infer<typeof SiteSecretPurpose>
+
+/** admin_notice.level: WordPress' admin notice types (notice-error, -warning, -success, -info). */
+export const ADMIN_NOTICE_LEVEL = ['error', 'warning', 'success', 'info'] as const
+export const AdminNoticeLevel = z.enum(ADMIN_NOTICE_LEVEL)
+export type AdminNoticeLevel = z.infer<typeof AdminNoticeLevel>

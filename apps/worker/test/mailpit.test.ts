@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { PGBOSS_APP_OPTIONS } from '@toascribe/db'
+import { PGBOSS_APP_OPTIONS, createMailProducer } from '@toascribe/db'
 import { EMAIL_JOB_OPTIONS, EMAIL_QUEUE, sealEmailMessage } from '@toascribe/shared'
 import type { EmailMessage } from '@toascribe/shared'
 import { PgBoss } from 'pg-boss'
@@ -179,6 +179,36 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
       const test = await waitForMessage(m(), tester)
       expect(test.Subject).toBe('[Bloggen på Østlandet] Test av e-post')
       expect(test.Text).toContain('Når du kan lese den, fungerer utsendingen av e-post.')
+    })
+
+    it('sends the notice that `toa user mfa-reset` queues, in bokmål, with the sentence for the action', async () => {
+      const to = uniqueAddress('mfareset')
+      // Queued by the producer the cli uses (packages/db), not by the test's own pg-boss: the whole path in one test.
+      const producer = createMailProducer({
+        connectionString: env.database.appUrl,
+        applicationName: 'toascribe-cli-test',
+        logger: log.logger,
+      })
+      try {
+        const receipt = await producer.sendMail({
+          template: 'security_notice',
+          to,
+          data: { username: 'Åse', action: 'mfa_reset' },
+        })
+        expect(receipt.jobId).toEqual(expect.any(String))
+        const message = await waitForMessage(m(), to)
+        expect(message.Subject).toBe('[Bloggen på Østlandet] Sikkerhetsendring på kontoen din')
+        expect(message.Text).toContain('Hei Åse,')
+        expect(message.Text).toContain(
+          'Tofaktor og gjenopprettingskoder er fjernet fra kontoen din av en administrator, og du er logget ut overalt.',
+        )
+        expect(message.Text).not.toContain('mfa_reset')
+        if (receipt.jobId !== null) {
+          expect((await waitForJob(receipt.jobId, ['completed'])).state).toBe('completed')
+        }
+      } finally {
+        await producer.stop()
+      }
     })
 
     it('refuses a payload that is not valid when the job is fetched: nothing is sent and it is not retried', async () => {

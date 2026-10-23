@@ -53,6 +53,22 @@ export function describeApiError(error: unknown, t: Translate): string {
       return t('error.sameEmail')
     case 'email_unavailable':
       return t('error.emailUnavailable')
+    case 'setup_token_required':
+      return t('error.setupTokenRequired')
+    case 'invalid_setup_token':
+      return t('error.invalidSetupToken')
+    case 'already_installed':
+      return t('error.alreadyInstalled')
+    case 'step_missing':
+      return t('error.stepMissing')
+    case 'username_taken':
+      return t('error.usernameTaken')
+    case 'email_taken':
+      return t('error.emailTaken')
+    case 'content_exists':
+      return t('error.contentExists')
+    case 'recovery_key_mismatch':
+      return t('error.recoveryKeyMismatch')
     case 'origin_invalid':
       return t('error.originInvalid')
     case 'validation_error':

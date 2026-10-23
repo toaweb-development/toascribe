@@ -1,0 +1,3 @@
+<!-- wp:paragraph -->
+<p>Velkommen til WordPress. Dette er ditt første innlegg. Rediger det eller slett det og start skrivingen!</p>
+<!-- /wp:paragraph -->

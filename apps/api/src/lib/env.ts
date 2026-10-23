@@ -19,9 +19,21 @@ export interface AppEnv {
   }
 }
 
+/** What the policy guard asks about the setup wizard's routes (see `SetupTokenPolicy`). Made by services/setup.ts. */
+export interface SetupGate {
+  /** Throws 404 when the site is installed: from then on a setup route does not exist, whatever the caller sends. */
+  assertOpen: () => Promise<void>
+  /**
+   * Checks the setup token: 401 without one or with a wrong one, 429 when the address has guessed too often. `ip` is the
+   * client address as `getClientIp` gives it.
+   */
+  authorize: (input: { readonly token: string | undefined; readonly ip: string }) => Promise<void>
+}
+
 export interface RequestSecurity {
   /** The origin visitors use (PUBLIC_ORIGIN), without a path. */
   readonly publicOrigin: string
   /** The CSRF token that belongs to a session id. */
   readonly csrfTokenFor: (sessionId: string) => string
+  readonly setupGate: SetupGate
 }

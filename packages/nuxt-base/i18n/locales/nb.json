@@ -33,6 +33,14 @@
     "sameEmail": "Dette er allerede e-postadressen din.",
     "emailUnavailable": "Denne e-postadressen kan ikke brukes. Prøv en annen.",
     "originInvalid": "Forespørselen ble avvist fordi den kom fra en annen adresse. Åpne siden på nytt fra adressen du vanligvis bruker.",
+    "setupTokenRequired": "Oppsettskoden mangler. Lim den inn og prøv igjen.",
+    "invalidSetupToken": "Oppsettskoden stemmer ikke. Kopier den på nytt fra loggen til api-tjenesten, eller lag en ny med «toa core setup-token».",
+    "alreadyInstalled": "Nettstedet er allerede installert. Gå til innloggingen.",
+    "stepMissing": "Et av de foregående stegene er ikke lagret. Gå tilbake og fullfør det.",
+    "usernameTaken": "Brukernavnet er tatt. Velg et annet.",
+    "emailTaken": "E-postadressen brukes av en annen konto. Skriv inn en annen.",
+    "contentExists": "Databasen har allerede innhold som installasjonen ville ha laget. Ingenting ble endret. Kontakt den som drifter nettstedet.",
+    "recoveryKeyMismatch": "Gjenopprettingsnøkkelen på skjermen er ikke den siste som ble laget. Lag en ny nøkkel, lagre den og prøv igjen.",
     "validation": "Noe i skjemaet er ikke gyldig. Sjekk feltene og prøv igjen.",
     "mfaFinished": "Tofaktorsteget er allerede gjort eller har gått ut. Logg inn på nytt.",
     "enrolmentUnreadable": "Den lagrede nøkkelen kunne ikke leses. Start oppsettet på nytt.",
@@ -47,5 +55,16 @@
       "minutes": "{n} minutt | {n} minutter",
       "hours": "{n} time | {n} timer"
     }
+  },
+  "errorPage": {
+    "notFound": {
+      "heading": "Siden finnes ikke",
+      "text": "Adressen er feil, eller siden er flyttet eller fjernet. Gå til forsiden og finn den derfra."
+    },
+    "failed": {
+      "heading": "Siden kunne ikke vises",
+      "text": "Noe gikk galt hos oss da siden skulle vises. Prøv igjen om litt."
+    },
+    "home": "Gå til forsiden"
   }
 }

@@ -22,9 +22,18 @@ import { COMMENT_STATUS } from './values.ts'
 // - WordPress' nb_NO translation (translate.wordpress.org, wp/dev and wp/dev/admin, read 2026-10-21): date format
 //   `j. F Y`, time format `H:i`, week starting on Monday, time zone Europe/Oslo.
 //
-// Left out: the pingback, trackback and ping-service options and post-by-email (PLAN drops them), what only the
-// installer knows (`admin_email`, `siteurl`, `home`: M0.4), the Writing page (`default_category` needs a term, M0.4
-// or phase 1), and internal options that have no field on a settings page (`medium_large_size_*`, `fresh_site`, ...).
+// Left out: the pingback, trackback and ping-service options and post-by-email (PLAN drops them), `siteurl` and `home`
+// (the site's address is PUBLIC_ORIGIN in .env, M0.4: one source of truth, which the proxy and the cookies need before
+// the database is read), the rest of the Writing page (phase 1), and internal options that have no field on a settings
+// page (`medium_large_size_*`, `fresh_site`, ...).
+//
+// Installation (M0.4): `admin_email`, `default_category` and `wp_page_for_privacy_policy` are WordPress options that the
+// install writes (null until then). `installed` and `installed_at` are toascribe's own: the flag that closes /setup
+// (PLAN «Installasjon og drift»: «låses med et flagg i databasen»). They are in READ_ONLY_SETTING_KEYS: only the install
+// service writes them, never a settings page, `toa option` or an import, because `installed = false` would reopen /setup
+// to anyone holding a setup token. `smtp_verified_at` (set by a passed test mail of the setup wizard) is read-only for the
+// same reason: it is what lets the wizard's e-mail step count as done. Secrets of the install (the setup token, the recovery key) are not settings at all:
+// they are hashes in the `site_secret` table, which no settings reader sees.
 //
 // toascribe's own keys, which WordPress has no option for (M0.3, PLAN «Innlogging og kontoer»; Tor 2026-10-21): session
 // lifetimes, login limits, two-factor per role, IP and spam retention, the mail sender and SMTP, and the admin notices.
@@ -82,6 +91,8 @@ export const CoreSettings = z.object({
   blogname: text,
   blogdescription: text,
   site_icon: z.uuid().nullable(),
+  /** The administration e-mail address (WordPress: the first administrator's, set by the installer). Null until installed. */
+  admin_email: z.email().max(254).nullable(),
   users_can_register: z.boolean(),
   /** The role a registered account gets. Never `administrator` (Tor): registration must not hand out the site. */
   default_role: machineName.refine((slug) => slug !== 'administrator', {
@@ -96,6 +107,10 @@ export const CoreSettings = z.object({
   time_format: z.string().min(1).max(100),
   /** 0 is Sunday, 1 Monday. */
   start_of_week: z.int().min(0).max(6),
+
+  // Settings → Writing
+  /** The category a post gets when it has none (WordPress: «Ukategorisert», made by the installer). A term uuid. */
+  default_category: z.uuid().nullable(),
 
   // Settings → Reading
   show_on_front: z.enum(['posts', 'page']),
@@ -152,6 +167,16 @@ export const CoreSettings = z.object({
   category_base: urlBase,
   tag_base: urlBase,
 
+  // Settings → Privacy
+  /** The privacy policy page (WordPress: the draft «Personvernerklæring» the installer makes). A content uuid. */
+  wp_page_for_privacy_policy: z.uuid().nullable(),
+
+  // Installation (M0.4), read-only: see READ_ONLY_SETTING_KEYS
+  /** True once the install transaction has committed. /setup and every setup endpoint answer 404 from then on. */
+  installed: z.boolean(),
+  /** When it was installed, as an ISO 8601 UTC timestamp; null before. */
+  installed_at: z.iso.datetime().nullable(),
+
   // Login and sessions (M0.3)
   /** Session lifetime without «Remember me», in days (WordPress: 2). */
   session_lifetime_days: between(1, 30),
@@ -203,6 +228,12 @@ export const CoreSettings = z.object({
   smtp_username: line(320).nullable(),
   /** Encrypted with the site key, never plain text, and never sent back to a client (app-config 3b). */
   smtp_password: EncryptedValue.nullable(),
+  /**
+   * When a test mail went through with exactly the SMTP settings now saved (M0.4, read-only: only the install service writes
+   * it). The setup wizard's e-mail step counts as done on this or on the skip notice, never on the saved host alone; saving
+   * the SMTP settings again clears it. Null: never verified, or changed since.
+   */
+  smtp_verified_at: z.iso.datetime().nullable(),
   /** E-mail the administrators when an account is registered or made (K-017). */
   notify_admin_new_user: z.boolean(),
   /** E-mail the administrators when a user changes or resets a password (K-017). */
@@ -217,6 +248,7 @@ export const CORE_SETTINGS: CoreSettings = {
   blogname: '', // Tor (WordPress: the installer's title)
   blogdescription: '',
   site_icon: null,
+  admin_email: null, // set by the install
   users_can_register: false,
   default_role: 'subscriber',
   locale: 'nb', // Tor (WordPress: WPLANG unset, en_US)
@@ -225,6 +257,9 @@ export const CORE_SETTINGS: CoreSettings = {
   date_format: 'j. F Y', // nb_NO
   time_format: 'H:i', // nb_NO
   start_of_week: 1, // nb_NO and WordPress
+
+  // Writing
+  default_category: null, // set by the install («Ukategorisert»)
 
   // Reading
   show_on_front: 'posts',
@@ -274,6 +309,13 @@ export const CORE_SETTINGS: CoreSettings = {
   category_base: '',
   tag_base: '',
 
+  // Privacy
+  wp_page_for_privacy_policy: null, // set by the install (the draft privacy page)
+
+  // Installation
+  installed: false,
+  installed_at: null,
+
   // Login and sessions
   session_lifetime_days: 2, // Tor, as WordPress
   session_lifetime_remember_days: 14, // Tor, as WordPress
@@ -298,9 +340,16 @@ export const CORE_SETTINGS: CoreSettings = {
   smtp_secure: null,
   smtp_username: null,
   smtp_password: null,
+  smtp_verified_at: null,
   notify_admin_new_user: true, // K-017
   notify_admin_password_change: true, // K-017
 }
 
 /** Every core setting key, in the order of the settings pages. */
 export const CORE_SETTING_KEYS: readonly CoreSettingKey[] = CoreSettings.keyof().options
+
+/**
+ * Settings that only the install service writes (inside the install transaction, under the install lock). A settings
+ * API, `toa option` and an importer must refuse them; a settings API may still show them.
+ */
+export const READ_ONLY_SETTING_KEYS: readonly CoreSettingKey[] = ['installed', 'installed_at', 'smtp_verified_at']

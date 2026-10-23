@@ -23,6 +23,7 @@ This file and the README come first where they are more specific.
 | `apps/site`, `apps/admin`      | `@toascribe/site`, `@toascribe/admin` | Nuxt 4. The admin has `baseURL: '/admin'`.                                   |
 | `packages/db`                  | `@toascribe/db`                       | Drizzle client, migrations, the migration runner, `PGBOSS_APP_OPTIONS`.      |
 | `packages/shared`              | `@toascribe/shared`                   | Zod schemas and types. Every API shape is defined here once.                 |
+| `packages/install`             | `@toascribe/install`                  | Install service (setup token, steps, install). The api and the cli call it.  |
 | `packages/auth`                | `@toascribe/auth`                     | Password hashing (argon2id, WordPress hash import) and one-time tokens.      |
 | `packages/http`                | `@toascribe/http`                     | `safeFetch`: an HTTP client that refuses private addresses (SSRF).           |
 | `packages/nuxt-base`           | `@toascribe/nuxt-base`                | The Nuxt layer both apps share: Nuxt UI, i18n, API layer and plugin, config. |
@@ -50,10 +51,20 @@ separate step: say so.
   The Nuxt packages do not use the condition (Nuxt UI's own dependencies export a `source` condition too, and
   TypeScript or Vite would then take their `.ts` files): `packages/nuxt-base/nuxt.config.ts` has an `alias` from each
   library a Nuxt package imports to its `src/index.ts`, which the typecheck, the Vite build and the Nitro build all use.
-  A Nuxt package therefore needs no `build:deps`, and `workspaceConcurrency` is not set. A test checks both.
+  A Nuxt package therefore needs no `build:deps`, and `workspaceConcurrency` is not set. A test checks both. Only the root
+  `test` script runs the packages one at a time (`--workspace-concurrency=1`), because the database tests of db, api, worker and
+  cli share one server-wide role lock; a test checks that too.
 - **No `process.env` outside `config.ts`** (each app has one; `packages/db/src/migrate.ts` is the entry point that reads
   `MIGRATION_DATABASE_URL`). Config is validated with Zod at start-up and errors name variables, never values.
 - **No secrets in the repo, an image, a compose file or a workflow.** `docker/.env.example` lists names with empty values.
+- **One token is logged, on purpose: the setup token.** Everywhere else a token, a password or a key stays out of every log.
+  At start-up, while the site is not installed, the api writes a new one-time setup token to the log, once, at `warn`
+  (`announceSetupToken` in `apps/api/src/services/setup.ts`), because that is how the person who started the stack gets
+  into `/admin/setup`. Only its hash is stored, a restart or `toa core setup-token` replaces it, and the install deletes it.
+  It travels in the `X-Setup-Token` header, never in a query string the api or the proxy would log. The address that the log
+  and `toa core setup-token` print carries it in the URL fragment (`/admin/setup#token=...`), which a browser never sends to a
+  server; the wizard reads it from there. Do not add a second place
+  that logs a token, and keep it out of every field of the log line (the test counts exactly one occurrence).
 - **TypeScript.** Strict, no `any`, no `@ts-ignore`, no `enum`, no `console.*`; pino for logs. Tests live in `test/`.
 - **Frontend.** Shared Nuxt code (API layer, API plugin, status component, runtime config, head basics, i18n setup) lives in
   `packages/nuxt-base`, once; an app keeps only what differs. Screen text goes through i18n: bokmål in
@@ -65,8 +76,10 @@ separate step: say so.
 
 The site and the admin share one security setup in `packages/nuxt-base` (`nuxt-security`: a CSP with a nonce per response, no
 `unsafe-inline`, no `unsafe-eval`, HSTS from `X-Forwarded-Proto`). Each app adds only what differs: `img-src` (the site allows
-`https:`, themes show pictures from other hosts), `frame-ancestors` (the site `'self'`, for the live preview in the admin; the
-admin `'none'`), `X-Frame-Options`, and the cache rule. Do not repeat a shared directive in an app: layers concatenate arrays.
+`https:`, themes show pictures from other hosts), `frame-ancestors` (`'none'` on both, with `X-Frame-Options: DENY`: by Tor's
+decision nothing is framed, the admin showing the site included, until the live preview of «Tilpass» in phase 3, which opens
+the site to `'self'` and `SAMEORIGIN`), and the cache rule. Do not repeat a shared directive in an app: layers concatenate
+arrays.
 
 - **A nonce and a page cache do not mix.** The nonce is in the HTML and in the header of one response. A shared cache that hands
   the same page to many visitors hands them a nonce anyone can read, and a known nonce protects nothing. So rendered pages are
@@ -115,7 +128,9 @@ admin `'none'`), `X-Frame-Options`, and the cache rule. Do not repeat a shared d
 - **One exception to "only the proxy publishes a port":** the `mailpit` compose profile (development only, off by default,
   nothing depends on it) publishes its web page on `127.0.0.1` only, through `TOASCRIBE_MAILPIT_PORT`; the SMTP port stays
   on the internal network. A test pins the loopback address. The worker's mail settings come from `SMTP_*` and
-  `MAIL_FROM_*` in `docker/.env`; `TOASCRIBE_ENCRYPTION_KEY` and `TOASCRIBE_SIGNING_KEY` are required in compose.
+  `MAIL_FROM_*` in `docker/.env`. The five secrets (three passwords, `TOASCRIBE_ENCRYPTION_KEY`, `TOASCRIBE_SIGNING_KEY`)
+  have an empty default in compose (no `:?`), so `toa core gen-env` can run before `.env` exists; the postgres entrypoint
+  and the app configs refuse empty values.
 - CI (`.github/workflows/`): third-party actions are pinned to a full commit SHA with the version in a comment, checked
   against the action's own repository; `permissions: contents: read` at the top; `persist-credentials: false` wherever
   third-party code runs; event values go through `env:`, never inline `${{ }}` in a script. Run `actionlint` on every
@@ -133,8 +148,11 @@ admin `'none'`), `X-Frame-Options`, and the cache rule. Do not repeat a shared d
 
 Spor: ingen ennå — produkt; tag ved merge (VERSIONING §5)
 
-toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml`, no server and no image
-push yet. `release.yml` tags `vX.Y.Z` and creates the GitHub Release when a new version reaches `main`. Version source
+toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml` and no server. When a new
+version reaches `main`, `release.yml` builds the six images, scans them with Trivy and pushes them to
+`ghcr.io/toaweb/toascribe-*` (`packages: write` on the `images` job only), then tags `vX.Y.Z` and creates the GitHub
+Release; a failed scan leaves no image and no tag. `ci.yml` runs the same build, scan and copy without a push on every
+pull request (`release-dry-run`). Version source
 of truth: the root `package.json`; every workspace `package.json` and the `TOASCRIBE_VERSION` default in
 `docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example` mirror it (tests check this). A change to
 what is shipped bumps the version and adds a CHANGELOG entry in the same branch. Tests are not shipped: a change only to

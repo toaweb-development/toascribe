@@ -108,6 +108,9 @@ export default defineNuxtConfig({
     public: {
       // Browser: the API is same-origin and Caddy routes /api/** to it (env NUXT_PUBLIC_API_BASE).
       apiBase: '/api',
+      // True in the app that has the setup wizard page (the admin); the others send visitors to it until the site is installed
+      // (app/middleware/setup-redirect.global.ts).
+      hostsSetupWizard: false,
     },
   },
 

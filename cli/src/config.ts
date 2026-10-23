@@ -1,5 +1,7 @@
 // All environment variables are read here and nowhere else in the cli (typescript §9). The cli parses lazily, per
 // command, so `toa --version` needs no environment at all. A bad value is reported by variable name, never by value.
+import { createKeyRing, keyMaterialEnv, oldEncryptionKeysEnv } from '@toascribe/shared'
+import type { KeyRing } from '@toascribe/shared'
 import { z } from 'zod'
 
 export type EnvSource = Readonly<Record<string, string | undefined>>
@@ -59,4 +61,54 @@ export function loadAppDatabaseConfig(env: EnvSource = process.env): AppDatabase
     throw new ConfigError(parsed.error.issues)
   }
   return parsed.data
+}
+
+const SiteDatabaseEnv = AppDatabaseEnv.extend({
+  // The address visitors use: where the setup wizard lives, and what the default content's links are made from.
+  PUBLIC_ORIGIN: z.url(),
+  // The e-mail defaults of the worker (docker/.env.example). `core install` needs to know only whether they are there.
+  SMTP_HOST: z.string().trim().default(''),
+  MAIL_FROM_ADDRESS: z.string().trim().default(''),
+})
+
+export type SiteDatabaseConfig = z.infer<typeof SiteDatabaseEnv>
+
+/** What `toa core install` and `toa core setup-token` need: the app role's URL, the site's address and the log level. */
+export function loadSiteDatabaseConfig(env: EnvSource = process.env): SiteDatabaseConfig {
+  const parsed = SiteDatabaseEnv.safeParse(env)
+  if (!parsed.success) {
+    throw new ConfigError(parsed.error.issues)
+  }
+  return parsed.data
+}
+
+const KeyedDatabaseEnv = AppDatabaseEnv.extend({
+  // The key ring seals the token of a one-time link before the mail job is stored (a mail with a link needs it, a notice does not).
+  TOASCRIBE_ENCRYPTION_KEY: keyMaterialEnv,
+  TOASCRIBE_ENCRYPTION_KEY_VERSION: z.coerce.number().int().min(1).max(9999).default(1),
+  TOASCRIBE_ENCRYPTION_OLD_KEYS: oldEncryptionKeysEnv,
+})
+
+export type KeyedDatabaseConfig = z.infer<typeof KeyedDatabaseEnv>
+
+/** The app role's URL and the encryption key: for the commands that queue a mail with a one-time link. Read only on that path. */
+export function loadKeyedDatabaseConfig(env: EnvSource = process.env): KeyedDatabaseConfig {
+  const parsed = KeyedDatabaseEnv.safeParse(env)
+  if (!parsed.success) {
+    throw new ConfigError(parsed.error.issues)
+  }
+  return parsed.data
+}
+
+/** The key ring of a keyed config, as the api and the worker build theirs. */
+export function keyRingOf(config: KeyedDatabaseConfig): Promise<KeyRing> {
+  return createKeyRing(
+    { version: config.TOASCRIBE_ENCRYPTION_KEY_VERSION, key: config.TOASCRIBE_ENCRYPTION_KEY },
+    config.TOASCRIBE_ENCRYPTION_OLD_KEYS,
+  )
+}
+
+/** Which of `names` are set (not empty) in the environment. Names only: `core gen-env` must not touch the values. */
+export function namesSet(names: readonly string[], env: EnvSource = process.env): string[] {
+  return names.filter((name) => (env[name] ?? '').trim() !== '')
 }

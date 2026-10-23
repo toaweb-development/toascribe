@@ -1,10 +1,11 @@
 // Lost password, the first password of a new account, and registration (K-003, K-004, K-005). All of them end in a one-time link
 // (`account_token`, 24 hours, single use, bound to one purpose).
 //
-// None of the public ones may tell whether a username or an address has an account (K-004): they answer the same status and
-// body, take about the same time (padded to a minimum, see lib/timing.ts), and when an account does exist the difference is
-// only a mail in its owner's inbox.
-import { generateToken, hashPassword, hashToken } from '@toascribe/auth'
+// None of the public ones may tell whether an address (or, for a lost password, a login) has an account (K-004): they answer
+// the same status and body, take about the same time (padded to a minimum, see lib/timing.ts), and when an account does exist
+// the difference is only a mail in its owner's inbox. The one exception, by Tor's decision (M0.4): registration says 409
+// `username_taken` for a name that is taken, as WordPress does; a name is public anyway.
+import { WEAK_PASSWORD_MESSAGE, generateToken, hashPassword, hashToken, isTooObvious } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 import { CoreSettings, ONE_TIME_LINK_HOURS } from '@toascribe/shared'
 import type { AccountTokenPurpose, AuthOptionsResponse } from '@toascribe/shared'
@@ -54,10 +55,20 @@ export class RegistrationClosedError extends AppError {
   }
 }
 
+/**
+ * The username is taken. As WordPress does it, registration says so (409): the visitor has to choose another name, and a name is
+ * not a secret (the author archive shows it). The address is another matter and is never revealed, see `register`.
+ */
+export class UsernameTakenError extends AppError {
+  constructor() {
+    super(409, 'username_taken', 'That username is taken. Choose another.')
+  }
+}
+
 /** The new password is a choice the site refuses (the same as the username or the address). */
 export class WeakPasswordError extends AppError {
   constructor() {
-    super(400, 'weak_password', 'Choose a password that is not your username or your e-mail address.')
+    super(400, 'weak_password', WEAK_PASSWORD_MESSAGE)
   }
 }
 
@@ -79,15 +90,6 @@ export function nicenameFor(username: string): string {
     .replace(/[^a-z0-9_-]+/g, '-')
     .replace(/^-+|-+$/g, '')
   return slug === '' ? 'user' : slug
-}
-
-/** The new password must not be the account's own username or address. (The length rule is NewPassword in the schema.) */
-export function isTooObvious(
-  password: string,
-  account: { readonly username: string; readonly email: string },
-): boolean {
-  const lower = password.toLowerCase()
-  return lower === account.username.toLowerCase() || lower === account.email.toLowerCase()
 }
 
 export interface PublicFlows {
@@ -216,7 +218,7 @@ export function createPublicFlows(options: {
   async function createRegistration(
     input: { username: string; email: string },
     role: { id: string },
-  ): Promise<{ accountId: string; token: string } | 'taken'> {
+  ): Promise<{ accountId: string; token: string } | 'username_taken' | 'email_taken'> {
     try {
       return await inTransaction(db, async (tx) => {
         const now = clock()
@@ -232,9 +234,10 @@ export function createPublicFlows(options: {
         return { accountId, token }
       })
     } catch (err) {
-      // Two registrations for the same name at once: the second is «taken», and answers like any other.
-      if (uniqueViolation(err) !== undefined) {
-        return 'taken'
+      // Two registrations for the same name (or address) at once: the second finds it taken.
+      const constraint = uniqueViolation(err)
+      if (constraint !== undefined) {
+        return constraint === 'uq_account_email' ? 'email_taken' : 'username_taken'
       }
       throw err
     }
@@ -298,24 +301,26 @@ export function createPublicFlows(options: {
         })
         assertNotDelayed(ticket.status, clock())
 
-        if (byEmail !== undefined) {
-          // The address has an account already. Its owner is told by mail; the visitor is told nothing (K-004). An account
-          // that is still waiting for its first password gets the link again, a disabled one is left alone.
-          if (byEmail.status === 'disabled') {
-            return
-          }
+        // The owner of the address, if there is one, is told about the attempt by mail, whatever the visitor is answered (Tor,
+        // M0.4): the visitor learns nothing from it. A disabled account is left alone; one that is still waiting for its first
+        // password gets the welcome link again.
+        if (byEmail !== undefined && byEmail.status !== 'disabled') {
           if (byEmail.status === 'pending') {
             const token = await inTransaction(db, (tx) => issueLink(tx, byEmail.id, 'set_password'))
             await mail({ template: 'set_password', to: byEmail.email, data: { username: byEmail.username, token } })
           } else {
             await mail({ template: 'account_exists', to: byEmail.email, data: { username: byEmail.username } })
           }
-          return
         }
-        if (matches.length > 0) {
-          // The username is taken, the address is new. Nothing can be made and nothing is sent: a mail to the visitor's
-          // address would tell them the name is taken (see the report: this is the one thing registration cannot hide
-          // without taking the choice of username away).
+
+        // The username comes before the address: a taken name is answered 409 whether or not the address is taken too. Were the
+        // address looked at first, «taken address» (202) and «free address» (409) with a name known to be taken would tell
+        // anyone which addresses have an account.
+        if (matches.some((account) => account.username.toLowerCase() === input.username.toLowerCase())) {
+          throw new UsernameTakenError()
+        }
+        if (byEmail !== undefined) {
+          // Same 202 as for a new account (K-004).
           return
         }
 
@@ -335,8 +340,12 @@ export function createPublicFlows(options: {
         }
 
         const created = await createRegistration(input, role)
-        if (created === 'taken') {
+        if (created === 'email_taken') {
+          // Two registrations for the same address at once: answered as a taken address always is.
           return
+        }
+        if (created === 'username_taken') {
+          throw new UsernameTakenError()
         }
         await audit(db, ctx, {
           actor: { id: created.accountId, username: input.username },
