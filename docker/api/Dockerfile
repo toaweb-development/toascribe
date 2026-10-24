@@ -39,7 +39,10 @@ FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 
 # Non-root user. npm, npx, corepack and yarn are not needed to run node dist/*.js and carry their own CVEs.
-RUN addgroup -S -g 10001 app \
+# apk upgrade: every build takes all security fixes Alpine has published since the base image was built, not only
+# the one a scan found that day. The image scan before publishing is still the gate.
+RUN apk upgrade --no-cache \
+ && addgroup -S -g 10001 app \
  && adduser -S -u 10001 -G app -h /app -s /sbin/nologin app \
  && rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
            /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg

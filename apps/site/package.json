@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/site",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "description": "The public site: a Nuxt 4 app that renders content through the active theme layer.",

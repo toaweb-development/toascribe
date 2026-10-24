@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/shared",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "description": "Zod schemas and inferred types shared by the API, the admin app, themes and extensions. No Node or browser APIs.",

@@ -17,6 +17,10 @@ FROM postgres:18.6-alpine3.24@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c666
 
 COPY --from=gosu /go/bin/gosu /usr/local/bin/gosu
 
+# apk upgrade: every build takes all security fixes Alpine has published since the base image was built, not only
+# the one a scan found that day. The image scan before publishing is still the gate.
+RUN apk upgrade --no-cache
+
 # 10-init.sh goes where the image runs it once, on an empty data directory. init.sql does NOT go there:
 # the image would run it without the psql variables. 10-init.sh reads it from /etc/toascribe/postgres/.
 # (The folder is made first: COPY --chmod would give a folder it creates the file's mode, here 0444 with no x bit.)

@@ -5,7 +5,7 @@ and plugins), written in TypeScript from end to end: Nuxt 4 for the site and the
 PostgreSQL. Content is stored as structured blocks, not HTML, and background work runs on a real job queue. It ships
 as an open repository and starts with Docker; the rest of the setup is finished in a browser wizard.
 
-**Status: 0.4.0, setup.** The whole stack starts and is healthy on one port, and a fresh install is finished in a browser
+**Status: 0.4.1, setup.** The whole stack starts and is healthy on one port, and a fresh install is finished in a browser
 wizard at `/admin/setup` (or with `toa core install`): system check, site, e-mail, the administrator and a recovery key, with
 a WordPress-style first post and page. People can log in at `/admin/login` (and at `/wp-login.php`, which redirects), with
 sessions, a second factor, lost password and registration, and e-mail goes through the job queue. The images are published
@@ -83,7 +83,7 @@ Use `toascribe_owner` for the owner password, and `postgres` for `POSTGRES_PASSW
 - **Behind Traefik or nginx.** See "Behind a reverse proxy" below: the port is bound to `127.0.0.1` by default and you
   tell the stack which proxy to believe.
 - **Update.** `docker compose -f docker/compose.yaml pull && docker compose -f docker/compose.yaml up -d`, with
-  `TOASCRIBE_VERSION` in `docker/.env` set to the new version. Images are published at each release (from 0.4.0); a clone can
+  `TOASCRIBE_VERSION` in `docker/.env` set to the new version. Images are published at each release (from 0.4.1); a clone can
   also `git pull` and `up -d --build`.
 - **Valkey** (cache) is optional and not used yet: `COMPOSE_PROFILES=valkey` in `docker/.env`.
 - **Mailpit** (for development) catches every mail instead of sending it: `COMPOSE_PROFILES=mailpit` in `docker/.env`, or

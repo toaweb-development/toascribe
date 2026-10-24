@@ -6,6 +6,19 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-24
+
+The first published version of M0.4. 0.4.0 below was never released: its release stopped before every image was
+published and before the tag, so there is no `v0.4.0` and no 0.4.0 images to install. 0.4.1 has everything listed under
+0.4.0, plus the changes here. **No action is needed on upgrade** from 0.3.0; see 0.4.0 for what the upgrade does.
+
+### Security
+
+- Every image now runs `apk upgrade` when it is built, so it gets every security fix Alpine has published since its
+  base image was built, not only the one a scan happened to find. The scan before publishing is still the gate. This
+  fixes CVE-2026-111497 (brotli-libs, HIGH) in the proxy image.
+- The proxy is built on the rebuild of `caddy:2.11.7-alpine` on Alpine 3.23.7.
+
 ## [0.4.0] - 2026-10-23
 
 First run: a fresh stack now ends in a setup wizard in the browser, or in `toa core install`, and the images are published
@@ -250,8 +263,8 @@ The skeleton: everything runs end to end, nothing is a feature yet.
   dependencies, a start of the full stack, and a version gate that asks for a new version and CHANGELOG entry when
   released files change.
 
-[Unreleased]: https://github.com/toaweb/toascribe/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/toaweb/toascribe/compare/v0.3.0...v0.4.0
+[Unreleased]: https://github.com/toaweb/toascribe/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/toaweb/toascribe/compare/v0.3.0...v0.4.1
 [0.3.0]: https://github.com/toaweb/toascribe/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/toaweb/toascribe/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/toaweb/toascribe/releases/tag/v0.1.0
