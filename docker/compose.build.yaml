@@ -18,14 +18,14 @@ x-labels: &labels
 
 services:
   proxy:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-proxy:${TOASCRIBE_VERSION:-0.4.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-proxy:${TOASCRIBE_VERSION:-0.4.1}
     build:
       context: .
       dockerfile: docker/proxy/Dockerfile
       labels: *labels
 
   site:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-site:${TOASCRIBE_VERSION:-0.4.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-site:${TOASCRIBE_VERSION:-0.4.1}
     build:
       context: .
       dockerfile: docker/nuxt/Dockerfile
@@ -35,7 +35,7 @@ services:
         HEALTH_PATH: /
 
   admin:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-admin:${TOASCRIBE_VERSION:-0.4.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-admin:${TOASCRIBE_VERSION:-0.4.1}
     build:
       context: .
       dockerfile: docker/nuxt/Dockerfile
@@ -45,14 +45,14 @@ services:
         HEALTH_PATH: /admin
 
   api:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-api:${TOASCRIBE_VERSION:-0.4.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-api:${TOASCRIBE_VERSION:-0.4.1}
     build:
       context: .
       dockerfile: docker/api/Dockerfile
       labels: *labels
 
   postgres:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-postgres:${TOASCRIBE_VERSION:-0.4.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-postgres:${TOASCRIBE_VERSION:-0.4.1}
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile
@@ -60,7 +60,7 @@ services:
 
   # Development only (the mailpit profile); built and scanned like the others.
   mailpit:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-mailpit:${TOASCRIBE_VERSION:-0.4.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-mailpit:${TOASCRIBE_VERSION:-0.4.1}
     build:
       context: .
       dockerfile: docker/mailpit/Dockerfile
