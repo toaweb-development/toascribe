@@ -25,4 +25,7 @@ RUN CGO_ENABLED=0 go build -trimpath -buildvcs=false \
 # The official image, pinned by tag and digest (DOCKER_STANDARD rule 1): it has tzdata and the sendmail links.
 # Only the binary is replaced. It runs as root by default; compose.yaml sets the user.
 FROM axllent/mailpit:v1.31.6@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+# apk upgrade: every build takes all security fixes Alpine has published since the base image was built, not only
+# the one a scan found that day. The image scan before publishing is still the gate.
+RUN apk upgrade --no-cache
 COPY --from=build /mailpit /mailpit
