@@ -631,7 +631,7 @@ Editoren er et blokktre i en egen Vue-modell, der hver tekstblokk har sin egen T
 - Ekstra kjerneblokker: egendefinert HTML, klassisk (renset HTML fra import), «Les mer», sideskift, forhåndsformatert tekst og fotnoter.
 - WXR-import gjør Gutenberg-kommentarer om til blokker der typen er kjent, og legger resten i en klassisk blokk.
 - Innliming fra Word og Google Docs renses og gjøres om til blokker.
-- Rettigheten `unfiltered_html` gis til Administrator og Redaktør som i WordPress; andre får HTML renset.
+- Rettigheten `unfiltered_html` har bare Administrator som standard, og administrator kan gi den til andre roller; alle andre får HTML renset. Det avviker fra WordPress, der også Redaktør har den.
 
 **Egendefinerte felter (fase 2)**
 
