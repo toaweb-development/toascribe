@@ -6,7 +6,7 @@ import type { Database } from '@toascribe/db'
 import { CoreSettings, SETUP_EMAIL_SKIPPED_NOTICE } from '@toascribe/shared'
 import type { z } from 'zod'
 
-import { findAccountByUsername, insertAudit, readSettings, writeSettings } from './repository.ts'
+import { findAccountById, insertAudit, readSettings, writeSettings } from './repository.ts'
 
 /** The settings that decide whether mail goes out: a test counts for exactly these. */
 export const EmailSettings = CoreSettings.pick({
@@ -27,8 +27,11 @@ export interface EmailVerifiedInput {
    * it is saved again. Never put it in a job's data or a log line.
    */
   readonly sentWith: EmailSettings
-  /** The `requestedBy` of the test mail: the username of the administrator who asked, or the wizard's label (no account has it). */
-  readonly requestedBy: string
+  /**
+   * The `requestedById` of the test mail: the id of the account that asked, or undefined for the wizard's test (no account asked).
+   * The audit entry names the account by id and its username now, so a username changed after the mail was queued does not matter.
+   */
+  readonly requestedById: string | undefined
   readonly at: Date
   /** The worker's job id, for the audit entry. */
   readonly jobId: string
@@ -53,7 +56,8 @@ export async function markEmailVerified(db: Database, input: EmailVerifiedInput)
     }
     await writeSettings(tx, [['smtp_verified_at', input.at.toISOString()]])
     await resolveAdminNotice(tx, SETUP_EMAIL_SKIPPED_NOTICE.key)
-    const requester = await findAccountByUsername(tx, input.requestedBy)
+    // An account deleted since the mail was queued is no longer there to name: the entry is the system's.
+    const requester = input.requestedById === undefined ? undefined : await findAccountById(tx, input.requestedById)
     await insertAudit(tx, {
       actorType: requester === undefined ? 'system' : 'account',
       actor: requester?.username ?? 'email.send',

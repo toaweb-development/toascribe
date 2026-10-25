@@ -145,7 +145,9 @@ function messages<S extends z.ZodType<string>>(secret: S) {
     z.strictObject({
       template: z.literal('test'),
       to: Recipient,
-      data: z.strictObject({ requestedBy: Username }),
+      // `requestedBy` is the name the mail shows; `requestedById` is the account the worker's audit entry names, so the entry is
+      // right even when the username changes before the job runs. The wizard's test has no account and leaves it out.
+      data: z.strictObject({ requestedBy: Username, requestedById: z.uuid().optional() }),
     }),
   ])
 }

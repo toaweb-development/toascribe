@@ -28,9 +28,9 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('markEmailVerified (needs TEST_
   })
 
   const sentWith = () => readSettings(env.db, EmailSettings)
-  const input = async (requestedBy = 'oppsettsveiviseren') => ({
+  const input = async (requestedById?: string) => ({
     sentWith: await sentWith(),
-    requestedBy,
+    requestedById,
     at: AT,
     jobId: 'job-7',
   })
@@ -63,16 +63,40 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('markEmailVerified (needs TEST_
     ])
   })
 
-  it('audits the administrator who asked, by username (any case), and stores no address', async () => {
-    await env.owner.query(
+  const insertAccount = async (username: string) => {
+    const {
+      rows: [row],
+    } = await env.owner.query<{ id: string }>(
       `insert into account (username, email, display_name, nicename, password_hash, status)
-       values ('Dash-Admin', 'dash.admin@secret-domain.test', 'Dash', 'dash-admin', 'x', 'active')`,
+       values ($1, 'dash.admin@secret-domain.test', 'Dash', 'dash-admin', 'x', 'active') returning id`,
+      [username],
     )
-    expect(await markEmailVerified(env.db, await input('dash-admin'))).toBe(true)
+    if (row === undefined) throw new Error('no account')
+    return row.id
+  }
+
+  it('audits the administrator who asked, by account id, and stores no address', async () => {
+    const id = await insertAccount('Dash-Admin')
+    expect(await markEmailVerified(env.db, await input(id))).toBe(true)
     const [row] = await audit()
-    expect(row).toMatchObject({ actor_type: 'account', actor: 'Dash-Admin', source: 'job' })
-    expect(row?.account_id).not.toBeNull()
+    expect(row).toMatchObject({ actor_type: 'account', actor: 'Dash-Admin', account_id: id, source: 'job' })
     expect(JSON.stringify(await audit())).not.toMatch(/@|secret-domain/)
+  })
+
+  it('names the account by its current username when the username changed after the mail was queued', async () => {
+    const id = await insertAccount('old-name')
+    const sent = await input(id)
+    await env.owner.query(`update account set username = 'new-name' where id = $1`, [id])
+    expect(await markEmailVerified(env.db, sent)).toBe(true)
+    expect(await audit()).toMatchObject([{ actor_type: 'account', actor: 'new-name', account_id: id }])
+  })
+
+  it('audits the system when the account that asked has been deleted since', async () => {
+    const id = await insertAccount('gone')
+    const sent = await input(id)
+    await env.owner.query('delete from account where id = $1', [id])
+    expect(await markEmailVerified(env.db, sent)).toBe(true)
+    expect(await audit()).toMatchObject([{ actor_type: 'system', actor: 'email.send', account_id: null }])
   })
 
   it('marks nothing when the settings were saved again after the mail was sent', async () => {
@@ -99,12 +123,15 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('markEmailVerified (needs TEST_
 
   it('ignores other keys in sentWith (the worker passes everything it read)', async () => {
     const sent = { ...(await sentWith()), blogname: 'something else', locale: 'nb' }
-    expect(await markEmailVerified(env.db, { sentWith: sent, requestedBy: 'x-user', at: AT, jobId: 'j' })).toBe(true)
+    expect(await markEmailVerified(env.db, { sentWith: sent, requestedById: undefined, at: AT, jobId: 'j' })).toBe(true)
   })
 
   it('also marks on a site that is installed already (a later test mail)', async () => {
     await env.service.install({ admin: admin('tor'), site: SITE, email: { skip: true }, source: 'cli' })
-    expect(await markEmailVerified(env.db, await input('tor'))).toBe(true)
+    const {
+      rows: [tor],
+    } = await env.owner.query<{ id: string }>(`select id from account where username = 'tor'`)
+    expect(await markEmailVerified(env.db, await input(tor?.id))).toBe(true)
     expect(await env.setting('smtp_verified_at')).toBe(AT.toISOString())
     const [row] = await audit()
     expect(row).toMatchObject({ actor_type: 'account', actor: 'tor' })

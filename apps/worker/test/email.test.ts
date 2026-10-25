@@ -250,7 +250,12 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('email job (needs TEST_DATABASE
   })
 
   describe('a test mail marks the e-mail as verified (markEmailVerified, the one writer of smtp_verified_at)', () => {
-    const TEST_MAIL: EmailMessage = { template: 'test', to: 'a@example.test', data: { requestedBy: 'dash-admin' } }
+    const DASH_ID = '0f6d7c1e-3b2a-4c5d-8e9f-a0b1c2d3e4f5'
+    const TEST_MAIL: EmailMessage = {
+      template: 'test',
+      to: 'a@example.test',
+      data: { requestedBy: 'dash-admin', requestedById: DASH_ID },
+    }
     const NOW = new Date('2027-01-10T12:00:00.000Z')
     const verifiedAt = async () =>
       (await env.query<{ value: unknown }>("select value from setting where key = 'smtp_verified_at'"))[0]?.value ??
@@ -269,10 +274,11 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('email job (needs TEST_DATABASE
          values ($1, 'warning', 'notices.test', 'manage_options', true, '{}'::jsonb)`,
         [SETUP_EMAIL_SKIPPED_NOTICE.key],
       )
-      await env.query("delete from account where username = 'dash-admin'")
+      await env.query("delete from account where nicename = 'dash-admin'")
       await env.query(
-        `insert into account (username, email, display_name, nicename, password_hash, status)
-         values ('dash-admin', 'dash.admin@secret-domain.test', 'Dash', 'dash-admin', 'x', 'active')`,
+        `insert into account (id, username, email, display_name, nicename, password_hash, status)
+         values ($1, 'dash-admin', 'dash.admin@secret-domain.test', 'Dash', 'dash-admin', 'x', 'active')`,
+        [DASH_ID],
       )
     })
 
@@ -289,7 +295,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('email job (needs TEST_DATABASE
         {
           actor_type: 'account',
           actor: 'dash-admin',
-          account_id: expect.any(String) as string,
+          account_id: DASH_ID,
           new_value: { jobId: 'job-1' },
           source: 'job',
         },
@@ -344,9 +350,17 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('email job (needs TEST_DATABASE
       expect(await notice()).toHaveLength(1)
     })
 
+    it('names the account by id, with its username of now, when the username changed after the mail was queued', async () => {
+      await env.query("update account set username = 'renamed-admin' where id = $1", [DASH_ID])
+      const { deps: d } = deps()
+      expect((await processEmailJob(await job(TEST_MAIL), d)).output).toMatchObject({ verified: true })
+      expect(await audit()).toMatchObject([{ actor_type: 'account', actor: 'renamed-admin', account_id: DASH_ID }])
+    })
+
     it("audits the system when no account asked (the wizard's test)", async () => {
       const { deps: d } = deps()
       const wizard: EmailMessage = { ...TEST_MAIL, data: { requestedBy: 'oppsettsveiviseren' } }
+      await env.query("update account set username = 'oppsettsveiviseren' where id = $1", [DASH_ID])
       expect((await processEmailJob(await job(wizard), d)).output).toMatchObject({ verified: true })
       expect(await audit()).toMatchObject([{ actor_type: 'system', actor: 'email.send', account_id: null }])
     })
