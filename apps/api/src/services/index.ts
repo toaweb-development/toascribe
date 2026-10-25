@@ -8,12 +8,18 @@ import { ACCOUNT_FLOW_MINIMUM_MS } from '../lib/timing.ts'
 import type { MailPort } from '../ports/mail.ts'
 import { createPublicFlows } from './account-links.ts'
 import type { PublicFlows } from './account-links.ts'
+import { createCoreAdminMenu } from './admin-menu.ts'
+import type { AdminMenuRegistry } from './admin-menu.ts'
 import { createAuthService } from './auth.ts'
 import type { AuthService } from './auth.ts'
+import { createDashboardService } from './dashboard.ts'
+import type { DashboardService } from './dashboard.ts'
 import { createMeService } from './me.ts'
 import type { MeService } from './me.ts'
 import { createMfaService } from './mfa.ts'
 import type { MfaService } from './mfa.ts'
+import { createNoticeService } from './notices.ts'
+import type { NoticeService } from './notices.ts'
 import { createOwnAccountService } from './own-account.ts'
 import type { OwnAccountService } from './own-account.ts'
 import { createProxyCheck } from './proxy-check.ts'
@@ -30,6 +36,8 @@ import { createSystemService } from './system.ts'
 import type { SystemService } from './system.ts'
 import type { SetupGate } from '../lib/env.ts'
 import { createTotpChecker } from './totp.ts'
+import { createUserService } from './users.ts'
+import type { UserService } from './users.ts'
 
 export interface ServiceDeps {
   readonly db: Database
@@ -42,6 +50,8 @@ export interface ServiceDeps {
   readonly logger: Logger
   /** PUBLIC_ORIGIN: the issuer line of the authenticator app falls back to its host. */
   readonly publicOrigin: string
+  /** The repo version, shown on the dashboard. */
+  readonly version: string
   /** How long the flows that hide whether an account exists take at least, in milliseconds. Tests set 0; the default is ACCOUNT_FLOW_MINIMUM_MS. */
   readonly minimumResponseMs?: number
   /** TOASCRIBE_TRUSTED_PROXY as set (empty when it is not): the proxy check only warns when it is empty. */
@@ -56,6 +66,14 @@ export interface Services {
   readonly auth: AuthService
   readonly me: MeService
   readonly system: SystemService
+  /** The admin's left menu: core's items are in it, extensions register theirs (phase 1). */
+  readonly adminMenu: AdminMenuRegistry
+  /** The dashboard's «I korte trekk». */
+  readonly dashboard: DashboardService
+  /** The dashboard's notices: stored ones and the ones worked out from the system. */
+  readonly notices: NoticeService
+  /** The users table and role assignment. */
+  readonly users: UserService
   /** Second factor: enrolment, recovery codes, the second step of a login (K-023). */
   readonly mfa: MfaService
   /** Lost password, first password, registration (K-003, K-005). */
@@ -98,6 +116,7 @@ export function createServices(deps: ServiceDeps): Services {
   const totp = createTotpChecker({ clock, keyRing: deps.keyRing, logger: deps.logger })
   const reauth = createReauthenticator({ db, clock, limiter, audit })
   const proxy = createProxyCheck({ trustedProxy: deps.trustedProxy ?? '', logger: deps.logger, clock })
+  const adminMenu = createCoreAdminMenu()
   const installMail = installMailOf(deps.mail)
   const install = createInstallService({
     db,
@@ -116,7 +135,17 @@ export function createServices(deps: ServiceDeps): Services {
     sessions,
     auth: createAuthService({ db, clock, sessions, limiter }),
     me: createMeService({ db, clock }),
-    system: createSystemService({ db, clock, mail: deps.mail }),
+    system: createSystemService({ db, clock, mail: deps.mail, logger: deps.logger }),
+    adminMenu,
+    dashboard: createDashboardService({ db, version: deps.version }),
+    notices: createNoticeService({
+      db,
+      clock,
+      proxy,
+      audit,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
+    users: createUserService({ db, clock, audit }),
     mfa: createMfaService({
       db,
       clock,

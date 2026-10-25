@@ -12,7 +12,7 @@ import { SetupToken } from '@toascribe/shared'
 //   `localStorage` (other tabs, later visits) and not in the server-drawn page. The install deletes the token on the server,
 //   and the wizard clears it here;
 // - it goes to the api in the `X-Setup-Token` header only. A token in the query (`?token=`) is not read: the paste form is the
-//   other way in.
+//   other way in. A rejected `?token=` is taken out of the address bar too (`withoutTokenQuery`), without its value being read.
 
 export const SETUP_TOKEN_STORAGE_KEY = 'toascribe:setup-token'
 
@@ -80,4 +80,15 @@ export function takeTokenFromHash(hash: string): TokenInHash {
   params.delete('token')
   const rest = params.toString()
   return { token: parsed.success ? parsed.data : undefined, present, rest: rest === '' ? '' : `#${rest}` }
+}
+
+/**
+ * The query of the address without `token`. The value is never read, kept or passed on: it is dropped, whatever it is. Every other
+ * parameter stays. `removed` says whether there was one, so the caller replaces the address only when something changes.
+ */
+export function withoutTokenQuery<T extends Record<string, unknown>>(
+  query: T,
+): { query: Omit<T, 'token'>; removed: boolean } {
+  const { token: _dropped, ...rest } = query
+  return { query: rest, removed: 'token' in query }
 }

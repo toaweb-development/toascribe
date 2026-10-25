@@ -52,6 +52,13 @@ describe('Cache-Control: no-store (security §3, §7)', () => {
     ['GET', '/api/v1/me'],
     ['GET', '/api/v1/me/sessions'],
     ['PATCH', '/api/v1/me'],
+    ['PATCH', '/api/v1/me/preferences'],
+    ['GET', '/api/v1/admin/menu'],
+    ['GET', '/api/v1/dashboard/glance'],
+    ['GET', '/api/v1/notices'],
+    ['GET', '/api/v1/users'],
+    ['PUT', '/api/v1/users/roles'],
+    ['POST', '/api/v1/notices/some.key/dismiss'],
     ['DELETE', '/api/v1/me/sessions'],
     ['DELETE', '/api/v1/me/sessions/0198a3c2-0000-7000-8000-000000000000'],
     ['POST', '/api/v1/auth/logout'],
@@ -79,6 +86,7 @@ describe('the OpenAPI document', () => {
       [
         '/api/health',
         '/api/ready',
+        '/api/v1/admin/menu',
         '/api/v1/auth/login',
         '/api/v1/auth/logout',
         '/api/v1/auth/mfa/verify',
@@ -88,6 +96,7 @@ describe('the OpenAPI document', () => {
         '/api/v1/auth/password/set',
         '/api/v1/auth/register',
         '/api/v1/auth/session',
+        '/api/v1/dashboard/glance',
         '/api/v1/me',
         '/api/v1/me/email-change',
         '/api/v1/me/email-change/confirm',
@@ -97,8 +106,11 @@ describe('the OpenAPI document', () => {
         '/api/v1/me/mfa/totp/{id}/confirm',
         '/api/v1/me/mfa/{id}',
         '/api/v1/me/password',
+        '/api/v1/me/preferences',
         '/api/v1/me/sessions',
         '/api/v1/me/sessions/{id}',
+        '/api/v1/notices',
+        '/api/v1/notices/{key}/dismiss',
         '/api/v1/setup/check',
         '/api/v1/setup/email',
         '/api/v1/setup/email/skip',
@@ -110,6 +122,8 @@ describe('the OpenAPI document', () => {
         '/api/v1/setup/status',
         '/api/v1/setup/token/verify',
         '/api/v1/system/test-email',
+        '/api/v1/users',
+        '/api/v1/users/roles',
       ].sort(),
     )
     expect(Object.keys(doc.paths['/api/v1/me'] ?? {}).sort()).toEqual(['get', 'patch'])
@@ -126,6 +140,12 @@ describe('the OpenAPI document', () => {
     expect(doc.paths['/api/v1/setup/install']?.['post']?.['x-policy']).toBe('setup-token')
     expect(doc.paths['/api/v1/auth/logout']?.['post']?.['x-policy']).toBe('authenticated')
     expect(doc.paths['/api/v1/system/test-email']?.['post']?.['x-policy']).toBe('capability:manage_options')
+    expect(doc.paths['/api/v1/users']?.['get']?.['x-policy']).toBe('capability:list_users')
+    expect(doc.paths['/api/v1/users/roles']?.['put']?.['x-policy']).toBe('capability:promote_users')
+    expect(doc.paths['/api/v1/admin/menu']?.['get']?.['x-policy']).toBe('capability:read')
+    expect(doc.paths['/api/v1/me/preferences']?.['patch']?.['x-policy']).toBe('capability:read')
+    expect(doc.paths['/api/v1/dashboard/glance']?.['get']?.['x-policy']).toBe('capability:read')
+    expect(doc.paths['/api/v1/notices/{key}/dismiss']?.['post']?.['x-policy']).toBe('capability:read')
     expect(doc.paths['/api/health']?.['get']?.['x-policy']).toBe('public')
     // The account flows: the public ones are public, the second step may be taken half signed in, the rest need `read`.
     for (const path of [

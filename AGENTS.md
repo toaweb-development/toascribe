@@ -27,7 +27,7 @@ This file and the README come first where they are more specific.
 | `packages/auth`                | `@toascribe/auth`                     | Password hashing (argon2id, WordPress hash import) and one-time tokens.      |
 | `packages/http`                | `@toascribe/http`                     | `safeFetch`: an HTTP client that refuses private addresses (SSRF).           |
 | `packages/nuxt-base`           | `@toascribe/nuxt-base`                | The Nuxt layer both apps share: Nuxt UI, i18n, API layer and plugin, config. |
-| `packages/sdk`, `ui`, `blocks` | `@toascribe/*`                        | Placeholders until M0.5 and phase 1.                                         |
+| `packages/sdk`, `ui`, `blocks` | `@toascribe/*`                        | Placeholders until phase 1.                                                  |
 | `themes/default`               | `@toascribe/theme-default`            | A Nuxt layer that extends `nuxt-base`, linted by its own config.             |
 | `cli`                          | `@toascribe/cli`                      | The `toa` bin. Runs in the api container.                                    |
 | `docker/`                      |                                       | Dockerfiles, `compose.yaml`, `.env.example`, `proxy/Caddyfile`, `postgres/`. |
@@ -80,6 +80,10 @@ The site and the admin share one security setup in `packages/nuxt-base` (`nuxt-s
 decision nothing is framed, the admin showing the site included, until the live preview of «Tilpass» in phase 3, which opens
 the site to `'self'` and `SAMEORIGIN`), and the cache rule. Do not repeat a shared directive in an app: layers concatenate
 arrays.
+
+The admin also sets `style-src-attr` with `'unsafe-hashes'` and the hashes of three inline style strings that Nuxt UI's sidebar
+and accordion write into the server-drawn HTML (the reasons are in `apps/admin/nuxt.config.ts`). There is still no
+`'unsafe-inline'`; a new string from a Nuxt UI upgrade fails the e2e tests.
 
 - **A nonce and a page cache do not mix.** The nonce is in the HTML and in the header of one response. A shared cache that hands
   the same page to many visitors hands them a nonce anyone can read, and a known nonce protects nothing. So rendered pages are

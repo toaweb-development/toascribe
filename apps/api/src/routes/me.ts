@@ -4,8 +4,10 @@ import {
   MeResponse,
   RevokeSessionsResponse,
   SessionIdParams,
+  Preferences,
   SessionListResponse,
   UpdateMeRequest,
+  UpdatePreferencesRequest,
 } from '@toascribe/shared'
 
 import { getClientIp } from '../lib/client-ip.ts'
@@ -50,6 +52,22 @@ const patchMeRoute = defineRoute({
   responses: {
     200: { content: { 'application/json': { schema: MeResponse } }, description: 'The account after the change' },
     400: errorResponse('Invalid request'),
+    401: errorResponse('Not signed in'),
+    403: errorResponse('CSRF token missing or wrong, or no read capability'),
+  },
+})
+
+const patchPreferencesRoute = defineRoute({
+  method: 'patch',
+  path: '/me/preferences',
+  tags: ['me'],
+  summary: 'Change the preferences',
+  description: `Admin colour scheme, the toolbar on the site and the dismissed welcome panel. Send any of them; the others keep their value, and so do keys a later version adds. Returns all the preferences. No password is needed. ${STATE_CHANGING_NOTE}`,
+  policy: requireCapability('read'),
+  request: { body: { required: true, content: { 'application/json': { schema: UpdatePreferencesRequest } } } },
+  responses: {
+    200: { content: { 'application/json': { schema: Preferences } }, description: 'The preferences after the change' },
+    400: errorResponse('Invalid request (an unknown preference or scheme, or nothing to change)'),
     401: errorResponse('Not signed in'),
     403: errorResponse('CSRF token missing or wrong, or no read capability'),
   },
@@ -107,6 +125,10 @@ export function createMeApp(services: Services) {
     .openapi(patchMeRoute, async (c) => {
       const auth = await requireSession(c)
       return c.json(await services.me.update(auth, c.req.valid('json')), 200)
+    })
+    .openapi(patchPreferencesRoute, async (c) => {
+      const auth = await requireSession(c)
+      return c.json(await services.me.updatePreferences(auth, c.req.valid('json')), 200)
     })
     .openapi(listSessionsRoute, async (c) => {
       const auth = await requireSession(c)

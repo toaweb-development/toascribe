@@ -62,6 +62,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('profile (needs TEST_DATABASE_U
       'email',
       'id',
       'locale',
+      'preferences',
       'profile',
       'roles',
       'username',

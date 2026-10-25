@@ -43,11 +43,12 @@ export const mainStack = (): Stack => ({
  * below.
  */
 export const WIZARD_STACK_ENV = {
-  E2E_PROJECT: 'toascribe-e2e-setup',
-  E2E_HTTP_PORT: '18081',
-  E2E_MAILPIT_PORT: '18026',
+  E2E_PROJECT: process.env.E2E_WIZARD_PROJECT ?? 'toascribe-e2e-setup',
+  E2E_HTTP_PORT: process.env.E2E_WIZARD_HTTP_PORT ?? '18081',
+  E2E_MAILPIT_PORT: process.env.E2E_WIZARD_MAILPIT_PORT ?? '18026',
   // The `edge` network's subnet is fixed in compose.yaml, so a second stack at the same time needs another.
-  E2E_EDGE_SUBNET: '10.231.98.0/24',
+  // E2E_WIZARD_SUBNET moves it when the default is taken on the host.
+  E2E_EDGE_SUBNET: process.env.E2E_WIZARD_SUBNET ?? '10.231.98.0/24',
 } as const
 
 export const wizardStack = (): Stack => {
@@ -232,6 +233,66 @@ export async function createUser(role: string, prefix = 'user', password = PASSW
 export async function setSetting(key: string, value: unknown): Promise<void> {
   const json = JSON.stringify(value).replaceAll("'", "''")
   const sql = `insert into setting (key, value) values ('${key}', '${json}'::jsonb) on conflict (key) do update set value = excluded.value`
+  await compose([
+    'exec',
+    '-T',
+    'postgres',
+    'psql',
+    '-U',
+    'postgres',
+    '-d',
+    'toascribe',
+    '-v',
+    'ON_ERROR_STOP=1',
+    '-c',
+    sql,
+  ])
+}
+
+/**
+ * Raises a dismissible admin notice (the dashboard shows it to accounts that hold `manage_options`) or shows it again when it was
+ * dismissed. The key and the message key are ours, not input. `removeNotice` takes it away again.
+ */
+export async function raiseNotice(key: string, messageKey: string): Promise<void> {
+  const sql = `insert into admin_notice (key, level, message_key, capability, is_dismissible) values ('${key}', 'info', '${messageKey}', 'manage_options', true) on conflict (key) do update set dismissed_at = null, is_dismissible = true`
+  await psql(sql)
+}
+
+export async function removeNotice(key: string): Promise<void> {
+  await psql(`delete from admin_notice where key = '${key}'`)
+}
+
+/** Puts an account's preferences back to none (the colour scheme and the welcome panel start over). The username is ours, not input. */
+export async function resetPreferences(username: string): Promise<void> {
+  await psql(`update account set preferences = '{}'::jsonb where username = '${username}'`)
+}
+
+/** Runs SQL in the stack's database (as the superuser, which bypasses row security). The statement is ours, never input. */
+export async function runSql(sql: string): Promise<void> {
+  await psql(sql)
+}
+
+/** Runs a query and returns its rows, one string a line, columns joined by `|` (psql's unaligned output, no header). */
+export async function queryRows(sql: string): Promise<string[]> {
+  const out = await compose([
+    'exec',
+    '-T',
+    'postgres',
+    'psql',
+    '-U',
+    'postgres',
+    '-d',
+    'toascribe',
+    '-v',
+    'ON_ERROR_STOP=1',
+    '-At',
+    '-c',
+    sql,
+  ])
+  return out.split('\n').filter((line) => line !== '')
+}
+
+async function psql(sql: string): Promise<void> {
   await compose([
     'exec',
     '-T',

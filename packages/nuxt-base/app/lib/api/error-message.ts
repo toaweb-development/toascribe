@@ -73,6 +73,12 @@ export function describeApiError(error: unknown, t: Translate): string {
       return t('error.originInvalid')
     case 'validation_error':
       return t('error.validation')
+    case 'too_many_factors':
+      return t('error.tooManyFactors')
+    case 'mfa_required_by_role':
+      return t('error.mfaRequiredByRole')
+    case 'no_factor':
+      return t('error.noFactor')
     case 'mfa_not_pending':
     case 'enrolment_finished':
       return t('error.mfaFinished')

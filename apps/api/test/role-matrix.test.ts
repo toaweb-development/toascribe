@@ -143,6 +143,22 @@ const CASES: readonly MatrixCase[] = [
   // The `read` capability: all five roles have it
   { route: 'GET /api/v1/me', method: 'GET', path: '/api/v1/me', expected: ok },
   { route: 'PATCH /api/v1/me', method: 'PATCH', path: '/api/v1/me', json: { nickname: 'matrix' }, expected: ok },
+  {
+    route: 'PATCH /api/v1/me/preferences',
+    method: 'PATCH',
+    path: '/api/v1/me/preferences',
+    json: { showToolbarOnSite: true },
+    expected: ok,
+  },
+  { route: 'GET /api/v1/admin/menu', method: 'GET', path: '/api/v1/admin/menu', expected: ok },
+  { route: 'GET /api/v1/dashboard/glance', method: 'GET', path: '/api/v1/dashboard/glance', expected: ok },
+  { route: 'GET /api/v1/notices', method: 'GET', path: '/api/v1/notices', expected: ok },
+  {
+    route: 'POST /api/v1/notices/:key/dismiss',
+    method: 'POST',
+    path: '/api/v1/notices/matrix.no_such_notice/dismiss',
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 404 },
+  },
   { route: 'GET /api/v1/me/sessions', method: 'GET', path: '/api/v1/me/sessions', expected: ok },
   { route: 'DELETE /api/v1/me/sessions', method: 'DELETE', path: '/api/v1/me/sessions', expected: ok },
   {
@@ -239,6 +255,21 @@ const CASES: readonly MatrixCase[] = [
     path: '/api/v1/system/test-email',
     json: {},
     expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403, administrator: 202 },
+  },
+  // The `list_users` and `promote_users` capabilities: only the administrator
+  {
+    route: 'GET /api/v1/users',
+    method: 'GET',
+    path: '/api/v1/users',
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    // An account nobody has: the administrator gets a 200 that names it as not found, and changes nothing.
+    route: 'PUT /api/v1/users/roles',
+    method: 'PUT',
+    path: '/api/v1/users/roles',
+    json: { userIds: ['0198a3c2-0000-7000-8000-0000000000cc'], role: 'subscriber' },
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
   },
   // The setup wizard (M0.4): no role opens the token-gated routes, an administrator included. Only the setup token does, and
   // the matrix sends none. After the install they would all be 404 (setup.test.ts).

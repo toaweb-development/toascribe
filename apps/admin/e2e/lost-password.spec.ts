@@ -1,6 +1,6 @@
 import { PASSWORD, createUser, hasMail, linkIn, resetLimits, uniqueName, waitForMail } from './helpers/stack.ts'
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
-import { fillLogin } from './helpers/screens.ts'
+import { expectSignedIn, fillLogin } from './helpers/screens.ts'
 
 test.beforeEach(async () => {
   await resetLimits()
@@ -60,7 +60,7 @@ test('lost password through the mail: link, new password, login', async ({ page 
 
   // The new password works; the old one no longer does.
   await fillLogin(page, { username: user.username, password: NEW_PASSWORD })
-  await expect(page.getByText(`Logget inn som ${user.username}.`)).toBeVisible()
+  await expectSignedIn(page, user)
 })
 
 test('the link works once', async ({ page, allowFailedRequests }) => {

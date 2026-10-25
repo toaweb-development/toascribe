@@ -5,7 +5,8 @@ Mailpit catching the mail. They cover the sign-in screens (M0.3): login and logo
 second factor (set-up on the screen, a code from the app, a recovery code), registration, e-mail confirmation, the site name
 from the settings, the wait after too many wrong tries, the headers and the CSP of the admin and of the public site (`/`), and
 an axe-core check (WCAG 2.2 AA rule sets) on every screen. The setup wizard (M0.4) is tested from an empty database to a signed-in
-administrator (`wizard.spec.ts`). Each test runs at 375 px and at 1280 px.
+administrator (`wizard.spec.ts`). The admin shell, the profile and the users list (M0.5) have `shell.spec.ts`, `profile.spec.ts` and
+`users.spec.ts`. Each test runs at 375 px and at 1280 px.
 
 They are not part of `pnpm check`: they need Docker and a running stack, and they take a few minutes.
 

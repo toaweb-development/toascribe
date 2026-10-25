@@ -11,6 +11,9 @@ useHead({ htmlAttrs: { lang: () => localeProperties.value.language, dir: () => l
 
 <template>
   <UApp :locale="nb_no">
-    <NuxtPage />
+    <!-- An app that has layouts (the admin's dashboard shell) gets them; one with none (the site) renders the page as before. -->
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
   </UApp>
 </template>

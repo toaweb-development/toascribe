@@ -27,3 +27,32 @@ export const SETUP_EMAIL_SKIPPED_NOTICE: AdminNoticeDefinition = {
   capability: 'manage_options',
   isDismissible: true,
 }
+
+// Notices that are worked out when the dashboard asks, not stored: the condition is read from the system itself, so they appear
+// and go away with it and there is no row to keep in step. The api builds them (apps/api/src/services/notices.ts).
+
+/**
+ * The site's e-mail has not passed a test (`smtp_verified_at` is null: never tested, skipped in the setup, or the SMTP settings
+ * changed since). An administrator sees it until a test mail passes. It stands in for `setup.email_skipped` while it shows,
+ * so the list never has both.
+ */
+export const EMAIL_NOT_VERIFIED_NOTICE: AdminNoticeDefinition = {
+  key: 'email.not_verified',
+  level: 'warning',
+  messageKey: 'notices.emailNotVerified',
+  capability: 'manage_options',
+  isDismissible: false,
+}
+
+/**
+ * `TOASCRIBE_TRUSTED_PROXY` is empty and every request came from the same private address (the api's proxy check is in the
+ * `warning` state): the client IP is the proxy's. `data.address` is the address that was seen. It goes when the state is no longer
+ * `warning`, which is after a restart with the variable set.
+ */
+export const PROXY_NOT_TRUSTED_NOTICE: AdminNoticeDefinition = {
+  key: 'proxy.not_trusted',
+  level: 'warning',
+  messageKey: 'notices.proxyNotTrusted',
+  capability: 'manage_options',
+  isDismissible: false,
+}

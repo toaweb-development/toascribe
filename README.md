@@ -5,10 +5,11 @@ and plugins), written in TypeScript from end to end: Nuxt 4 for the site and the
 PostgreSQL. Content is stored as structured blocks, not HTML, and background work runs on a real job queue. It ships
 as an open repository and starts with Docker; the rest of the setup is finished in a browser wizard.
 
-**Status: 0.4.1, setup.** The whole stack starts and is healthy on one port, and a fresh install is finished in a browser
+**Status: 0.5.0, admin shell.** The whole stack starts and is healthy on one port, and a fresh install is finished in a browser
 wizard at `/admin/setup` (or with `toa core install`): system check, site, e-mail, the administrator and a recovery key, with
 a WordPress-style first post and page. People can log in at `/admin/login` (and at `/wp-login.php`, which redirects), with
-sessions, a second factor, lost password and registration, and e-mail goes through the job queue. The images are published
+sessions, a second factor, lost password and registration, and e-mail goes through the job queue. Once signed in, the admin
+has a menu, a dashboard with notices, a profile page and a users list with role assignment. The images are published
 to `ghcr.io/toaweb`. There is no editor yet. The plan, the architecture and the phases are in
 [docs/PLAN.md](docs/PLAN.md) (in Norwegian); the tables are described in [docs/DATAMODEL.md](docs/DATAMODEL.md).
 

@@ -6,6 +6,7 @@ import {
   readStoredToken,
   storeToken,
   takeTokenFromHash,
+  withoutTokenQuery,
 } from '../app/utils/setup-token.ts'
 import type { TokenStorage } from '../app/utils/setup-token.ts'
 
@@ -81,5 +82,26 @@ describe('the code kept for this tab', () => {
     expect(() => storeToken(TOKEN, broken)).not.toThrow()
     expect(() => clearStoredToken(broken)).not.toThrow()
     expect(() => storeToken(TOKEN, undefined)).not.toThrow()
+  })
+})
+
+describe('withoutTokenQuery', () => {
+  it('drops a token parameter and keeps the others, whatever its value is', () => {
+    expect(withoutTokenQuery({ token: TOKEN, lang: 'nb' })).toEqual({ query: { lang: 'nb' }, removed: true })
+    expect(withoutTokenQuery({ token: ['a', 'b'] })).toEqual({ query: {}, removed: true })
+    expect(withoutTokenQuery({ token: null })).toEqual({ query: {}, removed: true })
+    expect(withoutTokenQuery({ token: '' })).toEqual({ query: {}, removed: true })
+  })
+
+  it('says nothing was removed when there was no token parameter', () => {
+    const query = { tokens: '1', lang: 'nb' }
+    expect(withoutTokenQuery(query)).toEqual({ query, removed: false })
+    expect(withoutTokenQuery({})).toEqual({ query: {}, removed: false })
+  })
+
+  it('does not change the object it was given', () => {
+    const query = { token: TOKEN, lang: 'nb' }
+    withoutTokenQuery(query)
+    expect(query).toEqual({ token: TOKEN, lang: 'nb' })
   })
 })

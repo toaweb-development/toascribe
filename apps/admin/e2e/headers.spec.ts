@@ -46,7 +46,9 @@ test('the CSP is strict where it matters', async ({ request }) => {
   expect(directives.get('script-src')).toMatch(/^'self' 'strict-dynamic' 'nonce-[^']+'$/)
   expect(directives.get('script-src-attr')).toBe("'none'")
   expect(directives.get('style-src')).toMatch(/^'self' 'nonce-[^']+'$/)
-  expect(directives.has('style-src-attr')).toBe(false)
+  // Inline style attributes are refused, except the three strings of Nuxt UI's sidebar and menu that the server draws (nuxt.config.ts),
+  // let through by their hash alone: no `'unsafe-inline'`.
+  expect(directives.get('style-src-attr')).toMatch(/^'unsafe-hashes'( 'sha256-[A-Za-z0-9+/=]+'){3}$/)
   expect(directives.get('object-src')).toBe("'none'")
   expect(directives.get('base-uri')).toBe("'none'")
   expect(directives.get('frame-ancestors')).toBe("'none'")

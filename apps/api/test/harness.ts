@@ -120,6 +120,10 @@ export class TestClient {
     return this.request('POST', path, { ...(json === undefined ? {} : { json }), ...options })
   }
 
+  put(path: string, json: unknown, options?: RequestOptions) {
+    return this.request('PUT', path, { json, ...options })
+  }
+
   patch(path: string, json: unknown, options?: RequestOptions) {
     return this.request('PATCH', path, { json, ...options })
   }

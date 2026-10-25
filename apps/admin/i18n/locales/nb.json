@@ -1,11 +1,4 @@
 {
-  "admin": {
-    "name": "toascribe admin",
-    "home": {
-      "description": "Administrasjon for toascribe.",
-      "intro": "Administrasjonen kommer i en senere versjon."
-    }
-  },
   "setup": {
     "title": "Oppsett — toascribe admin",
     "heading": "Sett opp nettstedet",
@@ -236,7 +229,6 @@
   },
   "auth": {
     "title": "{page} — toascribe admin",
-    "signedInAs": "Logget inn som {name}.",
     "shell": {
       "linksLabel": "Andre valg",
       "toSite": "← Gå til {site}"
@@ -296,7 +288,12 @@
       "codeHelp": "Seks siffer fra appen.",
       "submit": "Bekreft og fullfør",
       "finish": "Fortsett",
-      "finishHint": "Bekreft at du har lagret gjenopprettingskodene for å fortsette."
+      "finishHint": "Bekreft at du har lagret gjenopprettingskodene for å fortsette.",
+      "introProfile": "Skann QR-koden med en autentiseringsapp, eller skriv inn nøkkelen under. Skriv deretter inn koden appen viser, og passordet ditt.",
+      "password": "Passordet ditt nå",
+      "passwordHelp": "Vi spør om passordet fordi en ny app gir tilgang til kontoen din.",
+      "submitProfile": "Bekreft og legg til appen",
+      "cancel": "Avbryt"
     },
     "recovery": {
       "title": "Gjenopprettingskoder",
@@ -354,6 +351,341 @@
       "fair": "Passordstyrke: middels",
       "good": "Passordstyrke: sterkt",
       "strong": "Passordstyrke: svært sterkt"
+    }
+  },
+  "shell": {
+    "skipToContent": "Gå til hovedinnholdet",
+    "bar": {
+      "visit": "Besøk nettstedet:",
+      "howdy": "Hei, {name}",
+      "userMenu": "Brukermenyen din",
+      "profile": "Rediger profil"
+    },
+    "menu": {
+      "label": "Hovedmeny",
+      "loading": "Laster menyen",
+      "failed": {
+        "title": "Menyen kunne ikke lastes.",
+        "text": "Du kan fortsatt bruke adressene direkte. Prøv å laste menyen på nytt.",
+        "retry": "Prøv igjen"
+      }
+    }
+  },
+  "menu": {
+    "dashboard": "Kontrollpanel",
+    "dashboardHome": "Hjem",
+    "users": "Brukere",
+    "usersAll": "Alle brukere",
+    "usersProfile": "Profil",
+    "profile": "Profil",
+    "unknown": "Meny"
+  },
+  "notices": {
+    "emailNotVerified": "E-post fra nettstedet er ikke testet. Passordlenker og bekreftelser kommer kanskje ikke fram før en testmelding har gått gjennom. Innstillingene for e-post kommer i en senere versjon.",
+    "proxyNotTrusted": "Nettstedet ser alle besøkende som {address}. Det er adressen til proxyen foran toascribe, så grensene for innlogging og revisjonsloggen får feil adresse. Sett TOASCRIBE_TRUSTED_PROXY til proxyens adresse i docker/.env og start toascribe på nytt.",
+    "setupEmailSkipped": "Du hoppet over e-postoppsettet. Uten e-post kan ikke nettstedet sende passordlenker eller bekreftelser.",
+    "unknown": "Det er et varsel her som denne versjonen av administrasjonen ikke kan vise."
+  },
+  "dashboard": {
+    "title": "Kontrollpanel",
+    "notices": {
+      "heading": "Varsler",
+      "level": {
+        "error": "Feil",
+        "warning": "Advarsel",
+        "success": "Vellykket",
+        "info": "Informasjon"
+      },
+      "dismiss": "Avvis",
+      "dismissed": "Varselet er avvist.",
+      "dismissFailed": "Varselet ble ikke avvist, og det vises fortsatt.",
+      "failed": {
+        "title": "Varslene kunne ikke lastes.",
+        "text": "Det kan finnes varsler du ikke ser nå. Prøv igjen.",
+        "retry": "Prøv igjen"
+      }
+    },
+    "welcome": {
+      "heading": "Velkommen til toascribe!",
+      "intro": "Her er noen lenker som hjelper deg i gang.",
+      "profile": "Rediger profilen din",
+      "users": "Se alle brukere",
+      "dismiss": "Avvis",
+      "dismissFailed": "Velkomstpanelet ble ikke avvist, og det vises fortsatt.",
+      "failed": {
+        "title": "Velkomstpanelet kunne ikke lastes.",
+        "text": "Resten av kontrollpanelet virker. Prøv igjen.",
+        "retry": "Prøv igjen"
+      }
+    },
+    "glance": {
+      "heading": "I korte trekk",
+      "posts": "{n} innlegg | {n} innlegg",
+      "pages": "{n} side | {n} sider",
+      "comments": "{n} kommentar | {n} kommentarer",
+      "pending": "{n} venter på godkjenning",
+      "version": "toascribe {version}",
+      "failed": {
+        "title": "Tallene kunne ikke lastes.",
+        "text": "Resten av kontrollpanelet virker. Prøv igjen.",
+        "retry": "Prøv igjen"
+      }
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "retry": "Prøv igjen",
+    "cancel": "Avbryt",
+    "save": "Oppdater profil",
+    "saved": "Profil oppdatert.",
+    "nothingToSave": "Ingen endringer å lagre.",
+    "loadFailed": {
+      "title": "Profilen kunne ikke lastes.",
+      "text": "Prøv igjen. Hvis det fortsetter, kan du laste siden på nytt."
+    },
+    "summary": {
+      "title": "Sjekk disse feltene"
+    },
+    "unsaved": {
+      "title": "Forlate siden uten å lagre?",
+      "text": "Du har endringer i profilen som ikke er lagret. De går tapt hvis du forlater siden.",
+      "leave": "Forlat siden",
+      "stay": "Bli på siden"
+    },
+    "reauth": {
+      "password": "Passordet ditt nå",
+      "help": "Vi spør om passordet for å være sikre på at det er deg.",
+      "passwordRequired": "Skriv inn passordet ditt.",
+      "cancel": "Avbryt"
+    },
+    "personal": {
+      "title": "Personlige valg",
+      "scheme": "Fargeskjema for administrasjon",
+      "schemeSaved": "Fargeskjemaet «{name}» er lagret.",
+      "toolbar": "Verktøylinje",
+      "toolbarLabel": "Vis verktøylinjen når du ser på nettstedet",
+      "toolbarOn": "Verktøylinjen vises når du ser på nettstedet.",
+      "toolbarOff": "Verktøylinjen vises ikke når du ser på nettstedet.",
+      "failed": "Valget ble ikke lagret.",
+      "loadFailed": {
+        "title": "Valgene dine kunne ikke lastes.",
+        "text": "Fargeskjemaet er som før. Prøv igjen."
+      }
+    },
+    "scheme": {
+      "default": "Standard",
+      "defaultHint": "Grønn, og lys eller mørk som systemet ditt.",
+      "light": "Lys",
+      "lightHint": "Grønn, alltid lys.",
+      "midnight": "Midnatt",
+      "midnightHint": "Indigo, alltid mørk.",
+      "ocean": "Hav",
+      "oceanHint": "Blå, og lys eller mørk som systemet ditt."
+    },
+    "name": {
+      "title": "Navn",
+      "username": "Brukernavn",
+      "usernameHelp": "Brukernavn kan ikke endres.",
+      "firstName": "Fornavn",
+      "lastName": "Etternavn",
+      "nickname": "Kallenavn",
+      "displayAs": "Vis navn offentlig som",
+      "displayAsHelp": "Navnet som vises i «Hei, …» og på innlegg. Valgene er bygd av navnene over."
+    },
+    "contact": {
+      "title": "Kontaktinformasjon",
+      "email": "E-post",
+      "emailHelp": "Hvis du bytter adresse, sender vi en lenke til den nye. Adressen endres ikke før du har åpnet lenken.",
+      "website": "Nettsted",
+      "confirmTitle": "Bekreft den nye e-postadressen",
+      "confirmText": "Vi sender en lenke til {email}. Adressen din endres ikke før du har åpnet lenken.",
+      "confirmButton": "Send lenke",
+      "sent": "Vi har sendt en lenke til {email}. E-postadressen din endres ikke før du har åpnet den.",
+      "skipped": "E-postadressen ble ikke endret. Det du skrev står i feltet."
+    },
+    "about": {
+      "title": "Om deg selv",
+      "bio": "Biografisk informasjon",
+      "bioHelp": "Skriv noen få setninger om deg selv. Teksten kan vises offentlig."
+    },
+    "validation": {
+      "firstName": "Fornavnet kan ha opptil 100 tegn, på én linje.",
+      "lastName": "Etternavnet kan ha opptil 100 tegn, på én linje.",
+      "nicknameRequired": "Skriv inn et kallenavn. Det kan være det samme som brukernavnet.",
+      "nickname": "Kallenavnet kan ha opptil 100 tegn, på én linje.",
+      "emailRequired": "Skriv inn e-postadressen din.",
+      "email": "Skriv inn en gyldig e-postadresse, for eksempel navn{'@'}eksempel.no.",
+      "website": "Skriv inn en adresse som starter med http:// eller https://, for eksempel https://eksempel.no.",
+      "bio": "Teksten kan ha opptil 5000 tegn."
+    },
+    "account": {
+      "title": "Kontoadministrasjon"
+    },
+    "password": {
+      "title": "Nytt passord",
+      "intro": "Bytter du passord, logges de andre øktene dine ut.",
+      "set": "Sett nytt passord",
+      "new": "Nytt passord",
+      "save": "Lagre nytt passord",
+      "cancel": "Avbryt",
+      "confirmTitle": "Bytte passord?",
+      "confirmText": "Skriv inn passordet du bruker nå. Vi bytter det og logger ut de andre øktene dine.",
+      "confirmButton": "Bytt passord",
+      "changed": "Passordet er endret. De andre øktene dine er logget ut."
+    },
+    "mfa": {
+      "title": "Tofaktorautentisering",
+      "on": "Tofaktor er på, med {n} autentiseringsapp. | Tofaktor er på, med {n} autentiseringsapper.",
+      "off": "Tofaktor er av.",
+      "intro": "Med tofaktor trenger du en kode fra en app på telefonen, i tillegg til passordet, når du logger inn.",
+      "required": "Rollen din krever tofaktor. Den siste appen kan derfor ikke fjernes; sett opp en ny først hvis du vil bytte.",
+      "unnamed": "Autentiseringsapp",
+      "createdAt": "Lagt til {when}",
+      "lastUsed": "sist brukt {when}",
+      "neverUsed": "aldri brukt",
+      "codesLeft": "Du har {n} gjenopprettingskode igjen. | Du har {n} gjenopprettingskoder igjen.",
+      "setUp": "Sett opp autentiseringsapp",
+      "newCodes": "Lag nye gjenopprettingskoder",
+      "remove": "Fjern",
+      "removeLabel": "Fjern {name}",
+      "removeTitle": "Fjerne «{name}»?",
+      "removeText": "Appen kan ikke lenger brukes til å logge inn. Vi sender deg en e-post om endringen.",
+      "removeLastText": "Dette er den siste appen din. Tofaktor slås av, og gjenopprettingskodene slettes. Vi sender deg en e-post om endringen.",
+      "removeButton": "Fjern appen",
+      "removed": "«{name}» er fjernet.",
+      "appAdded": "Autentiseringsappen er lagt til.",
+      "codesTitle": "Lage nye gjenopprettingskoder?",
+      "codesText": "De gamle kodene slutter å virke. Vi viser de nye kodene bare én gang, og sender deg en e-post om endringen.",
+      "codesButton": "Lag nye koder",
+      "codesDone": "Ferdig",
+      "codesKept": "De nye gjenopprettingskodene gjelder nå.",
+      "loadFailed": {
+        "title": "Tofaktor-innstillingene kunne ikke lastes.",
+        "text": "Resten av profilen virker som før. Prøv igjen."
+      }
+    },
+    "sessions": {
+      "title": "Økter",
+      "help": "Hvis du har mistet en enhet eller tror noen andre har tilgang til kontoen din, kan du logge ut overalt ellers. Du blir værende innlogget her.",
+      "onlyThis": "Du er bare logget inn her, i denne nettleseren.",
+      "listLabel": "Aktive økter",
+      "deviceBoth": "{browser} på {system}",
+      "deviceUnknown": "Ukjent enhet",
+      "current": "Denne økten",
+      "ip": "IP-adresse {ip}",
+      "lastSeen": "sist aktiv {when}",
+      "signedIn": "Logget inn {when}",
+      "end": "Logg ut",
+      "endLabel": "Logg ut økten på {device}",
+      "endTitle": "Logge ut økten på {device}?",
+      "endText": "Den som bruker økten, blir logget ut med én gang.",
+      "ended": "Økten på {device} er logget ut.",
+      "endOthers": "Logg ut overalt ellers",
+      "endOthersTitle": "Logge ut overalt ellers?",
+      "endOthersText": "{n} annen økt avsluttes. Du blir værende innlogget her. | {n} andre økter avsluttes. Du blir værende innlogget her.",
+      "endedOthers": "{n} økt er avsluttet. | {n} økter er avsluttet.",
+      "loadFailed": {
+        "title": "Øktene kunne ikke lastes.",
+        "text": "Resten av profilen virker som før. Prøv igjen."
+      }
+    }
+  },
+  "roles": {
+    "administrator": "Administrator",
+    "editor": "Redaktør",
+    "author": "Forfatter",
+    "contributor": "Bidragsyter",
+    "subscriber": "Abonnent"
+  },
+  "users": {
+    "title": "Brukere",
+    "you": "Deg",
+    "noRole": "Ingen rolle",
+    "roleSeparator": ", ",
+    "unknownUser": "en bruker",
+    "count": "{n} element | {n} elementer",
+    "nameList": {
+      "more": "og {n} til"
+    },
+    "views": {
+      "label": "Brukere etter rolle",
+      "all": "Alle",
+      "none": "Ingen rolle",
+      "item": "{name} ({n})"
+    },
+    "search": {
+      "label": "Søk i brukere",
+      "button": "Søk i brukere",
+      "summary": "Søkeresultater for: {query}",
+      "clear": "Tøm søket"
+    },
+    "bulk": {
+      "label": "Endre rolle til",
+      "choose": "Velg rolle…",
+      "submit": "Endre",
+      "needUsers": "Kryss av for brukerne du vil endre rolle for.",
+      "needRole": "Velg hvilken rolle de skal få.",
+      "selected": "{n} valgt"
+    },
+    "confirm": {
+      "title": "Endre rolle for én administrator? | Endre rolle for {n} administratorer?",
+      "text": "Administratoren mister tilgangen til alt som bare administratorer kan gjøre, og får rollen {role}. Du kan gi rollen tilbake senere. | De {n} administratorene mister tilgangen til alt som bare administratorer kan gjøre, og får rollen {role}. Du kan gi rollen tilbake senere.",
+      "submit": "Endre rolle"
+    },
+    "roleChanged": {
+      "title": "Endret rolle for én bruker. | Endret rolle for {n} brukere.",
+      "none": "Ingen roller ble endret.",
+      "skippedCount": "{n} bruker ble ikke endret. | {n} brukere ble ikke endret.",
+      "unchanged": "{users} hadde allerede rollen {role}."
+    },
+    "roleSkipped": {
+      "self": "Du kan ikke endre din egen rolle. Rollen din ble ikke endret.",
+      "lastAdministrator": "Nettstedet må ha minst én administrator, så {users} beholder rollen.",
+      "forbiddenUser": "Du har ikke rettigheter til å endre {users}, fordi kontoen har rettigheter som du selv ikke har.",
+      "notFound": "{users} finnes ikke lenger."
+    },
+    "roleError": {
+      "title": "Rollen ble ikke endret. Valget ditt er beholdt.",
+      "unknownRole": "Rollen finnes ikke lenger. Last siden på nytt og velg en annen rolle.",
+      "forbiddenRole": "Du kan ikke gi denne rollen, fordi den har rettigheter som du selv ikke har. Velg en annen rolle."
+    },
+    "table": {
+      "caption": "Brukerliste",
+      "selectAll": "Velg alle brukere på siden",
+      "select": "Velg {user}",
+      "username": "Brukernavn",
+      "name": "Navn",
+      "email": "E-post",
+      "roles": "Rolle",
+      "posts": "Innlegg",
+      "postsCount": "{n} innlegg"
+    },
+    "sort": {
+      "label": "Sorter brukerne",
+      "by": "Sorter etter:",
+      "ascending": "sortert stigende",
+      "descending": "sortert synkende"
+    },
+    "pagination": {
+      "label": "Sidenummerering",
+      "previous": "Forrige",
+      "next": "Neste",
+      "page": "Side {n}"
+    },
+    "empty": {
+      "title": "Ingen brukere funnet.",
+      "showAll": "Vis alle"
+    },
+    "failed": {
+      "title": "Brukerne kunne ikke lastes.",
+      "text": "Ingenting er endret. Prøv igjen, eller last siden på nytt.",
+      "stale": "Listen under kan være utdatert. Prøv igjen for å hente den på nytt.",
+      "retry": "Prøv igjen"
+    },
+    "denied": {
+      "title": "Du har ikke tilgang til brukerne",
+      "text": "Rollen din gir ikke rett til å se brukerlisten. Spør en administrator hvis du trenger tilgang.",
+      "back": "Til kontrollpanelet"
     }
   }
 }

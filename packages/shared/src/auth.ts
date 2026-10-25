@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { LoginPassword } from './password.ts'
+import { Preferences } from './preferences.ts'
 
 // The request and response shapes of /api/v1/auth/* and /api/v1/me/* (PLAN «API-endepunktkart»). Inputs are strict
 // objects: an unknown field is an error, never silently dropped, so a client cannot slip in a field the api does not
@@ -176,7 +177,7 @@ export const RevokeSessionsResponse = z.object({ revoked: z.int().min(0) })
 export type RevokeSessionsResponse = z.infer<typeof RevokeSessionsResponse>
 
 /** GET and PATCH /me. */
-export const MeResponse = SessionAccount.extend({ profile: ProfileFields })
+export const MeResponse = SessionAccount.extend({ profile: ProfileFields, preferences: Preferences })
 export type MeResponse = z.infer<typeof MeResponse>
 
 export const SessionIdParams = z.object({ id: z.uuid() })
