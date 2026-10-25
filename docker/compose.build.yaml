@@ -8,24 +8,24 @@
 # here must be the same as in compose.yaml (test/docker-config.test.ts checks that).
 #
 # TOASCRIBE_REGISTRY is where the images go. The default is where users pull them from. The release workflow builds into a
-# throwaway registry on the runner (localhost:5000/toaweb), scans the images there, and only then copies them to
-# ghcr.io/toaweb (.github/workflows/release.yml).
+# throwaway registry on the runner (localhost:5000/toaweb-development), scans the images there, and only then copies them to
+# ghcr.io/toaweb-development (.github/workflows/release.yml).
 # The label links a package in GitHub's registry to this repository.
 name: toascribe
 
 x-labels: &labels
-  org.opencontainers.image.source: https://github.com/toaweb/toascribe
+  org.opencontainers.image.source: https://github.com/toaweb-development/toascribe
 
 services:
   proxy:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-proxy:${TOASCRIBE_VERSION:-0.5.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-proxy:${TOASCRIBE_VERSION:-0.5.0}
     build:
       context: .
       dockerfile: docker/proxy/Dockerfile
       labels: *labels
 
   site:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-site:${TOASCRIBE_VERSION:-0.5.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-site:${TOASCRIBE_VERSION:-0.5.0}
     build:
       context: .
       dockerfile: docker/nuxt/Dockerfile
@@ -35,7 +35,7 @@ services:
         HEALTH_PATH: /
 
   admin:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-admin:${TOASCRIBE_VERSION:-0.5.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-admin:${TOASCRIBE_VERSION:-0.5.0}
     build:
       context: .
       dockerfile: docker/nuxt/Dockerfile
@@ -45,14 +45,14 @@ services:
         HEALTH_PATH: /admin
 
   api:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-api:${TOASCRIBE_VERSION:-0.5.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-api:${TOASCRIBE_VERSION:-0.5.0}
     build:
       context: .
       dockerfile: docker/api/Dockerfile
       labels: *labels
 
   postgres:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-postgres:${TOASCRIBE_VERSION:-0.5.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-postgres:${TOASCRIBE_VERSION:-0.5.0}
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile
@@ -60,7 +60,7 @@ services:
 
   # Development only (the mailpit profile); built and scanned like the others.
   mailpit:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}/toascribe-mailpit:${TOASCRIBE_VERSION:-0.5.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-mailpit:${TOASCRIBE_VERSION:-0.5.0}
     build:
       context: .
       dockerfile: docker/mailpit/Dockerfile

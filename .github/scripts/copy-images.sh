@@ -2,7 +2,7 @@
 # Copies the scanned images from one registry to another, byte for byte, and proves it.
 #
 #   copy-images.sh SOURCE_PREFIX TARGET_PREFIX VERSION EXTRA_TAG
-#   copy-images.sh localhost:5000/toaweb ghcr.io/toaweb 0.4.0 sha-3f9a1c2
+#   copy-images.sh localhost:5000/toaweb-development ghcr.io/toaweb-development 0.4.0 sha-3f9a1c2
 #
 # The release workflow builds into a throwaway registry, scans there, and runs this to publish; the pull request dry run
 # (ci.yml) runs the same script against a second throwaway registry. So the copy is exercised on every pull request, and

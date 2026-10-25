@@ -62,7 +62,7 @@ runs:
       uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
       env:
         TOASCRIBE_VERSION: ${{ steps.version.outputs.version }}
-        TOASCRIBE_REGISTRY: localhost:5000/toaweb
+        TOASCRIBE_REGISTRY: localhost:5000/toaweb-development
       with:
         source: .
         files: docker/compose.build.yaml
@@ -77,7 +77,7 @@ runs:
     - name: Scan the api image
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: localhost:5000/toaweb/toascribe-api:${{ steps.version.outputs.version }}
+        image-ref: localhost:5000/toaweb-development/toascribe-api:${{ steps.version.outputs.version }}
         scanners: vuln
         severity: CRITICAL,HIGH
         ignore-unfixed: true
@@ -85,7 +85,7 @@ runs:
     - name: Scan the site image
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: localhost:5000/toaweb/toascribe-site:${{ steps.version.outputs.version }}
+        image-ref: localhost:5000/toaweb-development/toascribe-site:${{ steps.version.outputs.version }}
         scanners: vuln
         severity: CRITICAL,HIGH
         ignore-unfixed: true
@@ -93,7 +93,7 @@ runs:
     - name: Scan the admin image
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: localhost:5000/toaweb/toascribe-admin:${{ steps.version.outputs.version }}
+        image-ref: localhost:5000/toaweb-development/toascribe-admin:${{ steps.version.outputs.version }}
         scanners: vuln
         severity: CRITICAL,HIGH
         ignore-unfixed: true
@@ -101,7 +101,7 @@ runs:
     - name: Scan the proxy image
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: localhost:5000/toaweb/toascribe-proxy:${{ steps.version.outputs.version }}
+        image-ref: localhost:5000/toaweb-development/toascribe-proxy:${{ steps.version.outputs.version }}
         scanners: vuln
         severity: CRITICAL,HIGH
         ignore-unfixed: true
@@ -109,7 +109,7 @@ runs:
     - name: Scan the postgres image
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: localhost:5000/toaweb/toascribe-postgres:${{ steps.version.outputs.version }}
+        image-ref: localhost:5000/toaweb-development/toascribe-postgres:${{ steps.version.outputs.version }}
         scanners: vuln
         severity: CRITICAL,HIGH
         ignore-unfixed: true
@@ -117,7 +117,7 @@ runs:
     - name: Scan the mailpit image
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
-        image-ref: localhost:5000/toaweb/toascribe-mailpit:${{ steps.version.outputs.version }}
+        image-ref: localhost:5000/toaweb-development/toascribe-mailpit:${{ steps.version.outputs.version }}
         scanners: vuln
         severity: CRITICAL,HIGH
         ignore-unfixed: true

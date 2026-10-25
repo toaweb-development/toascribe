@@ -9,14 +9,16 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 ## [0.5.0] - 2026-10-24
 
 The admin shell: after login the admin now has a menu, a top bar, a dashboard, a profile page and a users list, in place of
-the empty page that came before. **No action is needed on upgrade.** There is no migration and no new setting or environment
-variable; the account preferences are stored in a column that already existed.
+the empty page that came before. The repository has moved to `github.com/toaweb-development/toascribe`, and the images are
+now published as `ghcr.io/toaweb-development/toascribe-*`. **On upgrade, download the new `compose.yaml`** (or change the
+`image:` names in yours): 0.4.1 was the last version published under `ghcr.io/toaweb/`. There is no migration and no new
+setting or environment variable; the account preferences are stored in a column that already existed.
 
 ### Added
 
 - The admin shell. A sidebar menu with WordPress' positions and icons, drawn from a registry on the server
   (`GET /api/v1/admin/menu`) that leaves out what the signed-in account may not use, so an administrator gets «Kontrollpanel»
-  and «Brukere», and every other role gets «Kontrollpanel» and «Profil». Code on the server can register more items, which
+  and «Brukere», and an account that cannot list users gets «Kontrollpanel» and «Profil». Code on the server can register more items, which
   is how later features will join the menu. A top bar with a link to the site and the «Hei, navn» menu (profile, log out).
   The sidebar can be collapsed to a rail of icons.
 - Four colour schemes per account (Standard, Lys, Midnatt and Hav), chosen on the profile page and applied from the first
@@ -30,7 +32,8 @@ variable; the account preferences are stored in a column that already existed.
 - Account preferences (`PATCH /api/v1/me/preferences`): colour scheme, whether the toolbar shows on the site, and whether
   the welcome panel is dismissed. `GET /api/v1/me` returns them.
 - The profile page at `/admin/profile`: personal options, name, contact (an e-mail change is only made when the new address
-  is confirmed), a short bio, password, two-factor and the account's sessions.
+  is confirmed, and until then the page shows «Venter på bekreftelse av ny e-post» with the new address), a short bio,
+  password, two-factor and the account's sessions.
 - The users list at `/admin/users` (`GET /api/v1/users`) with views per role, search, sorting and paging, and role
   assignment for one or many accounts (`PUT /api/v1/users/roles`). You cannot change your own role, the last active
   administrator keeps the role (two requests at once cannot remove both), and nobody can grant a role that holds a capability
@@ -38,17 +41,25 @@ variable; the account preferences are stored in a column that already existed.
 
 ### Changed
 
-- A test mail that goes through after the install now marks e-mail as verified, as the wizard's test did, and resolves the
-  «e-post hoppet over» notice. Only a test with the saved mail settings counts; a failed mail, or settings changed while it
-  waited, marks nothing. If the api restarts within two minutes of the test, send another.
-- `GET /api/v1/me` and `PATCH /api/v1/me` return `preferences` as well.
+- The images are published under `ghcr.io/toaweb-development/toascribe-*` (proxy, site, admin, api, postgres, mailpit),
+  and the labels and links point at `github.com/toaweb-development/toascribe`. 0.4.1 was the last version under
+  `ghcr.io/toaweb/`; those images stay where they are.
+- A test mail that goes through after the install now marks e-mail as verified, as the wizard's test does, and resolves the
+  «e-post hoppet over» notice. The worker marks it when it has sent the mail, and only if the mail settings are still the
+  ones it sent with; a failed mail, or settings saved meanwhile, marks nothing. One function in the install package is the
+  only code that writes the verified time, for the wizard's test and the later ones alike.
+- `GET /api/v1/me` and `PATCH /api/v1/me` return `preferences` and `pendingEmail` (the address of an e-mail change that
+  waits for its confirmation link, and when the link expires, or `null`).
 
 ### Security
 
-- The admin's Content-Security-Policy gets a `style-src-attr` that allows three exact inline style strings by hash, with
-  `'unsafe-hashes'`: the width of Nuxt UI's sidebar (open and collapsed) and the content size of its accordion. They are
-  in the HTML the server sends. Nothing else is allowed: there is still no `'unsafe-inline'` and no `'unsafe-eval'`, and a
-  page cannot add a style attribute of its own. A new Nuxt UI version that writes another string fails the end-to-end tests.
+- The admin's Content-Security-Policy gets a `style-src-attr` that allows five exact inline style strings by hash, with
+  `'unsafe-hashes'`: the width of Nuxt UI's sidebar (open and collapsed) and three strings that Reka UI writes for Nuxt UI's
+  select, radio group and visually hidden fields. They are in the HTML the server sends, so the admin uses Nuxt UI's own form
+  controls on every screen. `'unsafe-hashes'` is used for style attributes only, never for scripts, and the site has none.
+  The strings are kept in one list; a test fails when a screen draws a string that is not on it, or the list holds one that
+  no screen draws. There is still no `'unsafe-inline'` and no `'unsafe-eval'`, and a page cannot add a style attribute of
+  its own.
 - The setup wizard takes a `?token=` query out of the address bar at once, without reading its value, so a token put in
   the wrong place does not stay in the history. The token still travels only in the fragment and the `X-Setup-Token` header.
 
@@ -309,9 +320,9 @@ The skeleton: everything runs end to end, nothing is a feature yet.
   dependencies, a start of the full stack, and a version gate that asks for a new version and CHANGELOG entry when
   released files change.
 
-[Unreleased]: https://github.com/toaweb/toascribe/compare/v0.5.0...HEAD
-[0.5.0]: https://github.com/toaweb/toascribe/compare/v0.4.1...v0.5.0
-[0.4.1]: https://github.com/toaweb/toascribe/compare/v0.3.0...v0.4.1
-[0.3.0]: https://github.com/toaweb/toascribe/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/toaweb/toascribe/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/toaweb/toascribe/releases/tag/v0.1.0
+[Unreleased]: https://github.com/toaweb-development/toascribe/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/toaweb-development/toascribe/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/toaweb-development/toascribe/compare/v0.3.0...v0.4.1
+[0.3.0]: https://github.com/toaweb-development/toascribe/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/toaweb-development/toascribe/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/toaweb-development/toascribe/releases/tag/v0.1.0

@@ -131,7 +131,7 @@ jobs:
         env:
           VERSION: ${{ steps.build.outputs.version }}
         run: |
-          .github/scripts/copy-images.sh localhost:5000/toaweb ghcr.io/toaweb "${VERSION}" "sha-${GITHUB_SHA::7}"
+          .github/scripts/copy-images.sh localhost:5000/toaweb-development ghcr.io/toaweb-development "${VERSION}" "sha-${GITHUB_SHA::7}"
 
       # Dry run: the same copy, into a second throwaway registry, so only the login and the target differ from a release.
       - name: Dry run - start a second registry
@@ -151,7 +151,7 @@ jobs:
         env:
           VERSION: ${{ steps.build.outputs.version }}
         run: |
-          .github/scripts/copy-images.sh localhost:5000/toaweb localhost:5001/toaweb "${VERSION}" "sha-${GITHUB_SHA::7}"
+          .github/scripts/copy-images.sh localhost:5000/toaweb-development localhost:5001/toaweb-development "${VERSION}" "sha-${GITHUB_SHA::7}"
 
   release:
     name: Tag and release
@@ -191,7 +191,7 @@ jobs:
           fi
           {
             printf '\n### Images\n\n'
-            printf 'ghcr.io/toaweb/toascribe-{proxy,site,admin,api,postgres,mailpit}:%s, scanned before they were published.\n' "${version}"
+            printf 'ghcr.io/toaweb-development/toascribe-{proxy,site,admin,api,postgres,mailpit}:%s, scanned before they were published.\n' "${version}"
             cat <<'TEXT'
           `compose.yaml` and `env.example` (the `.env.example`) start them without cloning the repository: see «Installer uten å klone repoet» in the README.
           TEXT

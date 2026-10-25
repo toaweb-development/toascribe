@@ -144,7 +144,7 @@ jobs:
       - name: Scan the api image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-api:${{ env.TOASCRIBE_VERSION }}
+          image-ref: ghcr.io/toaweb-development/toascribe-api:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -152,7 +152,7 @@ jobs:
       - name: Scan the site image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-site:${{ env.TOASCRIBE_VERSION }}
+          image-ref: ghcr.io/toaweb-development/toascribe-site:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -160,7 +160,7 @@ jobs:
       - name: Scan the admin image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-admin:${{ env.TOASCRIBE_VERSION }}
+          image-ref: ghcr.io/toaweb-development/toascribe-admin:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -168,7 +168,7 @@ jobs:
       - name: Scan the proxy image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-proxy:${{ env.TOASCRIBE_VERSION }}
+          image-ref: ghcr.io/toaweb-development/toascribe-proxy:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -176,7 +176,7 @@ jobs:
       - name: Scan the postgres image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-postgres:${{ env.TOASCRIBE_VERSION }}
+          image-ref: ghcr.io/toaweb-development/toascribe-postgres:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -198,7 +198,7 @@ jobs:
       - name: Scan the mailpit image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ghcr.io/toaweb/toascribe-mailpit:${{ env.TOASCRIBE_VERSION }}
+          image-ref: ghcr.io/toaweb-development/toascribe-mailpit:${{ env.TOASCRIBE_VERSION }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -345,4 +345,4 @@ jobs:
         env:
           VERSION: ${{ steps.build.outputs.version }}
         run: |
-          .github/scripts/copy-images.sh localhost:5000/toaweb localhost:5001/toaweb "${VERSION}" "sha-${GITHUB_SHA::7}"
+          .github/scripts/copy-images.sh localhost:5000/toaweb-development localhost:5001/toaweb-development "${VERSION}" "sha-${GITHUB_SHA::7}"

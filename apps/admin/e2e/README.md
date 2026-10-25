@@ -35,6 +35,14 @@ The first time, install the browser: `pnpm --filter @toascribe/admin exec playwr
 `stack.sh up` writes fresh passwords and keys into a scratch env file under `$TMPDIR/toascribe-e2e/` (mode 600) and starts the
 compose stack with the `mailpit` profile on `http://localhost:18080` (Mailpit on `:18025`). To use other names or ports, set
 `E2E_PROJECT`, `E2E_HTTP_PORT` and `E2E_MAILPIT_PORT` for `stack.sh`, and export what `stack.sh env` prints before the tests.
+More variables, for a host where the defaults are taken:
+
+- `E2E_STATE_DIR`: where `stack.sh` keeps the env file (default `$TMPDIR/<project>`).
+- `E2E_EDGE_SUBNET`: the subnet of the stack's `edge` network (default compose.yaml's `10.231.97.0/24`).
+- `E2E_VERSION`: the image tag the stack builds and runs (default `0.3.0-e2e`).
+- `E2E_WIZARD_PROJECT`, `E2E_WIZARD_HTTP_PORT`, `E2E_WIZARD_MAILPIT_PORT`, `E2E_WIZARD_SUBNET`: the same for the wizard's own
+  stack (defaults `toascribe-e2e-setup`, 18081, 18026, `10.231.98.0/24`).
+- `E2E_BASE_URL`, `E2E_MAILPIT_URL`, `E2E_ENV_FILE`: what `stack.sh env` prints; the tests read them.
 
 ## What to know
 

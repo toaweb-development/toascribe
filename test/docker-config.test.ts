@@ -166,7 +166,7 @@ describe('docker/compose.yaml', () => {
   })
 
   it('pins every image that is not built here by tag and digest', () => {
-    const external = [...compose.matchAll(/^\s+image: (?!ghcr\.io\/toaweb\/)(\S+)/gm)].map((match) => match[1])
+    const external = [...compose.matchAll(/^\s+image: (?!ghcr\.io\/toaweb-development\/)(\S+)/gm)].map((match) => match[1])
     expect(external.length).toBeGreaterThanOrEqual(1) // valkey (mailpit is built here, on the official image)
     for (const image of external) expect(image).toMatch(/:[^@/]+@sha256:[0-9a-f]{64}$/)
   })
@@ -221,7 +221,7 @@ describe('docker/compose.yaml', () => {
   })
 
   it('builds mailpit here, on the official image that CI starts for the e-mail tests', () => {
-    expect(service('mailpit')).toContain('image: ghcr.io/toaweb/toascribe-mailpit:')
+    expect(service('mailpit')).toContain('image: ghcr.io/toaweb-development/toascribe-mailpit:')
     expect(service('mailpit')).toContain('dockerfile: docker/mailpit/Dockerfile')
     const pattern = /axllent\/mailpit:v[0-9.]+@sha256:[0-9a-f]{64}/
     const inDockerfile = pattern.exec(mailpitDockerfile)?.[0]
@@ -244,7 +244,7 @@ describe('docker/compose.build.yaml', () => {
    */
   function buildLines(text: string): string[] {
     return text
-      .replaceAll('${TOASCRIBE_REGISTRY:-ghcr.io/toaweb}', 'ghcr.io/toaweb')
+      .replaceAll('${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}', 'ghcr.io/toaweb-development')
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => /^(image: ghcr\.io\/|dockerfile: |APP: |HEALTH_PATH: )/.test(line))
@@ -261,15 +261,15 @@ describe('docker/compose.build.yaml', () => {
     expect(composeBuild).not.toContain(':?')
   })
 
-  it('takes the registry from TOASCRIBE_REGISTRY, ghcr.io/toaweb by default', () => {
+  it('takes the registry from TOASCRIBE_REGISTRY, ghcr.io/toaweb-development by default', () => {
     const images = [...composeBuild.matchAll(/^\s+image: (\S+)$/gm)].map((match) => match[1])
     expect(images).toHaveLength(6)
-    for (const image of images) expect(image).toMatch(/^\$\{TOASCRIBE_REGISTRY:-ghcr\.io\/toaweb\}\/toascribe-[a-z]+:/)
+    for (const image of images) expect(image).toMatch(/^\$\{TOASCRIBE_REGISTRY:-ghcr\.io\/toaweb-development\}\/toascribe-[a-z]+:/)
   })
 
   it('labels every image with the repository, which links the package in the registry to it', () => {
     expect(composeBuild.match(/^\s+labels: \*labels$/gm)).toHaveLength(6)
-    expect(composeBuild).toContain('org.opencontainers.image.source: https://github.com/toaweb/toascribe')
+    expect(composeBuild).toContain('org.opencontainers.image.source: https://github.com/toaweb-development/toascribe')
   })
 })
 
@@ -548,7 +548,7 @@ describe('the release workflow', () => {
   it('scans before the login, and logs in and pushes only in a real run', () => {
     const scan = images.indexOf('uses: ./.github/actions/build-scan-images')
     const login = images.indexOf('uses: docker/login-action@')
-    const push = images.indexOf('copy-images.sh localhost:5000/toaweb ghcr.io/toaweb')
+    const push = images.indexOf('copy-images.sh localhost:5000/toaweb-development ghcr.io/toaweb-development')
     expect(scan).toBeGreaterThan(-1)
     expect(login).toBeGreaterThan(scan)
     expect(push).toBeGreaterThan(login)
@@ -591,14 +591,14 @@ describe('the release workflow', () => {
   })
 
   it('builds all six images with provenance and SBOM into the local registry and scans each one there', () => {
-    expect(buildScanAction).toContain('TOASCRIBE_REGISTRY: localhost:5000/toaweb')
+    expect(buildScanAction).toContain('TOASCRIBE_REGISTRY: localhost:5000/toaweb-development')
     expect(buildScanAction).toContain('*.attest=type=provenance,mode=max')
     expect(buildScanAction).toContain('*.attest=type=sbom')
     expect(buildScanAction).toMatch(/driver-opts: network=host/)
     expect(buildScanAction).toMatch(/registry:3\.\d+\.\d+@sha256:[0-9a-f]{64}/)
     expect(buildScanAction).not.toContain('login-action')
     for (const name of ['api', 'site', 'admin', 'proxy', 'postgres', 'mailpit']) {
-      expect(buildScanAction).toContain(`image-ref: localhost:5000/toaweb/toascribe-${name}:`)
+      expect(buildScanAction).toContain(`image-ref: localhost:5000/toaweb-development/toascribe-${name}:`)
       expect(copyImagesScript).toContain(name)
     }
   })
@@ -617,7 +617,7 @@ describe('the release workflow', () => {
 
   it('has a dry run on every pull request that uses the same action and script, and has no login', () => {
     expect(dryRun).toContain('uses: ./.github/actions/build-scan-images')
-    expect(dryRun).toContain('.github/scripts/copy-images.sh localhost:5000/toaweb localhost:5001/toaweb')
+    expect(dryRun).toContain('.github/scripts/copy-images.sh localhost:5000/toaweb-development localhost:5001/toaweb-development')
     expect(dryRun).not.toContain('login-action')
     expect(dryRun).not.toContain('ghcr.io')
     expect(ciWorkflow).toMatch(/^on:\n {2}pull_request:\n/m)

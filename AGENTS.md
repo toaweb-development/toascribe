@@ -81,9 +81,12 @@ decision nothing is framed, the admin showing the site included, until the live 
 the site to `'self'` and `SAMEORIGIN`), and the cache rule. Do not repeat a shared directive in an app: layers concatenate
 arrays.
 
-The admin also sets `style-src-attr` with `'unsafe-hashes'` and the hashes of three inline style strings that Nuxt UI's sidebar
-and accordion write into the server-drawn HTML (the reasons are in `apps/admin/nuxt.config.ts`). There is still no
-`'unsafe-inline'`; a new string from a Nuxt UI upgrade fails the e2e tests.
+The admin also sets `style-src-attr` with `'unsafe-hashes'` and the hashes of the inline style strings that Nuxt UI and Reka UI
+write into the server-drawn HTML (Tor's decision): `'unsafe-hashes'` for style attributes only, never in a script directive, and
+not on the site. The strings are in one list, `ADMIN_STYLE_ATTRIBUTES` in `apps/admin/csp-style-attributes.ts`, each with its
+reason; `nuxt.config.ts` hashes that list and nothing else. A test fails when a screen draws a string that is not on the list
+(e.g. after a Nuxt UI upgrade) or the list holds one no screen draws. Use Nuxt UI's own controls; do not work around the policy
+with native fields or `<ClientOnly>`. There is still no `'unsafe-inline'`.
 
 - **A nonce and a page cache do not mix.** The nonce is in the HTML and in the header of one response. A shared cache that hands
   the same page to many visitors hands them a nonce anyone can read, and a known nonce protects nothing. So rendered pages are
@@ -154,7 +157,7 @@ Spor: ingen ennå — produkt; tag ved merge (VERSIONING §5)
 
 toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml` and no server. When a new
 version reaches `main`, `release.yml` builds the six images, scans them with Trivy and pushes them to
-`ghcr.io/toaweb/toascribe-*` (`packages: write` on the `images` job only), then tags `vX.Y.Z` and creates the GitHub
+`ghcr.io/toaweb-development/toascribe-*` (`packages: write` on the `images` job only), then tags `vX.Y.Z` and creates the GitHub
 Release; a failed scan leaves no image and no tag. `ci.yml` runs the same build, scan and copy without a push on every
 pull request (`release-dry-run`). Version source
 of truth: the root `package.json`; every workspace `package.json` and the `TOASCRIBE_VERSION` default in
