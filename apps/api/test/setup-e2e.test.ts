@@ -146,6 +146,12 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
         `select state, retry_limit from pgboss.job where name = 'email.send' order by created_on desc limit 1`,
       )
       expect(job).toEqual({ state: 'completed', retry_limit: 0 })
+
+      // The worker marked the e-mail as verified before it finished the job (markEmailVerified): the wizard only reports it.
+      const [verified] = await env.query<{ value: unknown }>(`select value from setting where key = 'smtp_verified_at'`)
+      expect(typeof verified?.value).toBe('string')
+      const state = await setupCall(client, 'GET', '/state', token)
+      expect(await state.json()).toMatchObject({ nextStep: 'admin' })
     })
 
     it('a test that works removes the notice that the step was skipped', async () => {

@@ -3,7 +3,7 @@
 // checked for purpose, expiry and use; the caller marks it used in the same transaction as the change it authorises.
 import { schema } from '@toascribe/db'
 import type { AccountTokenPurpose } from '@toascribe/shared'
-import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
 
 import type { Executor } from './executor.ts'
 
@@ -97,4 +97,27 @@ export async function markTokenUsed(db: Executor, tokenId: string, now: Date): P
     .where(and(eq(accountToken.id, tokenId), isNull(accountToken.usedAt)))
     .returning({ id: accountToken.id })
   return rows.length === 1
+}
+
+/** The address and expiry of the account's newest unused, unexpired e-mail change link, or undefined. The token hash is not read. */
+export async function findPendingEmailChange(
+  db: Executor,
+  accountId: string,
+  now: Date,
+): Promise<{ readonly email: string; readonly expiresAt: Date } | undefined> {
+  const rows = await db
+    .select({ email: accountToken.newEmail, expiresAt: accountToken.expiresAt })
+    .from(accountToken)
+    .where(
+      and(
+        eq(accountToken.accountId, accountId),
+        eq(accountToken.purpose, 'email_change'),
+        isNull(accountToken.usedAt),
+        gt(accountToken.expiresAt, now),
+      ),
+    )
+    .orderBy(desc(accountToken.createdAt), desc(accountToken.id))
+    .limit(1)
+  const row = rows[0]
+  return row?.email == null ? undefined : { email: row.email, expiresAt: row.expiresAt }
 }

@@ -249,7 +249,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
     describe('the e-mail step is done on a passed test mail or a skip, never on saved settings alone', () => {
       const fast = { timeoutMs: 400, pollMs: 5 }
       const failing = () => stubMail({ states: [{ state: 'failed' }] })
-      const passing = () => stubMail({ states: [{ state: 'completed', output: { sent: true } }] })
+      const passing = () => stubMail({ states: [{ state: 'completed', output: { sent: true } }], worker: env.db })
 
       it('save, failed test, reload: still the e-mail step, install refused with step_missing and no notice', async () => {
         await env.service.saveSite(SITE)
@@ -402,6 +402,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
       await env.service.skipEmail()
       const mail = stubMail({
         states: [{ state: 'created' }, { state: 'active' }, { state: 'completed', output: { sent: true } }],
+        worker: env.db,
       })
       const service = env.service2({ mail, emailTest: fast })
       expect(await service.testEmail('me@example.test')).toEqual({ ok: true })
@@ -412,6 +413,17 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
       expect(mail.sent).toHaveLength(1)
       expect(mail.sent[0]?.message).toMatchObject({ template: 'test', to: 'me@example.test' })
       expect(mail.sent[0]?.options).toMatchObject({ retryLimit: 0, retentionSeconds: 90 })
+    })
+
+    it("only reports the job: marking the e-mail as verified is the worker's job (markEmailVerified), not the wizard's", async () => {
+      await env.service.saveSite(SITE)
+      await env.service.saveEmail(SMTP)
+      await env.service.skipEmail()
+      // A queue whose worker marks nothing: the job completes, the wizard says so, and writes nothing itself.
+      const service = env.service2({ mail: stubMail({ states: [{ state: 'completed' }] }), emailTest: fast })
+      expect(await service.testEmail('me@example.test')).toEqual({ ok: true })
+      expect(await env.setting('smtp_verified_at')).toBeNull()
+      expect((await env.footprint()).notices).toEqual([SETUP_EMAIL_SKIPPED_NOTICE.key])
     })
 
     it('says send_failed or mail_config from the worker, and nothing else the worker wrote', async () => {
@@ -625,7 +637,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the install service (needs TES
       await env.service.saveSite(SITE)
       await env.service.saveEmail(SMTP)
       await env
-        .service2({ mail: stubMail({ states: [{ state: 'completed' }] }), emailTest: { timeoutMs: 400, pollMs: 5 } })
+        .service2({
+          mail: stubMail({ states: [{ state: 'completed' }], worker: env.db }),
+          emailTest: { timeoutMs: 400, pollMs: 5 },
+        })
         .testEmail('me@example.test')
       await env.service.install({ admin: admin(), site: SITE })
       expect(await env.setting('smtp_host')).toBe('smtp.example.test')

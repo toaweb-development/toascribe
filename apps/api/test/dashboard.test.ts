@@ -11,14 +11,13 @@ import {
 import type { Notice } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import type { MailPort } from '../src/ports/mail.ts'
 import { createNoticeService } from '../src/services/notices.ts'
 import type { ProxyCheck, ProxyStatus } from '../src/services/proxy-check.ts'
 import { createAuditor } from '../src/services/support.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
 import { TEST_PASSWORD, startAuthApp } from './harness.ts'
 import type { AuthTestApp, TestClient } from './harness.ts'
-import { TEST_ORIGIN, memoryLogger, recordingMail } from './helpers.ts'
+import { TEST_ORIGIN, memoryLogger } from './helpers.ts'
 
 noticeIfSkipped('dashboard')
 
@@ -30,17 +29,9 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('dashboard (needs TEST_DATABASE
   let editor: TestClient
   let subscriber: TestClient
   let adminAccountId: string
-  /** How the mail port answers `jobState` for the test mails of the system route. */
-  let jobAnswer: () => Promise<{ state: string; output: unknown } | null> = () =>
-    Promise.resolve({ state: 'completed', output: null })
 
   beforeAll(async () => {
-    const recorder = recordingMail()
-    const port: MailPort = {
-      sendMail: (request, options) => recorder.sendMail(request, options),
-      jobState: () => jobAnswer(),
-    }
-    env = await startAuthApp({ mail: () => port })
+    env = await startAuthApp()
     const make = async (username: string, role: 'administrator' | 'editor' | 'subscriber') => {
       const account = await env.createAccount({ username, role })
       const client = env.client({ ip: '203.0.113.20' })
@@ -323,64 +314,25 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('dashboard (needs TEST_DATABASE
     })
   })
 
-  describe('a test mail that passes', () => {
-    const sendTest = () => admin.post('/api/v1/system/test-email', {})
-    const verifiedAt = async () =>
-      (await env.query<{ value: unknown }>(`select value from setting where key = 'smtp_verified_at'`))[0]?.value ??
-      null
-
-    it('sets smtp_verified_at, resolves the skip row and removes the warning', async () => {
+  describe('the test mail of the system route', () => {
+    it("only queues the mail: marking the e-mail as verified is the worker's job (markEmailVerified)", async () => {
       await setVerified(null)
       await raise(SETUP_EMAIL_SKIPPED_NOTICE.key, { level: 'warning' })
+      const before = env.mail.sent.length
+      expect((await admin.post('/api/v1/system/test-email', {})).status).toBe(202)
+      expect(env.mail.sent).toHaveLength(before + 1)
+      // Nothing in the api follows the job: the field, the skip row and the warning stay as they were.
+      await new Promise<void>((resolve) => setTimeout(resolve, 100))
+      const row = await env.query<{ value: unknown }>(`select value from setting where key = 'smtp_verified_at'`)
+      expect(row[0]?.value ?? null).toBeNull()
+      expect(
+        await env.query('select 1 from admin_notice where key = $1', [SETUP_EMAIL_SKIPPED_NOTICE.key]),
+      ).toHaveLength(1)
       expect(keys(await notices(admin))).toEqual([EMAIL_NOT_VERIFIED_NOTICE.key])
-      jobAnswer = () => Promise.resolve({ state: 'completed', output: null })
-      expect((await sendTest()).status).toBe(202)
-      await env.services.system.idle()
-      expect(typeof (await verifiedAt())).toBe('string')
-      expect(await env.query('select 1 from admin_notice where key = $1', [SETUP_EMAIL_SKIPPED_NOTICE.key])).toEqual([])
-      expect(keys(await notices(admin))).toEqual([])
-      const audit = await env.query(`select actor from audit_log where action = 'system.email_verified'`)
-      expect(audit).toEqual([{ actor: 'dash-admin' }])
-    })
-
-    it('marks nothing when the test mail failed or the job is gone', async () => {
-      const answers = [
-        { state: 'failed', output: { error: 'send_failed' } },
-        { state: 'cancelled', output: null },
-        null,
-      ]
-      for (const [round, answer] of answers.entries()) {
-        await setVerified(null)
-        jobAnswer = () => Promise.resolve(answer)
-        // The recording port lets one mail per key through, so each round uses a fresh account.
-        const account = await env.createAccount({
-          username: `dash-failing-${String(round)}`,
-          role: 'administrator',
-        })
-        const c = env.client({ ip: '203.0.113.22' })
-        await c.login(account.username, TEST_PASSWORD)
-        expect((await c.post('/api/v1/system/test-email', {})).status).toBe(202)
-        await env.services.system.idle()
-        expect(await verifiedAt()).toBeNull()
-      }
-    })
-
-    it('marks nothing when the SMTP settings changed while the test was on its way', async () => {
-      await setVerified(null)
-      const account = await env.createAccount({ username: 'dash-racing', role: 'administrator' })
-      const c = env.client({ ip: '203.0.113.23' })
-      await c.login(account.username, TEST_PASSWORD)
-      jobAnswer = async () => {
-        await env.query(
-          `insert into setting (key, value) values ('smtp_host', '"smtp.other.example"'::jsonb)
-           on conflict (key) do update set value = excluded.value`,
-        )
-        return { state: 'completed', output: null }
-      }
-      expect((await c.post('/api/v1/system/test-email', {})).status).toBe(202)
-      await env.services.system.idle()
-      expect(await verifiedAt()).toBeNull()
-      expect(keys(await notices(admin))).toContain(EMAIL_NOT_VERIFIED_NOTICE.key)
+      expect(await env.query(`select 1 from audit_log where action = 'system.email_verified'`)).toEqual([])
+      expect(
+        await env.query(`select 1 from audit_log where action = 'system.test_email' and actor = 'dash-admin'`),
+      ).toHaveLength(1)
     })
   })
 })

@@ -176,8 +176,22 @@ export type SessionListResponse = z.infer<typeof SessionListResponse>
 export const RevokeSessionsResponse = z.object({ revoked: z.int().min(0) })
 export type RevokeSessionsResponse = z.infer<typeof RevokeSessionsResponse>
 
-/** GET and PATCH /me. */
-export const MeResponse = SessionAccount.extend({ profile: ProfileFields, preferences: Preferences })
+/**
+ * An e-mail change the account has asked for and not yet confirmed (K-012): the address the link was mailed to, and until when
+ * the link works. The token itself is never shown.
+ */
+export const PendingEmailChange = z.object({ email: z.string(), expiresAt: isoDate })
+export type PendingEmailChange = z.infer<typeof PendingEmailChange>
+
+/**
+ * GET and PATCH /me. `pendingEmail` is the newest unused, unexpired e-mail change request of this account, or null. Only the
+ * account itself gets it (it is /me).
+ */
+export const MeResponse = SessionAccount.extend({
+  profile: ProfileFields,
+  preferences: Preferences,
+  pendingEmail: PendingEmailChange.nullable(),
+})
 export type MeResponse = z.infer<typeof MeResponse>
 
 export const SessionIdParams = z.object({ id: z.uuid() })

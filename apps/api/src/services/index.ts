@@ -135,7 +135,7 @@ export function createServices(deps: ServiceDeps): Services {
     sessions,
     auth: createAuthService({ db, clock, sessions, limiter }),
     me: createMeService({ db, clock }),
-    system: createSystemService({ db, clock, mail: deps.mail, logger: deps.logger }),
+    system: createSystemService({ db, clock, mail: deps.mail }),
     adminMenu,
     dashboard: createDashboardService({ db, version: deps.version }),
     notices: createNoticeService({

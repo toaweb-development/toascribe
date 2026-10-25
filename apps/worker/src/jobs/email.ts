@@ -2,6 +2,7 @@
 // site's language, and sends it through SMTP. What the log gets: the job id, the template, the domain of the recipient and, on
 // a failure, error codes. Never the address, the data or the token (security §8).
 import type { Database } from '@toascribe/db'
+import { markEmailVerified } from '@toascribe/install'
 import { CoreSettings, EmailJobPayload, openEmailPayload, renderMail } from '@toascribe/shared'
 import type { EmailMessage } from '@toascribe/shared'
 import type { KeyRing } from '@toascribe/shared'
@@ -31,6 +32,8 @@ export interface EmailJobDeps {
   /** PUBLIC_ORIGIN. The only thing a link is built from. */
   readonly publicOrigin: string
   readonly mailDefaults: MailEnvDefaults
+  /** The clock for `smtp_verified_at` and its audit entry. Replaced in tests. */
+  readonly clock?: () => Date
   /** Replaced in tests; the real one talks SMTP. */
   readonly transport?: TransportFactory
 }
@@ -120,7 +123,32 @@ export async function processEmailJob(job: EmailJob, deps: EmailJobDeps): Promis
   }
 
   log.info(meta, 'e-mail sent')
-  return { id: job.id, status: 'completed', output: { sent: true } }
+  if (message.template !== 'test') {
+    return { id: job.id, status: 'completed', output: { sent: true } }
+  }
+  // A test mail that went out proves the site can send with the settings it used: mark the e-mail as verified (the only writer
+  // of `smtp_verified_at`, in @toascribe/install). That happens before the job is reported done, so whoever waits for the job
+  // (the setup wizard) finds the field set. It marks only if the settings are still the ones used here. The mail is already sent,
+  // so a failure here must not fail the job (a retry would send it again); it is logged and the administrator tests again.
+  let verified = false
+  try {
+    verified = await markEmailVerified(deps.db, {
+      sentWith: settings,
+      requestedBy: message.data.requestedBy,
+      at: (deps.clock ?? (() => new Date()))(),
+      jobId: job.id,
+    })
+    log.info(
+      { ...meta, verified },
+      verified ? 'e-mail marked as verified' : 'e-mail settings changed since the test was sent',
+    )
+  } catch (err) {
+    log.warn(
+      { ...meta, err: summarizeError(err) },
+      'the test mail was sent but the e-mail could not be marked as verified',
+    )
+  }
+  return { id: job.id, status: 'completed', output: { sent: true, verified } }
 }
 
 /** The pg-boss handler: one outcome per job, each settled on its own (`perJobResults`). */

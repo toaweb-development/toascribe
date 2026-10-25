@@ -121,7 +121,7 @@ const revokeOtherSessionsRoute = defineRoute({
 /** Routes under /api/v1/me. */
 export function createMeApp(services: Services) {
   return new OpenAPIHono<AppEnv>()
-    .openapi(getMeRoute, async (c) => c.json(services.me.get(await requireSession(c)), 200))
+    .openapi(getMeRoute, async (c) => c.json(await services.me.get(await requireSession(c)), 200))
     .openapi(patchMeRoute, async (c) => {
       const auth = await requireSession(c)
       return c.json(await services.me.update(auth, c.req.valid('json')), 200)

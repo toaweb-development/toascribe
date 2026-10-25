@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@toascribe/db": "workspace:*",
+    "@toascribe/install": "workspace:*",
     "@toascribe/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "nodemailer": "catalog:",

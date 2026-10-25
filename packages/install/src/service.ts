@@ -27,7 +27,6 @@ import {
   markInstalled,
   raiseAdminNotice,
   readMigrationJournal,
-  resolveAdminNotice,
   seedDefaultContent,
   setSiteSecret,
   DefaultContentExistsError,
@@ -58,6 +57,7 @@ import { sql } from 'drizzle-orm'
 import type { Logger } from 'pino'
 import { z } from 'zod'
 
+import { EmailSettings } from './email-verified.ts'
 import { AlreadyInstalledError, InstallError } from './errors.ts'
 import { observeOrigin } from './observed-origin.ts'
 import type { RequestAddressHeaders } from './observed-origin.ts'
@@ -237,16 +237,6 @@ const SiteSettings = CoreSettings.pick({
   blog_public: true,
 })
 
-const EmailSettings = CoreSettings.pick({
-  smtp_host: true,
-  smtp_port: true,
-  smtp_secure: true,
-  smtp_username: true,
-  smtp_password: true,
-  mail_from_address: true,
-  mail_from_name: true,
-})
-
 export function createInstallService(deps: InstallServiceDeps): InstallService {
   const { db, keyRing, logger } = deps
   const clock = deps.clock ?? (() => new Date())
@@ -381,8 +371,6 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
     const timeoutMs = deps.emailTest?.timeoutMs ?? EMAIL_TEST_TIMEOUT_MS
     const pollMs = deps.emailTest?.pollMs ?? EMAIL_TEST_POLL_MS
     const { locale } = await readSettings(db, CoreSettings.pick({ locale: true }))
-    // What the worker will test: the SMTP settings as saved now. A save while the test runs makes the answer one about other settings.
-    const tested = JSON.stringify(await readSettings(db, EmailSettings))
 
     let jobId: string | null
     try {
@@ -419,20 +407,7 @@ export function createInstallService(deps: InstallServiceDeps): InstallService {
         return { ok: false, error: 'queue_unavailable' }
       }
       if (job?.state === 'completed') {
-        // The earlier skip no longer holds: the site can send mail. The e-mail step is done for these settings, and only if they are
-        // still the ones that were tested. (The site may have been installed meanwhile; the answer is still true, nothing is marked.)
-        try {
-          await whileOpen(async (tx) => {
-            if (JSON.stringify(await readSettings(tx, EmailSettings)) === tested) {
-              await writeSettings(tx, [['smtp_verified_at', clock().toISOString()]])
-            }
-            await resolveAdminNotice(tx, SETUP_EMAIL_SKIPPED_NOTICE.key)
-          })
-        } catch (err) {
-          if (!(err instanceof AlreadyInstalledError)) {
-            throw err
-          }
-        }
+        // The worker has sent the mail, and marked the e-mail as verified (markEmailVerified) before it reported the job done.
         return { ok: true }
       }
       if (job === null || job.state === 'failed' || job.state === 'cancelled') {

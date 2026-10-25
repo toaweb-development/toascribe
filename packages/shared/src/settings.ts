@@ -31,8 +31,10 @@ import { COMMENT_STATUS } from './values.ts'
 // install writes (null until then). `installed` and `installed_at` are toascribe's own: the flag that closes /setup
 // (PLAN «Installasjon og drift»: «låses med et flagg i databasen»). They are in READ_ONLY_SETTING_KEYS: only the install
 // service writes them, never a settings page, `toa option` or an import, because `installed = false` would reopen /setup
-// to anyone holding a setup token. `smtp_verified_at` (set by a passed test mail of the setup wizard) is read-only for the
-// same reason: it is what lets the wizard's e-mail step count as done. Secrets of the install (the setup token, the recovery key) are not settings at all:
+// to anyone holding a setup token. `smtp_verified_at` is read-only for the same reason: it is what lets the wizard's e-mail
+// step count as done and what the dashboard's «e-post ikke testet» notice reads. Its one writer is `markEmailVerified` in
+// @toascribe/install, which the worker calls after it has sent a test mail (the wizard's and the dashboard's alike); the wizard's
+// own save of the e-mail step clears it. A test reads the sources and fails if anything else writes it. Secrets of the install (the setup token, the recovery key) are not settings at all:
 // they are hashes in the `site_secret` table, which no settings reader sees.
 //
 // toascribe's own keys, which WordPress has no option for (M0.3, PLAN «Innlogging og kontoer»; Tor 2026-10-21): session
@@ -349,7 +351,8 @@ export const CORE_SETTINGS: CoreSettings = {
 export const CORE_SETTING_KEYS: readonly CoreSettingKey[] = CoreSettings.keyof().options
 
 /**
- * Settings that only the install service writes (inside the install transaction, under the install lock). A settings
- * API, `toa option` and an importer must refuse them; a settings API may still show them.
+ * Settings that only the install package writes, under the install lock: `installed` and `installed_at` in the install
+ * transaction, `smtp_verified_at` through `markEmailVerified` (called by the worker after a test mail) and the wizard's e-mail
+ * save. A settings API, `toa option` and an importer must refuse them; a settings API may still show them.
  */
 export const READ_ONLY_SETTING_KEYS: readonly CoreSettingKey[] = ['installed', 'installed_at', 'smtp_verified_at']

@@ -12,6 +12,7 @@ import type {
 
 import type { SessionAuth } from '../lib/auth-context.ts'
 import { AppError } from '../lib/errors.ts'
+import { findPendingEmailChange } from '../repositories/account-tokens.ts'
 import { mergePreferences, updateProfile } from '../repositories/accounts.ts'
 
 /** Profile fields that may be absent or undefined: what a parsed partial schema gives. */
@@ -83,7 +84,7 @@ export function toSessionAccount(auth: SessionAuth): SessionAccount {
 }
 
 export interface MeService {
-  get: (auth: SessionAuth) => MeResponse
+  get: (auth: SessionAuth) => Promise<MeResponse>
   update: (auth: SessionAuth, changes: UpdateMeRequest) => Promise<MeResponse>
   /** Saves the preferences that were sent, keeps the rest, and returns all of them. */
   updatePreferences: (auth: SessionAuth, changes: UpdatePreferencesRequest) => Promise<Preferences>
@@ -91,12 +92,20 @@ export interface MeService {
 
 export function createMeService(options: { readonly db: Database; readonly clock: () => Date }): MeService {
   const { db, clock } = options
+
+  /** The e-mail change this account has asked for and not confirmed, as /me shows it. */
+  async function pendingEmailOf(accountId: string): Promise<MeResponse['pendingEmail']> {
+    const pending = await findPendingEmailChange(db, accountId, clock())
+    return pending === undefined ? null : { email: pending.email, expiresAt: pending.expiresAt.toISOString() }
+  }
+
   return {
-    get(auth) {
+    async get(auth) {
       return {
         ...toSessionAccount(auth),
         profile: readProfile(auth.account.profile),
         preferences: readPreferences(auth.account.preferences),
+        pendingEmail: await pendingEmailOf(auth.account.id),
       }
     },
 
@@ -125,6 +134,7 @@ export function createMeService(options: { readonly db: Database; readonly clock
         displayName,
         profile: next,
         preferences: readPreferences(auth.account.preferences),
+        pendingEmail: await pendingEmailOf(auth.account.id),
       }
     },
 

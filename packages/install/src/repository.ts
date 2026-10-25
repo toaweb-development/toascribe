@@ -3,7 +3,7 @@
 import { schema, writeSetting } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
 import { CORE_SETTINGS } from '@toascribe/shared'
-import type { AuditSource, CoreSettingKey, JsonValue } from '@toascribe/shared'
+import type { AuditActorType, AuditSource, CoreSettingKey, JsonValue } from '@toascribe/shared'
 import { eq, inArray, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 
@@ -50,6 +50,19 @@ export async function writeSettings(
 export async function hasAdminNotice(db: Executor, key: string): Promise<boolean> {
   const rows = await db.select({ id: adminNotice.id }).from(adminNotice).where(eq(adminNotice.key, key)).limit(1)
   return rows.length > 0
+}
+
+/** The account with this username (names are unique ignoring case), or undefined. */
+export async function findAccountByUsername(
+  db: Executor,
+  username: string,
+): Promise<{ readonly id: string; readonly username: string } | undefined> {
+  const rows = await db
+    .select({ id: account.id, username: account.username })
+    .from(account)
+    .where(sql`lower(${account.username}) = lower(${username})`)
+    .limit(1)
+  return rows[0]
 }
 
 export async function findAdministratorRoleId(db: Executor): Promise<string | undefined> {
@@ -115,8 +128,10 @@ export async function insertAdministrator(db: Executor, input: NewAdministrator)
 }
 
 export interface InstallAudit {
+  /** Default `account`. */
+  readonly actorType?: AuditActorType
   readonly actor: string
-  readonly accountId: string
+  readonly accountId: string | null
   readonly action: string
   readonly objectType: string
   readonly newValue?: JsonValue
@@ -129,7 +144,7 @@ export interface InstallAudit {
 /** The audit entry of the install (the app role may insert and read `audit_log`, not change it). */
 export async function insertAudit(db: Executor, entry: InstallAudit): Promise<void> {
   await db.insert(auditLog).values({
-    actorType: 'account',
+    actorType: entry.actorType ?? 'account',
     actor: entry.actor,
     accountId: entry.accountId,
     action: entry.action,
