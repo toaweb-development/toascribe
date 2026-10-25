@@ -166,7 +166,9 @@ describe('docker/compose.yaml', () => {
   })
 
   it('pins every image that is not built here by tag and digest', () => {
-    const external = [...compose.matchAll(/^\s+image: (?!ghcr\.io\/toaweb-development\/)(\S+)/gm)].map((match) => match[1])
+    const external = [...compose.matchAll(/^\s+image: (?!ghcr\.io\/toaweb-development\/)(\S+)/gm)].map(
+      (match) => match[1],
+    )
     expect(external.length).toBeGreaterThanOrEqual(1) // valkey (mailpit is built here, on the official image)
     for (const image of external) expect(image).toMatch(/:[^@/]+@sha256:[0-9a-f]{64}$/)
   })
@@ -264,7 +266,8 @@ describe('docker/compose.build.yaml', () => {
   it('takes the registry from TOASCRIBE_REGISTRY, ghcr.io/toaweb-development by default', () => {
     const images = [...composeBuild.matchAll(/^\s+image: (\S+)$/gm)].map((match) => match[1])
     expect(images).toHaveLength(6)
-    for (const image of images) expect(image).toMatch(/^\$\{TOASCRIBE_REGISTRY:-ghcr\.io\/toaweb-development\}\/toascribe-[a-z]+:/)
+    for (const image of images)
+      expect(image).toMatch(/^\$\{TOASCRIBE_REGISTRY:-ghcr\.io\/toaweb-development\}\/toascribe-[a-z]+:/)
   })
 
   it('labels every image with the repository, which links the package in the registry to it', () => {
@@ -617,7 +620,9 @@ describe('the release workflow', () => {
 
   it('has a dry run on every pull request that uses the same action and script, and has no login', () => {
     expect(dryRun).toContain('uses: ./.github/actions/build-scan-images')
-    expect(dryRun).toContain('.github/scripts/copy-images.sh localhost:5000/toaweb-development localhost:5001/toaweb-development')
+    expect(dryRun).toContain(
+      '.github/scripts/copy-images.sh localhost:5000/toaweb-development localhost:5001/toaweb-development',
+    )
     expect(dryRun).not.toContain('login-action')
     expect(dryRun).not.toContain('ghcr.io')
     expect(ciWorkflow).toMatch(/^on:\n {2}pull_request:\n/m)
