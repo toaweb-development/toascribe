@@ -73,6 +73,7 @@ describe('the own-account API layer', () => {
     capabilities: ['read'],
     profile: { firstName: '', lastName: '', nickname: '', displayNameChoice: 'username', website: '', bio: '' },
     preferences: PREFERENCES,
+    pendingEmail: null,
   }
 
   it('reads the account with its preferences', async () => {
