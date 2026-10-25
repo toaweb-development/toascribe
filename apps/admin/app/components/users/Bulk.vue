@@ -14,6 +14,16 @@ const role = defineModel<string>('role', { required: true })
 const emit = defineEmits<{ submit: [] }>()
 
 const { t } = useI18n()
+// Reka's select has no empty option, so «no role chosen yet» is the placeholder («Velg…») and an empty `role` for the page.
+const chosen = computed<string | undefined>({
+  get: () => (role.value === '' ? undefined : role.value),
+  set: (next) => {
+    role.value = next ?? ''
+  },
+})
+const items = computed(() =>
+  props.roles.map((option) => ({ value: option.slug, label: roleLabel(t, option.slug, option.name) })),
+)
 const ready = computed(() => props.selectedCount > 0 && role.value !== '')
 
 const hint = computed(() => {
@@ -32,20 +42,16 @@ function submit() {
 
 <template>
   <form class="flex flex-wrap items-end gap-2" @submit.prevent="submit">
-    <div class="flex min-w-0 flex-col gap-1.5">
-      <label for="users-bulk-role" class="font-medium text-default">{{ $t('users.bulk.label') }}</label>
-      <select
+    <UFormField :label="$t('users.bulk.label')" name="role" class="min-w-0">
+      <USelect
         id="users-bulk-role"
-        v-model="role"
-        name="role"
-        class="block min-h-11 w-full rounded-md bg-default px-3 py-2 text-base text-highlighted ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none sm:w-56"
-      >
-        <option value="">{{ $t('users.bulk.choose') }}</option>
-        <option v-for="option in roles" :key="option.slug" :value="option.slug">
-          {{ roleLabel(t, option.slug, option.name) }}
-        </option>
-      </select>
-    </div>
+        v-model="chosen"
+        :items="items"
+        :placeholder="$t('users.bulk.choose')"
+        size="xl"
+        class="min-h-11 w-full sm:w-56"
+      />
+    </UFormField>
     <UButton
       type="submit"
       size="lg"

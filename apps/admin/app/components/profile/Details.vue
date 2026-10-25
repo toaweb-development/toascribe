@@ -113,6 +113,11 @@ async function onSubmit(event: FormSubmitEvent<ProfileFormState>) {
       })
       if (outcome.status === 'done') {
         form.email = current.email
+        // The new address now waits for its link: the account tells which one (`pendingEmail`), so the notice under the field shows it.
+        await meApi
+          .get()
+          .then((fresh) => emit('saved', fresh))
+          .catch(() => undefined)
         done.push({ icon: 'i-lucide-mail', text: t('profile.contact.sent', { email: wanted }) })
       } else if (outcome.status === 'failed') {
         if (outcome.error.code === 'same_email' || outcome.error.code === 'email_unavailable') {
@@ -200,22 +205,19 @@ defineExpose({ form })
         <UFormField eager-validation name="nickname" :label="$t('profile.name.nickname')" required>
           <UInput v-model="form.nickname" size="xl" fixed class="w-full" autocomplete="nickname" />
         </UFormField>
-        <!-- A native select (Nuxt UI's `USelect` is a Reka listbox whose server-rendered markup carries inline styles the CSP refuses). -->
-        <div class="flex flex-col gap-1.5">
-          <label for="display-name-choice" class="block font-medium text-default">
-            {{ $t('profile.name.displayAs') }}
-          </label>
-          <select
-            id="display-name-choice"
+        <UFormField
+          name="displayNameChoice"
+          :label="$t('profile.name.displayAs')"
+          :help="$t('profile.name.displayAsHelp')"
+        >
+          <USelect
             v-model="form.displayNameChoice"
-            name="displayNameChoice"
-            aria-describedby="display-name-choice-help"
-            class="block min-h-11 w-full rounded-md bg-default px-3 py-2 text-base text-highlighted ring ring-inset ring-accented focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-          >
-            <option v-for="option in options" :key="option.value" :value="option.value">{{ option.label }}</option>
-          </select>
-          <p id="display-name-choice-help" class="text-sm text-muted">{{ $t('profile.name.displayAsHelp') }}</p>
-        </div>
+            :items="options"
+            value-key="value"
+            size="xl"
+            class="min-h-11 w-full"
+          />
+        </UFormField>
       </div>
     </ProfileSection>
 
@@ -238,6 +240,16 @@ defineExpose({ form })
             inputmode="email"
           />
         </UFormField>
+        <!-- The request is not a change yet (the address stays until the link is opened): say that one is waiting, and for which address. -->
+        <UAlert
+          v-if="me.pendingEmail"
+          color="info"
+          variant="subtle"
+          icon="i-lucide-mail"
+          :title="$t('profile.contact.pendingTitle')"
+          :description="me.pendingEmail.email"
+          :ui="{ description: 'wrap-anywhere' }"
+        />
         <UFormField eager-validation name="website" :label="$t('profile.contact.website')">
           <UInput
             v-model="form.website"

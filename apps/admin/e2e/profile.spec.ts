@@ -79,8 +79,9 @@ test('the username is read-only, the name fields save, and the bar greets with t
   await field(page, 'Etternavn').fill('Lovelace')
   await field(page, /^Kallenavn/).fill('Countess')
   // The options are built from what is typed, as WordPress does.
-  const display = page.getByLabel('Vis navn offentlig som')
-  await expect(display.locator('option')).toHaveText([
+  const display = page.getByRole('combobox', { name: 'Vis navn offentlig som' })
+  await display.click()
+  await expect(page.getByRole('option')).toHaveText([
     'Countess',
     user.username,
     'Ada',
@@ -88,7 +89,8 @@ test('the username is read-only, the name fields save, and the bar greets with t
     'Ada Lovelace',
     'Lovelace Ada',
   ])
-  await display.selectOption({ label: 'Ada Lovelace' })
+  await page.getByRole('option', { name: 'Ada Lovelace', exact: true }).click()
+  await expect(display).toHaveText('Ada Lovelace')
   await field(page, 'Nettsted').fill('https://example.org/ada')
   await field(page, /^Biografisk informasjon/).fill('Første linje\nAndre linje')
   await save(page).click()
@@ -100,7 +102,7 @@ test('the username is read-only, the name fields save, and the bar greets with t
 
   await page.reload()
   await expect(field(page, 'Fornavn')).toHaveValue('Ada')
-  await expect(page.getByLabel('Vis navn offentlig som')).toHaveValue('first_last')
+  await expect(page.getByRole('combobox', { name: 'Vis navn offentlig som' })).toHaveText('Ada Lovelace')
   await expect(field(page, /^Biografisk informasjon/)).toHaveValue('Første linje\nAndre linje')
   await expect(page.getByRole('button', { name: 'Hei, Ada Lovelace', exact: false })).toBeVisible()
 })
@@ -200,16 +202,24 @@ test('a new e-mail address needs the password, and changes only when the link is
   await expect(dialog).toHaveCount(0)
 
   await expect(page.getByText(`Vi har sendt en lenke til ${newEmail}.`)).toBeVisible()
-  // The field shows the address the account still has; the new one is only in the mail.
+  // The field shows the address the account still has; the new one is only in the mail and in the notice that it waits for its link.
   await expect(field(page, /^E-post/)).toHaveValue(user.email)
+  const pending = page.getByText('Venter på bekreftelse av ny e-post')
+  await expect(pending).toBeVisible()
+  await expect(page.getByText(newEmail, { exact: true })).toBeVisible()
   const link = linkIn(await waitForMail(newEmail), 'confirmemail')
   await page.reload()
   await expect(field(page, /^E-post/)).toHaveValue(user.email)
+  await expect(pending).toBeVisible()
+  await expect(page.getByText(newEmail, { exact: true })).toBeVisible()
+  await expectNoAxeViolations(page, 'the profile with a pending address')
 
   await page.goto(link)
   await expect(page.getByText(`E-postadressen er bekreftet. Kontoen bruker nå ${newEmail}.`)).toBeVisible()
   await page.goto(PROFILE)
   await expect(field(page, /^E-post/)).toHaveValue(newEmail)
+  // Confirmed: nothing waits any more.
+  await expect(pending).toHaveCount(0)
 })
 
 test('cancelling the password dialog leaves the address as it is and says so', async ({ page }) => {

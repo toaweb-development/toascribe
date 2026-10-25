@@ -1,4 +1,7 @@
 import { expect, test } from './helpers/fixtures.ts'
+import { signIn } from './helpers/screens.ts'
+import { createUser } from './helpers/stack.ts'
+import { EXPECTED_STYLE_SRC_ATTR, LISTED_STYLE_ATTRIBUTES, styleAttributesIn } from './helpers/styles.ts'
 
 // What the admin sends with its pages (K-314). The CSP is made per response by nuxt-security; the nonce in the header
 // must be the one on every script and style tag, or the browser blocks the page.
@@ -46,9 +49,13 @@ test('the CSP is strict where it matters', async ({ request }) => {
   expect(directives.get('script-src')).toMatch(/^'self' 'strict-dynamic' 'nonce-[^']+'$/)
   expect(directives.get('script-src-attr')).toBe("'none'")
   expect(directives.get('style-src')).toMatch(/^'self' 'nonce-[^']+'$/)
-  // Inline style attributes are refused, except the three strings of Nuxt UI's sidebar and menu that the server draws (nuxt.config.ts),
-  // let through by their hash alone: no `'unsafe-inline'`.
-  expect(directives.get('style-src-attr')).toMatch(/^'unsafe-hashes'( 'sha256-[A-Za-z0-9+/=]+'){3}$/)
+  // Inline style attributes are refused, except the strings on the one list (csp-style-attributes.ts) that Nuxt UI and Reka UI write
+  // into the server's HTML, let through by their hash alone: no `'unsafe-inline'`. The count follows the list, and `'unsafe-hashes'` is
+  // in no script directive.
+  expect(directives.get('style-src-attr')).toBe(EXPECTED_STYLE_SRC_ATTR)
+  for (const name of ['script-src', 'script-src-attr', 'script-src-elem', 'style-src']) {
+    expect(directives.get(name) ?? '', name).not.toContain('unsafe-hashes')
+  }
   expect(directives.get('object-src')).toBe("'none'")
   expect(directives.get('base-uri')).toBe("'none'")
   expect(directives.get('frame-ancestors')).toBe("'none'")
@@ -92,4 +99,63 @@ test('the built files are served with a long cache and the site keeps its own po
   const site = await request.get('/')
   expect(site.headers()['content-security-policy']).toContain("frame-ancestors 'none'")
   expect(site.headers()['cache-control']).not.toBe('no-store')
+})
+
+// The one list of inline styles (csp-style-attributes.ts) is the whole of what the CSP lets through. This loads every screen the way the
+// server draws it, with the sidebar open and with it collapsed, and compares the `style` attributes in the HTML with the list. A string
+// that a new Nuxt UI or Reka UI version starts to write fails here with the screen that draws it, and a string no screen draws any
+// more fails too, so the list cannot grow stale. (The setup wizard draws none: wizard.spec.ts checks its page on its own stack.)
+test('every inline style the server draws is on the list, and the list holds nothing no screen draws', async ({
+  page,
+  request,
+  allowFailedRequests,
+}) => {
+  allowFailedRequests()
+  const drawn = new Map<string, Set<string>>()
+  const note = (screen: string, html: string) => {
+    for (const value of styleAttributesIn(html)) {
+      drawn.set(value, (drawn.get(value) ?? new Set()).add(screen))
+    }
+  }
+
+  for (const path of ['/admin/login', '/admin/login?action=lostpassword', '/admin/logout']) {
+    const answer = await request.get(path)
+    expect(answer.status(), path).toBe(200)
+    note(`${path} (signed out)`, await answer.text())
+  }
+
+  const user = await createUser('administrator', 'cspadmin')
+  await signIn(page, user)
+  const origin = new URL(page.url()).origin
+  for (const collapsed of [false, true]) {
+    // The sidebar keeps its state in a cookie that the server reads, so the collapsed rail is drawn on the server too.
+    await page.context().addCookies([
+      {
+        name: 'dashboard-sidebar-admin',
+        value: encodeURIComponent(JSON.stringify({ size: 15, collapsed })),
+        url: origin,
+      },
+    ])
+    for (const path of [
+      '/admin/',
+      '/admin/profile',
+      '/admin/users',
+      '/admin/users?search=a&orderby=email&order=desc',
+    ]) {
+      const answer = await page.request.get(path)
+      expect(answer.status(), path).toBe(200)
+      expect(answer.url(), path).not.toContain('/login')
+      note(`${path} (sidebar ${collapsed ? 'collapsed' : 'open'})`, await answer.text())
+    }
+  }
+
+  const unlisted = [...drawn].filter(([value]) => !LISTED_STYLE_ATTRIBUTES.includes(value))
+  expect(
+    unlisted.map(([value, screens]) => `${value}  <- ${[...screens].join(', ')}`),
+    'a style string the server draws that is not on the list in csp-style-attributes.ts',
+  ).toEqual([])
+  expect(
+    LISTED_STYLE_ATTRIBUTES.filter((value) => !drawn.has(value)),
+    'a listed string that no screen draws: remove it from csp-style-attributes.ts',
+  ).toEqual([])
 })

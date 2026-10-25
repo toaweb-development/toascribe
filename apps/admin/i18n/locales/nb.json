@@ -501,7 +501,8 @@
       "confirmText": "Vi sender en lenke til {email}. Adressen din endres ikke før du har åpnet lenken.",
       "confirmButton": "Send lenke",
       "sent": "Vi har sendt en lenke til {email}. E-postadressen din endres ikke før du har åpnet den.",
-      "skipped": "E-postadressen ble ikke endret. Det du skrev står i feltet."
+      "skipped": "E-postadressen ble ikke endret. Det du skrev står i feltet.",
+      "pendingTitle": "Venter på bekreftelse av ny e-post"
     },
     "about": {
       "title": "Om deg selv",
@@ -667,10 +668,7 @@
       "descending": "sortert synkende"
     },
     "pagination": {
-      "label": "Sidenummerering",
-      "previous": "Forrige",
-      "next": "Neste",
-      "page": "Side {n}"
+      "label": "Sidenummerering"
     },
     "empty": {
       "title": "Ingen brukere funnet.",

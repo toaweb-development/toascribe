@@ -116,24 +116,3 @@ export function ariaSortOf(view: UsersView, column: UsersSortColumn): 'ascending
 export function pageCountOf(total: number, perPage: number): number {
   return Math.max(1, Math.ceil(total / perPage))
 }
-
-/**
- * The page numbers to draw: the first, the last, the current page and one on each side, with `'gap'` where numbers are left out
- * (a gap of exactly one number is drawn as that number: a «…» for one page would be longer than the page).
- */
-export function pageItems(current: number, count: number): (number | 'gap')[] {
-  const wanted = new Set([1, count, current - 1, current, current + 1].filter((page) => page >= 1 && page <= count))
-  const pages = [...wanted].sort((a, b) => a - b)
-  const items: (number | 'gap')[] = []
-  let previous = 0
-  for (const page of pages) {
-    if (page - previous === 2) {
-      items.push(previous + 1)
-    } else if (page - previous > 2) {
-      items.push('gap')
-    }
-    items.push(page)
-    previous = page
-  }
-  return items
-}

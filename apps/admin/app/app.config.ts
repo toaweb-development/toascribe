@@ -45,6 +45,9 @@ export default defineAppConfig({
         },
       ],
     },
+    // The placeholder of a select («Velg rolle…») is `text-dimmed` in Nuxt UI, which is under 4.5:1 on the field (axe color-contrast).
+    // The text of a help line (`text-muted`) is measured for every colour scheme, so the placeholder takes that step.
+    select: { slots: { placeholder: 'truncate text-muted' } },
     // The shell is as tall as the window minus the bar across the top, not as the window: the sidebar and the page panel fill
     // the space the dashboard group gives them (Nuxt UI makes both `min-h-svh`).
     dashboardSidebar: { slots: { root: 'min-h-0' } },

@@ -74,8 +74,14 @@ async function tick(page: Page, user: Pick<TestUser, 'username'>): Promise<void>
   await page.getByRole('checkbox', { name: `Velg ${user.username}` }).check()
 }
 
+/** Nuxt UI's select: a button with the label «Endre rolle til» that opens a list of options. */
+async function chooseRole(page: Page, roleName: string): Promise<void> {
+  await page.getByRole('combobox', { name: 'Endre rolle til' }).click()
+  await page.getByRole('option', { name: roleName, exact: true }).click()
+}
+
 async function change(page: Page, roleName: string): Promise<void> {
-  await page.getByLabel('Endre rolle til').selectOption({ label: roleName })
+  await chooseRole(page, roleName)
   await page.getByRole('button', { name: 'Endre', exact: true }).click()
 }
 
@@ -285,9 +291,12 @@ test('offers only the roles the account may give', async ({ page }) => {
       `update account_role set role_id = (select id from role where slug = '${slug}') where account_id = (select id from account where username = '${manager.username}')`,
     )
     await openUsers(page, manager, `?search=${prefix}`)
-    const options = await page.getByLabel('Endre rolle til').locator('option').allTextContents()
+    const select = page.getByRole('combobox', { name: 'Endre rolle til' })
+    await expect(select).toHaveText('Velg rolle…')
+    await select.click()
     // An author's rights and the rights over users: authors, contributors, subscribers and this role itself can be given; editors and administrators cannot.
-    expect(options).toEqual(['Velg rolle…', 'Forfatter', 'Bidragsyter', 'Abonnent', 'Folkesjef'])
+    await expect(page.getByRole('option')).toHaveText(['Forfatter', 'Bidragsyter', 'Abonnent', 'Folkesjef'])
+    await page.keyboard.press('Escape')
   } finally {
     await runSql(`delete from account where username = '${manager.username}'`)
     await runSql(`delete from role where slug = '${slug}'`)
@@ -307,7 +316,7 @@ test('changes the role of several accounts, and the counts follow', async ({ pag
   await expect(page.getByText('1 valgt')).toBeVisible()
   await expect(page.getByText('Velg hvilken rolle de skal få.')).toBeVisible()
   await tick(page, author2)
-  await page.getByLabel('Endre rolle til').selectOption({ label: 'Redaktør' })
+  await chooseRole(page, 'Redaktør')
   await expect(submit).not.toHaveAttribute('aria-disabled', 'true')
   await expect(page.getByText('2 valgt')).toBeVisible()
   await expectNoAxeViolations(page, 'the users list with two accounts ticked')

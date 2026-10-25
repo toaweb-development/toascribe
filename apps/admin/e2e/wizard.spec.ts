@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
 import { expectSignedIn } from './helpers/screens.ts'
+import { LISTED_STYLE_ATTRIBUTES, styleAttributesIn } from './helpers/styles.ts'
 import { compose, resetWizardStack, serviceLog, setupTokenFromLog, waitForMail, wizardStack } from './helpers/stack.ts'
 import type { Page } from '@playwright/test'
 
@@ -72,6 +73,11 @@ test('before the install every page goes to the wizard, and a wrong code is refu
   // A code in the query is not read and not passed on: the redirect carries nothing of the address.
   await page.goto('/?token=abc')
   await expect(page).toHaveURL(/\/admin\/setup$/)
+
+  // The page the server draws for the wizard is only the heading and a short line, so it holds no inline style of its own; any it
+  // did hold would have to be on the list (csp-style-attributes.ts).
+  const drawn = styleAttributesIn(await (await request.get('/admin/setup')).text())
+  expect(drawn.filter((value) => !LISTED_STYLE_ATTRIBUTES.includes(value))).toEqual([])
 
   await page.goto('/admin/setup')
   await expectStep(page, 1, 'Oppsettskode')

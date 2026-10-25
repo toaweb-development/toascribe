@@ -6,7 +6,6 @@ import {
   ariaSortOf,
   changeUsersView,
   pageCountOf,
-  pageItems,
   parseUsersView,
   sortUsersBy,
   toUserListQuery,
@@ -161,18 +160,5 @@ describe('the pages', () => {
     expect(pageCountOf(20, 20)).toBe(1)
     expect(pageCountOf(21, 20)).toBe(2)
     expect(pageCountOf(101, 20)).toBe(6)
-  })
-
-  it('draws every number of a short list', () => {
-    expect(pageItems(1, 1)).toEqual([1])
-    expect(pageItems(2, 5)).toEqual([1, 2, 3, 4, 5])
-  })
-
-  it('leaves out the middle of a long one with a gap, and draws a gap of one number as that number', () => {
-    expect(pageItems(1, 10)).toEqual([1, 2, 'gap', 10])
-    expect(pageItems(5, 10)).toEqual([1, 'gap', 4, 5, 6, 'gap', 10])
-    expect(pageItems(10, 10)).toEqual([1, 'gap', 9, 10])
-    expect(pageItems(3, 10)).toEqual([1, 2, 3, 4, 'gap', 10])
-    expect(pageItems(6, 8)).toEqual([1, 'gap', 5, 6, 7, 8])
   })
 })

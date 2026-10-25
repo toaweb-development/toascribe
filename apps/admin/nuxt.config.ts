@@ -1,15 +1,7 @@
 import { createHash } from 'node:crypto'
 
-// The inline styles of the shell that the server draws. Nuxt UI's dashboard sidebar writes its width as a style attribute
-// (`style="--width:15rem;"`; `0rem` while it is collapsed) and Reka UI's accordion, which opens the menu's sections, writes its
-// content size as another. Both are in the HTML the server sends, and the strict CSP would refuse every inline style attribute. They
-// are let through by their hash and nothing else (`style-src-attr` with `'unsafe-hashes'`): the page has no way to add a style attribute
-// of its own. A new Nuxt UI or Reka UI version that writes another string fails the end-to-end tests (a CSP violation fails them).
-const SHELL_STYLE_ATTRIBUTES = [
-  '--width:15rem;',
-  '--width:0rem;',
-  '--reka-accordion-content-width:var(--reka-collapsible-content-width);--reka-accordion-content-height:var(--reka-collapsible-content-height);--reka-collapsible-content-height:0px;--reka-collapsible-content-width:0px;',
-]
+import { ADMIN_STYLE_ATTRIBUTES } from './csp-style-attributes.ts'
+
 const sha256 = (text: string) => `'sha256-${createHash('sha256').update(text).digest('base64')}'`
 
 // What the admin shares with the site (Nuxt UI, i18n, the API layer, runtime config, head basics) is in nuxt-base.
@@ -52,11 +44,14 @@ export default defineNuxtConfig({
         'lucide:panel-left-close',
         'lucide:panel-left-open',
         'lucide:rotate-ccw',
-        // The users list: the sort arrows, the page links, the search field and the page gap.
+        // The users list: the sort arrows, the page links (also first and last), the select-all box's dash, the search field and the page gap.
         'lucide:arrow-up',
         'lucide:arrow-down',
         'lucide:chevron-left',
         'lucide:chevron-right',
+        'lucide:chevrons-left',
+        'lucide:chevrons-right',
+        'lucide:minus',
         'lucide:ellipsis',
         'lucide:search',
       ],
@@ -79,7 +74,7 @@ export default defineNuxtConfig({
       contentSecurityPolicy: {
         'img-src': ["'self'", 'data:'],
         'frame-ancestors': ["'none'"],
-        'style-src-attr': ["'unsafe-hashes'", ...SHELL_STYLE_ATTRIBUTES.map(sha256)],
+        'style-src-attr': ["'unsafe-hashes'", ...ADMIN_STYLE_ATTRIBUTES.map(({ value }) => sha256(value))],
       },
       xFrameOptions: 'DENY',
     },

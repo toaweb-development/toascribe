@@ -8,7 +8,8 @@ import type { UsersSortColumn, UsersView } from '~/utils/users-query'
 // The users, as WordPress' users.php: a table from `md` (checkbox, Brukernavn, Navn, E-post, Rolle, Innlegg) and, below `md`, one entry
 // in a list for each account with the same facts and the same checkbox (workflows §29, ui-system §8.2: no table that scrolls sideways).
 // Both are drawn from the same rows and one selection; the one that does not fit is `display: none`, so a screen reader meets each
-// account once. Native checkboxes: Reka's checkbox writes an inline `style` into the server's HTML, which the CSP refuses.
+// account once. The table is hand-built because `UTable` has no second, narrow form of the same rows and its checkbox column would
+// be a second source for the selection (the checkboxes themselves are Nuxt UI's `UCheckbox`).
 const props = defineProps<{
   users: readonly UserListItem[]
   view: UsersView
@@ -34,6 +35,16 @@ function toggleAll(checked: boolean) {
   selected.value = checked ? props.users.map((user) => user.id) : []
 }
 
+function toggle(id: string, checked: boolean | 'indeterminate') {
+  const others = selected.value.filter((entry) => entry !== id)
+  selected.value = checked === true ? [...others, id] : others
+}
+
+/** The select-all box: ticked for all, dashed for some. */
+const allState = computed<boolean | 'indeterminate'>(() =>
+  allSelected.value ? true : someSelected.value ? 'indeterminate' : false,
+)
+
 const COLUMNS: { column: UsersSortColumn; label: () => string }[] = [
   { column: 'username', label: () => t('users.table.username') },
   { column: 'name', label: () => t('users.table.name') },
@@ -52,14 +63,11 @@ function rolesOf(user: UserListItem): string {
   return rolesText(t, user.roles, props.roleName)
 }
 
-const checkboxClass =
-  'size-5 cursor-pointer accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+/** The 44 px area around a box (`mobile`), 32 px from `lg`: a press anywhere in it reaches the box. */
 const checkboxHitClass = 'flex size-11 shrink-0 cursor-pointer items-center justify-center lg:size-8'
 const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
 </script>
 
-<!-- Prettier writes <input /> and vue/html-self-closing forbids it: the checkboxes are the only void elements here. -->
-<!-- eslint-disable vue/html-self-closing -->
 <template>
   <div>
     <!-- From md: the table. -->
@@ -73,13 +81,11 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
         <tr class="border-b border-default text-start">
           <th v-if="selectable" scope="col" class="w-12 py-1 ps-1 pe-2 text-start">
             <label :class="checkboxHitClass">
-              <input
-                type="checkbox"
-                :class="checkboxClass"
-                :checked="allSelected"
-                :indeterminate="someSelected"
+              <UCheckbox
+                size="lg"
+                :model-value="allState"
                 :aria-label="$t('users.table.selectAll')"
-                @change="toggleAll(($event.target as HTMLInputElement).checked)"
+                @update:model-value="toggleAll($event === true)"
               />
             </label>
           </th>
@@ -111,12 +117,11 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
         <tr v-for="user in users" :key="user.id" :class="selected.includes(user.id) ? 'bg-elevated/50' : ''">
           <td v-if="selectable" class="py-1 ps-1 pe-2 align-middle">
             <label :class="checkboxHitClass">
-              <input
-                v-model="selected"
-                type="checkbox"
-                :value="user.id"
-                :class="checkboxClass"
+              <UCheckbox
+                size="lg"
+                :model-value="selected.includes(user.id)"
                 :aria-label="$t('users.table.select', { user: user.username })"
+                @update:model-value="toggle(user.id, $event)"
               />
             </label>
           </td>
@@ -166,13 +171,7 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
 
       <label v-if="selectable" class="flex min-h-11 cursor-pointer items-center gap-3 text-base text-default">
         <span :class="checkboxHitClass">
-          <input
-            type="checkbox"
-            :class="checkboxClass"
-            :checked="allSelected"
-            :indeterminate="someSelected"
-            @change="toggleAll(($event.target as HTMLInputElement).checked)"
-          />
+          <UCheckbox size="lg" :model-value="allState" @update:model-value="toggleAll($event === true)" />
         </span>
         {{ $t('users.table.selectAll') }}
       </label>
@@ -188,12 +187,11 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
           :class="selected.includes(user.id) ? 'bg-elevated/50' : ''"
         >
           <label v-if="selectable" :class="checkboxHitClass">
-            <input
-              v-model="selected"
-              type="checkbox"
-              :value="user.id"
-              :class="checkboxClass"
+            <UCheckbox
+              size="lg"
+              :model-value="selected.includes(user.id)"
               :aria-label="$t('users.table.select', { user: user.username })"
+              @update:model-value="toggle(user.id, $event)"
             />
           </label>
           <div class="flex min-w-0 flex-1 flex-col gap-0.5 py-2 pe-1" :class="selectable ? '' : 'ps-2'">

@@ -46,6 +46,7 @@ function account(profile: Partial<MeResponse['profile']> = {}): MeResponse {
       ...profile,
     },
     preferences: { adminColorScheme: 'default', showToolbarOnSite: true, dismissedWelcome: false },
+    pendingEmail: null,
   }
 }
 

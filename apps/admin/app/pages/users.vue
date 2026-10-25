@@ -156,6 +156,9 @@ watch(status, async (now, before) => {
   }
 })
 
+/** 44 px around every page link below `lg` (`mobile`), Nuxt UI's size from there; the row wraps on a phone (`list`). */
+const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
+
 const retrying = ref(false)
 async function retry() {
   retrying.value = true
@@ -307,7 +310,27 @@ async function retry() {
               />
             </div>
 
-            <UsersPagination v-if="data" :view="view" :total="data.total" :per-page="data.perPage" :to="locationFor" />
+            <!-- Page links (WordPress' «1 2 3 … Neste»): real links with the page in the address (workflows §7), so a page can be bookmarked
+              and the back button works. Only drawn when there is more than one page. -->
+            <UPagination
+              v-if="data && pageCountOf(data.total, data.perPage) > 1"
+              as="nav"
+              :aria-label="$t('users.pagination.label')"
+              :page="view.page"
+              :total="data.total"
+              :items-per-page="data.perPage"
+              :sibling-count="1"
+              show-edges
+              :to="(page: number) => locationFor({ page })"
+              :ui="{
+                list: 'flex-wrap',
+                item: PAGE_BUTTON,
+                prev: PAGE_BUTTON,
+                next: PAGE_BUTTON,
+                first: PAGE_BUTTON,
+                last: PAGE_BUTTON,
+              }"
+            />
           </section>
         </template>
       </div>
