@@ -309,7 +309,36 @@ describe.skipIf(TEST_DATABASE_URL === undefined)(
         expect(taken.status).toBe(fresh.status)
         expect(await taken.text()).toBe(await fresh.text())
         expect(mailsTo(env, owner.email).map((mail) => mail.template)).toEqual(['account_exists'])
-        expect(await env.query('select 1 from account_token where new_email = $1', [owner.email])).toHaveLength(0)
+      })
+
+      it('stores, audits and announces a request for a taken address like one for a free address, but sends no link', async () => {
+        const { client, account } = await signedIn('email-taken-same')
+        const owner = await env.createAccount({ username: unique('keeper'), email: `${unique('keeper')}@example.test` })
+        const free = newAddress()
+        expect((await client.post('/api/v1/me/email-change', { newEmail: free, password: TEST_PASSWORD })).status).toBe(
+          202,
+        )
+        expect(
+          (await client.post('/api/v1/me/email-change', { newEmail: owner.email, password: TEST_PASSWORD })).status,
+        ).toBe(202)
+        // The earlier link is voided as by any new request, and the pending request names the taken address.
+        expect(
+          await env.query(
+            "select new_email from account_token where account_id = $1 and purpose = 'email_change' and used_at is null",
+            [account.id],
+          ),
+        ).toEqual([{ new_email: owner.email }])
+        expect(
+          await env.query("select 1 from audit_log where account_id = $1 and action = 'email_change.requested'", [
+            account.id,
+          ]),
+        ).toHaveLength(2)
+        expect(mailsTo(env, account.email).map((mail) => mail.template)).toEqual([
+          'email_change_notice',
+          'email_change_notice',
+        ])
+        expect(mailsTo(env, owner.email).map((mail) => mail.template)).toEqual(['account_exists'])
+        expect(mailsTo(env, free).map((mail) => mail.template)).toEqual(['email_change'])
       })
 
       it('a new request voids the earlier link', async () => {

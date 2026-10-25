@@ -368,11 +368,19 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('profile (needs TEST_DATABASE_U
       expect((await me(client)).pendingEmail?.email).toBe(newer)
     })
 
-    it('does not show a request for an address that belongs to someone else (it would tell that the address has an account)', async () => {
+    it('shows a request for an address that belongs to someone else the same way (a difference would tell that the address has an account)', async () => {
       const { client } = await signedIn()
+      const earlier = fresh()
+      expect(await request(client, earlier)).toBe(202)
       const owner = await env.createAccount({ username: unique('keeper'), email: fresh() })
       expect(await request(client, owner.email)).toBe(202)
-      expect((await me(client)).pendingEmail).toBeNull()
+      const taken = await me(client)
+      expect(taken.pendingEmail?.email).toBe(owner.email)
+      const free = fresh()
+      expect(await request(client, free)).toBe(202)
+      const open = await me(client)
+      expect(open.pendingEmail?.email).toBe(free)
+      expect(Object.keys(open.pendingEmail ?? {})).toEqual(Object.keys(taken.pendingEmail ?? {}))
     })
   })
 })
