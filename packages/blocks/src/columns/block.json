@@ -1,0 +1,14 @@
+{
+  "name": "core/columns",
+  "version": 1,
+  "title": "Columns",
+  "description": "Display content in multiple columns, with blocks added to each column.",
+  "category": "design",
+  "icon": "i-lucide-columns-2",
+  "keywords": ["layout"],
+  "attributes": {},
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": ["core/column"],
+  "childCount": { "min": 2, "max": 4 }
+}

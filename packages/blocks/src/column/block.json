@@ -1,0 +1,13 @@
+{
+  "name": "core/column",
+  "version": 1,
+  "title": "Column",
+  "description": "A single column within a columns block.",
+  "category": "design",
+  "icon": "i-lucide-rectangle-vertical",
+  "keywords": [],
+  "attributes": {},
+  "supports": {},
+  "parent": ["core/columns"],
+  "allowedBlocks": ["core/paragraph", "core/image"]
+}
