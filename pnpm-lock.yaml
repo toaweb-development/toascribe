@@ -200,6 +200,39 @@ catalogs:
     '@playwright/test':
       specifier: ^1.64.1
       version: 1.64.1
+    '@tiptap/core':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/extension-bold':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/extension-code':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/extension-document':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/extension-hard-break':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/extension-italic':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/extension-link':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/extension-paragraph':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/extension-text':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/pm':
+      specifier: 3.32.0
+      version: 3.32.0
+    '@tiptap/vue-3':
+      specifier: 3.32.0
+      version: 3.32.0
     '@types/node':
       specifier: ^24.19.2
       version: 24.19.2
@@ -343,6 +376,42 @@ importers:
       '@nuxt/ui':
         specifier: 'catalog:'
         version: 4.12.0(20967c827aa0b82a04d8eb62e8108144)
+      '@tiptap/core':
+        specifier: 'catalog:'
+        version: 3.32.0(@tiptap/pm@3.32.0)
+      '@tiptap/extension-bold':
+        specifier: 'catalog:'
+        version: 3.32.0(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))
+      '@tiptap/extension-code':
+        specifier: 'catalog:'
+        version: 3.32.0(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))
+      '@tiptap/extension-document':
+        specifier: 'catalog:'
+        version: 3.32.0(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))
+      '@tiptap/extension-hard-break':
+        specifier: 'catalog:'
+        version: 3.32.0(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))
+      '@tiptap/extension-italic':
+        specifier: 'catalog:'
+        version: 3.32.0(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))
+      '@tiptap/extension-link':
+        specifier: 'catalog:'
+        version: 3.32.0(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))(@tiptap/pm@3.32.0)
+      '@tiptap/extension-paragraph':
+        specifier: 'catalog:'
+        version: 3.32.0(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))
+      '@tiptap/extension-text':
+        specifier: 'catalog:'
+        version: 3.32.0(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))
+      '@tiptap/pm':
+        specifier: 'catalog:'
+        version: 3.32.0
+      '@tiptap/vue-3':
+        specifier: 'catalog:'
+        version: 3.32.0(@floating-ui/dom@1.8.0)(@tiptap/core@3.32.0(@tiptap/pm@3.32.0))(@tiptap/pm@3.32.0)(vue@3.5.44(typescript@6.0.3))
+      '@toascribe/blocks':
+        specifier: workspace:*
+        version: link:../../packages/blocks
       '@toascribe/nuxt-base':
         specifier: workspace:*
         version: link:../../packages/nuxt-base

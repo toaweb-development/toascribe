@@ -54,6 +54,22 @@ export default defineNuxtConfig({
         'lucide:minus',
         'lucide:ellipsis',
         'lucide:search',
+        // The editor prototype (M0.6): the blocks' icons (from their block.json), the block toolbar, formatting, the document toolbar.
+        'lucide:pilcrow',
+        'lucide:image',
+        'lucide:columns-2',
+        'lucide:columns-3',
+        'lucide:plus',
+        'lucide:trash-2',
+        'lucide:bold',
+        'lucide:italic',
+        'lucide:code',
+        'lucide:link',
+        'lucide:replace',
+        'lucide:undo-2',
+        'lucide:redo-2',
+        'lucide:save',
+        'lucide:arrow-left',
       ],
     },
   },
@@ -77,6 +93,18 @@ export default defineNuxtConfig({
         'style-src-attr': ["'unsafe-hashes'", ...ADMIN_STYLE_ATTRIBUTES.map(({ value }) => sha256(value))],
       },
       xFrameOptions: 'DENY',
+    },
+  },
+
+  // PROTOTYPE (M0.6): the editor prototype shows images from other hosts (an image block from an address), so its two pages let
+  // images in from any https: address, as the site does. Every other admin page keeps `'self' data:`. The route rule replaces the
+  // directive (nuxt-security merges route rules with the global settings and replaces arrays). Remove with the prototype.
+  // The keys carry the base URL: nuxt-security matches them against the whole request path.
+  routeRules: {
+    '/admin/editor-prototype/**': {
+      // @ts-expect-error -- nuxt-security 2.6 adds `security` to Nitro's route rule type (`nitropack/types`), which the route rule type
+      // of Nuxt 4.6's config does not pick up. The module reads the key at run time; the e2e test checks the header on these pages.
+      security: { headers: { contentSecurityPolicy: { 'img-src': ["'self'", 'data:', 'https:'] } } },
     },
   },
 

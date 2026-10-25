@@ -12,6 +12,11 @@ export class ApiRequestError extends Error {
   readonly requestId: string | undefined
   /** Seconds from `Retry-After` on a 429 (or 503); undefined when the header is missing or unreadable. */
   readonly retryAfterSeconds: number | undefined
+  /**
+   * The whole answer body, unparsed, for the few errors that carry more than the common fields (400 `invalid_blocks` lists its
+   * issues). A screen parses it with the shared schema of that answer before it reads anything from it.
+   */
+  readonly data: unknown
 
   constructor(init: {
     status?: number
@@ -19,6 +24,7 @@ export class ApiRequestError extends Error {
     message?: string
     requestId?: string
     retryAfterSeconds?: number
+    data?: unknown
   }) {
     super(init.message ?? init.code)
     this.name = 'ApiRequestError'
@@ -26,6 +32,7 @@ export class ApiRequestError extends Error {
     this.code = init.code
     this.requestId = init.requestId
     this.retryAfterSeconds = init.retryAfterSeconds
+    this.data = init.data
   }
 }
 
@@ -77,5 +84,6 @@ export function toApiRequestError(error: unknown): ApiRequestError {
     message: typeof body.message === 'string' ? body.message : undefined,
     requestId: typeof body.requestId === 'string' ? body.requestId : undefined,
     retryAfterSeconds,
+    data: like.data,
   })
 }

@@ -76,6 +76,24 @@ catalog:
   ofetch: ^1.5.1 # the fetch that Nuxt's $fetch is built on; nuxt-base's tests run the API client on the real one, not a stand-in
   nuxt-security: ^2.6.0 # the nonce-based CSP of the site and the admin (nuxt-base) and security headers (K-314): a per-request nonce on Nuxt's inline scripts is what a static header cannot give
 
+  # The block editor prototype (M0.6, docs/decisions/0001-editor-model.md). TipTap 3.32.0 (`latest`, published 2026-10-13,
+  # checked against the npm registry 2026-10-25) gives each text block its own ProseMirror instance for inline formatting;
+  # @tiptap/vue-3 is its official Vue 3 binding and pins @tiptap/core and @tiptap/pm to the exact same version, so every TipTap
+  # package is pinned to one version here and moves together. No StarterKit and no UndoRedo: the editor's own model holds the one
+  # history, and only the nodes and marks the block format allows are loaded (document, paragraph, text, hard break, bold,
+  # italic, code, link).
+  '@tiptap/core': 3.32.0
+  '@tiptap/pm': 3.32.0
+  '@tiptap/vue-3': 3.32.0
+  '@tiptap/extension-document': 3.32.0
+  '@tiptap/extension-paragraph': 3.32.0
+  '@tiptap/extension-text': 3.32.0
+  '@tiptap/extension-hard-break': 3.32.0
+  '@tiptap/extension-bold': 3.32.0
+  '@tiptap/extension-italic': 3.32.0
+  '@tiptap/extension-code': 3.32.0
+  '@tiptap/extension-link': 3.32.0
+
 # Dependency build scripts are denied unless listed (DEPENDENCIES_2026 / supply-chain hygiene).
 # lefthook's postinstall runs `lefthook install`, which writes git hooks: that is a per-clone,
 # owner-run step (`pnpm exec lefthook install`), so its script stays denied.
