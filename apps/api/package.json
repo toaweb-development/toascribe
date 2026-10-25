@@ -20,6 +20,7 @@
     "@hono/node-server": "catalog:",
     "@hono/zod-openapi": "catalog:",
     "@toascribe/auth": "workspace:*",
+    "@toascribe/blocks": "workspace:*",
     "@toascribe/db": "workspace:*",
     "@toascribe/install": "workspace:*",
     "@toascribe/shared": "workspace:*",

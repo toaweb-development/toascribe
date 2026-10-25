@@ -398,6 +398,9 @@ importers:
       '@toascribe/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@toascribe/blocks':
+        specifier: workspace:*
+        version: link:../../packages/blocks
       '@toascribe/db':
         specifier: workspace:*
         version: link:../../packages/db

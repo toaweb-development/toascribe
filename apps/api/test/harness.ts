@@ -199,6 +199,8 @@ export interface StartOptions {
    * keeps what it is asked to send. A port with a `stop` is stopped when the app is closed.
    */
   readonly mail?: (database: TestDatabase) => MailPort & { readonly stop?: () => Promise<void> }
+  /** PROTOTYPE (M0.6): the editor prototype's upload folder. Default: the app's own default under the OS temp folder. */
+  readonly prototypeUploadDir?: string
 }
 
 export interface VariantOptions {
@@ -243,6 +245,7 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
       mail: custom ?? mail,
       clock: clock.now,
       minimumResponseMs: options.minimumResponseMs ?? 0,
+      ...(options.prototypeUploadDir === undefined ? {} : { prototypeUploadDir: options.prototypeUploadDir }),
     })
 
     const roleIds = new Map<string, string>()

@@ -271,6 +271,34 @@ const CASES: readonly MatrixCase[] = [
     json: { userIds: ['0198a3c2-0000-7000-8000-0000000000cc'], role: 'subscriber' },
     expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
   },
+  // PROTOTYPE (M0.6): the editor prototype. `edit_posts` (not the subscriber) for the draft; `upload_files` (not the contributor
+  // either) for an upload. The upload is sent as JSON here, so a role that may upload gets the validator's 415 (not multipart).
+  {
+    route: 'GET /api/v1/prototype/editor/document',
+    method: 'GET',
+    path: '/api/v1/prototype/editor/document',
+    expected: { ...ok, subscriber: 403 },
+  },
+  {
+    route: 'PUT /api/v1/prototype/editor/document',
+    method: 'PUT',
+    path: '/api/v1/prototype/editor/document',
+    json: { blocks: [] },
+    expected: { ...ok, subscriber: 403 },
+  },
+  {
+    route: 'POST /api/v1/prototype/editor/uploads',
+    method: 'POST',
+    path: '/api/v1/prototype/editor/uploads',
+    json: {},
+    expected: { ...ok, administrator: 415, editor: 415, author: 415, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'GET /api/v1/prototype/editor/uploads/:name',
+    method: 'GET',
+    path: '/api/v1/prototype/editor/uploads/0198a3c2-0000-7000-8000-0000000000dd.png',
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 403 },
+  },
   // The setup wizard (M0.4): no role opens the token-gated routes, an administrator included. Only the setup token does, and
   // the matrix sends none. After the install they would all be 404 (setup.test.ts).
   {
