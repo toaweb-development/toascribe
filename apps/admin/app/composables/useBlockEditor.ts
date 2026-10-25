@@ -23,8 +23,8 @@ export interface BlockEditor {
   readonly dirty: ComputedRef<boolean>
   /** Replaces the document and forgets the history (after loading). */
   load(document: BlockDocument): void
-  /** Marks the current document as saved and ends the current group of typing. */
-  markSaved(): void
+  /** Marks `sent` (the document the save sent) as saved: edits made while the save was under way stay unsaved. */
+  markSaved(sent: BlockDocument): void
   /** Called by a block when it gets the cursor or the cursor moves in it. */
   select(selection: EditorSelection): void
   registerFocus(id: string, handler: BlockFocusHandler): void
@@ -93,8 +93,8 @@ export function useBlockEditor(initial: BlockDocument = []): BlockEditor {
       selection = { blockId: null }
       refresh(undefined)
     },
-    markSaved() {
-      saved.value = model.document
+    markSaved(sent) {
+      saved.value = sent
       model.seal()
     },
     select(next) {

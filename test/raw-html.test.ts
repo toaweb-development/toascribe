@@ -38,7 +38,10 @@ describe('no raw HTML in the Nuxt code', () => {
     (_name, file) => {
       const source = readFileSync(file, 'utf8')
       expect(source).not.toMatch(/\bv-html\b/)
-      expect(source).not.toMatch(/\.(inner|outer)HTML\s*=/)
+      // `:innerHTML` in a template is v-html by another name, and `innerHTML +=` or an `innerHTML` prop in h() too.
+      expect(source).not.toMatch(/\b(inner|outer)HTML\b/)
+      // TipTap parses a string given to setContent or insertContent as HTML; the editor only ever hands it JSON.
+      expect(source).not.toMatch(/\b(setContent|insertContent)\(\s*['"`]/)
       expect(source).not.toMatch(/insertAdjacentHTML|document\.write\(/)
     },
   )

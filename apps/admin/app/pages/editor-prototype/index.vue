@@ -33,11 +33,15 @@ const { data, status, refresh } = await useAsyncData('editor-prototype:document'
   mayEdit.value ? await prototypeApi.get() : null,
 )
 
+// A stored draft that does not pass the check (changed behind the api's back) is not loaded and cannot be overwritten from here:
+// the page says so instead of starting from an empty document that the next save would store over it.
+const storedInvalid = ref(false)
 watch(
   data,
   (loaded) => {
     if (loaded != null) {
       const checked = validateDocument(loaded.blocks)
+      storedInvalid.value = !checked.ok
       editor.load(checked.ok ? checked.blocks : [])
     }
   },
@@ -89,7 +93,7 @@ async function save(): Promise<void> {
   issues.value = []
   try {
     await prototypeApi.save(document)
-    editor.markSaved()
+    editor.markSaved(document)
     toast.add({ title: t('editorPrototype.saved'), color: 'success', icon: 'i-lucide-circle-check' })
   } catch (caught) {
     const refused = caught instanceof ApiRequestError ? InvalidBlocksResponse.safeParse(caught.data) : undefined
@@ -136,6 +140,13 @@ const blockCount = computed(() => flatten(editor.document.value).length)
           :title="t('editorPrototype.loadFailed')"
           :actions="[{ label: t('editorPrototype.retry'), onClick: () => refresh() }]"
         />
+        <UAlert
+          v-else-if="storedInvalid"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-triangle-alert"
+          :title="t('editorPrototype.previewPage.invalid')"
+        />
         <template v-else>
           <div
             role="toolbar"
@@ -161,7 +172,8 @@ const blockCount = computed(() => flatten(editor.document.value).length)
               @click="editor.redo()"
             />
             <UButton
-              to="/editor-prototype/preview"
+              to="/admin/editor-prototype/preview"
+              external
               icon="i-lucide-eye"
               color="neutral"
               variant="outline"

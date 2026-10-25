@@ -12,6 +12,12 @@ const prototypeApi = useEditorPrototypeApi()
 const mayEdit = computed(
   () => auth.session.value.status === 'authenticated' && auth.session.value.account.capabilities.includes('edit_posts'),
 )
+if (import.meta.server && !mayEdit.value) {
+  const event = useRequestEvent()
+  if (event) {
+    setResponseStatus(event, 403)
+  }
+}
 const { data, status } = await useAsyncData('editor-prototype:preview', async () =>
   mayEdit.value ? await prototypeApi.get() : null,
 )
@@ -26,7 +32,8 @@ const { data, status } = await useAsyncData('editor-prototype:preview', async ()
       <div class="mx-auto flex w-full max-w-3xl flex-col gap-4">
         <div>
           <UButton
-            to="/editor-prototype"
+            to="/admin/editor-prototype"
+            external
             icon="i-lucide-arrow-left"
             color="neutral"
             variant="outline"

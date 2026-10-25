@@ -10,24 +10,14 @@ import { join } from 'node:path'
 
 import { validateDocument } from '@toascribe/blocks'
 import type { Database } from '@toascribe/db'
-import { CoreSettings, MAX_BLOCK_ISSUES, PROTOTYPE_UPLOAD_NAME } from '@toascribe/shared'
-import type { BlockIssue, Blocks, PrototypeDocument } from '@toascribe/shared'
+import { CoreSettings, PROTOTYPE_UPLOAD_NAME } from '@toascribe/shared'
+import type { Blocks, PrototypeDocument } from '@toascribe/shared'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
-import { AppError, BadRequestError, NotFoundError } from '../lib/errors.ts'
+import { BadRequestError, InvalidBlocksError, NotFoundError } from '../lib/errors.ts'
 import { findPrototypeDraft, savePrototypeDraft } from '../repositories/editor-prototype.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import { readSettings } from '../repositories/settings.ts'
-
-/** 400 with the issues found in a block document. */
-export class InvalidBlocksError extends AppError {
-  readonly issues: readonly BlockIssue[]
-
-  constructor(issues: readonly BlockIssue[]) {
-    super(400, 'invalid_blocks', 'The blocks do not match their block.json')
-    this.issues = issues.slice(0, MAX_BLOCK_ISSUES)
-  }
-}
 
 /** The image types an upload may be, found from its first bytes (never from its name or the type the browser sent). No SVG: it can hold script. */
 const IMAGE_SIGNATURES = [

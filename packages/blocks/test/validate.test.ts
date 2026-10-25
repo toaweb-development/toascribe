@@ -121,6 +121,12 @@ describe('validateDocument (the editor before saving, the api before storing)', 
 
     const many = Array.from({ length: 5001 }, (_, index) => p(`b_${String(index).padStart(6, '0')}`))
     expect(validateDocument(raw(many))).toMatchObject({ ok: false, issues: [{ code: 'too_large' }] })
+    // Also when they are all inside one top-level block: the walk stops at the cap.
+    const wide = [{ ...p('b_wide0001'), children: many }]
+    expect(validateDocument(raw(wide))).toEqual({
+      ok: false,
+      issues: [{ path: [], code: 'too_large', message: 'Too many blocks' }],
+    })
   })
 })
 

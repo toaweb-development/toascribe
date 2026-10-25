@@ -40,6 +40,8 @@ describe('isSafeHref', () => {
     expect(isSafeMediaUrl('/api/v1/prototype/editor/uploads/x.png')).toBe(true)
     expect(isSafeMediaUrl('#a')).toBe(false)
     expect(isSafeMediaUrl('mailto:a@b.no')).toBe(false)
+    expect(isSafeMediaUrl('MAILTO:a@b.no')).toBe(false)
+    expect(isSafeMediaUrl('HTTPS://example.com/a.png')).toBe(true)
     expect(isSafeMediaUrl('data:image/png;base64,AAAA')).toBe(false)
   })
 })

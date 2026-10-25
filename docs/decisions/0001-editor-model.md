@@ -209,7 +209,12 @@ mer skjerm per milepæl, og mer som Tor må se på.
   `'self' data:`.
 - **`content.search`** skrives ikke for prototype-utkastet. Innholdstjenesten i M1.1 gjør det.
 - **Opplastinger** ligger i api-ets midlertidige mappe (tmpfs, høyst 50 filer, borte etter omstart). Mediebiblioteket i M1.2
-  erstatter det.
+  erstatter det. Grensen er felles for hele nettstedet, ikke per konto, så én konto kan skyve ut andres prototype-bilder.
+- **Prototype-dataene blir liggende.** Hver konto som lagrer, får et ekte utkast i `content` (`type = 'post'`, slug
+  `editor-prototype-<konto-id>`) med en rad i `content_author`. Når prototypen fjernes (M1.1–M1.3), må fjerningen ha en migrering
+  som sletter disse radene. Ellers dukker de opp som utkast i innleggslisten og i datamigreringen av `content.blocks`.
+- **Lenkene inn og ut av prototypen er hele sidelastinger**, fordi CSP-headeren følger dokumentet som lastes, ikke ruten Vue
+  navigerer til.
 
 ## Hva fase 1 trenger avklart før start
 

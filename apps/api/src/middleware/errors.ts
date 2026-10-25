@@ -6,8 +6,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { apiError } from '../lib/api-error.ts'
 import type { AppEnv } from '../lib/env.ts'
-import { AppError, TooManyRequestsError } from '../lib/errors.ts'
-import { InvalidBlocksError } from '../services/editor-prototype.ts'
+import { AppError, InvalidBlocksError, TooManyRequestsError } from '../lib/errors.ts'
 
 const CODE_BY_STATUS: Readonly<Record<number, string>> = {
   400: 'bad_request',

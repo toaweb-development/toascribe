@@ -140,6 +140,10 @@ export function validateDocument(input: unknown): ValidationResult {
     depth: number,
   ): Block | undefined {
     count += 1
+    if (count > DOCUMENT_LIMITS.maxBlocks) {
+      // Past the cap nothing more is looked at; the caller answers `too_large`.
+      return undefined
+    }
     if (typeof node !== 'object' || node === null || Array.isArray(node)) {
       issues.push({ path, code: 'invalid_shape', message: 'A block must be an object' })
       return undefined

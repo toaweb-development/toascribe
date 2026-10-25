@@ -52,7 +52,7 @@ export async function hasAdminNotice(db: Executor, key: string): Promise<boolean
   return rows.length > 0
 }
 
-/** The account with this username (names are unique ignoring case), or undefined. */
+/** The account with this id, or undefined. */
 export async function findAccountById(
   db: Executor,
   id: string,

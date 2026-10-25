@@ -42,10 +42,11 @@ export function isSafeHref(value: string): boolean {
 
 /** True for the address of an image: `http:` or `https:`, or a path on this site. Never `data:` or another scheme. */
 export function isSafeMediaUrl(value: string): boolean {
-  if (!isSafeHref(value) || value.startsWith('#') || value.startsWith('mailto:')) {
+  if (!isSafeHref(value) || value.startsWith('#')) {
     return false
   }
-  return true
+  // A path on this site, or an absolute address whose scheme (lower-cased by URL) is http: or https:.
+  return value.startsWith('/') || ['http:', 'https:'].includes(new URL(value).protocol)
 }
 
 const SafeHref = z.string().max(MAX_URL_LENGTH).refine(isSafeHref, { message: 'Not an allowed link address' })
