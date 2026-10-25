@@ -16,6 +16,8 @@ export interface AccountView {
   readonly status: string
   readonly locale: string | null
   readonly profile: Record<string, unknown>
+  /** Open JSON: keys a later version adds are kept. Read it through `readPreferences`. */
+  readonly preferences: Record<string, unknown>
 }
 
 /** An account with the hash. Only the login flow reads it. */
@@ -31,6 +33,7 @@ export const accountViewColumns = {
   status: account.status,
   locale: account.locale,
   profile: account.profile,
+  preferences: account.preferences,
 } as const
 
 const accountLoginColumns = { ...accountViewColumns, passwordHash: account.passwordHash } as const
@@ -96,6 +99,24 @@ export async function updateProfile(
   now: Date,
 ): Promise<void> {
   await db.update(account).set({ displayName, profile, modifiedAt: now }).where(eq(account.id, accountId))
+}
+
+/**
+ * Merges `changes` into the account's preferences in one statement (`||` on the JSON), so two requests that change different
+ * keys at the same time both stay, and keys this version does not know are kept. Returns the preferences as stored.
+ */
+export async function mergePreferences(
+  db: Executor,
+  accountId: string,
+  changes: Readonly<Record<string, boolean | string>>,
+  now: Date,
+): Promise<Record<string, unknown> | undefined> {
+  const rows = await db
+    .update(account)
+    .set({ preferences: sql`${account.preferences} || ${JSON.stringify(changes)}::jsonb`, modifiedAt: now })
+    .where(eq(account.id, accountId))
+    .returning({ preferences: account.preferences })
+  return rows[0]?.preferences
 }
 
 /** The hash of the account's password, or null when it has none (a registered account that has not chosen one yet). */

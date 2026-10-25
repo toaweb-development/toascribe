@@ -3,7 +3,7 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import { createUser, resetLimits, setSetting } from './helpers/stack.ts'
 import type { TestUser } from './helpers/stack.ts'
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
-import { NEXT_STEP_MS, fillLogin, signOut, totpCode } from './helpers/screens.ts'
+import { NEXT_STEP_MS, expectNotSignedIn, expectSignedIn, fillLogin, signOut, totpCode } from './helpers/screens.ts'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -81,7 +81,7 @@ test('set up on the screen, keep the recovery codes, then log in with a code fro
   await expect(page.getByRole('status').filter({ hasText: /Kodene er kopiert|Kunne ikke kopiere/ })).toBeVisible()
   await page.getByLabel('Jeg har lagret kodene').check()
   await proceed.click()
-  await expect(page.getByText(`Logget inn som ${user.username}.`)).toBeVisible()
+  await expectSignedIn(page, user)
 
   // Log out and in again: now the code is asked for, and the redirect target is kept through the step.
   await signOut(page)
@@ -120,7 +120,7 @@ test('a recovery code works instead of the app, and a warning comes when few are
   const { codes } = await enrolThroughScreen(page, user)
   await page.getByLabel('Jeg har lagret kodene').check()
   await page.getByRole('button', { name: 'Fortsett' }).click()
-  await expect(page.getByText(`Logget inn som ${user.username}.`)).toBeVisible()
+  await expectSignedIn(page, user)
   await signOut(page)
 
   // Seven codes are used through the api, so three are left and the eighth is the one that warns.
@@ -145,7 +145,7 @@ test('a recovery code works instead of the app, and a warning comes when few are
   await expect(page.getByRole('status').filter({ hasText: 'Du har 3 gjenopprettingskoder igjen.' })).toBeVisible()
   await expectNoAxeViolations(page, 'warning about few recovery codes')
   await page.getByRole('button', { name: 'Fortsett' }).click()
-  await expect(page.getByText(`Logget inn som ${user.username}.`)).toBeVisible()
+  await expectSignedIn(page, user)
 })
 
 test('a session that is only half open cannot reach the index and the login screen asks for the code', async ({
@@ -162,7 +162,7 @@ test('a session that is only half open cannot reach the index and the login scre
   await expect(page.getByRole('heading', { level: 1, name: 'Bekreft innloggingen' })).toBeVisible()
   // No «Logget inn som» for a half-open session.
   await page.goto('/admin')
-  await expect(page.getByText('Logget inn som')).toHaveCount(0)
+  await expectNotSignedIn(page)
   // The login screen shows the step again, with the session the browser still has.
   await page.goto('/admin/login')
   await expect(page.getByRole('heading', { level: 1, name: 'Bekreft innloggingen' })).toBeVisible()

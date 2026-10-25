@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises'
 
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
+import { expectSignedIn } from './helpers/screens.ts'
+import { LISTED_STYLE_ATTRIBUTES, styleAttributesIn } from './helpers/styles.ts'
 import { compose, resetWizardStack, serviceLog, setupTokenFromLog, waitForMail, wizardStack } from './helpers/stack.ts'
 import type { Page } from '@playwright/test'
 
@@ -72,6 +74,11 @@ test('before the install every page goes to the wizard, and a wrong code is refu
   await page.goto('/?token=abc')
   await expect(page).toHaveURL(/\/admin\/setup$/)
 
+  // The page the server draws for the wizard is only the heading and a short line, so it holds no inline style of its own; any it
+  // did hold would have to be on the list (csp-style-attributes.ts).
+  const drawn = styleAttributesIn(await (await request.get('/admin/setup')).text())
+  expect(drawn.filter((value) => !LISTED_STYLE_ATTRIBUTES.includes(value))).toEqual([])
+
   await page.goto('/admin/setup')
   await expectStep(page, 1, 'Oppsettskode')
   await expect(page.getByText('docker compose logs api')).toBeVisible()
@@ -103,8 +110,12 @@ test('a code in the fragment survives the redirects to the wizard, and a code in
 
   // A code in the query is neither used nor kept: the wizard asks for it on the first step.
   const queried = await context.newPage()
-  await queried.goto(`/admin/setup?token=${setupToken}`)
+  // The rejected parameter is taken out of the address bar (router.replace, no history entry); another parameter stays.
+  await queried.goto(`/admin/setup?token=${setupToken}&keep=1`)
   await expectStep(queried, 1, 'Oppsettskode')
+  await expect(queried).toHaveURL(/\/admin\/setup\?keep=1$/)
+  expect(queried.url()).not.toContain(setupToken)
+  expect(await queried.evaluate(() => window.history.length)).toBeLessThanOrEqual(2)
   expect(await sessionStorageHolds(queried, setupToken)).toBe(false)
   await queried.close()
 
@@ -272,7 +283,7 @@ test('the seven steps, from the code in the address to the administrator signed 
   await page.getByRole('button', { name: 'Fullfør installasjonen' }).click()
 
   await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 60_000 })
-  await expect(page.getByText(`Logget inn som ${ADMIN.username}.`)).toBeVisible()
+  await expectSignedIn(page, ADMIN)
   expect((await context.cookies()).some((cookie) => cookie.name === '__Host-toa_session')).toBe(true)
   expect(await sessionStorageHolds(page, setupToken)).toBe(false)
   await expectNoAxeViolations(page, 'the admin index after the install')

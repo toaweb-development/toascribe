@@ -27,6 +27,7 @@ export interface AuditInput {
   readonly action: string
   readonly objectType: string
   readonly objectId?: string
+  readonly oldValue?: JsonValue
   readonly newValue?: JsonValue
   readonly reason?: string
   /** The account the entry is about, when it is not the actor. Default: the actor. */
@@ -44,6 +45,7 @@ export function createAuditor(clock: () => Date): Auditor {
       action: input.action,
       objectType: input.objectType,
       ...(input.objectId === undefined ? {} : { objectId: input.objectId }),
+      ...(input.oldValue === undefined ? {} : { oldValue: input.oldValue }),
       ...(input.newValue === undefined ? {} : { newValue: input.newValue }),
       ...(input.reason === undefined ? {} : { reason: input.reason }),
       source: 'api',

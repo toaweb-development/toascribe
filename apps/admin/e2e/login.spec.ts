@@ -1,6 +1,6 @@
 import { compose, createUser, resetLimits } from './helpers/stack.ts'
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
-import { fillLogin, signIn, waitForSessionCookie } from './helpers/screens.ts'
+import { expectNotSignedIn, expectSignedIn, fillLogin, signIn, waitForSessionCookie } from './helpers/screens.ts'
 
 test.beforeEach(async () => {
   await resetLimits()
@@ -17,20 +17,21 @@ test('logs in and out, with a confirmation page before the logout', async ({ pag
 
   await fillLogin(page, user)
   await expect(page).toHaveURL(/\/admin\/?$/)
-  await expect(page.getByText(`Logget inn som ${user.username}.`)).toBeVisible()
+  await expectSignedIn(page, user)
 
   // The session cookie is `__Host-`, HttpOnly and Secure, and has no expiry (no «Husk meg»).
   const cookie = (await context.cookies()).find((entry) => entry.name === '__Host-toa_session')
   expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax', path: '/' })
   expect(cookie?.expires).toBe(-1)
 
-  await page.getByRole('link', { name: 'Logg ut' }).click()
+  await page.getByRole('button', { name: /^Hei, / }).click()
+  await page.getByRole('menuitem', { name: 'Logg ut' }).click()
   await expect(page).toHaveURL(/\/admin\/logout$/)
   await expect(page.getByText('Du forsøker å logge ut av toascribe. Vil du logge ut?')).toBeVisible()
   await expectNoAxeViolations(page, 'logout')
   // A GET alone does not log anyone out: the session is still there.
   await page.goto('/admin')
-  await expect(page.getByText(`Logget inn som ${user.username}.`)).toBeVisible()
+  await expectSignedIn(page, user)
 
   await page.goto('/admin/logout')
   await page.getByRole('button', { name: 'Logg ut' }).click()
@@ -39,7 +40,7 @@ test('logs in and out, with a confirmation page before the logout', async ({ pag
   await expectNoAxeViolations(page, 'login after logout')
 
   await page.goto('/admin')
-  await expect(page.getByText('Logget inn som')).toHaveCount(0)
+  await expectNotSignedIn(page)
   expect((await context.cookies()).find((entry) => entry.name === '__Host-toa_session')).toBeUndefined()
 })
 
@@ -102,7 +103,7 @@ test('«Husk meg» gives a cookie that lasts', async ({ page, context }) => {
   const user = await createUser('editor', 'remember')
   await page.goto('/admin/login')
   await fillLogin(page, user, true)
-  await expect(page.getByText(`Logget inn som ${user.username}.`)).toBeVisible()
+  await expectSignedIn(page, user)
   const cookie = (await context.cookies()).find((entry) => entry.name === '__Host-toa_session')
   expect(cookie?.expires).toBeGreaterThan(Date.now() / 1000 + 7 * 24 * 3600)
 })

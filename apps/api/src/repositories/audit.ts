@@ -15,6 +15,7 @@ export interface AuditEntry {
   readonly action: string
   readonly objectType?: string
   readonly objectId?: string
+  readonly oldValue?: JsonValue
   readonly newValue?: JsonValue
   readonly reason?: string
   readonly source: AuditSource
@@ -32,6 +33,7 @@ export async function insertAuditEntry(db: Executor, entry: AuditEntry): Promise
     action: entry.action,
     objectType: entry.objectType ?? null,
     objectId: entry.objectId ?? null,
+    oldValue: entry.oldValue ?? null,
     newValue: entry.newValue ?? null,
     reason: entry.reason ?? null,
     source: entry.source,

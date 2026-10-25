@@ -5,7 +5,8 @@ Mailpit catching the mail. They cover the sign-in screens (M0.3): login and logo
 second factor (set-up on the screen, a code from the app, a recovery code), registration, e-mail confirmation, the site name
 from the settings, the wait after too many wrong tries, the headers and the CSP of the admin and of the public site (`/`), and
 an axe-core check (WCAG 2.2 AA rule sets) on every screen. The setup wizard (M0.4) is tested from an empty database to a signed-in
-administrator (`wizard.spec.ts`). Each test runs at 375 px and at 1280 px.
+administrator (`wizard.spec.ts`). The admin shell, the profile and the users list (M0.5) have `shell.spec.ts`, `profile.spec.ts` and
+`users.spec.ts`. Each test runs at 375 px and at 1280 px.
 
 They are not part of `pnpm check`: they need Docker and a running stack, and they take a few minutes.
 
@@ -34,6 +35,14 @@ The first time, install the browser: `pnpm --filter @toascribe/admin exec playwr
 `stack.sh up` writes fresh passwords and keys into a scratch env file under `$TMPDIR/toascribe-e2e/` (mode 600) and starts the
 compose stack with the `mailpit` profile on `http://localhost:18080` (Mailpit on `:18025`). To use other names or ports, set
 `E2E_PROJECT`, `E2E_HTTP_PORT` and `E2E_MAILPIT_PORT` for `stack.sh`, and export what `stack.sh env` prints before the tests.
+More variables, for a host where the defaults are taken:
+
+- `E2E_STATE_DIR`: where `stack.sh` keeps the env file (default `$TMPDIR/<project>`).
+- `E2E_EDGE_SUBNET`: the subnet of the stack's `edge` network (default compose.yaml's `10.231.97.0/24`).
+- `E2E_VERSION`: the image tag the stack builds and runs (default `0.3.0-e2e`).
+- `E2E_WIZARD_PROJECT`, `E2E_WIZARD_HTTP_PORT`, `E2E_WIZARD_MAILPIT_PORT`, `E2E_WIZARD_SUBNET`: the same for the wizard's own
+  stack (defaults `toascribe-e2e-setup`, 18081, 18026, `10.231.98.0/24`).
+- `E2E_BASE_URL`, `E2E_MAILPIT_URL`, `E2E_ENV_FILE`: what `stack.sh env` prints; the tests read them.
 
 ## What to know
 

@@ -6,6 +6,8 @@ import type { EmailMessage } from '@toascribe/shared'
 import pg from 'pg'
 import { pino } from 'pino'
 
+import { EmailSettings, markEmailVerified } from '../src/email-verified.ts'
+import { readSettings } from '../src/repository.ts'
 import { createInstallService } from '../src/service.ts'
 import type { InstallMail, InstallService, InstallServiceDeps } from '../src/service.ts'
 import { createTestDatabase } from './db.ts'
@@ -145,26 +147,50 @@ export function stubMail(script: {
   readonly jobId?: string | null
   readonly sendError?: Error
   readonly stateError?: Error
+  /**
+   * Plays the worker: reads the e-mail settings when the mail is queued (what the worker sends with) and, when it reports the job
+   * `completed`, calls markEmailVerified with them, as the worker does before it finishes a test mail. Without it the stub is a
+   * queue whose worker marks nothing (the wizard must not mark either).
+   */
+  readonly worker?: InstallEnv['db']
 }): InstallMail & { readonly sent: RecordedMail[]; polls: number } {
   const sent: RecordedMail[] = []
+  let sentWith: EmailSettings | undefined
   const mail = {
     sent,
     polls: 0,
-    sendMail(message: EmailMessage, options: Parameters<InstallMail['sendMail']>[1]) {
+    async sendMail(message: EmailMessage, options: Parameters<InstallMail['sendMail']>[1]) {
       if (script.sendError !== undefined) {
-        return Promise.reject(script.sendError)
+        throw script.sendError
       }
       sent.push({ message, options })
-      return Promise.resolve({ jobId: script.jobId === undefined ? 'job-1' : script.jobId })
+      if (script.worker !== undefined) {
+        sentWith = await readSettings(script.worker, EmailSettings)
+      }
+      return { jobId: script.jobId === undefined ? 'job-1' : script.jobId }
     },
-    jobState() {
+    async jobState() {
       if (script.stateError !== undefined) {
-        return Promise.reject(script.stateError)
+        throw script.stateError
       }
       const index = Math.min(mail.polls, script.states.length - 1)
       mail.polls += 1
       const entry = script.states[index] ?? null
-      return Promise.resolve(entry === null ? null : { state: entry.state, output: entry.output ?? null })
+      const message = sent.at(-1)?.message
+      if (
+        entry?.state === 'completed' &&
+        script.worker !== undefined &&
+        sentWith !== undefined &&
+        message?.template === 'test'
+      ) {
+        await markEmailVerified(script.worker, {
+          sentWith,
+          requestedBy: message.data.requestedBy,
+          at: new Date(),
+          jobId: 'job-1',
+        })
+      }
+      return entry === null ? null : { state: entry.state, output: entry.output ?? null }
     },
   }
   return mail

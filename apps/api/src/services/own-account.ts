@@ -107,14 +107,10 @@ export function createOwnAccountService(options: {
           throw new AppError(400, 'same_email', 'That is already the address of the account')
         }
         const taken = await emailInUse(db, target, auth.account.id)
-        if (taken) {
-          // The answer must not say that the address has an account (K-004): the owner is told by mail instead.
-          const owner = await findAccountByEmail(db, target)
-          if (owner !== undefined && owner.status !== 'disabled') {
-            await mail({ template: 'account_exists', to: owner.email, data: { username: owner.username } })
-          }
-          return
-        }
+        // A taken address is handled like a free one in everything the account can see (K-004): the earlier link is voided, a
+        // request is stored (so `GET /me` shows the same pending address), it is audited, and the old address gets the same
+        // notice. Only the link differs: it is never sent, and the owner of the address is told by mail instead. Its token is
+        // random and known to nobody, and a confirmation checks the address again anyway.
         const token = generateToken()
         await inTransaction(db, async (tx) => {
           const now = clock()
@@ -134,9 +130,16 @@ export function createOwnAccountService(options: {
             objectId: auth.account.id,
           })
         })
-        // The link goes to the NEW address, so that opening it proves it is the person's. The OLD address is told, so its
-        // owner can react before anything changes.
-        await mail({ template: 'email_change', to: target, data: { username: auth.account.username, token } })
+        if (taken) {
+          const owner = await findAccountByEmail(db, target)
+          if (owner !== undefined && owner.status !== 'disabled') {
+            await mail({ template: 'account_exists', to: owner.email, data: { username: owner.username } })
+          }
+        } else {
+          // The link goes to the NEW address, so that opening it proves it is the person's.
+          await mail({ template: 'email_change', to: target, data: { username: auth.account.username, token } })
+        }
+        // The OLD address is told, so its owner can react before anything changes.
         await mail({
           template: 'email_change_notice',
           to: auth.account.email,

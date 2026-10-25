@@ -5,11 +5,12 @@ and plugins), written in TypeScript from end to end: Nuxt 4 for the site and the
 PostgreSQL. Content is stored as structured blocks, not HTML, and background work runs on a real job queue. It ships
 as an open repository and starts with Docker; the rest of the setup is finished in a browser wizard.
 
-**Status: 0.4.1, setup.** The whole stack starts and is healthy on one port, and a fresh install is finished in a browser
+**Status: 0.5.0, admin shell.** The whole stack starts and is healthy on one port, and a fresh install is finished in a browser
 wizard at `/admin/setup` (or with `toa core install`): system check, site, e-mail, the administrator and a recovery key, with
 a WordPress-style first post and page. People can log in at `/admin/login` (and at `/wp-login.php`, which redirects), with
-sessions, a second factor, lost password and registration, and e-mail goes through the job queue. The images are published
-to `ghcr.io/toaweb`. There is no editor yet. The plan, the architecture and the phases are in
+sessions, a second factor, lost password and registration, and e-mail goes through the job queue. Once signed in, the admin
+has a menu, a dashboard with notices, a profile page and a users list with role assignment. The images are published
+to `ghcr.io/toaweb-development`. There is no editor yet. The plan, the architecture and the phases are in
 [docs/PLAN.md](docs/PLAN.md) (in Norwegian); the tables are described in [docs/DATAMODEL.md](docs/DATAMODEL.md).
 
 ## Run the stack
@@ -99,12 +100,12 @@ Use `toascribe_owner` for the owner password, and `postgres` for `POSTGRES_PASSW
 
 ## Installer uten å klone repoet
 
-The images are published to `ghcr.io/toaweb/toascribe-*` at each release, so a server needs only `compose.yaml` and `.env`
+The images are published to `ghcr.io/toaweb-development/toascribe-*` at each release, so a server needs only `compose.yaml` and `.env`
 (Docker with Compose v2):
 
 ```sh
 mkdir toascribe && cd toascribe
-curl -fsSLO https://github.com/toaweb/toascribe/releases/latest/download/compose.yaml
+curl -fsSLO https://github.com/toaweb-development/toascribe/releases/latest/download/compose.yaml
 docker compose pull                                                # first: see below
 docker compose run --rm --no-deps -T api toa core gen-env >> .env  # the passwords and keys, once
 echo 'PUBLIC_ORIGIN=https://example.com' >> .env                   # the address visitors use; default http://localhost:8080

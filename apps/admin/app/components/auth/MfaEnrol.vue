@@ -5,7 +5,14 @@ import type { MfaEnrolStartResponse } from '@toascribe/shared'
 // The role of the account requires a second factor and it has none: scan the QR code (or type the key), confirm with the
 // first code, then keep the recovery codes. The QR code is an SVG document made by the API; it is shown as an image from a
 // data address, never inserted as markup, so nothing in it can run.
-const emit = defineEmits<{ finished: []; expired: [message: string] }>()
+//
+// On the profile (`profile`): the person is signed in already and adds one more app. The API then wants the current password with the
+// first code (adding a factor is a change a stolen session must not make), so the form has a password field; «Avbryt» goes back.
+const props = defineProps<{
+  profile?: boolean
+}>()
+
+const emit = defineEmits<{ finished: []; expired: [message: string]; cancel: [] }>()
 
 // True from the moment the code is sent until the page has left (see MfaVerify): the session is complete as soon as the first
 // code is confirmed, and the recovery codes must still be shown.
@@ -30,11 +37,17 @@ const qrSource = computed(() =>
 /** The key in groups of four, to read and type: `ABCD EFGH IJKL`. */
 const groupedSecret = computed(() => (setup.value?.secret ?? '').replace(/(.{4})(?=.)/g, '$1 '))
 
-const state = reactive({ code: '' })
+const state = reactive({ code: '', password: '' })
+const passwordVisible = ref(false)
+const passwordError = ref<string>()
 const { validateOn, failed } = useSubmitValidation()
 
 function validate(current: Partial<typeof state>) {
-  return validateTotpCode(current, t)
+  const errors = validateTotpCode(current, t)
+  if (props.profile === true && (current.password ?? '') === '') {
+    errors.push({ name: 'password', message: t('auth.validation.passwordRequired') })
+  }
+  return errors
 }
 
 async function start() {
@@ -69,8 +82,13 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
   submitting.value = true
   holding.value = true
   error.value = undefined
+  passwordError.value = undefined
   try {
-    const answer = await auth.confirmEnrolment(setup.value.id, cleanCode(event.data.code))
+    const answer = await auth.confirmEnrolment(
+      setup.value.id,
+      cleanCode(event.data.code),
+      props.profile === true ? event.data.password : undefined,
+    )
     if (answer.recoveryCodes !== null && answer.recoveryCodes.length > 0) {
       recoveryCodes.value = answer.recoveryCodes
       step.value = 'codes'
@@ -79,8 +97,19 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
     }
   } catch (caught) {
     holding.value = false
-    error.value = describeApiError(caught, t)
-    failures.value += 1
+    if (
+      props.profile === true &&
+      caught instanceof ApiRequestError &&
+      ['invalid_password', 'password_required'].includes(caught.code)
+    ) {
+      // The secret stays valid: only the password was wrong. Say so at the field and keep the code that was typed.
+      passwordError.value = describeApiError(caught, t)
+      state.password = ''
+      focusSoon(() => document.querySelector<HTMLElement>('[name="password"]'))
+    } else {
+      error.value = describeApiError(caught, t)
+      failures.value += 1
+    }
   } finally {
     submitting.value = false
   }
@@ -93,10 +122,20 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
   <div v-else-if="step === 'failed'" class="flex flex-col gap-6">
     <AuthMessage kind="error" focus>{{ error }}</AuthMessage>
     <UButton size="xl" block class="min-h-11" @click="start">{{ $t('auth.enrol.retry') }}</UButton>
+    <UButton
+      v-if="profile"
+      color="neutral"
+      variant="outline"
+      size="xl"
+      block
+      class="min-h-11"
+      @click="emit('cancel')"
+      >{{ $t('auth.enrol.cancel') }}</UButton
+    >
   </div>
 
   <div v-else-if="step === 'scan'" class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ $t('auth.enrol.intro') }}</p>
+    <p class="text-base text-default">{{ profile ? $t('auth.enrol.introProfile') : $t('auth.enrol.intro') }}</p>
     <!-- Prettier writes a void element with a slash, which this rule forbids: the two disagree, so the rule is off for this tag. -->
     <!-- eslint-disable vue/html-self-closing -->
     <img
@@ -133,9 +172,29 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
           class="w-full"
         />
       </UFormField>
+      <UFormField
+        v-if="profile"
+        eager-validation
+        name="password"
+        :label="$t('auth.enrol.password')"
+        :help="$t('auth.enrol.passwordHelp')"
+        :error="passwordError"
+      >
+        <AuthPasswordInput v-model="state.password" v-model:visible="passwordVisible" autocomplete="current-password" />
+      </UFormField>
       <UButton type="submit" size="xl" block class="min-h-11" :loading="submitting">{{
-        $t('auth.enrol.submit')
+        profile ? $t('auth.enrol.submitProfile') : $t('auth.enrol.submit')
       }}</UButton>
+      <UButton
+        v-if="profile"
+        color="neutral"
+        variant="outline"
+        size="xl"
+        block
+        class="min-h-11"
+        @click="emit('cancel')"
+        >{{ $t('auth.enrol.cancel') }}</UButton
+      >
     </UForm>
   </div>
 

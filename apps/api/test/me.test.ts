@@ -3,6 +3,7 @@ import { ApiError, MeResponse } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
+import { tokenOf, unique } from './flows.ts'
 import { TEST_PASSWORD, startAuthApp } from './harness.ts'
 import type { AuthTestApp, TestClient } from './harness.ts'
 
@@ -62,6 +63,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('profile (needs TEST_DATABASE_U
       'email',
       'id',
       'locale',
+      'pendingEmail',
+      'preferences',
       'profile',
       'roles',
       'username',
@@ -277,6 +280,107 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('profile (needs TEST_DATABASE_U
       locale: 'nb',
       roles: ['author'],
       username: account.username,
+    })
+  })
+
+  describe('pendingEmail: an e-mail change that is asked for and not yet confirmed', () => {
+    const request = async (client: TestClient, newEmail: string) =>
+      (await client.post('/api/v1/me/email-change', { newEmail, password: TEST_PASSWORD })).status
+    const fresh = () => `${unique('pending')}@example.test`
+
+    it('is null when no change was asked for', async () => {
+      const { client } = await signedIn()
+      expect((await me(client)).pendingEmail).toBeNull()
+    })
+
+    it('shows the new address and when the link stops working once a change is asked for, on GET and PATCH', async () => {
+      const { account, client } = await signedIn()
+      const to = fresh()
+      const before = env.clock.now().getTime()
+      expect(await request(client, to)).toBe(202)
+      const body = await me(client)
+      expect(body.pendingEmail).toEqual({ email: to, expiresAt: expect.any(String) as string })
+      const expires = Date.parse(body.pendingEmail?.expiresAt ?? '')
+      expect(expires - before).toBeGreaterThan(24 * 3_600_000 - 5000)
+      // The address on the account does not change until the link is used, and the token is not in the answer.
+      expect(body.email).toBe(account.email)
+      expect(JSON.stringify(body)).not.toMatch(/token/i)
+      const patched = MeResponse.parse(await (await client.patch('/api/v1/me', { bio: 'hi' })).json())
+      expect(patched.pendingEmail).toEqual(body.pendingEmail)
+    })
+
+    it('is private to the account: another account sees none', async () => {
+      const { client } = await signedIn()
+      const other = await signedIn()
+      expect(await request(client, fresh())).toBe(202)
+      expect((await me(client)).pendingEmail).not.toBeNull()
+      expect((await me(other.client)).pendingEmail).toBeNull()
+    })
+
+    it('is null again after the link is used', async () => {
+      const { client } = await signedIn()
+      const to = fresh()
+      expect(await request(client, to)).toBe(202)
+      const token = tokenOf(env, 'email_change', to)
+      expect((await client.post('/api/v1/me/email-change/confirm', { token })).status).toBe(200)
+      const after = await me(client)
+      expect(after.pendingEmail).toBeNull()
+      expect(after.email).toBe(to)
+    })
+
+    it('is null again after the link has expired', async () => {
+      const { account, client } = await signedIn()
+      expect(await request(client, fresh())).toBe(202)
+      expect((await me(client)).pendingEmail).not.toBeNull()
+      await env.query("update account_token set expires_at = $2 where account_id = $1 and purpose = 'email_change'", [
+        account.id,
+        new Date(env.clock.now().getTime() - 1000),
+      ])
+      expect((await me(client)).pendingEmail).toBeNull()
+    })
+
+    it('is the newest request when a newer one replaces it', async () => {
+      const { client } = await signedIn()
+      const first = fresh()
+      const second = fresh()
+      expect(await request(client, first)).toBe(202)
+      expect((await me(client)).pendingEmail?.email).toBe(first)
+      env.clock.advance(1000)
+      expect(await request(client, second)).toBe(202)
+      expect((await me(client)).pendingEmail?.email).toBe(second)
+    })
+
+    it('picks the newest unused link even if an older one is still unused (never two shown, never an expired one)', async () => {
+      const { account, client } = await signedIn()
+      const older = fresh()
+      const newer = fresh()
+      const expired = fresh()
+      const insert = (email: string, createdAt: Date, expiresAt: Date) =>
+        env.query(
+          `insert into account_token (account_id, purpose, token_hash, new_email, expires_at, created_at, modified_at)
+           values ($1, 'email_change', $2, $3, $4, $5, $5)`,
+          [account.id, unique('hash'), email, expiresAt, createdAt],
+        )
+      const now = env.clock.now().getTime()
+      await insert(newer, new Date(now - 2000), new Date(now + 3_600_000))
+      await insert(older, new Date(now - 9000), new Date(now + 3_600_000))
+      await insert(expired, new Date(now - 1000), new Date(now - 500))
+      expect((await me(client)).pendingEmail?.email).toBe(newer)
+    })
+
+    it('shows a request for an address that belongs to someone else the same way (a difference would tell that the address has an account)', async () => {
+      const { client } = await signedIn()
+      const earlier = fresh()
+      expect(await request(client, earlier)).toBe(202)
+      const owner = await env.createAccount({ username: unique('keeper'), email: fresh() })
+      expect(await request(client, owner.email)).toBe(202)
+      const taken = await me(client)
+      expect(taken.pendingEmail?.email).toBe(owner.email)
+      const free = fresh()
+      expect(await request(client, free)).toBe(202)
+      const open = await me(client)
+      expect(open.pendingEmail?.email).toBe(free)
+      expect(Object.keys(open.pendingEmail ?? {})).toEqual(Object.keys(taken.pendingEmail ?? {}))
     })
   })
 })

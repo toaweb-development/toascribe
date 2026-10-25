@@ -160,9 +160,12 @@ async function onTokenPasted(code: string) {
 
 async function start() {
   const taken = takeTokenFromHash(route.hash)
-  if (taken.present) {
+  // A `?token=` is not read (the code comes in the fragment or is pasted), and the address bar does not keep it either: the
+  // parameter goes, any other stays.
+  const stripped = withoutTokenQuery(route.query)
+  if (taken.present || stripped.removed) {
     // Out of the address bar before anything else, and without adding a history entry.
-    await router.replace({ path: route.path, query: route.query, hash: taken.rest })
+    await router.replace({ path: route.path, query: stripped.query, hash: taken.present ? taken.rest : route.hash })
   }
   const code = taken.token ?? readStoredToken()
   if (code === undefined) {

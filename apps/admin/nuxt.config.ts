@@ -1,3 +1,9 @@
+import { createHash } from 'node:crypto'
+
+import { ADMIN_STYLE_ATTRIBUTES } from './csp-style-attributes.ts'
+
+const sha256 = (text: string) => `'sha256-${createHash('sha256').update(text).digest('base64')}'`
+
 // What the admin shares with the site (Nuxt UI, i18n, the API layer, runtime config, head basics) is in nuxt-base.
 export default defineNuxtConfig({
   extends: ['@toascribe/nuxt-base'],
@@ -14,8 +20,9 @@ export default defineNuxtConfig({
 
   css: ['~/assets/theme/globals.css'],
 
-  // Nuxt UI draws its own icons by name, and the scan of the sources does not see those: the ones the sign-in screens
-  // and the setup wizard show are listed. They come from the build, never from api.iconify.design.
+  // Nuxt UI draws its own icons by name, and the scan of the sources does not see those: the ones the sign-in screens, the setup
+  // wizard and the shell show are listed. They come from the build, never from api.iconify.design. The menu's icons are named by
+  // the api (`i-lucide-gauge`, ...), which no scan of the sources can see either: every icon a menu item may name is here.
   icon: {
     clientBundle: {
       icons: [
@@ -26,9 +33,36 @@ export default defineNuxtConfig({
         'lucide:circle-x',
         'lucide:triangle-alert',
         'lucide:info',
+        // The shell: the menu (the registry's icons), the user menu, the sidebar's buttons and the menu's own arrow.
+        'lucide:gauge',
+        'lucide:users',
+        'lucide:user',
+        'lucide:log-out',
+        'lucide:chevron-down',
+        'lucide:menu',
+        'lucide:x',
+        'lucide:panel-left-close',
+        'lucide:panel-left-open',
+        'lucide:rotate-ccw',
+        // The users list: the sort arrows, the page links (also first and last), the select-all box's dash, the search field and the page gap.
+        'lucide:arrow-up',
+        'lucide:arrow-down',
+        'lucide:chevron-left',
+        'lucide:chevron-right',
+        'lucide:chevrons-left',
+        'lucide:chevrons-right',
+        'lucide:minus',
+        'lucide:ellipsis',
+        'lucide:search',
       ],
     },
   },
+
+  // The colour mode (the admin colour schemes force light or dark) is kept in a cookie and not in localStorage: the server reads
+  // it, and the module's inline script reads it before the first paint, so a reload does not flash the other mode.
+  // `disableTransition` is off because the module's way of doing it adds a `<style>` with no nonce whenever the mode changes in
+  // the browser (a scheme saved on the profile page, or the shell left), which the strict CSP refuses. Nuxt UI's colours fade in 150 ms.
+  colorMode: { storage: 'cookie', disableTransition: false },
 
   // This app has the setup wizard; the site sends visitors here until the site is installed (nuxt-base: setup-redirect.global.ts).
   runtimeConfig: { public: { hostsSetupWizard: true } },
@@ -40,6 +74,7 @@ export default defineNuxtConfig({
       contentSecurityPolicy: {
         'img-src': ["'self'", 'data:'],
         'frame-ancestors': ["'none'"],
+        'style-src-attr': ["'unsafe-hashes'", ...ADMIN_STYLE_ATTRIBUTES.map(({ value }) => sha256(value))],
       },
       xFrameOptions: 'DENY',
     },

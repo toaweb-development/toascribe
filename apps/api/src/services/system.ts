@@ -1,4 +1,5 @@
-// Site-level actions an administrator takes: for now, the test mail (K-204).
+// Site-level actions an administrator takes: for now, the test mail (K-204). The mail is sent by the worker, which also marks
+// the e-mail as verified when it has gone through (markEmailVerified in @toascribe/install); the api only queues it.
 import type { Database } from '@toascribe/db'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
@@ -27,6 +28,7 @@ export function createSystemService(options: {
   readonly mail: MailPort
 }): SystemService {
   const { db, clock, mail } = options
+
   return {
     async sendTestEmail(auth, to, context) {
       const recipient = to ?? auth.account.email

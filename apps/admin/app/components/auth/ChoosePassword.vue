@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
-import { generatePassword } from '@toascribe/shared'
-
 // «Nytt passord» for the two links in a mail: `reset` (Mistet passordet?) and `set` (the welcome link of a new or registered
 // account). The token is in the address fragment; it is read once and taken out of the address bar at once, and it only
 // lives in this component until the form is sent. Both calls give back 204 and no session: the person logs in afterwards.
@@ -24,7 +22,6 @@ const visible = ref(false)
 const submitting = ref(false)
 const error = ref<string>()
 const failures = ref(0)
-const generated = ref(false)
 
 onMounted(() => {
   token.value = takeTokenFromAddress(window)
@@ -33,12 +30,6 @@ onMounted(() => {
 
 function validate(current: Partial<typeof state>) {
   return validateNewPassword(current, t)
-}
-
-function generate() {
-  state.password = generatePassword()
-  visible.value = true // shown, so it can be copied before it is saved
-  generated.value = true
 }
 
 async function onInvalid(event: Parameters<typeof focusFirstError>[0]) {
@@ -91,17 +82,7 @@ async function onSubmit(event: FormSubmitEvent<{ password: string }>) {
       @submit="onSubmit"
       @error="onInvalid"
     >
-      <UFormField eager-validation name="password" :label="$t('auth.choose.password')" :help="$t('auth.choose.help')">
-        <AuthPasswordInput v-model="state.password" v-model:visible="visible" autocomplete="new-password" />
-      </UFormField>
-
-      <div class="flex flex-col gap-2">
-        <AuthStrengthMeter :password="state.password" />
-        <UButton color="neutral" variant="outline" size="lg" class="min-h-11 self-start" @click="generate">
-          {{ $t('auth.choose.generate') }}
-        </UButton>
-        <p v-if="generated" role="status" class="text-sm text-toned">{{ $t('auth.choose.generated') }}</p>
-      </div>
+      <AuthNewPasswordFields v-model="state.password" v-model:visible="visible" />
 
       <UButton type="submit" size="xl" block class="min-h-11" :loading="submitting">
         {{ $t('auth.choose.submit') }}

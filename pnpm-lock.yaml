@@ -493,6 +493,9 @@ importers:
       '@toascribe/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@toascribe/install':
+        specifier: workspace:*
+        version: link:../../packages/install
       '@toascribe/shared':
         specifier: workspace:*
         version: link:../../packages/shared

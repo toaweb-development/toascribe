@@ -1,6 +1,6 @@
 import { createUser, linkIn, resetLimits, setSetting, uniqueName, waitForMail } from './helpers/stack.ts'
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
-import { fillLogin } from './helpers/screens.ts'
+import { expectSignedIn, fillLogin } from './helpers/screens.ts'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -63,7 +63,7 @@ test('registration open: form, generic confirmation, set a password from the wel
   await expect(page).toHaveURL(/password=changed/)
 
   await fillLogin(page, { username, password: 'my first long password 1' })
-  await expect(page.getByText(`Logget inn som ${username}.`)).toBeVisible()
+  await expectSignedIn(page, { username })
 })
 
 test('an address that already has an account gets the same confirmation', async ({ page }) => {

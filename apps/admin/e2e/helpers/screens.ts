@@ -37,7 +37,17 @@ export async function signIn(
 ): Promise<void> {
   await page.goto(address)
   await fillLogin(page, user)
-  await expect(page.getByText(`Logget inn som ${user.username}.`)).toBeVisible()
+  await expectSignedIn(page, user)
+}
+
+/** The bar across the top of the shell says «Hei, name» for the account that is signed in (the name is the username by default). */
+export async function expectSignedIn(page: Page, user: Pick<TestUser, 'username'>): Promise<void> {
+  await expect(page.getByRole('button', { name: `Hei, ${user.username}`, exact: false })).toBeVisible()
+}
+
+/** No shell, so nobody is shown as signed in. */
+export async function expectNotSignedIn(page: Page): Promise<void> {
+  await expect(page.getByRole('button', { name: /^Hei, / })).toHaveCount(0)
 }
 
 /** The six digits for `secret` (base32) at a moment: the api accepts the step before, this one and the next. */

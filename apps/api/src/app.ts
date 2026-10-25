@@ -17,9 +17,13 @@ import { annotatePolicies, findUnguardedRoutes, policyGuard } from './middleware
 import { requestLogger } from './middleware/request-logger.ts'
 import type { MailPort } from './ports/mail.ts'
 import type { Pool } from './repositories/health.ts'
+import { createAdminApp } from './routes/admin.ts'
 import { createAuthApp } from './routes/auth.ts'
+import { createDashboardApp } from './routes/dashboard.ts'
 import { createHealthApp } from './routes/health.ts'
 import { createMeApp } from './routes/me.ts'
+import { createNoticesApp } from './routes/notices.ts'
+import { createUsersApp } from './routes/users.ts'
 import { createSecurityApp } from './routes/security.ts'
 import { createSetupApp } from './routes/setup.ts'
 import { createSystemApp } from './routes/system.ts'
@@ -71,6 +75,7 @@ export function buildApp(deps: AppDeps) {
     mail: deps.mail,
     logger: deps.logger,
     publicOrigin,
+    version: deps.version,
     ...(deps.trustedProxy === undefined ? {} : { trustedProxy: deps.trustedProxy }),
     ...(deps.minimumResponseMs === undefined ? {} : { minimumResponseMs: deps.minimumResponseMs }),
     onInvalidSetting: (key) => {
@@ -142,6 +147,10 @@ export function buildApp(deps: AppDeps) {
   app.route('/api/v1', createMeApp(services))
   app.route('/api/v1', createSecurityApp(services))
   app.route('/api/v1', createSystemApp(services))
+  app.route('/api/v1', createAdminApp(services))
+  app.route('/api/v1', createDashboardApp(services))
+  app.route('/api/v1', createNoticesApp(services))
+  app.route('/api/v1', createUsersApp(services))
   app.route('/api/v1', createSetupApp(services))
 
   const document = { openapi: '3.1.0', info: { title: 'toascribe API', version: deps.version } } as const

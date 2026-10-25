@@ -17,6 +17,7 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'POST /api/v1/auth/mfa/verify': 'authenticated (also half-signed-in)',
   'GET /api/v1/me': 'capability:read',
   'PATCH /api/v1/me': 'capability:read',
+  'PATCH /api/v1/me/preferences': 'capability:read',
   'GET /api/v1/me/sessions': 'capability:read',
   'DELETE /api/v1/me/sessions/:id': 'capability:read',
   'DELETE /api/v1/me/sessions': 'capability:read',
@@ -29,6 +30,14 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'POST /api/v1/me/email-change': 'capability:read',
   'POST /api/v1/me/email-change/confirm': 'capability:read',
   'POST /api/v1/system/test-email': 'capability:manage_options',
+  // The admin shell (M0.5): the menu, the dashboard counts and the notices. Every account that can sign in has `read`.
+  'GET /api/v1/admin/menu': 'capability:read',
+  'GET /api/v1/dashboard/glance': 'capability:read',
+  'GET /api/v1/notices': 'capability:read',
+  'POST /api/v1/notices/:key/dismiss': 'capability:read',
+  // The users table and role assignment (M0.5): `list_users` and `promote_users`, both the administrator's.
+  'GET /api/v1/users': 'capability:list_users',
+  'PUT /api/v1/users/roles': 'capability:promote_users',
   // The setup wizard (M0.4): open only until the site is installed, and then only with the one-time setup token.
   'GET /api/v1/setup/status': 'public',
   'GET /api/v1/setup/state': 'setup-token',
