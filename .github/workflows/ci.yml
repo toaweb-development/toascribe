@@ -275,22 +275,38 @@ jobs:
         run: |
           set -euo pipefail
           base="http://127.0.0.1:8080"
+          # The install service in the api remembers «not installed» for up to a second after the CLI installed the site, so
+          # each check tries a few times with a short pause before it fails.
+          attempts=5
           check() {
-            code="$(curl -s -o /dev/null -w '%{http_code}' "${base}$1")"
-            echo "$1 -> ${code}"
-            if [ "${code}" != "$2" ]; then
-              echo "::error::$1 returned ${code}, expected $2"
-              exit 1
-            fi
+            local code=""
+            for attempt in $(seq "${attempts}"); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' "${base}$1")"
+              echo "$1 -> ${code} (attempt ${attempt})"
+              if [ "${code}" = "$2" ]; then
+                return 0
+              fi
+              sleep 1
+            done
+            echo "::error::$1 returned ${code}, expected $2"
+            exit 1
           }
           check / 200
           check /admin/login 200
           # The wizard is gone: no token is sent, and it must still be 404 (the setup routes do not exist once installed).
           check /admin/setup 404
           check /api/v1/setup/state 404
-          status="$(curl -s "${base}/api/v1/setup/status")"
-          echo "/api/v1/setup/status -> ${status}"
-          if [ "$(jq -r '.installed' <<< "${status}")" != "true" ]; then
+          installed=""
+          for attempt in $(seq "${attempts}"); do
+            status="$(curl -s "${base}/api/v1/setup/status")"
+            echo "/api/v1/setup/status -> ${status} (attempt ${attempt})"
+            installed="$(jq -r '.installed' <<< "${status}" || true)"
+            if [ "${installed}" = "true" ]; then
+              break
+            fi
+            sleep 1
+          done
+          if [ "${installed}" != "true" ]; then
             echo "::error::/api/v1/setup/status does not say installed=true"
             exit 1
           fi
