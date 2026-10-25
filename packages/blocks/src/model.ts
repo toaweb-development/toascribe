@@ -42,6 +42,8 @@ export interface EditorModel {
   seal(): void
   insert(place: Place, block: Block, before: EditorSelection): EditorSelection | undefined
   remove(id: string, before: EditorSelection): EditorSelection | undefined
+  /** Puts `block` where `id` stands, in one step (the «/» menu turns an empty paragraph into the chosen block). */
+  replace(id: string, block: Block, before: EditorSelection): EditorSelection | undefined
   move(id: string, direction: Direction, before: EditorSelection): EditorSelection | undefined
   setText(
     id: string,
@@ -75,6 +77,13 @@ export function neighbourAfterRemoval(document: BlockDocument, id: string): stri
   const isLeaf = (block: Block) => !inside.has(block.id) && block.children.length === 0
   const previous = order.slice(0, index).reverse().find(isLeaf)
   return (previous ?? order.slice(index + 1).find(isLeaf))?.id ?? null
+}
+
+/** The block that takes the cursor in a new block: the block itself, or for columns the first block of the first column. */
+function firstLeaf(block: Block): Block {
+  return block.type === COLUMNS
+    ? (flatten([block]).find((inner) => inner.children.length === 0 && inner.type !== COLUMN) ?? block)
+    : block
 }
 
 export function createEditorModel(initial: BlockDocument, options: HistoryOptions = {}): EditorModel {
@@ -113,12 +122,20 @@ export function createEditorModel(initial: BlockDocument, options: HistoryOption
       history.seal()
     },
     insert(place, block, before) {
-      const target = block.type === COLUMNS ? (flatten([block]).find((b) => b.children.length === 0) ?? block) : block
-      return commit(insertBlock(history.present, place, block), before, { blockId: target.id, offset: 0 })
+      return commit(insertBlock(history.present, place, block), before, { blockId: firstLeaf(block).id, offset: 0 })
     },
     remove(id, before) {
       const focus = neighbourAfterRemoval(history.present, id)
       return commit(removeBlock(history.present, id), before, { blockId: focus })
+    },
+    replace(id, block, before) {
+      const located = locate(history.present, id)
+      const removed = located === undefined ? undefined : removeBlock(history.present, id)
+      const next =
+        located === undefined || removed === undefined
+          ? undefined
+          : insertBlock(removed, { parentId: located.parentId, index: located.index }, block)
+      return commit(next, before, { blockId: firstLeaf(block).id, offset: 0 })
     },
     move(id, direction, before) {
       return commit(moveBlock(history.present, id, direction), before, { ...before, blockId: id })
