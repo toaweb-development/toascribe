@@ -101,8 +101,9 @@ test('the built files are served with a long cache and the site keeps its own po
   expect(site.headers()['cache-control']).not.toBe('no-store')
 })
 
-// The one list of inline styles (csp-style-attributes.ts) is the whole of what the CSP lets through. This loads every screen the way the
-// server draws it, with the sidebar open and with it collapsed, and compares the `style` attributes in the HTML with the list. A string
+// The one list of inline styles (csp-style-attributes.ts) is the whole of what the CSP lets through. This loads the screens it can reach
+// without a one-time link or a second factor the way the server draws it (the others are covered by the CSP-violation check of the
+// specs that open them), with the sidebar open and with it collapsed, and compares the `style` attributes in the HTML with the list. A string
 // that a new Nuxt UI or Reka UI version starts to write fails here with the screen that draws it, and a string no screen draws any
 // more fails too, so the list cannot grow stale. (The setup wizard draws none: wizard.spec.ts checks its page on its own stack.)
 test('every inline style the server draws is on the list, and the list holds nothing no screen draws', async ({

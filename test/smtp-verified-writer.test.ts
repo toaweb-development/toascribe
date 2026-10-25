@@ -61,6 +61,22 @@ describe('smtp_verified_at has one writer', () => {
     expect(service.match(/\['smtp_verified_at', (?!null\])/g)).toBeNull()
   })
 
+  // A write can take any form (`writeSetting(tx, 'smtp_verified_at', …)`, an object, an SQL string), so the count of every use of
+  // the key in each file that may name it is pinned: one more use anywhere fails here and has to be explained.
+  it('is used exactly as often as the reads and the two writes need, in each file that may name it', () => {
+    const uses = (file: string) => code(join(ROOT, file)).match(/smtp_verified_at/g)?.length ?? 0
+    expect(Object.fromEntries(Object.keys(MAY_NAME_THE_KEY).map((file) => [file, uses(file)]))).toEqual({
+      // the schema, the default, READ_ONLY_SETTING_KEYS
+      'packages/shared/src/settings.ts': 3,
+      // pick, destructure, the null check
+      'apps/api/src/services/notices.ts': 3,
+      // the timestamp
+      'packages/install/src/email-verified.ts': 1,
+      // the wizard step's read (destructure, pick, the check) and saveEmail's clearing
+      'packages/install/src/service.ts': 4,
+    })
+  })
+
   it('is marked by the worker only: nothing else calls markEmailVerified', () => {
     const callers = ALL.filter((file) => /\bmarkEmailVerified\b/.test(code(file)))
       .map(rel)

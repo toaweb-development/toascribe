@@ -55,7 +55,7 @@ setting or environment variable; the account preferences are stored in a column 
 
 - The admin's Content-Security-Policy gets a `style-src-attr` that allows five exact inline style strings by hash, with
   `'unsafe-hashes'`: the width of Nuxt UI's sidebar (open and collapsed) and three strings that Reka UI writes for Nuxt UI's
-  select, radio group and visually hidden fields. They are in the HTML the server sends, so the admin uses Nuxt UI's own form
+  select, checkbox, radio group (its focus group) and visually hidden fields. They are in the HTML the server sends, so the admin uses Nuxt UI's own form
   controls on every screen. `'unsafe-hashes'` is used for style attributes only, never for scripts, and the site has none.
   The strings are kept in one list; a test fails when a screen draws a string that is not on it, or the list holds one that
   no screen draws. There is still no `'unsafe-inline'` and no `'unsafe-eval'`, and a page cannot add a style attribute of

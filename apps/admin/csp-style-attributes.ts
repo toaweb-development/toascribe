@@ -6,8 +6,10 @@
  * style attribute of its own.
  *
  * This is the one list. `nuxt.config.ts` builds the directive from it, and two tests hold it to the HTML: `e2e/headers.spec.ts`
- * loads every screen, with the sidebar open and collapsed, and fails on a string that is drawn and not listed and on a listed string
- * that no screen draws; `test/csp-style-attributes.test.ts` fails if `'unsafe-hashes'` is anywhere but `style-src-attr`. A new
+ * loads the screens it can reach without a one-time link or a second factor (sign-in, lost password, logout; dashboard, profile,
+ * users, users with a search and a sort), with the sidebar open and collapsed, and fails on a string that is drawn and not listed
+ * and on a listed string that none of them draws (the screens behind a link or a second factor are covered only by the CSP-violation
+ * check of the specs that open them); `test/csp-style-attributes.test.ts` fails if `'unsafe-hashes'` is anywhere but `style-src-attr`. A new
  * Nuxt UI or Reka UI version that writes another string therefore fails the end-to-end tests, and a string is removed here as soon
  * as nothing draws it.
  */
@@ -37,7 +39,7 @@ export const ADMIN_STYLE_ATTRIBUTES: readonly StyleAttribute[] = [
   {
     value: 'pointer-events:none;',
     reason:
-      'Reka UI SelectValue (the text inside the button of a USelect: the display name on the profile, the role in the bulk change on the users list) and the indicator of the chosen radio (profile/Personal.vue). Presses go to the element underneath.',
+      'Reka UI SelectValue (the text inside the button of a USelect: the display name on the profile, the role in the bulk change on the users list) and CheckboxIndicator (a ticked UCheckbox: the toolbar box on the profile, ticked rows in the users list). Presses go to the element underneath.',
   },
   {
     value:
