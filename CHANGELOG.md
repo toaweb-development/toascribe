@@ -6,6 +6,41 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-25
+
+The last milestone of phase 0: a prototype of the block editor, to answer whether the editor model in the plan holds before
+phase 1 is estimated. The answer, the experiences and the estimate are in `docs/decisions/0001-editor-model.md`. The prototype is
+reached at `/admin/editor-prototype` (not in the menu) and goes away when the real content API and editor come (M1.1–M1.3).
+There is no migration and no new setting or environment variable.
+
+### Added
+
+- The block format (`@toascribe/blocks`): blocks stored as `{ id, type, version, attrs, children }`, a `block.json` for the
+  paragraph, image, columns and column blocks, and one validation that the editor and the api share. Rich text is stored as data
+  (text with bold, italic, code and links, and line breaks), never as HTML; links may only point to `http:`, `https:`, `mailto:`,
+  a path on the site or an anchor.
+- The editor prototype at `/admin/editor-prototype` (accounts that can edit posts): paragraphs with their own formatting,
+  images from an upload or an https address with alt text and a caption, and 2–4 columns. Blocks are added with the «/» menu or
+  «+», moved with buttons or Alt+Shift+Up/Down (also into and out of columns), deleted, split with Enter and joined or removed
+  with Backspace. Undo and redo (Ctrl+Z, Ctrl+Shift+Z) cover typing, formatting, inserting, moving and deleting in one history
+  for the whole document. Everything works from the keyboard.
+- `/admin/editor-prototype/preview`: the saved draft as HTML rendered on the server from the stored blocks, without the editor.
+- Prototype endpoints under `/api/v1/prototype/editor`: read and save the signed-in account's own draft (`edit_posts`; the
+  blocks are checked against their `block.json` and refused with `invalid_blocks` and the list of problems), and image uploads
+  (`upload_files`; PNG, JPEG, GIF or WebP found from the file's bytes, kept in the api's temporary folder, at most 50, gone after
+  a restart).
+
+### Changed
+
+- The audit entry for a test mail that went through names the account that asked by its id, so it stays right if the
+  username is changed before the mail is sent.
+- `docs/PLAN.md`: only the Administrator has `unfiltered_html` by default (as decided in 0.3.0).
+
+### Security
+
+- The two editor prototype pages allow images from any https address in their Content Security Policy; every other admin page
+  still allows only its own images.
+
 ## [0.5.0] - 2026-10-24
 
 The admin shell: after login the admin now has a menu, a top bar, a dashboard, a profile page and a users list, in place of
@@ -320,7 +355,8 @@ The skeleton: everything runs end to end, nothing is a feature yet.
   dependencies, a start of the full stack, and a version gate that asks for a new version and CHANGELOG entry when
   released files change.
 
-[Unreleased]: https://github.com/toaweb-development/toascribe/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/toaweb-development/toascribe/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/toaweb-development/toascribe/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/toaweb-development/toascribe/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/toaweb-development/toascribe/compare/v0.3.0...v0.4.1
 [0.3.0]: https://github.com/toaweb-development/toascribe/compare/v0.2.0...v0.3.0
