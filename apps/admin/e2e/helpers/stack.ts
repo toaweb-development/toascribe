@@ -42,8 +42,13 @@ export const mainStack = (): Stack => ({
  * other ports and its own scratch env file, so it never touches the main stack. The names are stack.sh's, given the variables
  * below.
  */
+const WIZARD_PROJECT = process.env.E2E_WIZARD_PROJECT ?? 'toascribe-e2e-setup'
+
 export const WIZARD_STACK_ENV = {
-  E2E_PROJECT: process.env.E2E_WIZARD_PROJECT ?? 'toascribe-e2e-setup',
+  E2E_PROJECT: WIZARD_PROJECT,
+  // Its own state folder, always: an E2E_STATE_DIR set for the main stack would otherwise hand stack.sh the main stack's env
+  // file (ports, subnet and passwords included).
+  E2E_STATE_DIR: `${process.env.TMPDIR ?? '/tmp'}/${WIZARD_PROJECT}`,
   E2E_HTTP_PORT: process.env.E2E_WIZARD_HTTP_PORT ?? '18081',
   E2E_MAILPIT_PORT: process.env.E2E_WIZARD_MAILPIT_PORT ?? '18026',
   // The `edge` network's subnet is fixed in compose.yaml, so a second stack at the same time needs another.
@@ -52,10 +57,9 @@ export const WIZARD_STACK_ENV = {
 } as const
 
 export const wizardStack = (): Stack => {
-  const state = `${process.env.TMPDIR ?? '/tmp'}/${WIZARD_STACK_ENV.E2E_PROJECT}`
   return {
     project: WIZARD_STACK_ENV.E2E_PROJECT,
-    envFile: `${state}/env`,
+    envFile: `${WIZARD_STACK_ENV.E2E_STATE_DIR}/env`,
     baseUrl: `http://localhost:${WIZARD_STACK_ENV.E2E_HTTP_PORT}`,
     mailpitUrl: `http://localhost:${WIZARD_STACK_ENV.E2E_MAILPIT_PORT}`,
   }
