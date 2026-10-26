@@ -1,5 +1,5 @@
 {
-  "id": "26ada004-a967-4ff5-86c5-be8274fe36ba",
+  "id": "82b6717f-78dd-490d-ac2e-0e87c27363c6",
   "prevId": "bf1434dd-dcd0-4311-9c9d-6b04fc607672",
   "version": "7",
   "dialect": "postgresql",
@@ -2914,6 +2914,22 @@
         }
       },
       "indexes": {
+        "idx_media_storage_key_prefix": {
+          "name": "idx_media_storage_key_prefix",
+          "columns": [
+            {
+              "expression": "storage_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_pattern_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "idx_media_folder_id": {
           "name": "idx_media_folder_id",
           "columns": [

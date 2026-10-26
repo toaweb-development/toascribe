@@ -97,6 +97,8 @@ export const media = pgTable(
       'set null',
     ),
     // Folder view, «uploaded by me», «uploaded to this item», and the three SET NULL actions.
+    // /uploads/<key> of a size (`<original without ext>-300x200.webp`) finds its file by the original key's prefix.
+    index('idx_media_storage_key_prefix').on(t.storageKey.op('text_pattern_ops')),
     index('idx_media_folder_id')
       .on(t.folderId)
       .where(sql`${t.folderId} is not null`),
