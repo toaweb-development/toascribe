@@ -35,11 +35,25 @@ There is no migration and no new setting or environment variable.
 - The audit entry for a test mail that went through names the account that asked by its id, so it stays right if the
   username is changed before the mail is sent.
 - `docs/PLAN.md`: only the Administrator has `unfiltered_html` by default (as decided in 0.3.0).
+- **Releases come from a tag.** A release now starts when the maintainer pushes a tag `vX.Y.Z`; merging into `main` no
+  longer releases anything, and the release workflow no longer creates the tag. The version is raised once per release in a
+  `chore(release)` commit, and changes are collected under «Unreleased» in this file until then. A release can be run again
+  with the same tag; the images and the release that already exist are left as they are.
+- **CI is replaced by local checks.** No workflow runs on a push or a pull request. `pnpm check` runs before every push, and
+  `pnpm release:check` runs everything CI used to do before a release, on the maintainer's machine: the workflow check, the
+  dependency audit, the database and e-mail tests, the image build, the image scan, the stack started from the scanned images
+  with the route checks around `toa core install`, a dry run of the publishing, and the end-to-end tests. The dependency audit
+  also runs weekly on GitHub. Dependabot proposes version updates once a month, one batch per ecosystem; security updates
+  still come at once.
 
 ### Security
 
 - The two editor prototype pages allow images from any https address in their Content Security Policy; every other admin page
   still allows only its own images.
+- **The release workflow is split into three jobs.** The job that builds and scans the images can only read the repository.
+  Only the job that publishes can write packages, and it runs no third-party code: it takes the scanned images from the build
+  as a checked artifact and publishes each one by the digest that was scanned, so what is published is what was scanned. The
+  GitHub Release is made by a third job. All of them run on GitHub's own runners.
 
 ## [0.5.0] - 2026-10-24
 
