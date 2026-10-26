@@ -1,7 +1,7 @@
 // Checks on the files a user downloads and runs (docker/compose.yaml, docker/.env.example) that a build or a
 // type check cannot catch. The stack itself is proven by CI, which builds the images and runs `docker compose up`.
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -668,6 +668,13 @@ describe('the release workflow', () => {
 })
 
 describe('the local release gate', () => {
+  it('can run every script in scripts/', () => {
+    const dir = fileURLToPath(new URL('scripts/', ROOT))
+    const files = readdirSync(dir).filter((name) => name.endsWith('.sh'))
+    expect(files.length).toBeGreaterThanOrEqual(8)
+    for (const name of files) expect(statSync(join(dir, name)).mode & 0o111, name).not.toBe(0)
+  })
+
   it('is one command', () => {
     const scripts = (JSON.parse(read('package.json')) as { scripts: Record<string, string> }).scripts
     expect(scripts['release:check']).toBe('scripts/release-check.sh')
