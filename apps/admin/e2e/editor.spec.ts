@@ -56,7 +56,7 @@ test('build a document with columns, an image and formatted text; undo and redo;
 }) => {
   await signIn(page, editorUser)
   await page.goto('/admin/posts/new')
-  await expect(page.getByRole('heading', { level: 1, name: 'Legg til nytt innlegg' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Legg til innlegg' })).toBeVisible()
   await expect(page.getByText('Dokumentet er tomt.')).toBeVisible()
 
   // Columns from the «+» at the end of the document: two columns, each with an empty paragraph, and the cursor in the first.
@@ -114,14 +114,14 @@ test('build a document with columns, an image and formatted text; undo and redo;
   await expect(last).toHaveText('')
   await page.keyboard.press(`${MOD}+Shift+z`)
   await expect(last).toHaveText('Hei fet tekst')
-  await page.getByRole('button', { name: 'Gjenta' }).click()
+  await page.getByRole('button', { name: 'Gjør om' }).click()
   await expect(last.locator('strong')).toHaveText('fet')
   expect(await outline(page)).toBe('columns(column(paragraph) column(image)) paragraph')
   // One step is left to redo: the move.
-  await expect(page.getByRole('button', { name: 'Gjenta' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Gjør om' })).toBeEnabled()
 
   // Save, reload: the same document.
-  await page.getByRole('button', { name: 'Lagre utkast' }).click()
+  await page.getByRole('button', { name: 'Lagre kladd' }).click()
   await expect(page.getByText('Lagret.').first()).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/posts\/[0-9a-f-]{36}$/)
   const id = page.url().split('/').pop() ?? ''

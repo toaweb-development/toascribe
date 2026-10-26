@@ -54,10 +54,10 @@ test('the page has the sections of profile.php, in order, and no axe violations'
   await onProfile(page)
   const headings = page.getByRole('heading', { level: 2 })
   await expect(headings).toHaveText([
-    'Personlige valg',
+    'Personlige innstillinger',
     'Navn',
-    'Kontaktinformasjon',
-    'Om deg selv',
+    'Kontaktinfo',
+    'Om deg',
     'Kontoadministrasjon',
   ])
   await expect(page.getByRole('heading', { level: 3 })).toHaveText(['Nytt passord', 'Tofaktorautentisering', 'Økter'])
@@ -159,13 +159,13 @@ test('the colour scheme applies at once and survives a reload; the toolbar choic
   const user = await onProfile(page)
   await expect(page.locator('html')).not.toHaveClass(/dark/)
 
-  await chooseScheme(page, 'Midnatt')
-  await expect(page.getByText('Fargeskjemaet «Midnatt» er lagret.')).toBeVisible()
+  await chooseScheme(page, 'Mørk')
+  await expect(page.getByText('Fargeskjemaet «Mørk» er lagret.')).toBeVisible()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await page.reload()
   await expect(page.locator('html')).toHaveClass(/dark/)
-  await expect(page.getByRole('radio', { name: /Midnatt/ })).toBeChecked()
-  await expectNoAxeViolations(page, 'the profile page in Midnatt')
+  await expect(page.getByRole('radio', { name: /Mørk/ })).toBeChecked()
+  await expectNoAxeViolations(page, 'the profile page in Mørk')
 
   await chooseScheme(page, 'Lys')
   await expect(page.getByText('Fargeskjemaet «Lys» er lagret.')).toBeVisible()
@@ -247,7 +247,7 @@ test('a new password: weak ones are refused, a good one works, and the other ses
   const user = await onProfile(page, 'subscriber', 'pw')
   const other = await openSecondSession(browser, user)
 
-  await page.getByRole('button', { name: 'Sett nytt passord' }).click()
+  await page.getByRole('button', { name: 'Angi nytt passord' }).click()
   const password = field(page, /^Nytt passord/)
   // WordPress makes a strong password and shows it.
   await expect(password).toHaveValue(/.{20,}/)
@@ -276,7 +276,7 @@ test('a new password: weak ones are refused, a good one works, and the other ses
   await expect(page.getByRole('dialog').getByText('Passordet er feil.')).toBeVisible()
   await answerPasswordDialog(page, user.password, 'Bytt passord')
   await expect(page.getByText('Passordet er endret. De andre øktene dine er logget ut.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Sett nytt passord' })).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Angi nytt passord' })).toBeFocused()
 
   // The other session is gone, this one stays, and the new password logs in.
   await other.page.reload()
@@ -384,7 +384,7 @@ test('two-factor required by the role: the last app cannot be removed', async ({
   }
 })
 
-test('sessions: a second browser appears, and «Logg ut overalt ellers» ends it', async ({ page, browser }) => {
+test('sessions: a second browser appears, and «Logg ut alle andre steder» ends it', async ({ page, browser }) => {
   const user = await onProfile(page, 'subscriber', 'ses')
   await expect(page.getByText('Du er bare logget inn her')).toBeVisible()
   const other = await openSecondSession(browser, user)
@@ -398,15 +398,15 @@ test('sessions: a second browser appears, and «Logg ut overalt ellers» ends it
   await expectNoAxeViolations(page, 'the profile page with two sessions')
 
   // Cancelling the confirmation changes nothing.
-  await page.getByRole('button', { name: 'Logg ut overalt ellers' }).click()
+  await page.getByRole('button', { name: 'Logg ut alle andre steder' }).click()
   const dialog = page.getByRole('dialog', { name: 'Logge ut overalt ellers?' })
   await expect(dialog).toContainText('1 annen økt avsluttes.')
   await expect(dialog.getByRole('button', { name: 'Avbryt' })).toBeFocused()
   await dialog.getByRole('button', { name: 'Avbryt' }).click()
   await expect(list.getByRole('listitem')).toHaveCount(2)
 
-  await page.getByRole('button', { name: 'Logg ut overalt ellers' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Logg ut overalt ellers' }).click()
+  await page.getByRole('button', { name: 'Logg ut alle andre steder' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Logg ut alle andre steder' }).click()
   await expect(page.getByText('1 økt er avsluttet.')).toBeVisible()
   await expect(list.getByRole('listitem')).toHaveCount(1)
   await expect(page.getByText('Du er bare logget inn her')).toBeVisible()

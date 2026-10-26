@@ -175,7 +175,7 @@ test('the seven steps, from the code in the address to the administrator signed 
   await page.getByPlaceholder('Søk etter tidssone').fill('Stockholm')
   await page.getByRole('option', { name: 'Europe/Stockholm' }).click()
   await page.getByLabel('E-postadresse for administrasjon').fill(ADMIN.email)
-  await page.getByLabel('Be søkemotorer om ikke å indeksere dette nettstedet').check()
+  await page.getByLabel('Be søkemotorer om å ikke indeksere nettstedet').check()
   await page.getByRole('button', { name: 'Fortsett' }).click()
 
   // The saved steps are read again after a reload: this one is done, so the wizard is on the next.

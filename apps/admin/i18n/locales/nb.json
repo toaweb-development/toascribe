@@ -114,7 +114,7 @@
       "title": "Nettstedstittel",
       "titleHelp": "Navnet på nettstedet. Det vises på innloggingssidene og i e-post fra nettstedet.",
       "language": {
-        "label": "Språk for nettstedet",
+        "label": "Nettstedsspråk",
         "help": "Språket bestemmer også teksten i standardinnholdet som lages til slutt.",
         "nb": "Norsk bokmål",
         "en": "English"
@@ -128,7 +128,7 @@
       "adminEmailHelp": "Hit sender nettstedet varsler. Adressen vises ikke for besøkende.",
       "visibility": {
         "legend": "Synlighet for søkemotorer",
-        "label": "Be søkemotorer om ikke å indeksere dette nettstedet",
+        "label": "Be søkemotorer om å ikke indeksere nettstedet",
         "help": "Det er opp til søkemotorene å respektere denne forespørselen."
       }
     },
@@ -235,7 +235,7 @@
     },
     "links": {
       "register": "Registrer",
-      "lost": "Mistet passordet?",
+      "lost": "Mistet passordet ditt?",
       "login": "Logg inn"
     },
     "notice": {
@@ -306,12 +306,12 @@
       "saved": "Jeg har lagret kodene"
     },
     "lost": {
-      "heading": "Mistet passordet?",
+      "heading": "Tapt passord",
       "intro": "Skriv inn brukernavnet eller e-postadressen din. Hvis kontoen finnes, sender vi en lenke for å velge nytt passord.",
-      "submit": "Få lenke for nytt passord"
+      "submit": "Få nytt passord"
     },
     "choose": {
-      "headingReset": "Nytt passord",
+      "headingReset": "Sett nytt passord",
       "headingSet": "Velg passord",
       "introReset": "Velg et nytt passord for kontoen din.",
       "introSet": "Velkommen. Velg et passord for å ta kontoen i bruk.",
@@ -348,7 +348,7 @@
     "strength": {
       "tooShort": "Passordstyrke: for kort",
       "weak": "Passordstyrke: svakt",
-      "fair": "Passordstyrke: middels",
+      "fair": "Passordstyrke: medium",
       "good": "Passordstyrke: sterkt",
       "strong": "Passordstyrke: svært sterkt"
     }
@@ -356,7 +356,7 @@
   "shell": {
     "skipToContent": "Gå til hovedinnholdet",
     "bar": {
-      "visit": "Besøk nettstedet:",
+      "visit": "Vis nettsted",
       "howdy": "Hei, {name}",
       "userMenu": "Brukermenyen din",
       "profile": "Rediger profil"
@@ -416,7 +416,7 @@
       "intro": "Her er noen lenker som hjelper deg i gang.",
       "profile": "Rediger profilen din",
       "users": "Se alle brukere",
-      "dismiss": "Avvis",
+      "dismiss": "Lukk",
       "dismissFailed": "Velkomstpanelet ble ikke avvist, og det vises fortsatt.",
       "failed": {
         "title": "Velkomstpanelet kunne ikke lastes.",
@@ -425,7 +425,7 @@
       }
     },
     "glance": {
-      "heading": "I korte trekk",
+      "heading": "Oversikt",
       "posts": "{n} innlegg | {n} innlegg",
       "pages": "{n} side | {n} sider",
       "comments": "{n} kommentar | {n} kommentarer",
@@ -465,7 +465,7 @@
       "cancel": "Avbryt"
     },
     "personal": {
-      "title": "Personlige valg",
+      "title": "Personlige innstillinger",
       "scheme": "Fargeskjema for administrasjon",
       "schemeSaved": "Fargeskjemaet «{name}» er lagret.",
       "toolbar": "Verktøylinje",
@@ -483,7 +483,7 @@
       "defaultHint": "Grønn, og lys eller mørk som systemet ditt.",
       "light": "Lys",
       "lightHint": "Grønn, alltid lys.",
-      "midnight": "Midnatt",
+      "midnight": "Mørk",
       "midnightHint": "Indigo, alltid mørk.",
       "ocean": "Hav",
       "oceanHint": "Blå, og lys eller mørk som systemet ditt."
@@ -499,7 +499,7 @@
       "displayAsHelp": "Navnet som vises i «Hei, …» og på innlegg. Valgene er bygd av navnene over."
     },
     "contact": {
-      "title": "Kontaktinformasjon",
+      "title": "Kontaktinfo",
       "email": "E-post",
       "emailHelp": "Hvis du bytter adresse, sender vi en lenke til den nye. Adressen endres ikke før du har åpnet lenken.",
       "website": "Nettsted",
@@ -511,7 +511,7 @@
       "pendingTitle": "Venter på bekreftelse av ny e-post"
     },
     "about": {
-      "title": "Om deg selv",
+      "title": "Om deg",
       "bio": "Biografisk informasjon",
       "bioHelp": "Skriv noen få setninger om deg selv. Teksten kan vises offentlig."
     },
@@ -531,7 +531,7 @@
     "password": {
       "title": "Nytt passord",
       "intro": "Bytter du passord, logges de andre øktene dine ut.",
-      "set": "Sett nytt passord",
+      "set": "Angi nytt passord",
       "new": "Nytt passord",
       "save": "Lagre nytt passord",
       "cancel": "Avbryt",
@@ -574,7 +574,7 @@
     "sessions": {
       "title": "Økter",
       "help": "Hvis du har mistet en enhet eller tror noen andre har tilgang til kontoen din, kan du logge ut overalt ellers. Du blir værende innlogget her.",
-      "onlyThis": "Du er bare logget inn her, i denne nettleseren.",
+      "onlyThis": "Du er bare innlogget herfra.",
       "listLabel": "Aktive økter",
       "deviceBoth": "{browser} på {system}",
       "deviceUnknown": "Ukjent enhet",
@@ -587,7 +587,7 @@
       "endTitle": "Logge ut økten på {device}?",
       "endText": "Den som bruker økten, blir logget ut med én gang.",
       "ended": "Økten på {device} er logget ut.",
-      "endOthers": "Logg ut overalt ellers",
+      "endOthers": "Logg ut alle andre steder",
       "endOthersTitle": "Logge ut overalt ellers?",
       "endOthersText": "{n} annen økt avsluttes. Du blir værende innlogget her. | {n} andre økter avsluttes. Du blir værende innlogget her.",
       "endedOthers": "{n} økt er avsluttet. | {n} økter er avsluttet.",
@@ -674,7 +674,7 @@
       "descending": "sortert synkende"
     },
     "pagination": {
-      "label": "Sidenummerering"
+      "label": "Sideinndeling"
     },
     "empty": {
       "title": "Ingen brukere funnet.",
@@ -697,7 +697,7 @@
     "issue": "{block}: {problem}",
     "unsaved": "Endringer som ikke er lagret",
     "undo": "Angre",
-    "redo": "Gjenta",
+    "redo": "Gjør om",
     "toolbarLabel": "Dokument",
     "canvasLabel": "Innhold",
     "empty": "Dokumentet er tomt.",
@@ -735,7 +735,7 @@
       "alt": "Alternativ tekst",
       "altHelp": "Beskriv bildet for dem som ikke ser det. La feltet stå tomt bare hvis bildet er pynt.",
       "caption": "Bildetekst",
-      "replace": "Bytt bilde"
+      "replace": "Erstatt"
     },
     "columns": {
       "add": "Legg til kolonne",
@@ -768,8 +768,8 @@
   "content": {
     "posts": {
       "title": "Innlegg",
-      "add": "Legg til nytt innlegg",
-      "addTitle": "Legg til nytt innlegg",
+      "add": "Legg til innlegg",
+      "addTitle": "Legg til innlegg",
       "edit": "Rediger innlegg",
       "search": "Søk i innlegg",
       "caption": "Innleggsliste",
@@ -780,8 +780,8 @@
     },
     "pages": {
       "title": "Sider",
-      "add": "Legg til ny side",
-      "addTitle": "Legg til ny side",
+      "add": "Legg til side",
+      "addTitle": "Legg til side",
       "edit": "Rediger side",
       "search": "Søk i sider",
       "caption": "Sideliste",
@@ -796,25 +796,25 @@
     },
     "views": {
       "all": "Alle",
-      "mine": "Mine",
+      "mine": "Min",
       "publish": "Publisert",
-      "draft": "Utkast",
-      "pending": "Venter",
+      "draft": "Kladd",
+      "pending": "Venter på gjennomgang",
       "future": "Planlagt",
       "private": "Privat",
       "trash": "Papirkurv",
       "item": "{name} ({n})"
     },
     "status": {
-      "draft": "Utkast",
+      "draft": "Kladd",
       "pending": "Venter på gjennomgang",
       "future": "Planlagt",
       "publish": "Publisert",
       "private": "Privat"
     },
     "states": {
-      "draft": "Utkast",
-      "pending": "Venter",
+      "draft": "Kladd",
+      "pending": "Avventer",
       "future": "Planlagt",
       "private": "Privat",
       "password": "Passordbeskyttet",
@@ -835,7 +835,7 @@
     "searchSummary": "Søkeresultater for: {query}",
     "searchClear": "Tøm søket",
     "showAll": "Vis alle",
-    "pagination": "Sidenummerering",
+    "pagination": "Sideinndeling",
     "actionFailed": "Handlingen ble ikke utført.",
     "failed": {
       "title": "Listen kunne ikke lastes.",
@@ -860,20 +860,20 @@
       "label": "Handlinger for «{title}»",
       "edit": "Rediger",
       "editNamed": "Rediger «{title}»",
-      "quickEdit": "Hurtigredigering",
-      "quickEditNamed": "Hurtigredigering «{title}»",
+      "quickEdit": "Hurtigrediger",
+      "quickEditNamed": "Hurtigrediger «{title}»",
       "trash": "Papirkurv",
-      "trashNamed": "Papirkurv «{title}»",
+      "trashNamed": "Flytt «{title}» til papirkurven",
       "preview": "Forhåndsvis",
       "previewNamed": "Forhåndsvis «{title}»",
       "restore": "Gjenopprett",
-      "restoreNamed": "Gjenopprett «{title}»",
+      "restoreNamed": "Gjenopprett «{title}» fra papirkurven",
       "remove": "Slett permanent",
-      "removeNamed": "Slett permanent «{title}»"
+      "removeNamed": "Slett «{title}» permanent"
     },
     "bulk": {
       "label": "Massehandlinger",
-      "choose": "Velg handling…",
+      "choose": "Velg massehandling",
       "edit": "Rediger",
       "trash": "Flytt til papirkurven",
       "restore": "Gjenopprett",
@@ -906,9 +906,9 @@
       "text": "Alt i papirkurven som du har rett til å slette, slettes for godt og kan ikke gjenopprettes."
     },
     "quickEdit": {
-      "title": "Hurtigredigering",
+      "title": "Hurtigrediger",
       "titleField": "Tittel",
-      "slug": "Slug",
+      "slug": "Identifikator",
       "date": "Dato",
       "dateHelp": "Tom dato publiserer med tidspunktet du lagrer.",
       "password": "Passord",
@@ -930,20 +930,20 @@
       "failed": "Endringene ble ikke lagret."
     },
     "bulkEdit": {
-      "title": "Masseredigering",
+      "title": "Masserediger",
       "description": "Endringene gjelder {n} element. | Endringene gjelder {n} elementer.",
       "keep": "— Ingen endring —",
       "comments": "Kommentarer",
-      "commentsOpen": "Tillatt",
-      "commentsClosed": "Ikke tillatt",
+      "commentsOpen": "Tillat",
+      "commentsClosed": "Ikke tillat",
       "stickyField": "Fest øverst",
       "sticky": "Fest øverst",
       "notSticky": "Ikke fest øverst",
       "failed": "Endringene ble ikke lagret."
     },
     "screenOptions": {
-      "open": "Skjermalternativer",
-      "title": "Skjermalternativer",
+      "open": "Visningsinnstillinger",
+      "title": "Visningsinnstillinger",
       "columns": "Kolonner",
       "perPage": "Antall elementer per side",
       "perPageInvalid": "Skriv et tall fra 1 til 100.",
@@ -953,7 +953,7 @@
     "editor": {
       "title": "Tittel",
       "titlePlaceholder": "Legg til tittel",
-      "saveDraft": "Lagre utkast",
+      "saveDraft": "Lagre kladd",
       "update": "Oppdater",
       "publish": "Publiser",
       "saved": "Lagret.",

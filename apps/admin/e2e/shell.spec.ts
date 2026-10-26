@@ -96,7 +96,7 @@ test('an anonymous visitor goes to the login screen and is brought back after si
 test('the bar leads to the site and holds the account menu', async ({ page }) => {
   const user = await createUser('editor', 'shellbar')
   await signIn(page, user)
-  await expect(page.getByRole('link', { name: /Besøk nettstedet/ })).toHaveAttribute('href', '/')
+  await expect(page.getByRole('link', { name: /Vis nettsted/ })).toHaveAttribute('href', '/')
 
   await page.getByRole('button', { name: `Hei, ${user.username}` }).click()
   await expect(page.getByRole('menuitem', { name: 'Rediger profil' })).toHaveAttribute('href', '/admin/profile')
@@ -117,7 +117,7 @@ test.describe('the dashboard', () => {
     const user = admin
     await signIn(page, user)
 
-    const glance = page.getByRole('region', { name: 'I korte trekk' })
+    const glance = page.getByRole('region', { name: 'Oversikt' })
     // Other specs publish posts and pages in the same database (M1.1), so the counts are read as numbers, and they link to the lists.
     await expect(glance.getByRole('link', { name: /^\d+ innlegg$/ })).toHaveAttribute(
       'href',
@@ -164,12 +164,12 @@ test.describe('the dashboard', () => {
     const welcome = page.getByRole('region', { name: 'Velkommen til toascribe!' })
     await expect(welcome.getByRole('link', { name: 'Rediger profilen din' })).toBeVisible()
     await expect(welcome.getByRole('link', { name: 'Se alle brukere' })).toBeVisible()
-    await welcome.getByRole('button', { name: 'Avvis' }).click()
+    await welcome.getByRole('button', { name: 'Lukk' }).click()
     await expect(welcome).toHaveCount(0)
 
     await page.reload()
     await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'I korte trekk' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Oversikt' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Velkommen til toascribe!' })).toHaveCount(0)
   })
 })

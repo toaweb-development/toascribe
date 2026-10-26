@@ -89,7 +89,7 @@ test('the wait is shown on the lost-password screen too, for a name that matches
   }
   await page.goto('/admin/login?action=lostpassword')
   await page.getByLabel('Brukernavn eller e-postadresse').fill('noSuchPerson')
-  await page.getByRole('button', { name: 'Få lenke for nytt passord' }).click()
+  await page.getByRole('button', { name: 'Få nytt passord' }).click()
   await expect(page.getByRole('alert')).toContainText(WAIT_IN_SECONDS)
   await expectNoAxeViolations(page, 'lost password while waiting')
 })
