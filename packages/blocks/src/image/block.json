@@ -1,0 +1,17 @@
+{
+  "name": "core/image",
+  "version": 1,
+  "title": "Image",
+  "description": "Insert an image to make a visual statement.",
+  "category": "media",
+  "icon": "i-lucide-image",
+  "keywords": ["photo", "picture"],
+  "attributes": {
+    "url": { "type": "string", "format": "url", "default": "", "maxLength": 2048 },
+    "alt": { "type": "string", "default": "", "maxLength": 1000 },
+    "caption": { "type": "string", "default": "", "maxLength": 2000 }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

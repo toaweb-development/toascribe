@@ -18,7 +18,11 @@ export default defineNuxtConfig({
   // is used and not that condition, because other packages (the @internationalized/date of Nuxt UI) export a "source"
   // condition too: it would make TypeScript check their .ts files with our strict options and Vite bundle them. The
   // alias reaches the typecheck (tsconfig paths), the Vite build and the Nitro build, so none needs the library's dist/.
-  alias: { '@toascribe/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)) },
+  alias: {
+    '@toascribe/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)),
+    // The block format and the editor model (M0.6); the admin's editor reads it.
+    '@toascribe/blocks': fileURLToPath(new URL('../blocks/src/index.ts', import.meta.url)),
+  },
 
   typescript: {
     tsConfig: {

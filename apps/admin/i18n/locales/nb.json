@@ -685,5 +685,94 @@
       "text": "Rollen din gir ikke rett til å se brukerlisten. Spør en administrator hvis du trenger tilgang.",
       "back": "Til kontrollpanelet"
     }
+  },
+  "editorPrototype": {
+    "title": "Editor-prototype",
+    "intro": "Prototype av blokkeditoren (M0.6). Innholdet lagres i et eget utkast som bare du ser.",
+    "denied": "Du har ikke tilgang til å redigere innlegg.",
+    "loadFailed": "Utkastet kunne ikke hentes.",
+    "retry": "Prøv igjen",
+    "save": "Lagre utkast",
+    "saved": "Utkastet er lagret.",
+    "saveFailed": "Utkastet ble ikke lagret. Prøv igjen.",
+    "invalid": "Utkastet ble ikke lagret fordi noen blokker ikke er gyldige:",
+    "issue": "{block}: {problem}",
+    "unsaved": "Endringer som ikke er lagret",
+    "undo": "Angre",
+    "redo": "Gjenta",
+    "preview": "Forhåndsvisning",
+    "toolbarLabel": "Dokument",
+    "canvasLabel": "Innhold",
+    "empty": "Dokumentet er tomt.",
+    "addBlock": "Legg til blokk",
+    "insertHere": "Sett inn blokk her",
+    "blockLabel": "Blokk: {name}",
+    "blockTools": "Blokkverktøy for {name}",
+    "moveUp": "Flytt opp",
+    "moveDown": "Flytt ned",
+    "remove": "Slett blokk",
+    "insertAfter": "Sett inn blokk etter",
+    "cannotMove": "Blokken kan ikke flyttes lenger den veien.",
+    "shortcuts": "Tastatur: Ctrl+Z angrer og Ctrl+Shift+Z gjentar. Alt+Shift+Pil opp eller Pil ned flytter blokken, Alt+Shift+Z sletter den. Skriv / i et tomt avsnitt for å velge blokk.",
+    "paragraph": {
+      "label": "Avsnitt",
+      "placeholder": "Skriv tekst, eller / for å velge blokk",
+      "formatting": "Formatering",
+      "bold": "Fet",
+      "italic": "Kursiv",
+      "code": "Kode",
+      "link": "Lenke",
+      "linkUrl": "Lenkeadresse",
+      "linkApply": "Bruk lenken",
+      "linkRemove": "Fjern lenken",
+      "linkCancel": "Avbryt",
+      "linkInvalid": "Adressen må begynne med https://, http://, mailto:, / eller #.",
+      "slashMenu": "Velg blokk",
+      "slashNone": "Ingen blokker passer."
+    },
+    "image": {
+      "empty": "Velg et bilde: last opp en fil eller skriv inn en adresse.",
+      "file": "Bildefil (PNG, JPEG, GIF eller WebP)",
+      "uploading": "Laster opp …",
+      "uploadFailed": "Bildet kunne ikke lastes opp.",
+      "url": "Bildeadresse",
+      "insertUrl": "Bruk adressen",
+      "urlInvalid": "Adressen må begynne med https://.",
+      "alt": "Alternativ tekst",
+      "altHelp": "Beskriv bildet for dem som ikke ser det. La feltet stå tomt bare hvis bildet er pynt.",
+      "caption": "Bildetekst",
+      "replace": "Bytt bilde"
+    },
+    "columns": {
+      "add": "Legg til kolonne",
+      "removeLast": "Fjern siste kolonne",
+      "column": "Kolonne {n}",
+      "count": "{n} kolonner"
+    },
+    "issues": {
+      "invalidShape": "Blokken har feil form.",
+      "invalidId": "Blokken har en ugyldig id.",
+      "duplicateId": "To blokker har samme id.",
+      "unknownBlock": "Blokktypen finnes ikke.",
+      "unsupportedVersion": "Blokken har en versjon editoren ikke kjenner.",
+      "notAllowedHere": "Blokken kan ikke stå her.",
+      "unknownAttribute": "Blokken har et felt den ikke skal ha.",
+      "invalidAttribute": "Et felt i blokken har en verdi som ikke er tillatt.",
+      "childCount": "Blokken har for få eller for mange kolonner.",
+      "tooLarge": "Dokumentet er for stort."
+    },
+    "previewPage": {
+      "title": "Forhåndsvisning av utkastet",
+      "intro": "Slik ser det lagrede utkastet ut når serveren lager HTML av blokkene, uten editoren.",
+      "empty": "Utkastet er tomt eller ikke lagret ennå.",
+      "invalid": "Utkastet har blokker som ikke kan vises.",
+      "back": "Tilbake til editoren"
+    }
+  },
+  "blocks": {
+    "paragraph": "Avsnitt",
+    "image": "Bilde",
+    "columns": "Kolonner",
+    "column": "Kolonne"
   }
 }

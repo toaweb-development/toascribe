@@ -128,6 +128,43 @@ test('every inline style the server draws is on the list, and the list holds not
   const user = await createUser('administrator', 'cspadmin')
   await signIn(page, user)
   const origin = new URL(page.url()).origin
+  const session = (await (await page.request.get('/api/v1/auth/session')).json()) as { csrfToken: string }
+  const draft = await page.request.put('/api/v1/prototype/editor/document', {
+    headers: { 'X-CSRF-Token': session.csrfToken, origin },
+    data: {
+      blocks: [
+        {
+          id: 'b_cspcols',
+          type: 'core/columns',
+          version: 1,
+          attrs: {},
+          children: ['1', '2'].map((n) => ({
+            id: `b_cspcol${n}`,
+            type: 'core/column',
+            version: 1,
+            attrs: {},
+            children: [
+              {
+                id: `b_csppara${n}`,
+                type: 'core/paragraph',
+                version: 1,
+                attrs: { content: [{ type: 'text', text: 'x' }] },
+                children: [],
+              },
+            ],
+          })),
+        },
+        {
+          id: 'b_cspimage',
+          type: 'core/image',
+          version: 1,
+          attrs: { url: 'https://example.com/a.png', alt: 'a' },
+          children: [],
+        },
+      ],
+    },
+  })
+  expect(draft.ok(), await draft.text()).toBe(true)
   for (const collapsed of [false, true]) {
     // The sidebar keeps its state in a cookie that the server reads, so the collapsed rail is drawn on the server too.
     await page.context().addCookies([
@@ -142,6 +179,9 @@ test('every inline style the server draws is on the list, and the list holds not
       '/admin/profile',
       '/admin/users',
       '/admin/users?search=a&orderby=email&order=desc',
+      // The editor prototype (M0.6) and its preview, with a saved draft of columns, an image and a paragraph (saved below).
+      '/admin/editor-prototype',
+      '/admin/editor-prototype/preview',
     ]) {
       const answer = await page.request.get(path)
       expect(answer.status(), path).toBe(200)

@@ -1,5 +1,7 @@
 // Typed errors thrown from the service layer; app.onError maps them to the ApiError format
 // (typescript §8). The message of an AppError is shown to the client, so it must be safe.
+import { MAX_BLOCK_ISSUES } from '@toascribe/shared'
+import type { BlockIssue } from '@toascribe/shared'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 export class AppError extends Error {
@@ -53,5 +55,15 @@ export class TooManyRequestsError extends AppError {
 export class BadRequestError extends AppError {
   constructor(message = 'Bad request', code = 'bad_request', options?: ErrorOptions) {
     super(400, code, message, options)
+  }
+}
+
+/** 400 with the issues found in a block document. */
+export class InvalidBlocksError extends AppError {
+  readonly issues: readonly BlockIssue[]
+
+  constructor(issues: readonly BlockIssue[]) {
+    super(400, 'invalid_blocks', 'The blocks do not match their block.json')
+    this.issues = issues.slice(0, MAX_BLOCK_ISSUES)
   }
 }

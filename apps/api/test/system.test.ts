@@ -20,8 +20,11 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('POST /system/test-email (needs
     await env.close()
   })
 
+  const ids = new Map<string, string>()
+
   async function admin(name: string): Promise<TestClient> {
     const account = await env.createAccount({ username: name, role: 'administrator' })
+    ids.set(name, account.id)
     const client = env.client({ ip: SENT_FROM })
     expect((await client.login(account.username, 'correct horse battery staple')).status).toBe(200)
     return client
@@ -34,7 +37,11 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('POST /system/test-email (needs
     expect(res.status).toBe(202)
     expect(TestEmailResponse.parse(await res.json()).jobId).not.toBe('')
     expect(env.mail.sent.slice(before)).toEqual([
-      { template: 'test', to: 'mail-self@example.test', data: { requestedBy: 'mail-self' } },
+      {
+        template: 'test',
+        to: 'mail-self@example.test',
+        data: { requestedBy: 'mail-self', requestedById: ids.get('mail-self') },
+      },
     ])
   })
 

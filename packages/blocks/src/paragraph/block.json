@@ -1,0 +1,15 @@
+{
+  "name": "core/paragraph",
+  "version": 1,
+  "title": "Paragraph",
+  "description": "Start with the basic building block of all narrative.",
+  "category": "text",
+  "icon": "i-lucide-pilcrow",
+  "keywords": ["text"],
+  "attributes": {
+    "content": { "type": "rich-text", "default": [], "maxLength": 20000 }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

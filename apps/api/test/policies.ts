@@ -38,6 +38,11 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   // The users table and role assignment (M0.5): `list_users` and `promote_users`, both the administrator's.
   'GET /api/v1/users': 'capability:list_users',
   'PUT /api/v1/users/roles': 'capability:promote_users',
+  // PROTOTYPE (M0.6): the editor prototype's draft and images. Replaced by the content API (M1.1) and the media library (M1.2).
+  'GET /api/v1/prototype/editor/document': 'capability:edit_posts',
+  'PUT /api/v1/prototype/editor/document': 'capability:edit_posts',
+  'POST /api/v1/prototype/editor/uploads': 'capability:upload_files',
+  'GET /api/v1/prototype/editor/uploads/:name': 'capability:edit_posts',
   // The setup wizard (M0.4): open only until the site is installed, and then only with the one-time setup token.
   'GET /api/v1/setup/status': 'public',
   'GET /api/v1/setup/state': 'setup-token',

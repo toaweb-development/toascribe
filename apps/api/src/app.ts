@@ -1,3 +1,6 @@
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { dummyPasswordHash } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
@@ -20,6 +23,7 @@ import type { Pool } from './repositories/health.ts'
 import { createAdminApp } from './routes/admin.ts'
 import { createAuthApp } from './routes/auth.ts'
 import { createDashboardApp } from './routes/dashboard.ts'
+import { createEditorPrototypeApp } from './routes/editor-prototype.ts'
 import { createHealthApp } from './routes/health.ts'
 import { createMeApp } from './routes/me.ts'
 import { createNoticesApp } from './routes/notices.ts'
@@ -50,6 +54,8 @@ export interface AppDeps {
   readonly trustedProxy?: string
   /** The clock, for the session lifetimes and the waits after failed logins. Tests set it; the default is the real time. */
   readonly clock?: () => Date
+  /** PROTOTYPE (M0.6): where the editor prototype keeps uploaded images. Default: `<os tmpdir>/toascribe-editor-prototype`. */
+  readonly prototypeUploadDir?: string
 }
 
 /**
@@ -76,6 +82,7 @@ export function buildApp(deps: AppDeps) {
     logger: deps.logger,
     publicOrigin,
     version: deps.version,
+    prototypeUploadDir: deps.prototypeUploadDir ?? join(tmpdir(), 'toascribe-editor-prototype'),
     ...(deps.trustedProxy === undefined ? {} : { trustedProxy: deps.trustedProxy }),
     ...(deps.minimumResponseMs === undefined ? {} : { minimumResponseMs: deps.minimumResponseMs }),
     onInvalidSetting: (key) => {
@@ -151,6 +158,8 @@ export function buildApp(deps: AppDeps) {
   app.route('/api/v1', createDashboardApp(services))
   app.route('/api/v1', createNoticesApp(services))
   app.route('/api/v1', createUsersApp(services))
+  // PROTOTYPE (M0.6): the editor prototype. Remove with M1.1/M1.2.
+  app.route('/api/v1', createEditorPrototypeApp(services))
   app.route('/api/v1', createSetupApp(services))
 
   const document = { openapi: '3.1.0', info: { title: 'toascribe API', version: deps.version } } as const

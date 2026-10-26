@@ -205,6 +205,20 @@ describe('renderMail (bokmål)', () => {
     }
   })
 
+  it("takes the test mail's account id for the audit entry, and never shows it", () => {
+    const id = '0f6d7c1e-3b2a-4c5d-8e9f-a0b1c2d3e4f5'
+    const mail = renderMail(
+      EmailMessage.parse({ template: 'test', to: 'a@example.no', data: { requestedBy: 'admin', requestedById: id } }),
+      CONTEXT,
+    )
+    expect(mail.text).toContain('admin')
+    expect(`${mail.subject}${mail.text}${mail.html}`).not.toContain(id)
+    expect(
+      EmailMessage.safeParse({ template: 'test', to: 'a@example.no', data: { requestedBy: 'a', requestedById: 'x' } })
+        .success,
+    ).toBe(false)
+  })
+
   it('escapes HTML in names and the site name', () => {
     const mail = renderMail(
       EmailMessage.parse({

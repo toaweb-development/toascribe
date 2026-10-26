@@ -100,7 +100,7 @@ function mergeStrings(base: TemplateStrings, over: Partial<TemplateStrings> | un
   return over === undefined ? base : { ...base, ...over }
 }
 
-/** The values a placeholder can take: the site, the lifetime of a link, and the data of the message except the token (a notice's action as its sentence). */
+/** The values a placeholder can take: the site, the lifetime of a link, and the data of the message except the token and the requester's account id (a notice's action as its sentence). */
 function valuesFor(
   message: EmailMessage,
   context: MailContext,
@@ -114,7 +114,8 @@ function valuesFor(
   for (const [key, value] of Object.entries(message.data)) {
     if (key === 'action' && message.template === 'security_notice') {
       values[key] = common.securityActions[message.data.action]
-    } else if (key !== 'token') {
+    } else if (key !== 'token' && key !== 'requestedById' && value !== undefined) {
+      // `requestedById` is for the worker's audit entry, not for the text.
       values[key] = value
     }
   }

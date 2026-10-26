@@ -1,3 +1,45 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 @import './tokens/colors.css';
+
+/*
+ * The block editor prototype (M0.6): the few rules ProseMirror needs, which TipTap would otherwise inject as a <style> element
+ * without a nonce (refused by the CSP; the editor is created with `injectCSS: false`). From @tiptap/core's style.ts.
+ */
+.ProseMirror {
+  position: relative;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0;
+}
+
+.ProseMirror [contenteditable='false'] {
+  white-space: normal;
+}
+
+.ProseMirror pre {
+  white-space: pre-wrap;
+}
+
+.ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+
+.ProseMirror-hideselection {
+  caret-color: transparent;
+}
+
+.ProseMirror code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  border-radius: 0.25rem;
+  background-color: var(--ui-bg-elevated);
+  padding: 0.1em 0.3em;
+}
+
+.ProseMirror a {
+  color: var(--ui-primary);
+  text-decoration: underline;
+}

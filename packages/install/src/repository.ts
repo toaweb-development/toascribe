@@ -52,15 +52,15 @@ export async function hasAdminNotice(db: Executor, key: string): Promise<boolean
   return rows.length > 0
 }
 
-/** The account with this username (names are unique ignoring case), or undefined. */
-export async function findAccountByUsername(
+/** The account with this id, or undefined. */
+export async function findAccountById(
   db: Executor,
-  username: string,
+  id: string,
 ): Promise<{ readonly id: string; readonly username: string } | undefined> {
   const rows = await db
     .select({ id: account.id, username: account.username })
     .from(account)
-    .where(sql`lower(${account.username}) = lower(${username})`)
+    .where(eq(account.id, id))
     .limit(1)
   return rows[0]
 }

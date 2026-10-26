@@ -13,6 +13,8 @@ import type { AdminMenuRegistry } from './admin-menu.ts'
 import { createAuthService } from './auth.ts'
 import type { AuthService } from './auth.ts'
 import { createDashboardService } from './dashboard.ts'
+import { createEditorPrototypeService } from './editor-prototype.ts'
+import type { EditorPrototypeService } from './editor-prototype.ts'
 import type { DashboardService } from './dashboard.ts'
 import { createMeService } from './me.ts'
 import type { MeService } from './me.ts'
@@ -58,6 +60,8 @@ export interface ServiceDeps {
   readonly trustedProxy?: string
   /** Told about a stored setting that failed validation, so it can be logged. */
   readonly onInvalidSetting?: (key: string) => void
+  /** The temporary folder of the editor prototype's uploads (PROTOTYPE, M0.6). */
+  readonly prototypeUploadDir: string
 }
 
 /** Everything the routes and the later flows (MFA, lost password, registration) build on, made once at start-up. */
@@ -74,6 +78,8 @@ export interface Services {
   readonly notices: NoticeService
   /** The users table and role assignment. */
   readonly users: UserService
+  /** PROTOTYPE (M0.6): the editor prototype's draft and image uploads. Replaced in M1.1 and M1.2. */
+  readonly editorPrototype: EditorPrototypeService
   /** Second factor: enrolment, recovery codes, the second step of a login (K-023). */
   readonly mfa: MfaService
   /** Lost password, first password, registration (K-003, K-005). */
@@ -146,6 +152,12 @@ export function createServices(deps: ServiceDeps): Services {
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     users: createUserService({ db, clock, audit }),
+    editorPrototype: createEditorPrototypeService({
+      db,
+      clock,
+      uploadDir: deps.prototypeUploadDir,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
     mfa: createMfaService({
       db,
       clock,

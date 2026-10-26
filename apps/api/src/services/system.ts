@@ -33,7 +33,11 @@ export function createSystemService(options: {
     async sendTestEmail(auth, to, context) {
       const recipient = to ?? auth.account.email
       const receipt = await mail.sendMail(
-        { template: 'test', to: recipient, data: { requestedBy: auth.account.username } },
+        {
+          template: 'test',
+          to: recipient,
+          data: { requestedBy: auth.account.username, requestedById: auth.account.id },
+        },
         // Per account, not per address: the point is to stop one administrator from using the form to send mail in bulk.
         { throttle: { key: `test-email.${auth.account.id}`, seconds: TEST_EMAIL_WINDOW_SECONDS } },
       )

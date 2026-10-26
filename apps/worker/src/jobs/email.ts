@@ -134,7 +134,7 @@ export async function processEmailJob(job: EmailJob, deps: EmailJobDeps): Promis
   try {
     verified = await markEmailVerified(deps.db, {
       sentWith: settings,
-      requestedBy: message.data.requestedBy,
+      requestedById: message.data.requestedById,
       at: (deps.clock ?? (() => new Date()))(),
       jobId: job.id,
     })

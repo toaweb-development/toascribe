@@ -1,0 +1,195 @@
+import type { Page } from '@playwright/test'
+
+import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
+import { signIn } from './helpers/screens.ts'
+import { createUser } from './helpers/stack.ts'
+import type { TestUser } from './helpers/stack.ts'
+
+// The block editor prototype (M0.6): a document with two columns, an image and paragraphs, formatting, a move into a column, undo
+// and redo across all of it, save, reload, and the server-rendered preview of the same JSON. Each test runs at 375 px and 1280 px;
+// the fixture fails a test on any console message or CSP violation, and axe runs on the editor and on the preview.
+
+/** A 1×1 PNG: the upload checks the bytes, not the name. */
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64',
+)
+
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
+
+let editorUser: TestUser
+
+test.beforeAll(async () => {
+  editorUser = await createUser('editor', 'blockeditor')
+})
+
+/**
+ * Waits a frame. ProseMirror reads a selection made with the keyboard from the browser's `selectionchange`, which arrives as a task
+ * of its own; Playwright presses the next key before that task has run, faster than a person can.
+ */
+const settle = (page: Page) =>
+  page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0))))
+
+const paragraphs = (page: Page) => page.getByRole('textbox', { name: 'Avsnitt' })
+
+/** The document's shape as the editor shows it: each block's type, with the blocks of each column inside. */
+async function outline(page: Page): Promise<string> {
+  return page.getByRole('region', { name: 'Innhold' }).evaluate((root) => {
+    const describe = (element: Element): string => {
+      const type = element.getAttribute('data-block-type') ?? ''
+      const inner = [...element.querySelectorAll(':scope [data-block-id]')]
+        .filter((child) => child.parentElement?.closest('[data-block-id]') === element)
+        .map(describe)
+      const short = type.replace('core/', '')
+      return inner.length > 0 ? `${short}(${inner.join(' ')})` : short
+    }
+    return [...root.querySelectorAll('[data-block-id]')]
+      .filter((element) => element.parentElement?.closest('[data-block-id]') === null)
+      .map(describe)
+      .join(' ')
+  })
+}
+
+test('build a document with columns, an image and formatted text; undo and redo; save, reload and preview', async ({
+  page,
+}) => {
+  await signIn(page, editorUser)
+  await page.goto('/admin/editor-prototype')
+  await expect(page.getByRole('heading', { level: 1, name: 'Editor-prototype' })).toBeVisible()
+  await expect(page.getByText('Dokumentet er tomt.')).toBeVisible()
+
+  // Columns from the «+» at the end of the document: two columns, each with an empty paragraph, and the cursor in the first.
+  await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
+  await page.getByRole('menuitem', { name: 'Kolonner' }).click()
+  await expect(page.getByRole('group', { name: 'Kolonne 2' })).toBeVisible()
+  await expect(paragraphs(page).first()).toBeFocused()
+  await page.keyboard.type('Venstre kolonne')
+
+  // An image in the second column through the «/» menu, from an uploaded file.
+  const second = page.getByRole('group', { name: 'Kolonne 2' })
+  await second.getByRole('textbox', { name: 'Avsnitt' }).click()
+  await page.keyboard.type('/bil')
+  const listbox = page.getByRole('listbox', { name: 'Velg blokk' })
+  await expect(listbox.getByRole('option', { name: 'Bilde' })).toHaveAttribute('aria-selected', 'true')
+  await expectNoAxeViolations(page, 'the editor with the «/» menu open')
+  await page.keyboard.press('Enter')
+  await second.getByLabel('Bildefil (PNG, JPEG, GIF eller WebP)').setInputFiles({
+    name: 'test.png',
+    mimeType: 'image/png',
+    buffer: PNG,
+  })
+  // Without alt text the image is decorative (no `img` role); with it, it is named by it.
+  await expect(second.getByLabel('Alternativ tekst')).toBeFocused()
+  await second.getByLabel('Alternativ tekst').fill('Et testbilde')
+  await expect(second.getByRole('img', { name: 'Et testbilde' })).toBeVisible()
+
+  // A paragraph after the columns, with text typed in one go and one word made bold afterwards.
+  await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
+  await page.getByRole('menuitem', { name: 'Avsnitt' }).click()
+  const last = paragraphs(page).last()
+  await expect(last).toBeFocused()
+  await page.keyboard.type('Hei fet tekst')
+  for (let step = 0; step < ' tekst'.length; step += 1) await page.keyboard.press('ArrowLeft')
+  for (let step = 0; step < 'fet'.length; step += 1) await page.keyboard.press('Shift+ArrowLeft')
+  await settle(page)
+  await page.keyboard.press(`${MOD}+b`)
+  await expect(last.locator('strong')).toHaveText('fet')
+  await expect(page.getByRole('button', { name: 'Fet' })).toHaveAttribute('aria-pressed', 'true')
+  await expectNoAxeViolations(page, 'the editor with columns, an image and a paragraph')
+
+  // Move the paragraph up: it goes into the end of the second column, after the image.
+  expect(await outline(page)).toBe('columns(column(paragraph) column(image)) paragraph')
+  await page.keyboard.press('Alt+Shift+ArrowUp')
+  expect(await outline(page)).toBe('columns(column(paragraph) column(image paragraph))')
+  await expect(second.getByRole('textbox', { name: 'Avsnitt' })).toBeFocused()
+
+  // Undo three times: the move, the bold, the typing. Redo twice: the typing and the bold, not the move.
+  await page.keyboard.press(`${MOD}+z`)
+  expect(await outline(page)).toBe('columns(column(paragraph) column(image)) paragraph')
+  await page.keyboard.press(`${MOD}+z`)
+  await expect(last.locator('strong')).toHaveCount(0)
+  await expect(last).toHaveText('Hei fet tekst')
+  await page.keyboard.press(`${MOD}+z`)
+  await expect(last).toHaveText('')
+  await page.keyboard.press(`${MOD}+Shift+z`)
+  await expect(last).toHaveText('Hei fet tekst')
+  await page.getByRole('button', { name: 'Gjenta' }).click()
+  await expect(last.locator('strong')).toHaveText('fet')
+  expect(await outline(page)).toBe('columns(column(paragraph) column(image)) paragraph')
+  // One step is left to redo: the move.
+  await expect(page.getByRole('button', { name: 'Gjenta' })).toBeEnabled()
+
+  // Save, reload: the same document.
+  await page.getByRole('button', { name: 'Lagre utkast' }).click()
+  await expect(page.getByText('Utkastet er lagret.')).toBeVisible()
+  await page.reload()
+  await expect(paragraphs(page).first()).toHaveText('Venstre kolonne')
+  await expect(page.getByRole('group', { name: 'Kolonne 2' }).getByRole('img', { name: 'Et testbilde' })).toBeVisible()
+  await expect(paragraphs(page).last().locator('strong')).toHaveText('fet')
+  expect(await outline(page)).toBe('columns(column(paragraph) column(image)) paragraph')
+
+  // The preview: the same JSON as HTML from the server, before any script runs, with the same text and markup.
+  const answer = await page.request.get('/admin/editor-prototype/preview')
+  expect(answer.status()).toBe(200)
+  const html = await answer.text()
+  // Vue's hydration markers (<!--[-->) are comments; without them the markup is what the view wrote.
+  const article = (
+    /<article[^>]*data-testid="prototype-preview"[^>]*>([\s\S]*?)<\/article>/.exec(html)?.[1] ?? ''
+  ).replace(/<!--[\s\S]*?-->/g, '')
+  expect(article).toContain('Venstre kolonne')
+  expect(article).toMatch(/<p[^>]*>Hei <strong>fet<\/strong> tekst<\/p>/)
+  expect(article).toMatch(/<img[^>]*src="\/api\/v1\/prototype\/editor\/uploads\/[0-9a-f-]{36}\.png"[^>]*>/)
+  expect(article).toMatch(/<img[^>]*alt="Et testbilde"/)
+  expect(article).not.toMatch(/<script|\son[a-z]+=/)
+
+  await page.goto('/admin/editor-prototype/preview')
+  const preview = page.getByTestId('prototype-preview')
+  await expect(preview.getByRole('img', { name: 'Et testbilde' })).toBeVisible()
+  await expect(preview.locator('strong')).toHaveText('fet')
+  await expectNoAxeViolations(page, 'the preview')
+})
+
+test('keyboard only: Enter makes a paragraph, Backspace in an empty one deletes it, and the toolbar moves and deletes', async ({
+  page,
+}) => {
+  const user = await createUser('author', 'blockkeys')
+  await signIn(page, user)
+  await page.goto('/admin/editor-prototype')
+  await page.getByRole('button', { name: 'Legg til blokk' }).last().focus()
+  await page.keyboard.press('Enter')
+  await page.getByRole('menuitem', { name: 'Avsnitt' }).press('Enter')
+  await expect(paragraphs(page)).toHaveCount(1)
+  await page.keyboard.type('En')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('To')
+  await page.keyboard.press('Enter')
+  await expect(paragraphs(page)).toHaveCount(3)
+  await expect(paragraphs(page).nth(2)).toBeFocused()
+  await page.keyboard.press('Backspace')
+  await expect(paragraphs(page)).toHaveCount(2)
+  await expect(paragraphs(page).nth(1)).toBeFocused()
+
+  // Visible focus: the block that has the cursor carries the ring, and its toolbar is there.
+  const tools = page.getByRole('toolbar', { name: 'Blokkverktøy for Avsnitt' })
+  await expect(tools).toHaveCount(1)
+  await tools.getByRole('button', { name: 'Flytt opp' }).click()
+  await expect(paragraphs(page).first()).toHaveText('To')
+  await page.keyboard.press(`${MOD}+z`)
+  await expect(paragraphs(page).first()).toHaveText('En')
+  await paragraphs(page).first().click()
+  await page.keyboard.press('Alt+Shift+z')
+  await expect(paragraphs(page)).toHaveCount(1)
+  await expect(paragraphs(page).first()).toHaveText('To')
+  await expectNoAxeViolations(page, 'the editor after keyboard edits')
+})
+
+test('the editor pages let images in from https: and keep the rest of the policy', async ({ page }) => {
+  await signIn(page, editorUser)
+  const csp = (await page.request.get('/admin/editor-prototype')).headers()['content-security-policy'] ?? ''
+  expect(csp).toMatch(/img-src 'self' data: https:(;|$)/)
+  expect(csp).toContain("default-src 'none'")
+  expect(csp).not.toContain('unsafe-inline')
+  // Every other admin page keeps its own images only.
+  const other = (await page.request.get('/admin/profile')).headers()['content-security-policy'] ?? ''
+  expect(other).toMatch(/img-src 'self' data:(;|$)/)
+})

@@ -185,7 +185,7 @@ export function stubMail(script: {
       ) {
         await markEmailVerified(script.worker, {
           sentWith,
-          requestedBy: message.data.requestedBy,
+          requestedById: message.data.requestedById,
           at: new Date(),
           jobId: 'job-1',
         })

@@ -3,10 +3,11 @@ import { toApiRequestError } from './errors.ts'
 import { CSRF_HEADER, isPublicPath, isStateChanging, pathOf, tokenFromAnswer } from './csrf.ts'
 import type { CsrfStore } from './csrf.ts'
 
-/** What the API layer passes on to `$fetch`: a method and a JSON body. */
+/** What the API layer passes on to `$fetch`: a method and a JSON (or multipart) body. */
 export interface ApiCallOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
-  body?: Record<string, unknown>
+  /** JSON, or a FormData for a file upload (multipart; `$fetch` sets the content type and boundary). */
+  body?: Record<string, unknown> | FormData
   /** Headers for this call only (the setup wizard's `X-Setup-Token`). */
   headers?: Record<string, string>
   /** Milliseconds to wait for this call, when the default is too short (the wizard's test e-mail waits for the worker). */

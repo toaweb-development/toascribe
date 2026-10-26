@@ -6,7 +6,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { apiError } from '../lib/api-error.ts'
 import type { AppEnv } from '../lib/env.ts'
-import { AppError, TooManyRequestsError } from '../lib/errors.ts'
+import { AppError, InvalidBlocksError, TooManyRequestsError } from '../lib/errors.ts'
 
 const CODE_BY_STATUS: Readonly<Record<number, string>> = {
   400: 'bad_request',
@@ -43,6 +43,9 @@ export function errorResponse(c: Context<AppEnv>, status: ContentfulStatusCode, 
  * error, stack included, goes to the log only, tagged with the request id.
  */
 export const onError: ErrorHandler<AppEnv> = (err, c) => {
+  if (err instanceof InvalidBlocksError) {
+    return c.json({ ...apiError(err.code, err.message, c.get('requestId')), issues: err.issues }, 400)
+  }
   if (err instanceof AppError) {
     if (err instanceof TooManyRequestsError) {
       c.header('Retry-After', String(err.retryAfterSeconds))
