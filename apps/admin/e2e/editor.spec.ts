@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
+import { PNG } from './helpers/images.ts'
 import { signIn } from './helpers/screens.ts'
 import { createUser } from './helpers/stack.ts'
 import type { TestUser } from './helpers/stack.ts'
@@ -9,12 +10,6 @@ import type { TestUser } from './helpers/stack.ts'
 // move into a column, undo and redo across all of it, save (the new post gets its own address), reload, and the server-rendered preview
 // of the same JSON. Each test runs at 375 px and 1280 px;
 // the fixture fails a test on any console message or CSP violation, and axe runs on the editor and on the preview.
-
-/** A 1×1 PNG: the upload checks the bytes, not the name. */
-const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-  'base64',
-)
 
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 
@@ -66,7 +61,7 @@ test('build a document with columns, an image and formatted text; undo and redo;
   await expect(paragraphs(page).first()).toBeFocused()
   await page.keyboard.type('Venstre kolonne')
 
-  // An image in the second column through the «/» menu, from an uploaded file.
+  // An image in the second column through the «/» menu: the library opens, a file uploaded there is chosen as it arrives.
   const second = page.getByRole('group', { name: 'Kolonne 2' })
   await second.getByRole('textbox', { name: 'Avsnitt' }).click()
   await page.keyboard.type('/bil')
@@ -74,11 +69,14 @@ test('build a document with columns, an image and formatted text; undo and redo;
   await expect(listbox.getByRole('option', { name: 'Bilde' })).toHaveAttribute('aria-selected', 'true')
   await expectNoAxeViolations(page, 'the editor with the «/» menu open')
   await page.keyboard.press('Enter')
-  await second.getByLabel('Bildefil (PNG, JPEG, GIF eller WebP)').setInputFiles({
-    name: 'test.png',
-    mimeType: 'image/png',
-    buffer: PNG,
-  })
+  await second.getByRole('button', { name: 'Mediebibliotek' }).click()
+  const picker = page.getByRole('dialog', { name: 'Velg eller last opp medier' })
+  await picker.getByRole('button', { name: 'Legg til mediefil' }).click()
+  await expect(picker.getByText(/Maksimal filstørrelse for opplasting: \d+ MB\./)).toBeVisible()
+  await picker.locator('input[type="file"]').setInputFiles({ name: 'test.png', mimeType: 'image/png', buffer: PNG })
+  await expect(picker.getByRole('status').filter({ hasText: 'Valgt:' })).toBeVisible()
+  await expectNoAxeViolations(page, 'the image picker with an upload')
+  await picker.getByRole('button', { name: 'Velg', exact: true }).click()
   // Without alt text the image is decorative (no `img` role); with it, it is named by it.
   await expect(second.getByLabel('Alternativ tekst')).toBeFocused()
   await second.getByLabel('Alternativ tekst').fill('Et testbilde')
@@ -141,7 +139,8 @@ test('build a document with columns, an image and formatted text; undo and redo;
   ).replace(/<!--[\s\S]*?-->/g, '')
   expect(article).toContain('Venstre kolonne')
   expect(article).toMatch(/<p[^>]*>Hei <strong>fet<\/strong> tekst<\/p>/)
-  expect(article).toMatch(/<img[^>]*src="\/api\/v1\/prototype\/editor\/uploads\/[0-9a-f-]{36}\.png"[^>]*>/)
+  // The file's address in the library, with a srcset from its sizes.
+  expect(article).toMatch(/<img[^>]*src="\/uploads\/\d{4}\/\d{2}\/test-[0-9a-f]{8}\.png"[^>]*srcset="[^"]+ 1w"/)
   expect(article).toMatch(/<img[^>]*alt="Et testbilde"/)
   expect(article).not.toMatch(/<script|\son[a-z]+=/)
 
@@ -192,10 +191,10 @@ test('the editor lets images in from this site only, like every other admin page
   expect(csp).toMatch(/img-src 'self' data:(;|$)/)
   expect(csp).toContain("default-src 'none'")
   expect(csp).not.toContain('unsafe-inline')
-  // The image block takes an upload only: no field for an address on another host.
+  // The image block takes a file of the media library only: no field for an address on another host.
   await page.goto('/admin/posts/new')
   await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
   await page.getByRole('menuitem', { name: 'Bilde' }).click()
-  await expect(page.getByLabel(/Bildefil/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Mediebibliotek' })).toBeVisible()
   await expect(page.getByLabel('Bildeadresse')).toHaveCount(0)
 })
