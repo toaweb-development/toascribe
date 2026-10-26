@@ -24,5 +24,6 @@ Only the latest 0.x release is supported. Fixes are released as a new patch vers
   one-shot migrate step has the owner role (`docker/postgres/init.sql`).
 - Images run as a non-root user, with `no-new-privileges`, all capabilities dropped and a read-only root filesystem
   wherever the service allows it. Only the proxy publishes a port.
-- CI scans every image for known vulnerabilities (Critical and High with a known fix fail the build) and audits the
-  production dependencies.
+- Every image is scanned for known vulnerabilities before it is published, by `pnpm release:check` and again by the
+  release workflow (Critical and High with a known fix fail the release). The production dependencies are audited before
+  every release and weekly.

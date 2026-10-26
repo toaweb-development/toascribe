@@ -224,7 +224,7 @@ in `package.json`; `corepack enable` picks it up.
 
 ```sh
 pnpm install
-pnpm exec lefthook install   # git hooks: commit message check, lint and typecheck before commit, protect main
+pnpm exec lefthook install   # git hooks: commit message check, lint and typecheck before commit, pnpm check and protect main before push
 ```
 
 **The checks.** One command runs format check, lint, typecheck, test and build for every workspace package and for the
@@ -233,6 +233,8 @@ root files (`eslint`, `tsc` and the `root` Vitest project):
 ```sh
 pnpm check
 ```
+
+The `pre-push` hook runs it, so red code is not pushed. A push is only a backup: no workflow runs on a push or a pull request.
 
 Lint, typecheck and the tests read the workspace libraries from `src/` (the `source` export condition), so nothing needs
 building first. Node and the images still run the compiled `dist/`. The `dev` scripts of the api and worker build the
@@ -265,6 +267,18 @@ apps/admin/e2e/stack.sh down
 
 [apps/admin/e2e/README.md](apps/admin/e2e/README.md) has the details.
 
+**Before a release: `pnpm release:check`.** One command does on this machine what CI used to do, from a clean working tree
+(it refuses a dirty one): `actionlint`, the dependency audit, `pnpm check` with a throwaway PostgreSQL 18 and Mailpit (so the
+database and e-mail tests run), every image built with provenance and SBOM attestations into a throwaway registry, a Trivy
+scan of each one (Critical and High with a known fix fail), the stack started from the scanned images with the route checks
+before, during and after `toa core install`, a dry run of the publishing into a second throwaway registry, and the full
+end-to-end suite. It takes a while (the first run builds everything) and removes what it started, also after a failure.
+`RELEASE_CHECK_*` variables at the top of `scripts/release-check.sh` move its ports when a default is taken.
+
+```sh
+pnpm release:check
+```
+
 **The apps in dev mode.** They need a database that has the toascribe roles, which the postgres image of the stack
 creates on its first start:
 
@@ -286,6 +300,40 @@ pnpm --filter @toascribe/site dev    # http://localhost:3000, /api is proxied to
 pnpm --filter @toascribe/admin dev   # http://localhost:3002/admin
 ```
 
+### Verktøy for release:check
+
+Besides Docker (with compose and buildx 0.33 or newer), Node and pnpm, it needs `trivy` and `actionlint`, and Playwright's
+Chromium (`pnpm --filter @toascribe/admin exec playwright install chromium`). It stops at the start and names what is
+missing. `scripts/install-tools.sh` installs the two tools as single binaries in `~/.local/bin` (no sudo, no package manager):
+the versions are pinned in the script with the sha256 of each Linux x86-64 archive, taken from the project's own checksums
+file, and a download with another checksum is refused. Run it again after changing a pin; it skips a tool that is already at
+the pinned version. `~/.local/bin` must be on `PATH`.
+
+```sh
+scripts/install-tools.sh   # trivy and actionlint, pinned by version and sha256
+trivy --version && actionlint -version
+```
+
+### Release
+
+Changes are written under `## [Unreleased]` in `CHANGELOG.md` as they land; there is no bump per task. When a batch is ready
+on `main`:
+
+```sh
+pnpm release:check
+git cliff --unreleased --bump --strip header   # a draft of the CHANGELOG text; edit it for people
+# bump the root package.json and its mirrors (a test lists them), rename [Unreleased] to [X.Y.Z] - YYYY-MM-DD
+git commit -m "chore(release): vX.Y.Z"
+scripts/check-release-tag.sh vX.Y.Z           # the same check the release workflow starts with
+git tag -a vX.Y.Z -m vX.Y.Z
+git push --follow-tags
+```
+
+The tag starts `.github/workflows/release.yml`: it builds and scans the images (no write access), publishes the scanned images
+by digest to `ghcr.io/toaweb-development/toascribe-*` (the only job that can write packages), and creates the GitHub Release
+from the CHANGELOG section. A tag is never moved; a run that failed outside the code is run again with «Run workflow» and the
+same tag.
+
 ## Layout
 
 | Folder                         | What is in it                                                              |
@@ -301,6 +349,7 @@ pnpm --filter @toascribe/admin dev   # http://localhost:3002/admin
 | `themes/default`               | the default theme, a Nuxt layer                                            |
 | `cli`                          | the `toa` command                                                          |
 | `docker`                       | Dockerfiles, `compose.yaml`, `.env.example`, the Caddyfile, database roles |
+| `scripts`                      | `release:check`, the tag check, the release notes, the image copy, tools   |
 
 ## More
 

@@ -1,4 +1,5 @@
-# What CI builds (DOCKER_STANDARD «CI-bygg»): image and build, nothing else.
+# What the release builds (DOCKER_STANDARD «CI-bygg»): image and build, nothing else. Used by .github/workflows/release.yml
+# and by `pnpm release:check`.
 #
 #   docker buildx bake -f docker/compose.build.yaml          (from the repo root)
 #
@@ -8,8 +9,8 @@
 # here must be the same as in compose.yaml (test/docker-config.test.ts checks that).
 #
 # TOASCRIBE_REGISTRY is where the images go. The default is where users pull them from. The release workflow builds into a
-# throwaway registry on the runner (localhost:5000/toaweb-development), scans the images there, and only then copies them to
-# ghcr.io/toaweb-development (.github/workflows/release.yml).
+# throwaway registry on the runner (localhost:5000/toaweb-development), scans the images there, and only then hands them to the
+# job that copies them to ghcr.io/toaweb-development (.github/workflows/release.yml).
 # The label links a package in GitHub's registry to this repository.
 name: toascribe
 

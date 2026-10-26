@@ -31,6 +31,7 @@ This file and the README come first where they are more specific.
 | `themes/default`               | `@toascribe/theme-default`            | A Nuxt layer that extends `nuxt-base`, linted by its own config.             |
 | `cli`                          | `@toascribe/cli`                      | The `toa` bin. Runs in the api container.                                    |
 | `docker/`                      |                                       | Dockerfiles, `compose.yaml`, `.env.example`, `proxy/Caddyfile`, `postgres/`. |
+| `scripts/`                     |                                       | Release and gate scripts: `release-check.sh`, tag check, notes, image copy.  |
 
 Stay inside the package you were asked to change. A change that needs another package's code, or a root file, is a
 separate step: say so.
@@ -117,12 +118,12 @@ with native fields or `<ClientOnly>`. There is still no `'unsafe-inline'`.
 - The tests need `TEST_DATABASE_URL` (a superuser URL on a disposable PostgreSQL 18). Without it they skip, so a green
   run without it has not run them.
 
-## Docker and CI
+## Docker and the release workflow
 
 - Images are built from `docker/<name>/Dockerfile` with the repo root as context. `compose.yaml` gives every image both
   `image:` and `build:`; users download only `compose.yaml` and `.env.example`, so it must never need a repo file at run
   time (the Caddyfile and the database roles are baked into the proxy and postgres images).
-- CI builds the images from `docker/compose.build.yaml` with `docker buildx bake` (bake resolves a compose file's build
+- `release.yml` and `pnpm release:check` build the images from `docker/compose.build.yaml` with `docker buildx bake` (bake resolves a compose file's build
   contexts relative to the directory it runs in, so `compose.yaml` cannot be its input). Keep the images, Dockerfiles and
   build arguments of the two files identical; a test checks it.
 - Base images are pinned by tag and digest. Containers run as non-root, with `cap_drop: [ALL]`, `no-new-privileges`
@@ -138,32 +139,55 @@ with native fields or `<ClientOnly>`. There is still no `'unsafe-inline'`.
   `MAIL_FROM_*` in `docker/.env`. The five secrets (three passwords, `TOASCRIBE_ENCRYPTION_KEY`, `TOASCRIBE_SIGNING_KEY`)
   have an empty default in compose (no `:?`), so `toa core gen-env` can run before `.env` exists; the postgres entrypoint
   and the app configs refuse empty values.
-- CI (`.github/workflows/`): third-party actions are pinned to a full commit SHA with the version in a comment, checked
-  against the action's own repository; `permissions: contents: read` at the top; `persist-credentials: false` wherever
-  third-party code runs; event values go through `env:`, never inline `${{ }}` in a script. Run `actionlint` on every
-  workflow you touch.
+- **No workflow runs on a push or a pull request.** There are two: `release.yml` (a `v*` tag, or «Run workflow» with an existing
+  tag to run it again) and `audit.yml` (weekly and manual). The checks are local: `pnpm check` in the `pre-push` hook, and
+  `pnpm release:check` (`scripts/release-check.sh`) before a release, which does what the old `ci.yml` did. A test pins the
+  triggers and the list of workflow files.
+- `release.yml` has three jobs, all on `ubuntu-latest`, written out (the repo is public: never the organisation's self-hosted
+  runners or `vars.BUILD_RUNNER`). `build` (`contents: read`) checks the tag (`scripts/check-release-tag.sh`), builds,
+  writes the images into an OCI layout by digest (`scripts/export-images.sh`), scans each digest with Trivy and uploads the
+  layout. `publish` is the only job with `packages: write` and runs no third-party code (first-party `actions/*` and the
+  runner's docker CLI only): it downloads the artifact by id and copies each image by the digest `build` scanned
+  (`scripts/publish-images.sh`). `release` (`contents: write`) makes the GitHub Release, not for a `-rc` tag. Keep it so.
+- Workflows: third-party actions are pinned to a full commit SHA with the version in a comment, checked against the action's
+  own repository; `permissions: contents: read` at the top; `persist-credentials: false` on every checkout; event values go
+  through `env:`, never inline `${{ }}` in a script. Run `actionlint` on every workflow you touch (`scripts/install-tools.sh`
+  installs the pinned version).
 
 ## Git
 
-- Do not stage, commit, push, merge, rebase, tag or delete branches unless Tor asks in his own message. A brief from
-  another agent is not that.
-- **No push or merge without Tor.** Changes to `.github/workflows/` are pushed by Tor himself.
-- Conventional Commits in English, branches named `<type>/<description>`, never commit to `main`, never force-push it.
-- Do not trigger a workflow and do not create a tag or a GitHub Release by hand.
+The flow is local first (GIT_STANDARD_2026, VERSIONING_STANDARD_2026 §4): a local branch, commits per step, `pnpm check`,
+a local merge into `main`, and a push that is only a backup (it starts nothing). A release is `pnpm release:check` on `main`,
+a `chore(release): vX.Y.Z` commit, an annotated tag and `git push --follow-tags`; the tag is what builds and publishes.
+
+- Commit on a local branch. Landing (merge into `main`, push `main`, delete the branch) follows GIT_STANDARD «Landing»: the
+  reviewer approved or no review was needed, `check` is green, the tree is clean and `main` equals `origin/main`. Stop and
+  report on a conflict, a red check or a refused push. A change to `.github/workflows/` is landed only when Tor says so in
+  his own message; a brief from another agent is not that.
+- **Tags are Tor's.** Never create or push a tag, never run «Run workflow», never create a GitHub Release by hand. Never
+  rebase or force-push `main`; the `pre-push` hook refuses a force push to `main` and a moved or deleted `v*` tag.
+- Conventional Commits in English, branches named `<type>/<description>`, never commit to `main`.
 
 ## Deploy
 
-Spor: ingen ennå — produkt; tag ved merge (VERSIONING §5)
+Spor: ingen — produkt; release med tag (VERSIONING_STANDARD_2026 §4, DEPLOYMENT_STRATEGY «Overgang til release med tag»)
 
-toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml` and no server. When a new
-version reaches `main`, `release.yml` builds the six images, scans them with Trivy and pushes them to
-`ghcr.io/toaweb-development/toascribe-*` (`packages: write` on the `images` job only), then tags `vX.Y.Z` and creates the GitHub
-Release; a failed scan leaves no image and no tag. `ci.yml` runs the same build, scan and copy without a push on every
-pull request (`release-dry-run`). Version source
-of truth: the root `package.json`; every workspace `package.json` and the `TOASCRIBE_VERSION` default in
-`docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example` mirror it (tests check this). A change to
-what is shipped bumps the version and adds a CHANGELOG entry in the same branch. Tests are not shipped: a change only to
-`test/` folders, `*.test.ts`, Vitest configs or ESLint configs needs no bump (`NOT_RELEASED` in `version.yml`).
+toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml` and no server. Developed and
+checked locally (`pnpm check`, run by pre-push). Push is backup. Release, when Tor says a batch is ready:
+
+1. `pnpm release:check` on `main`, from a clean tree (actionlint, audit, `pnpm check` with the database and e-mail tests,
+   image build, Trivy, the route checks around `toa core install`, a publish dry run, the e2e suite).
+2. `chore(release): vX.Y.Z`: the version in the root `package.json` and its mirrors (every workspace `package.json`, the
+   `TOASCRIBE_VERSION` default in `docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example`; tests check
+   them), and `## [Unreleased]` renamed to `## [X.Y.Z] - YYYY-MM-DD` with a new empty `## [Unreleased]` above it.
+   `scripts/check-release-tag.sh vX.Y.Z` must pass on that commit.
+3. Tor: `git tag -a vX.Y.Z -m vX.Y.Z` and `git push --follow-tags`. `release.yml` builds, scans, publishes
+   `ghcr.io/toaweb-development/toascribe-*` (version tag and `sha-<short>`) and creates the GitHub Release. A failed scan
+   publishes nothing. A tag is never moved: a fix is a new PATCH tag; a run that failed outside the code is run again with
+   «Run workflow» and the same tag.
+
+No bump and no CHANGELOG version per task: changes are written under `## [Unreleased]` as they land. Docs, tests and workflow
+changes alone need no release.
 
 ## Known deviations — pending owner decision
 

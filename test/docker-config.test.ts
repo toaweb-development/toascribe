@@ -1,5 +1,5 @@
 // Checks on the files a user downloads and runs (docker/compose.yaml, docker/.env.example) that a build or a
-// type check cannot catch. The stack itself is proven by CI, which builds the images and runs `docker compose up`.
+// type check cannot catch. The stack itself is proven by `pnpm release:check`, which builds the images and runs `docker compose up`.
 import { spawnSync } from 'node:child_process'
 import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'

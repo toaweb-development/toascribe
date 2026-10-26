@@ -1,7 +1,7 @@
 // Test helpers for the integration tests against a real PostgreSQL (typescript §6).
 //
 // TEST_DATABASE_URL must be a superuser URL on a DISPOSABLE server (a throwaway postgres:18-alpine
-// container locally, the PostgreSQL service in CI), for example
+// container locally, the one `pnpm release:check` starts), for example
 //   TEST_DATABASE_URL=postgres://postgres:<password>@127.0.0.1:5432/postgres
 // Each test file creates its own database, runs docker/postgres/init.sql in it (which creates the
 // cluster-wide roles toascribe_owner and toascribe_app), and drops all of it again afterwards.
