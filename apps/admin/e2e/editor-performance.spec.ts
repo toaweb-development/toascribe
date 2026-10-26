@@ -2,7 +2,7 @@ import { expect, test } from './helpers/fixtures.ts'
 import { signIn } from './helpers/screens.ts'
 import { createUser } from './helpers/stack.ts'
 
-// The editor prototype with 200 blocks (M0.6): how long the page takes until every paragraph has its TipTap, and how long a
+// The block editor with 200 blocks (M0.6, on a post since M1.1): how long the page takes until every paragraph has its TipTap, and how long a
 // keystroke, a move and an undo take in the browser (Event Timing API: the time from the key to the next paint). The numbers
 // are written to the test output and go into docs/decisions/0001-editor-model.md. They are not a gate; the limits below only
 // catch a model that has become unusable.
@@ -54,11 +54,12 @@ test('200 text blocks: load, typing, moving and undo stay quick', async ({ page 
   const user = await createUser('editor', 'blockperf')
   await signIn(page, user)
   const session = (await (await page.request.get('/api/v1/auth/session')).json()) as { csrfToken: string }
-  const saved = await page.request.put('/api/v1/prototype/editor/document', {
-    data: { blocks: document200() },
+  const saved = await page.request.post('/api/v1/content', {
+    data: { type: 'post', title: '200 blokker', blocks: document200() },
     headers: { 'X-CSRF-Token': session.csrfToken, origin: new URL(page.url()).origin },
   })
   expect(saved.ok(), await saved.text()).toBe(true)
+  const { id } = (await saved.json()) as { id: string }
 
   // Event timing for every key from the start of the page.
   await page.addInitScript(() => {
@@ -83,7 +84,7 @@ test('200 text blocks: load, typing, moving and undo stay quick', async ({ page 
   }
 
   const started = Date.now()
-  await page.goto('/admin/editor-prototype')
+  await page.goto(`/admin/posts/${id}`)
   await expect(page.locator('[contenteditable="true"]')).toHaveCount(BLOCKS, { timeout: 60_000 })
   const loadMs = Date.now() - started
   const navigation = await page.evaluate(() => {

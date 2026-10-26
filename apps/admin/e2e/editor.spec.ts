@@ -5,8 +5,9 @@ import { signIn } from './helpers/screens.ts'
 import { createUser } from './helpers/stack.ts'
 import type { TestUser } from './helpers/stack.ts'
 
-// The block editor prototype (M0.6): a document with two columns, an image and paragraphs, formatting, a move into a column, undo
-// and redo across all of it, save, reload, and the server-rendered preview of the same JSON. Each test runs at 375 px and 1280 px;
+// The block editor (M0.6's prototype, on a real post since M1.1): a document with two columns, an image and paragraphs, formatting, a
+// move into a column, undo and redo across all of it, save (the new post gets its own address), reload, and the server-rendered preview
+// of the same JSON. Each test runs at 375 px and 1280 px;
 // the fixture fails a test on any console message or CSP violation, and axe runs on the editor and on the preview.
 
 /** A 1×1 PNG: the upload checks the bytes, not the name. */
@@ -54,8 +55,8 @@ test('build a document with columns, an image and formatted text; undo and redo;
   page,
 }) => {
   await signIn(page, editorUser)
-  await page.goto('/admin/editor-prototype')
-  await expect(page.getByRole('heading', { level: 1, name: 'Editor-prototype' })).toBeVisible()
+  await page.goto('/admin/posts/new')
+  await expect(page.getByRole('heading', { level: 1, name: 'Legg til nytt innlegg' })).toBeVisible()
   await expect(page.getByText('Dokumentet er tomt.')).toBeVisible()
 
   // Columns from the «+» at the end of the document: two columns, each with an empty paragraph, and the cursor in the first.
@@ -121,7 +122,9 @@ test('build a document with columns, an image and formatted text; undo and redo;
 
   // Save, reload: the same document.
   await page.getByRole('button', { name: 'Lagre utkast' }).click()
-  await expect(page.getByText('Utkastet er lagret.')).toBeVisible()
+  await expect(page.getByText('Lagret.')).toBeVisible()
+  await expect(page).toHaveURL(/\/admin\/posts\/[0-9a-f-]{36}$/)
+  const id = page.url().split('/').pop() ?? ''
   await page.reload()
   await expect(paragraphs(page).first()).toHaveText('Venstre kolonne')
   await expect(page.getByRole('group', { name: 'Kolonne 2' }).getByRole('img', { name: 'Et testbilde' })).toBeVisible()
@@ -129,12 +132,12 @@ test('build a document with columns, an image and formatted text; undo and redo;
   expect(await outline(page)).toBe('columns(column(paragraph) column(image)) paragraph')
 
   // The preview: the same JSON as HTML from the server, before any script runs, with the same text and markup.
-  const answer = await page.request.get('/admin/editor-prototype/preview')
+  const answer = await page.request.get(`/admin/preview/${id}`)
   expect(answer.status()).toBe(200)
   const html = await answer.text()
   // Vue's hydration markers (<!--[-->) are comments; without them the markup is what the view wrote.
   const article = (
-    /<article[^>]*data-testid="prototype-preview"[^>]*>([\s\S]*?)<\/article>/.exec(html)?.[1] ?? ''
+    /<article[^>]*data-testid="content-preview"[^>]*>([\s\S]*?)<\/article>/.exec(html)?.[1] ?? ''
   ).replace(/<!--[\s\S]*?-->/g, '')
   expect(article).toContain('Venstre kolonne')
   expect(article).toMatch(/<p[^>]*>Hei <strong>fet<\/strong> tekst<\/p>/)
@@ -142,8 +145,8 @@ test('build a document with columns, an image and formatted text; undo and redo;
   expect(article).toMatch(/<img[^>]*alt="Et testbilde"/)
   expect(article).not.toMatch(/<script|\son[a-z]+=/)
 
-  await page.goto('/admin/editor-prototype/preview')
-  const preview = page.getByTestId('prototype-preview')
+  await page.goto(`/admin/preview/${id}`)
+  const preview = page.getByTestId('content-preview')
   await expect(preview.getByRole('img', { name: 'Et testbilde' })).toBeVisible()
   await expect(preview.locator('strong')).toHaveText('fet')
   await expectNoAxeViolations(page, 'the preview')
@@ -154,7 +157,7 @@ test('keyboard only: Enter makes a paragraph, Backspace in an empty one deletes 
 }) => {
   const user = await createUser('author', 'blockkeys')
   await signIn(page, user)
-  await page.goto('/admin/editor-prototype')
+  await page.goto('/admin/posts/new')
   await page.getByRole('button', { name: 'Legg til blokk' }).last().focus()
   await page.keyboard.press('Enter')
   await page.getByRole('menuitem', { name: 'Avsnitt' }).press('Enter')
@@ -183,13 +186,16 @@ test('keyboard only: Enter makes a paragraph, Backspace in an empty one deletes 
   await expectNoAxeViolations(page, 'the editor after keyboard edits')
 })
 
-test('the editor pages let images in from https: and keep the rest of the policy', async ({ page }) => {
+test('the editor lets images in from this site only, like every other admin page (M1.1)', async ({ page }) => {
   await signIn(page, editorUser)
-  const csp = (await page.request.get('/admin/editor-prototype')).headers()['content-security-policy'] ?? ''
-  expect(csp).toMatch(/img-src 'self' data: https:(;|$)/)
+  const csp = (await page.request.get('/admin/posts/new')).headers()['content-security-policy'] ?? ''
+  expect(csp).toMatch(/img-src 'self' data:(;|$)/)
   expect(csp).toContain("default-src 'none'")
   expect(csp).not.toContain('unsafe-inline')
-  // Every other admin page keeps its own images only.
-  const other = (await page.request.get('/admin/profile')).headers()['content-security-policy'] ?? ''
-  expect(other).toMatch(/img-src 'self' data:(;|$)/)
+  // The image block takes an upload only: no field for an address on another host.
+  await page.goto('/admin/posts/new')
+  await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
+  await page.getByRole('menuitem', { name: 'Bilde' }).click()
+  await expect(page.getByLabel(/Bildefil/)).toBeVisible()
+  await expect(page.getByLabel('Bildeadresse')).toHaveCount(0)
 })

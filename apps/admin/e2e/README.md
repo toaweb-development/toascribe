@@ -6,7 +6,7 @@ second factor (set-up on the screen, a code from the app, a recovery code), regi
 from the settings, the wait after too many wrong tries, the headers and the CSP of the admin and of the public site (`/`), and
 an axe-core check (WCAG 2.2 AA rule sets) on every screen. The setup wizard (M0.4) is tested from an empty database to a signed-in
 administrator (`wizard.spec.ts`). The admin shell, the profile and the users list (M0.5) have `shell.spec.ts`, `profile.spec.ts` and
-`users.spec.ts`. The block editor prototype (M0.6) has `editor-prototype.spec.ts` (columns, an image, formatting, a move, undo
+`users.spec.ts`. The block editor (M0.6, on posts since M1.1) has `editor.spec.ts` (columns, an image, formatting, a move, undo
 and redo, save, reload and the server-rendered preview) and `editor-performance.spec.ts` (200 text blocks; it prints its
 numbers, and `E2E_CPU_THROTTLE=4` slows the browser's CPU four times). Each test runs at 375 px and at 1280 px.
 
