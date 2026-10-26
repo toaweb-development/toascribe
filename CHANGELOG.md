@@ -6,7 +6,7 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-10-25
+## [0.6.0] - 2026-10-26
 
 The last milestone of phase 0: a prototype of the block editor, to answer whether the editor model in the plan holds before
 phase 1 is estimated. The answer, the experiences and the estimate are in `docs/decisions/0001-editor-model.md`. The prototype is
