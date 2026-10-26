@@ -1,5 +1,5 @@
 // Categories and tags (M1.2): the hierarchy, slugs with Norwegian letters, the default category that cannot be deleted, deletion that
-// moves posts and child categories, and terms on posts through the content API (with the list filters).
+// gives «Ukategorisert» and moves child categories up, and terms on posts through the content API (with the list filters).
 import { ContentItem, ContentListResponse, TermItem, TermListResponse } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
@@ -142,23 +142,24 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('categories and tags (needs TES
     expect(byTag.items.map((entry) => entry.id)).not.toContain(elsewhere.id)
   })
 
-  it('moves the posts of a deleted category to its parent, or to the default, and its children up', async () => {
+  it('deletes a category as WordPress: posts left without one get the default, the others keep theirs, children move up', async () => {
     const parent = await makeTerm(CATEGORIES, { name: 'Forelder' })
     const middle = await makeTerm(CATEGORIES, { name: 'Midten', parentId: parent.id })
     const grandchild = await makeTerm(CATEGORIES, { name: 'Barnebarn', parentId: middle.id })
-    const lonely = await makeTerm(CATEGORIES, { name: 'Alene' })
-    const inMiddle = ContentItem.parse(
+    const other = await makeTerm(CATEGORIES, { name: 'Annen' })
+    const onlyMiddle = ContentItem.parse(
       await (await editor.post('/api/v1/content', { type: 'post', title: 'I midten', categories: [middle.id] })).json(),
     )
-    const inLonely = ContentItem.parse(
-      await (await editor.post('/api/v1/content', { type: 'post', title: 'Alene', categories: [lonely.id] })).json(),
+    const alsoOther = ContentItem.parse(
+      await (
+        await editor.post('/api/v1/content', { type: 'post', title: 'To steder', categories: [middle.id, other.id] })
+      ).json(),
     )
     expect((await editor.delete(`${CATEGORIES}/${middle.id}`)).status).toBe(204)
-    expect((await editor.delete(`${CATEGORIES}/${lonely.id}`)).status).toBe(204)
-    const moved = ContentItem.parse(await (await editor.get(`/api/v1/content/${inMiddle.id}`)).json())
-    expect(moved.categories.map((term) => term.id)).toEqual([parent.id])
-    const fallback = ContentItem.parse(await (await editor.get(`/api/v1/content/${inLonely.id}`)).json())
+    const fallback = ContentItem.parse(await (await editor.get(`/api/v1/content/${onlyMiddle.id}`)).json())
     expect(fallback.categories.map((term) => term.id)).toEqual([uncategorized])
+    const kept = ContentItem.parse(await (await editor.get(`/api/v1/content/${alsoOther.id}`)).json())
+    expect(kept.categories.map((term) => term.id)).toEqual([other.id])
     const child = TermItem.parse(await (await editor.get(`${CATEGORIES}/${grandchild.id}`)).json())
     expect(child.parentId).toBe(parent.id)
   })

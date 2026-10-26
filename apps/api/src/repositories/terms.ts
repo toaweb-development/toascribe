@@ -268,8 +268,8 @@ export async function updateTerm(db: Executor, id: string, values: Partial<TermV
 }
 
 /**
- * Deletes a term as WordPress' `wp_delete_term()` does, with the rule of M1.2 for categories: its children move up to its parent,
- * its items get its parent instead (when it has one), and a post left without any category gets the default one.
+ * Deletes a term as WordPress' `wp_delete_term()` does: its children move up to its parent, the items lose the term, and a post left
+ * without any category gets the default one («Ukategorisert»). A post that has another category keeps only that one.
  */
 export async function deleteTermMovingItems(
   db: Executor,
@@ -278,11 +278,6 @@ export async function deleteTermMovingItems(
   at: Date,
 ): Promise<void> {
   await db.update(term).set({ parentId: deleted.parentId, modifiedAt: at }).where(eq(term.parentId, deleted.id))
-  if (deleted.parentId !== null) {
-    await db.execute(sql`insert into content_term (content_id, term_id, sort, created_at)
-      select content_id, ${deleted.parentId}, sort, ${at} from content_term where term_id = ${deleted.id}
-      on conflict do nothing`)
-  }
   const items = await db
     .select({ contentId: contentTerm.contentId })
     .from(contentTerm)

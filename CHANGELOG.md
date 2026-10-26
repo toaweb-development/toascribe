@@ -19,8 +19,8 @@ worker only), `file-type` and `image-size`.
 
 - Categories and tags (M1.2): «Innlegg → Kategorier» and «Innlegg → Stikkord» (`manage_categories`), with the form on the left
   and the list on the right, search, Rediger, Hurtigrediger, Slett and bulk delete; categories have a parent. «Ukategorisert» is
-  the default category: it can be renamed, not deleted. Deleting a category moves its posts to the parent category, or to
-  «Ukategorisert» when they have no other. Slugs are made as WordPress makes them, also for Norwegian letters.
+  the default category: it can be renamed, not deleted. Deleting a category works as in WordPress: its child categories
+  move up to its parent, and a post left without any category gets «Ukategorisert». Slugs are made as WordPress makes them, also for Norwegian letters.
 - The terms API under `/api/v1/taxonomies` and `/api/v1/taxonomies/{taxonomy}/terms`, and categories and tags in the content API.
   The post list has the columns «Kategorier» and «Stikkord» as filter links and a category filter; quick edit has the category
   tree and the tags as text; bulk «Rediger» can add categories and tags.

@@ -1042,7 +1042,7 @@
       "description": "Beskrivelsen er som standard ikke fremtredende, men noen temaer kan vise den."
     },
     "confirm": {
-      "category": "«{name}» slettes. Innleggene i den får den overordnede kategorien, eller «Ukategorisert» hvis de ikke har noen annen.",
+      "category": "«{name}» slettes. Innlegg som ikke har noen annen kategori, får «Ukategorisert», og underkategoriene flyttes opp ett nivå.",
       "tag": "«{name}» slettes og fjernes fra innleggene som har det.",
       "many": "Termen slettes. | De {n} termene slettes."
     },
