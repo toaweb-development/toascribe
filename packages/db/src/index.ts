@@ -35,3 +35,12 @@ export type { DefaultContentLocale, DefaultContentStrings } from './default-cont
 export { parseBlockMarkup } from './default-content/blocks.ts'
 export type { ParsedBlock } from './default-content/blocks.ts'
 export * as schema from './schema/index.ts'
+export {
+  HIERARCHICAL_TYPES,
+  deleteContentPermanently,
+  isReservedSlug,
+  legacyBlocksText,
+  lockSlugScope,
+  uniqueContentSlug,
+} from './content.ts'
+export type { DeletedContent, SlugScope } from './content.ts'

@@ -104,6 +104,17 @@ export const content = pgTable(
     }).onDelete('set null'),
     // Lists and archives: one type, one status, newest first.
     index('idx_content_type_status_published_at').on(t.type, t.status, t.publishedAt),
+    // The scheduler (M1.1, K-063, K-064): every minute it looks for scheduled items whose time has come, and for published
+    // ones with an unpublish time that has passed; the daily trash purge looks for items trashed more than 30 days ago (K-062).
+    index('idx_content_published_at_future')
+      .on(t.publishedAt)
+      .where(sql`${t.status} = 'future'`),
+    index('idx_content_unpublish_at')
+      .on(t.unpublishAt)
+      .where(sql`${t.unpublishAt} is not null`),
+    index('idx_content_modified_at_trash')
+      .on(t.modifiedAt)
+      .where(sql`${t.status} = 'trash'`),
     index('idx_content_parent_id')
       .on(t.parentId)
       .where(sql`${t.parentId} is not null`),

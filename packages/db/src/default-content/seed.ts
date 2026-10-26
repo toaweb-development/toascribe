@@ -1,5 +1,6 @@
 // seedDefaultContent(): what WordPress' wp_install_defaults() writes, in the site's language. The install runs it once,
 // inside its transaction; see docs/DATAMODEL.md «Default content».
+import { textSearchConfig } from '@toascribe/shared'
 import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm'
 
 import type { DbExecutor } from '../executor.ts'
@@ -46,15 +47,6 @@ export class DefaultContentExistsError extends Error {
     super(`the default content exists already (${existing.join(', ')}); nothing was written`)
     this.existing = existing
   }
-}
-
-/** The PostgreSQL text search configuration for a locale (K-240 is still open; DATAMODEL «Full-text search»). */
-function textSearchConfig(locale: string): string {
-  const language = locale.split('-')[0]
-  if (language === 'nb' || language === 'nn' || language === 'no') {
-    return 'norwegian'
-  }
-  return language === 'en' ? 'english' : 'simple'
 }
 
 function siteOrigin(siteUrl: string): string {
