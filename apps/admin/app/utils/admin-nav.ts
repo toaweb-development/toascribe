@@ -21,12 +21,25 @@ export function sectionOf(entries: readonly AdminMenuEntry[], current: string): 
 
 type Label = (key: string) => string
 
-function childItem(child: AdminMenuEntryChild, current: string, label: Label): NavigationMenuItem {
+/**
+ * A sub-item is active when the page is its path or below it, unless a sibling with a longer path matches too: on `/posts/new`
+ * «Legg til nytt» is the active one, not «Alle innlegg» (`/posts`) as well.
+ */
+function childItem(
+  child: AdminMenuEntryChild,
+  siblings: readonly AdminMenuEntryChild[],
+  current: string,
+  label: Label,
+): NavigationMenuItem {
+  const matches = isOnPath(current, child.to)
+  const closer = siblings.some(
+    (other) => other !== child && other.to.length > child.to.length && isOnPath(current, other.to),
+  )
   return {
     label: label(child.labelKey),
     ...(child.icon === undefined ? {} : { icon: child.icon }),
     to: child.to,
-    active: isOnPath(current, child.to),
+    active: matches && !closer,
     value: child.id,
   }
 }
@@ -55,7 +68,7 @@ export function toNavigationItems(
       active: entry.id === section,
       value: entry.id,
     }
-    const children = entry.children.map((child) => childItem(child, current, label))
+    const children = entry.children.map((child) => childItem(child, entry.children, current, label))
     if (collapsed) {
       return [children.length === 0 ? parent : { ...parent, children }]
     }

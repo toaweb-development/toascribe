@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { Block } from '@toascribe/blocks'
-import { isSafeMediaUrl } from '@toascribe/blocks'
 
-// An image: from an uploaded file (kept in the api's temporary folder until the media library of M1.2) or from an address, with
-// alt text and a caption. Every change goes to the editor's model; typing in one field of one image is one step of the history.
+// An image: from an uploaded file (kept in the api's temporary folder until the media library of M1.2), with alt text and a caption.
+// There is no «from an address» since M1.1: images from other hosts are brought into the media library first (Tor's decision after
+// M0.6), and the admin's CSP shows images from its own origin only. Every change goes to the editor's model; typing in one field of one image is one step of the history.
 const props = defineProps<{ block: Block; selected: boolean }>()
 
 const editor = useBlockEditorContext()
@@ -26,23 +26,8 @@ const caption = computed({
   set: (value: string) => editor.setAttrs(props.block.id, { caption: value }, `caption:${props.block.id}`),
 })
 
-const address = ref('')
-const addressError = ref(false)
 const uploading = ref(false)
 const uploadError = ref(false)
-
-function useAddress(): void {
-  const value = address.value.trim()
-  // Only https: the admin's pages are served over https behind the proxy, and its CSP lets images in from https: only.
-  if (!value.startsWith('https://') || !isSafeMediaUrl(value)) {
-    addressError.value = true
-    return
-  }
-  addressError.value = false
-  editor.setAttrs(props.block.id, { url: value })
-  address.value = ''
-  focusFieldSoon()
-}
 
 /** The field that had the focus is gone once the image is there: the alt text takes it, so the next thing to write is next. */
 function focusFieldSoon(): void {
@@ -111,16 +96,6 @@ function onFocusIn(): void {
       >
         <UInput type="file" accept="image/png,image/jpeg,image/gif,image/webp" :disabled="uploading" @change="onFile" />
       </UFormField>
-      <form class="flex flex-wrap items-start gap-2" @submit.prevent="useAddress">
-        <UFormField
-          :label="t('editorPrototype.image.url')"
-          :error="addressError ? t('editorPrototype.image.urlInvalid') : undefined"
-          class="min-w-60 flex-1"
-        >
-          <UInput v-model="address" type="url" inputmode="url" autocomplete="off" class="w-full" />
-        </UFormField>
-        <UButton type="submit" size="sm" class="mt-6" :label="t('editorPrototype.image.insertUrl')" />
-      </form>
     </div>
 
     <template v-else>

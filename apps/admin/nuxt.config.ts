@@ -70,6 +70,11 @@ export default defineNuxtConfig({
         'lucide:redo-2',
         'lucide:save',
         'lucide:arrow-left',
+        // The content lists and the editor (M1.1): the menu's Innlegg and Sider, the screen options, publish, the read-only lock.
+        'lucide:pin',
+        'lucide:file-text',
+        'lucide:send',
+        'lucide:lock',
       ],
     },
   },
@@ -84,7 +89,8 @@ export default defineNuxtConfig({
   runtimeConfig: { public: { hostsSetupWizard: true } },
 
   // The admin's part of the security headers (K-314); the rest is in nuxt-base. Nobody frames the admin, and its pages show
-  // only its own images and inline `data:` ones (the QR code of the two-factor set-up).
+  // only its own images and inline `data:` ones (the QR code of the two-factor set-up). Images from other addresses are brought into
+  // the media library first (M1.2, Tor's decision after M0.6), so the editor shows none from another host either.
   security: {
     headers: {
       contentSecurityPolicy: {
@@ -93,18 +99,6 @@ export default defineNuxtConfig({
         'style-src-attr': ["'unsafe-hashes'", ...ADMIN_STYLE_ATTRIBUTES.map(({ value }) => sha256(value))],
       },
       xFrameOptions: 'DENY',
-    },
-  },
-
-  // PROTOTYPE (M0.6): the editor prototype shows images from other hosts (an image block from an address), so its two pages let
-  // images in from any https: address, as the site does. Every other admin page keeps `'self' data:`. The route rule replaces the
-  // directive (nuxt-security merges route rules with the global settings and replaces arrays). Remove with the prototype.
-  // The keys carry the base URL: nuxt-security matches them against the whole request path.
-  routeRules: {
-    '/admin/editor-prototype/**': {
-      // @ts-expect-error -- nuxt-security 2.6 adds `security` to Nitro's route rule type (`nitropack/types`), which the route rule type
-      // of Nuxt 4.6's config does not pick up. The module reads the key at run time; the e2e test checks the header on these pages.
-      security: { headers: { contentSecurityPolicy: { 'img-src': ["'self'", 'data:', 'https:'] } } },
     },
   },
 

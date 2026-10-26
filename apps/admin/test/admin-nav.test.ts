@@ -150,3 +150,29 @@ describe('toNavigationItems, collapsed', () => {
     expect(items[1]?.children).toBeUndefined()
   })
 })
+
+describe('toNavigationItems, a section with a nested sub-item path', () => {
+  const POSTS: AdminMenuEntry[] = [
+    {
+      id: 'posts',
+      labelKey: 'menu.posts',
+      icon: 'i-lucide-pin',
+      position: 5,
+      to: '/posts',
+      children: [
+        { id: 'posts.all', labelKey: 'menu.postsAll', to: '/posts' },
+        { id: 'posts.new', labelKey: 'menu.postsNew', to: '/posts/new' },
+      ],
+    },
+  ]
+
+  it('marks only «Legg til nytt» on /posts/new, and «Alle innlegg» on the list and on an item', () => {
+    const active = (path: string) =>
+      toNavigationItems(POSTS, path, label)
+        .filter((item) => item.active === true)
+        .map((item) => item.value)
+    expect(active('/posts/new')).toEqual(['posts', 'posts.new'])
+    expect(active('/posts')).toEqual(['posts', 'posts.all'])
+    expect(active('/posts/0198a3c2-0000-7000-8000-000000000001')).toEqual(['posts', 'posts.all'])
+  })
+})

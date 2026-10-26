@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // «I korte trekk» (WordPress' At a Glance): the counts the api gives this account and the version. A count the account may not see
-// is not in the answer, and nothing is drawn for it (not a 0). The counts are plain text: the lists they would link to come later.
+// is not in the answer, and nothing is drawn for it (not a 0). The post and page counts link to the published items of their lists.
 const adminApi = useAdminApi()
 const { data, status, error, refresh } = await useAsyncData('dashboard:glance', () => adminApi.glance())
 </script>
@@ -12,8 +12,22 @@ const { data, status, error, refresh } = await useAsyncData('dashboard:glance', 
     </template>
 
     <ul v-if="data" class="grid grid-cols-1 gap-x-6 gap-y-1 text-base text-default sm:grid-cols-2">
-      <li v-if="data.posts !== undefined">{{ $t('dashboard.glance.posts', data.posts) }}</li>
-      <li v-if="data.pages !== undefined">{{ $t('dashboard.glance.pages', data.pages) }}</li>
+      <li v-if="data.posts !== undefined">
+        <NuxtLink
+          :to="{ path: '/posts', query: { status: 'publish' } }"
+          class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
+        >
+          {{ $t('dashboard.glance.posts', data.posts) }}
+        </NuxtLink>
+      </li>
+      <li v-if="data.pages !== undefined">
+        <NuxtLink
+          :to="{ path: '/pages', query: { status: 'publish' } }"
+          class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
+        >
+          {{ $t('dashboard.glance.pages', data.pages) }}
+        </NuxtLink>
+      </li>
       <li v-if="data.comments !== undefined">{{ $t('dashboard.glance.comments', data.comments.approved) }}</li>
       <li v-if="data.comments !== undefined">{{ $t('dashboard.glance.pending', { n: data.comments.pending }) }}</li>
       <li class="text-toned sm:col-span-2">{{ $t('dashboard.glance.version', { version: data.version }) }}</li>
