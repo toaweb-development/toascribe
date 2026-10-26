@@ -66,6 +66,13 @@ if [ -z "${buildx}" ] || [ "$(printf '%s\n0.33.0\n' "${buildx}" | sort -V | head
   fail "docker buildx 0.33 or newer is needed for OCI layouts (found: ${buildx:-none})"
 fi
 echo "docker $(docker version --format '{{.Server.Version}}'), buildx ${buildx}, $(trivy --version | head -1), actionlint $(actionlint -version | head -1)"
+# Playwright's browser for the e2e suite, at the build this Playwright wants (an upgrade needs a new download).
+browsers="$(pnpm --silent --filter @toascribe/admin exec playwright install --dry-run chromium 2>/dev/null |
+  sed -n 's/^ *Install location: *//p')"
+[ -n "${browsers}" ] || fail 'could not ask Playwright where its browser goes (pnpm install first?)'
+while IFS= read -r dir; do
+  [ -d "${dir}" ] || fail "Playwright's browser is missing (${dir}): pnpm --filter @toascribe/admin exec playwright install chromium"
+done <<<"${browsers}"
 if [ -n "$(git status --porcelain)" ]; then
   fail 'the working tree is not clean; release:check checks what is committed'
 fi
@@ -232,5 +239,9 @@ docker rm -f "${prefix}-registry" "${prefix}-target" >/dev/null
 
 step 'End-to-end tests'
 e2e_started=true
+# The e2e stacks (the main one, and the wizard's, which the test restarts) build with the same builder as the images above:
+# it has their layers cached already, and it builds on the host network, which also works where the docker bridge cannot
+# reach the internet (a VPN on the host, for one).
+export BUILDX_BUILDER="${builder}"
 apps/admin/e2e/stack.sh up
 CI=1 pnpm test:e2e
