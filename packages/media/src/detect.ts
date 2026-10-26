@@ -3,7 +3,7 @@
 import { fileTypeFromBuffer } from 'file-type'
 
 import { MEDIA_TYPES, extensionOf } from './types.ts'
-import type { MediaGroup } from './types.ts'
+import type { MediaGroup } from '@toascribe/shared'
 
 export type DetectionFailure =
   /** The extension is not on the list (or the role may not upload that group). */

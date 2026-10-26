@@ -6,9 +6,10 @@
 // - the formats that have no signature to check the content against: wp/wpd, ra/ram, asx/wax/wmx/wm.
 // Each entry says which signatures (file-type's names) its content may have; a text type has none and is checked as text.
 
-/** The groups of the library's type filter, as WordPress' («Bilder», «Lyd», «Video», «Dokumenter») plus archives and text. */
-export const MEDIA_GROUPS = ['image', 'audio', 'video', 'document', 'spreadsheet', 'archive', 'text'] as const
-export type MediaGroup = (typeof MEDIA_GROUPS)[number]
+import type { MediaGroup } from '@toascribe/shared'
+
+export { MEDIA_GROUPS } from '@toascribe/shared'
+export type { MediaGroup } from '@toascribe/shared'
 
 export interface MediaTypeEntry {
   readonly mime: string

@@ -827,6 +827,9 @@ importers:
 
   packages/media:
     dependencies:
+      '@toascribe/shared':
+        specifier: workspace:*
+        version: link:../shared
       file-type:
         specifier: 'catalog:'
         version: 22.2.0(supports-color@10.2.2)

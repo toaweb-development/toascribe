@@ -21,6 +21,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
+    "@toascribe/shared": "workspace:*",
     "file-type": "catalog:",
     "image-size": "catalog:"
   },

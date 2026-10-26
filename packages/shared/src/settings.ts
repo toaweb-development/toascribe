@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { EncryptedValue } from './encrypted.ts'
-import { COMMENT_STATUS } from './values.ts'
+import { COMMENT_STATUS, MediaGroup } from './values.ts'
 
 // The core site settings: one `setting` row per key, value as JSON (PLAN «Innstillinger», app-config «settings first»).
 // `CoreSettings` validates every key; `CORE_SETTINGS` holds the defaults that `seedCore()` in @toascribe/db writes on
@@ -159,6 +159,15 @@ export const CoreSettings = z.object({
   large_size_w: pixels,
   large_size_h: pixels,
   uploads_use_yearmonth_folders: z.boolean(),
+  /**
+   * toascribe's own (M1.2, K-117): the largest file one upload may be, in megabytes. The api also refuses a value above its own cap
+   * (UPLOAD_MAX_SIZE_MB in .env), which the proxy enforces too.
+   */
+  upload_max_size_mb: z.int().min(1).max(4096),
+  /** toascribe's own (K-125): images with more pixels are refused before they are decoded (a guard against decompression bombs). */
+  image_max_pixels: z.int().min(1_000_000).max(1_000_000_000),
+  /** toascribe's own (K-125): the file groups a role may upload; a role not named may upload every allowed type. */
+  upload_groups_by_role: z.record(machineName, z.array(MediaGroup).max(7)),
 
   // Settings → Permalinks
   /** Empty is WordPress' «Plain» (`/?p=123`); otherwise a path with structure tags (%year%, %postname%, ...). */
@@ -305,6 +314,9 @@ export const CORE_SETTINGS: CoreSettings = {
   large_size_w: 1024,
   large_size_h: 1024,
   uploads_use_yearmonth_folders: true,
+  upload_max_size_mb: 64, // the M1.2 brief
+  image_max_pixels: 100_000_000, // 100 megapixels: far above a phone camera's 50, far below what fills the worker's memory
+  upload_groups_by_role: {}, // every role that may upload takes every allowed type
 
   // Permalinks
   permalink_structure: '/%year%/%monthnum%/%day%/%postname%/', // Tor, as the WordPress installer sets it
