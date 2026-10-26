@@ -8,5 +8,11 @@ export default async function globalSetup(): Promise<void> {
   await setSetting('users_can_register', false)
   await setSetting('mfa_required_roles', [])
   await setSetting('blogname', '')
+  // The notices to every administrator about a new account or a changed password (K-017; the api tests cover them) are off
+  // here. No spec reads them, and with them on, every account the specs make and every password they change mails each
+  // administrator the suite has made so far: hundreds of mails in one run. The worker sends about one and a half a second,
+  // so the queue fell behind and a reset mail that a spec waits for came too late.
+  await setSetting('notify_admin_new_user', false)
+  await setSetting('notify_admin_password_change', false)
   await resetLimits()
 }
