@@ -17,6 +17,10 @@ export interface ContentView {
   search: string
   /** `YYYY-MM`, or empty for «Alle datoer». */
   month: string
+  /** A category id, or empty for «Alle kategorier». */
+  category: string
+  /** A tag id (from a tag link in the list), or empty. */
+  tag: string
   /** Empty: the type's default (date for posts, the page tree for pages). */
   orderby: ContentSortColumn | ''
   order: 'asc' | 'desc' | ''
@@ -28,6 +32,8 @@ export const DEFAULT_CONTENT_VIEW: Readonly<ContentView> = {
   mine: false,
   search: '',
   month: '',
+  category: '',
+  tag: '',
   orderby: '',
   order: '',
   page: 1,
@@ -42,6 +48,12 @@ function firstText(value: RouteValue): string | undefined {
   return typeof text === 'string' ? text : undefined
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function idOrEmpty(text: string | undefined): string {
+  return text !== undefined && UUID.test(text) ? text.toLowerCase() : ''
+}
+
 /** The state an address stands for. */
 export function parseContentView(query: Readonly<Record<string, RouteValue>>): ContentView {
   const status = firstText(query.status)
@@ -54,6 +66,8 @@ export function parseContentView(query: Readonly<Record<string, RouteValue>>): C
     mine: firstText(query.author) === 'mine',
     search: (firstText(query.search) ?? '').trim().slice(0, CONTENT_SEARCH_MAX_LENGTH).trim(),
     month: ContentMonth.safeParse(month).success ? (month ?? '') : '',
+    category: idOrEmpty(firstText(query.category)),
+    tag: idOrEmpty(firstText(query.tag)),
     orderby: CONTENT_SORT_COLUMNS.find((column) => column === orderby) ?? '',
     order: order === 'asc' || order === 'desc' ? order : '',
     page: page !== undefined && /^\d{1,7}$/.test(page) ? Math.min(Math.max(Number(page), 1), MAX_PAGE) : 1,
@@ -67,6 +81,8 @@ export function contentViewQuery(view: ContentView): Record<string, string> {
   if (view.mine) query.author = 'mine'
   if (view.search !== '') query.search = view.search
   if (view.month !== '') query.month = view.month
+  if (view.category !== '') query.category = view.category
+  if (view.tag !== '') query.tag = view.tag
   if (view.orderby !== '') query.orderby = view.orderby
   if (view.order !== '') query.order = view.order
   if (view.page !== 1) query.page = String(view.page)
@@ -86,6 +102,8 @@ export function toContentListQuery(
     ...(view.mine && accountId !== undefined ? { author: accountId } : {}),
     ...(view.search === '' ? {} : { search: view.search }),
     ...(view.month === '' ? {} : { month: view.month }),
+    ...(view.category === '' ? {} : { category: view.category }),
+    ...(view.tag === '' ? {} : { tag: view.tag }),
     ...(view.orderby === '' ? {} : { orderby: view.orderby satisfies ContentOrderBy }),
     ...(view.order === '' ? {} : { order: view.order }),
     page: view.page,

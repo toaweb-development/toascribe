@@ -22,6 +22,10 @@ export function menuLabel({ t, te }: Translator, key: string): string {
       return t('menu.postsAll')
     case 'menu.postsNew':
       return t('menu.postsNew')
+    case 'menu.postsCategories':
+      return t('menu.postsCategories')
+    case 'menu.postsTags':
+      return t('menu.postsTags')
     case 'menu.pages':
       return t('menu.pages')
     case 'menu.pagesAll':

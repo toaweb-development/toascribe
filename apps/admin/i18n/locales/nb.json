@@ -384,7 +384,9 @@
     "postsNew": "Legg til nytt",
     "pages": "Sider",
     "pagesAll": "Alle sider",
-    "pagesNew": "Legg til ny"
+    "pagesNew": "Legg til ny",
+    "postsCategories": "Kategorier",
+    "postsTags": "Stikkord"
   },
   "notices": {
     "emailNotVerified": "E-post fra nettstedet er ikke testet. Passordlenker og bekreftelser kommer kanskje ikke fram før en testmelding har gått gjennom. Innstillingene for e-post kommer i en senere versjon.",
@@ -846,7 +848,8 @@
     "filter": {
       "month": "Filtrer etter dato",
       "allMonths": "Alle datoer",
-      "apply": "Filtrer"
+      "apply": "Filtrer",
+      "category": "Filtrer etter kategori"
     },
     "table": {
       "selectAll": "Velg alle på siden",
@@ -939,7 +942,9 @@
       "stickyField": "Fest øverst",
       "sticky": "Fest øverst",
       "notSticky": "Ikke fest øverst",
-      "failed": "Endringene ble ikke lagret."
+      "failed": "Endringene ble ikke lagret.",
+      "addCategories": "Legg til kategorier",
+      "addTags": "Legg til stikkord"
     },
     "screenOptions": {
       "open": "Visningsinnstillinger",
@@ -981,6 +986,65 @@
       "trashed": "Elementet ligger i papirkurven. Gjenopprett det før du endrer det.",
       "notTrashed": "Elementet ligger ikke i papirkurven.",
       "notFound": "Elementet finnes ikke, eller du har ikke tilgang til det."
+    }
+  },
+  "terms": {
+    "categories": {
+      "title": "Kategorier",
+      "add": "Legg til ny kategori",
+      "edit": "Rediger kategori",
+      "search": "Søk i kategorier",
+      "caption": "Kategoriliste",
+      "none": "Fant ingen kategorier.",
+      "empty": "Det finnes ingen kategorier ennå.",
+      "all": "Alle kategorier",
+      "added": "Kategori lagt til.",
+      "updated": "Kategori oppdatert.",
+      "deleted": "Kategori slettet.",
+      "confirmTitle": "Slette kategorien?",
+      "denied": "Du har ikke tilgang til kategoriene"
+    },
+    "tags": {
+      "title": "Stikkord",
+      "add": "Legg til stikkord",
+      "edit": "Rediger stikkord",
+      "search": "Søk i stikkord",
+      "caption": "Stikkordliste",
+      "none": "Fant ingen stikkord.",
+      "added": "Stikkord lagt til.",
+      "updated": "Stikkord oppdatert.",
+      "deleted": "Stikkord slettet.",
+      "confirmTitle": "Slette stikkordet?",
+      "denied": "Du har ikke tilgang til stikkordene",
+      "separate": "Skill stikkord med komma"
+    },
+    "name": "Navn",
+    "slug": "Identifikator",
+    "parent": "Overordnet kategori",
+    "description": "Beskrivelse",
+    "noParent": "Ingen",
+    "countLabel": "{n} innlegg | {n} innlegg",
+    "delete": "Slett",
+    "deleteNamed": "Slett «{name}»",
+    "editNamed": "Rediger «{name}»",
+    "nameRequired": "Skriv et navn.",
+    "bulkDeleted": "{n} slettet. | {n} slettet.",
+    "help": {
+      "name": "Navnet er hvordan det vises på nettstedet ditt.",
+      "slug": "Identifikatoren er den nettadressevennlige versjonen av navnet. Den er vanligvis i små bokstaver og inneholder bare bokstaver, tall og bindestreker.",
+      "parent": "Tilordne en overordnet term for å lage et hierarki. Termen «Jazz», for eksempel, vil være overordnet «Bebop» og «Storband».",
+      "description": "Beskrivelsen er som standard ikke fremtredende, men noen temaer kan vise den."
+    },
+    "confirm": {
+      "category": "«{name}» slettes. Innleggene i den får den overordnede kategorien, eller «Ukategorisert» hvis de ikke har noen annen.",
+      "tag": "«{name}» slettes og fjernes fra innleggene som har det.",
+      "many": "Termen slettes. | De {n} termene slettes."
+    },
+    "errors": {
+      "exists": "En term med dette navnet finnes allerede her.",
+      "invalidParent": "Den overordnede kategorien kan ikke brukes: velg en annen kategori, ikke denne eller en under den.",
+      "defaultTerm": "Standardkategorien kan gis nytt navn, men ikke slettes.",
+      "notFound": "Termen finnes ikke lenger."
     }
   }
 }

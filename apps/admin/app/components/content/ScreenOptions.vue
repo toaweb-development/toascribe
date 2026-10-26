@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import { CONTENT_LIST_COLUMNS } from '@toascribe/shared'
-import type { ContentListColumn, ListScreenOptions } from '@toascribe/shared'
+import type { ContentListColumn, ContentTypeKey, ListScreenOptions } from '@toascribe/shared'
 
 // «Skjermalternativer» (K-037): which columns the list shows and how many items a page has, saved in the account's preferences
 // (`postsScreen` / `pagesScreen`) so they follow the account to every device. Opened by the list (useOverlay); `save` answers with an
 // error text or nothing.
 const props = defineProps<{
   options: ListScreenOptions
+  /** Pages have no categories or tags, so those columns are not offered for them. */
+  type: ContentTypeKey
   save: (options: ListScreenOptions) => Promise<string | undefined>
 }>()
 
 const emit = defineEmits<{ close: [saved: boolean] }>()
 
 const { t } = useI18n()
+
+const COLUMNS = CONTENT_LIST_COLUMNS.filter(
+  (column) => props.type === 'post' || (column !== 'categories' && column !== 'tags'),
+)
 
 const shown = ref<ContentListColumn[]>(
   CONTENT_LIST_COLUMNS.filter((column) => !props.options.hiddenColumns.includes(column)),
@@ -21,8 +27,20 @@ const perPage = ref(String(props.options.perPage))
 const saving = ref(false)
 const failure = ref<string>()
 
-const columnLabel = (column: ContentListColumn) =>
-  column === 'author' ? t('content.columns.author') : t('content.columns.date')
+function columnLabel(column: ContentListColumn): string {
+  switch (column) {
+    case 'author':
+      return t('content.columns.author')
+    case 'categories':
+      return t('terms.categories.title')
+    case 'tags':
+      return t('terms.tags.title')
+    case 'date':
+      return t('content.columns.date')
+    default:
+      return column satisfies never
+  }
+}
 
 const perPageValid = computed(
   () => /^\d{1,3}$/.test(perPage.value) && Number(perPage.value) >= 1 && Number(perPage.value) <= 100,
@@ -55,7 +73,7 @@ async function submit() {
         <fieldset class="flex flex-col gap-2">
           <legend class="mb-1 font-medium text-default">{{ $t('content.screenOptions.columns') }}</legend>
           <UCheckbox
-            v-for="column in CONTENT_LIST_COLUMNS"
+            v-for="column in COLUMNS"
             :key="column"
             size="lg"
             :model-value="shown.includes(column)"

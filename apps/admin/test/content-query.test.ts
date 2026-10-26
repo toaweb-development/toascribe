@@ -69,3 +69,15 @@ describe('the content list address', () => {
     expect([byTitle.orderby, byTitle.order]).toEqual(['title', 'asc'])
   })
 })
+
+describe('the term filters in the address', () => {
+  const CATEGORY = '01a15f9a-26a2-73d3-8aad-c6b671836b33'
+
+  it('keeps a category or tag id, and drops one that is not an id', () => {
+    expect(parseContentView({ category: CATEGORY, tag: 'nonsense' })).toMatchObject({ category: CATEGORY, tag: '' })
+    expect(contentViewQuery({ ...DEFAULT_CONTENT_VIEW, category: CATEGORY })).toEqual({ category: CATEGORY })
+    expect(toContentListQuery({ ...DEFAULT_CONTENT_VIEW, tag: CATEGORY }, 'post', undefined, 20)).toMatchObject({
+      tag: CATEGORY,
+    })
+  })
+})

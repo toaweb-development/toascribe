@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import type { ContentAuthorRef, ContentListItem, SettableContentStatus, UpdateContentRequest } from '@toascribe/shared'
+import { splitTagNames } from '@toascribe/shared'
+import type {
+  ContentAuthorRef,
+  ContentListItem,
+  SettableContentStatus,
+  TermItem,
+  UpdateContentRequest,
+} from '@toascribe/shared'
 
 // «Hurtigredigering» (K-036; WordPress' inline edit): title, slug, date, password or private, author, status and «Fest øverst», and
 // for pages the parent, the order and the template. Opened by the list (useOverlay); it saves through `save`, which answers with an
@@ -11,6 +18,8 @@ const props = defineProps<{
   authors: readonly ContentAuthorRef[]
   /** The pages a page can be put under (the list's page tree, without the page itself and its children). */
   parents: readonly { id: string; label: string }[]
+  /** Posts: every category, in tree order (empty for a page). */
+  categories: readonly TermItem[]
   save: (request: UpdateContentRequest) => Promise<string | undefined>
 }>()
 
@@ -45,6 +54,8 @@ const sticky = ref(props.item.sticky)
 const parent = ref(props.item.parentId ?? NO_PARENT)
 const menuOrder = ref(String(props.item.menuOrder))
 const template = ref(props.item.template ?? DEFAULT_TEMPLATE)
+const chosenCategories = ref<string[]>(props.item.categories.map((term) => term.id))
+const tagsText = ref(props.item.tags.map((term) => term.name).join(', '))
 
 const statusItems = computed(() => {
   const own: SettableContentStatus[] = can.publish
@@ -83,6 +94,15 @@ function request(): UpdateContentRequest {
   if (can.editOthers && author.value !== '' && author.value !== props.item.authors[0]?.id)
     changes.authors = [author.value]
   if (sticky.value !== props.item.sticky) changes.sticky = sticky.value
+  if (!isPage) {
+    const before = props.item.categories.map((term) => term.id)
+    if (chosenCategories.value.length !== before.length || chosenCategories.value.some((id) => !before.includes(id))) {
+      changes.categories = [...chosenCategories.value]
+    }
+    const tags = splitTagNames(tagsText.value)
+    const beforeTags = props.item.tags.map((term) => term.name)
+    if (tags.join('\u0000') !== beforeTags.join('\u0000')) changes.tags = tags
+  }
   if (isPage) {
     const parentId = parent.value === NO_PARENT ? null : parent.value
     if (parentId !== props.item.parentId) changes.parentId = parentId
@@ -170,13 +190,19 @@ async function submit() {
             <USelect v-model="template" :items="templateItems" size="xl" class="w-full" />
           </UFormField>
         </template>
-        <UCheckbox
-          v-else-if="can.editOthers && can.publish"
-          v-model="sticky"
-          size="lg"
-          class="sm:col-span-2"
-          :label="$t('content.quickEdit.sticky')"
-        />
+        <template v-else>
+          <ContentCategoryTree v-model="chosenCategories" :terms="categories" :legend="$t('terms.categories.title')" />
+          <UFormField :label="$t('terms.tags.title')" name="tags" :help="$t('terms.tags.separate')">
+            <UTextarea v-model="tagsText" :rows="3" autoresize class="w-full" />
+          </UFormField>
+          <UCheckbox
+            v-if="can.editOthers && can.publish"
+            v-model="sticky"
+            size="lg"
+            class="sm:col-span-2"
+            :label="$t('content.quickEdit.sticky')"
+          />
+        </template>
         <UAlert
           v-if="failure"
           class="sm:col-span-2"
