@@ -7,11 +7,12 @@
 #    2. the dependency audit (scripts/audit.sh: the review date of the exceptions, then pnpm audit --prod --audit-level high)
 #    3. pnpm check with a throwaway PostgreSQL 18 and Mailpit, so the database and e-mail tests run and none is skipped
 #    4. every image built with provenance and SBOM attestations into a throwaway registry, as release.yml builds them
-#    5. each image written into an OCI layout by digest (scripts/export-images.sh) and scanned by that digest with Trivy,
-#       with the rules of release.yml (Critical and High with a known fix fail), and the valkey image of compose.yaml too
+#    5. the digest of each image read once (scripts/image-digests.sh) and scanned with Trivy, with the rules of release.yml
+#       (Critical and High with a known fix fail), and the valkey image of compose.yaml too
 #    6. the scanned images started as a user starts them, and the route checks before install, `toa core install`, and
 #       the route checks after it (scripts/check-routes.sh)
-#    7. a dry run of the publishing: scripts/publish-images.sh from the layout into a second throwaway registry
+#    7. a dry run of the publishing: the scanned digests into an OCI layout (scripts/export-images.sh), then
+#       scripts/publish-images.sh from it into a second throwaway registry, as the build and publish jobs do
 #    8. the full end-to-end suite (apps/admin/e2e, Playwright) against its own stack
 #
 # Needs: docker with compose and buildx 0.33 or newer, trivy, actionlint, jq, curl, openssl, pnpm, and Playwright's Chromium
@@ -161,11 +162,11 @@ TOASCRIBE_VERSION="${version}" TOASCRIBE_REGISTRY="${source_prefix}" \
   docker buildx bake --builder "${builder}" -f docker/compose.build.yaml --push \
   --set '*.attest=type=provenance,mode=max' --set '*.attest=type=sbom'
 
-# --- 5. Export by digest and scan ----------------------------------------------------------------------------------------------
+# --- 5. Digests and scan ----------------------------------------------------------------------------------------------
 
-step 'Write the images into an OCI layout'
-layout="${state}/images"
-digests="$(scripts/export-images.sh "${source_prefix}" "${version}" "${layout}")"
+step 'Read the digests'
+digests="$(scripts/image-digests.sh "${source_prefix}" "${version}")"
+echo "${digests}"
 
 step 'Scan every image with Trivy'
 # The same rules as the scan steps of release.yml (a test checks that).
@@ -221,6 +222,8 @@ rm -f "${stack_env}"
 # --- 7. Publishing, dry run ------------------------------------------------------------------------------------------------------
 
 step 'Publish dry run (into a second throwaway registry, not ghcr.io)'
+layout="${state}/images"
+scripts/export-images.sh "${source_prefix}" "${layout}" "${digests}"
 scripts/publish-images.sh "${layout}" "localhost:${target_registry_port}/toaweb-development" "${version}" \
   "sha-$(git rev-parse --short=7 HEAD)" "${digests}"
 docker rm -f "${prefix}-registry" "${prefix}-target" >/dev/null

@@ -23,6 +23,7 @@ const releaseWorkflow = read('.github/workflows/release.yml')
 const auditWorkflow = read('.github/workflows/audit.yml')
 const releaseCheck = read('scripts/release-check.sh')
 const exportImagesScript = read('scripts/export-images.sh')
+const digestsScript = read('scripts/image-digests.sh')
 const publishImagesScript = read('scripts/publish-images.sh')
 const initScript = read('docker/postgres/10-init.sh')
 const postgresEntrypoint = read('docker/postgres/entrypoint.sh')
@@ -577,22 +578,42 @@ describe('the release workflow', () => {
     expect(build.indexOf('scripts/check-release-tag.sh')).toBeLessThan(build.indexOf('uses: docker/'))
   })
 
-  it('scans every image by the digest in the layout before the artifact is uploaded', () => {
+  it('scans every digest, then writes the layout right before the upload', () => {
     expect(build).toContain('TOASCRIBE_REGISTRY: localhost:5000/toaweb-development')
     expect(build).toContain('*.attest=type=provenance,mode=max')
     expect(build).toContain('*.attest=type=sbom')
     expect(build).toMatch(/registry:3\.\d+\.\d+@sha256:[0-9a-f]{64}/)
-    const exported = build.indexOf('scripts/export-images.sh localhost:5000/toaweb-development')
+    const digests = build.indexOf('scripts/image-digests.sh localhost:5000/toaweb-development')
+    const exported = build.indexOf(
+      'scripts/export-images.sh localhost:5000/toaweb-development "${RUNNER_TEMP}/images" "${DIGESTS}"',
+    )
     const upload = build.indexOf('uses: actions/upload-artifact@')
+    expect(digests).toBeGreaterThan(-1)
+    expect(exported).toBeGreaterThan(digests)
+    expect(upload).toBeGreaterThan(exported)
+    // No other action runs between writing the layout and uploading it.
+    expect(build.slice(exported, upload)).not.toMatch(/^\s+(?:- )?uses: /m)
     for (const name of ['api', 'site', 'admin', 'proxy', 'postgres', 'mailpit']) {
       const scan = build.indexOf(
-        `image-ref: localhost:5000/toaweb-development/toascribe-${name}@\${{ fromJSON(steps.export.outputs.digests).${name} }}`,
+        `image-ref: localhost:5000/toaweb-development/toascribe-${name}@\${{ fromJSON(steps.digests.outputs.digests).${name} }}`,
       )
-      expect(scan, name).toBeGreaterThan(exported)
-      expect(scan, name).toBeLessThan(upload)
-      expect(exportImagesScript).toContain(name)
-      expect(publishImagesScript).toContain(name)
+      expect(scan, name).toBeGreaterThan(digests)
+      expect(scan, name).toBeLessThan(exported)
+      for (const script of [digestsScript, exportImagesScript, publishImagesScript]) expect(script).toContain(name)
     }
+  })
+
+  it('reads no build or Trivy cache that another run could have written', () => {
+    expect(withoutComments(releaseWorkflow)).not.toMatch(/type=gha|actions\/cache/)
+    const scans = build.match(/uses: aquasecurity\/trivy-action@/g) ?? []
+    expect(scans).toHaveLength(6)
+    expect(build.match(/^\s+cache: 'false'$/gm)).toHaveLength(6)
+  })
+
+  it('scans with the Trivy version that release:check installs', () => {
+    const pinned = /^TRIVY_VERSION=(\S+)$/m.exec(read('scripts/install-tools.sh'))?.[1]
+    expect(pinned).toBeDefined()
+    expect(build.match(/^\s+version: (\S+)$/gm)).toEqual(Array(6).fill(`          version: v${String(pinned)}`))
   })
 
   it('scans with the same rules here and in release:check', () => {
@@ -606,7 +627,7 @@ describe('the release workflow', () => {
 
   it('hands the scanned images to publish by artifact id and digests, and publish checks both', () => {
     expect(build).toContain('artifact-id: ${{ steps.upload.outputs.artifact-id }}')
-    expect(build).toContain('digests: ${{ steps.export.outputs.digests }}')
+    expect(build).toContain('digests: ${{ steps.digests.outputs.digests }}')
     expect(publish).toContain('needs: build')
     expect(publish).toContain('artifact-ids: ${{ needs.build.outputs.artifact-id }}')
     expect(publish).not.toMatch(/^\s+name: images/m)
@@ -622,6 +643,10 @@ describe('the release workflow', () => {
     expect(exportImagesScript).toContain('"${source_prefix}/toascribe-${name}@${digest}"')
     expect(exportImagesScript).toContain('"${got}" != "${digest}"')
     expect(publishImagesScript).toContain('^sha256:[0-9a-f]{64}$')
+    // Every blob is hashed before anything is pushed: a blob's file name is only a claim.
+    const hashed = publishImagesScript.indexOf('"$(sha256sum <"${blob}" | cut -c1-64)" != "$(basename "${blob}")"')
+    expect(hashed).toBeGreaterThan(-1)
+    expect(hashed).toBeLessThan(publishImagesScript.indexOf('docker buildx imagetools create'))
     expect(publishImagesScript).toContain('"${in_layout}" != "${want}"')
     expect(publishImagesScript).toContain('"oci-layout://${layout}@${want}"')
     expect(publishImagesScript).toContain('"${got}" != "${want}"')
@@ -689,8 +714,9 @@ describe('the local release gate', () => {
       'pnpm check',
       'docker buildx bake',
       "--set '*.attest=type=provenance,mode=max' --set '*.attest=type=sbom'",
-      'scripts/export-images.sh',
+      'scripts/image-digests.sh',
       'trivy image',
+      'scripts/export-images.sh',
       'scan "${valkey_image}"',
       'scripts/check-routes.sh before',
       'toa core install',

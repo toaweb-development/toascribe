@@ -9,9 +9,11 @@
 # only the target differs on a release. It uses nothing but the docker CLI and jq of the runner: no third-party code runs in
 # the job that may write packages.
 #
-# Every image is taken from the layout by its digest, never by tag: a layout whose image differs from what the build scanned
-# has no blob for that digest and the copy fails; the layout's tag must point at the same digest too. After the copy, the
-# version tag and the extra tag in the target must both have that digest. Nothing is rebuilt, and the attestations (provenance
+# First every blob in the layout is hashed and must match its file name: a blob's name is only a claim, and buildx copies the
+# bytes it finds. Once the blob of the index digest is proven, everything under it is fixed too, because every manifest and
+# layer is referenced by digest. Then every image is taken from the layout by the digest the build scanned, never by tag;
+# the layout's tag must point at the same digest too. After the copy, the version tag and the extra tag in the target must
+# both have that digest. Nothing is rebuilt, and the attestations (provenance
 # and SBOM) travel with the index.
 #
 # A version tag that already exists in the target is never overwritten (a re-run after a failure finishes the job instead of
@@ -34,6 +36,21 @@ names=(proxy site admin api postgres mailpit)
 digest_of() {
   docker buildx imagetools inspect --format '{{json .Manifest}}' "$1" | jq -er .digest
 }
+
+blobs=0
+for blob in "${layout}"/blobs/sha256/*; do
+  [ -f "${blob}" ] || continue
+  if [ "$(sha256sum <"${blob}" | cut -c1-64)" != "$(basename "${blob}")" ]; then
+    echo "::error::blob $(basename "${blob}") in ${layout} does not match its hash." >&2
+    exit 1
+  fi
+  blobs=$((blobs + 1))
+done
+if [ "${blobs}" -eq 0 ]; then
+  echo "::error::${layout} has no blobs." >&2
+  exit 1
+fi
+echo "${blobs} blobs in ${layout} match their hashes."
 
 for name in "${names[@]}"; do
   want="$(jq -r --arg name "${name}" '.[$name] // ""' <<<"${digests}")"

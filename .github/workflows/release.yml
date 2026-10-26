@@ -3,12 +3,15 @@
 # a push to a branch or on a pull request; the checks before a tag are local (`pnpm check` in pre-push, `pnpm release:check`).
 #
 #   build    contents: read. Checks that the tag is the version in package.json and has a CHANGELOG section, builds every
-#            image with provenance and SBOM attestations into a throwaway registry on the runner, writes them into an OCI
-#            layout by digest (scripts/export-images.sh), scans each one by that digest (Critical and High with a known fix
-#            fail), and only then uploads the layout as an artifact. Its digests and the artifact id are job outputs.
+#            image with provenance and SBOM attestations into a throwaway registry on the runner, reads their digests once
+#            (scripts/image-digests.sh), scans each digest (Critical and High with a known fix fail), and only then writes
+#            those digests into an OCI layout (scripts/export-images.sh) and uploads it, with no third-party step in between.
+#            The digests and the artifact id are job outputs. No build or Trivy cache is read or written: a cache that
+#            another workflow run could fill would carry into the release.
 #   publish  packages: write, this job only. Runs no third-party code: first-party actions/* and the runner's docker CLI and
-#            jq only. Downloads the artifact by id (the download fails on a digest mismatch), logs in to ghcr.io and copies
-#            each image by the digest the build scanned (scripts/publish-images.sh), tagged <version> and sha-<short>.
+#            jq only. Downloads the artifact by id (the download fails on a digest mismatch), hashes every blob in it, logs in
+#            to ghcr.io and copies each image by the digest the build scanned (scripts/publish-images.sh), tagged <version>
+#            and sha-<short>.
 #   release  contents: write, this job only, and not for a -rc tag: the GitHub Release with the version's CHANGELOG section
 #            (scripts/release-notes.sh) and the two files an installation without a clone needs. Runs no third-party code.
 #
@@ -48,7 +51,7 @@ jobs:
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.tag.outputs.version }}
       sha: ${{ steps.commit.outputs.sha }}
-      digests: ${{ steps.export.outputs.digests }}
+      digests: ${{ steps.digests.outputs.digests }}
       artifact-id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       # The tag from the push, or from the input of a manual run. Checked before it is used anywhere.
@@ -126,73 +129,91 @@ jobs:
           files: docker/compose.build.yaml
           push: true
           set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
             *.attest=type=provenance,mode=max
             *.attest=type=sbom
 
-      # The images by digest into one OCI layout folder; the digests are what the scans below check and what publish copies.
-      - name: Write the images into an OCI layout
-        id: export
+      # The index digest of every image, read once. The scans, the layout and publish all use these and nothing else.
+      - name: Read the digests
+        id: digests
         env:
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
           set -euo pipefail
-          digests="$(scripts/export-images.sh localhost:5000/toaweb-development "${VERSION}" "${RUNNER_TEMP}/images")"
+          digests="$(scripts/image-digests.sh localhost:5000/toaweb-development "${VERSION}")"
           echo "digests=${digests}" >> "$GITHUB_OUTPUT"
 
-      # Critical and High with a known fix fail the job (SECURITY_STANDARD_2026 §9). One step per image, each by the digest
-      # in the layout. The same rules as `pnpm release:check` (scripts/release-check.sh; a test checks that).
+      # Critical and High with a known fix fail the job (SECURITY_STANDARD_2026 §9). One step per image, each by its digest.
+      # The same rules and the same Trivy version as `pnpm release:check` (scripts/install-tools.sh; a test checks both).
+      # cache: 'false': the action would otherwise restore a Trivy binary and database that another run could have cached.
       - name: Scan the api image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: localhost:5000/toaweb-development/toascribe-api@${{ fromJSON(steps.export.outputs.digests).api }}
+          image-ref: localhost:5000/toaweb-development/toascribe-api@${{ fromJSON(steps.digests.outputs.digests).api }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+          version: v0.76.1
+          cache: 'false'
       - name: Scan the site image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: localhost:5000/toaweb-development/toascribe-site@${{ fromJSON(steps.export.outputs.digests).site }}
+          image-ref: localhost:5000/toaweb-development/toascribe-site@${{ fromJSON(steps.digests.outputs.digests).site }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+          version: v0.76.1
+          cache: 'false'
       - name: Scan the admin image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: localhost:5000/toaweb-development/toascribe-admin@${{ fromJSON(steps.export.outputs.digests).admin }}
+          image-ref: localhost:5000/toaweb-development/toascribe-admin@${{ fromJSON(steps.digests.outputs.digests).admin }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+          version: v0.76.1
+          cache: 'false'
       - name: Scan the proxy image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: localhost:5000/toaweb-development/toascribe-proxy@${{ fromJSON(steps.export.outputs.digests).proxy }}
+          image-ref: localhost:5000/toaweb-development/toascribe-proxy@${{ fromJSON(steps.digests.outputs.digests).proxy }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+          version: v0.76.1
+          cache: 'false'
       - name: Scan the postgres image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: localhost:5000/toaweb-development/toascribe-postgres@${{ fromJSON(steps.export.outputs.digests).postgres }}
+          image-ref: localhost:5000/toaweb-development/toascribe-postgres@${{ fromJSON(steps.digests.outputs.digests).postgres }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+          version: v0.76.1
+          cache: 'false'
       - name: Scan the mailpit image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: localhost:5000/toaweb-development/toascribe-mailpit@${{ fromJSON(steps.export.outputs.digests).mailpit }}
+          image-ref: localhost:5000/toaweb-development/toascribe-mailpit@${{ fromJSON(steps.digests.outputs.digests).mailpit }}
           scanners: vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+          version: v0.76.1
+          cache: 'false'
 
-      # Only scanned images get here. The id, not the name, is what publish downloads.
+      # Only scanned digests get here. Writing the layout is the last step before the upload, so no third-party code runs
+      # between the two; publish still hashes every blob (scripts/publish-images.sh).
+      - name: Write the scanned images into an OCI layout
+        env:
+          DIGESTS: ${{ steps.digests.outputs.digests }}
+        run: scripts/export-images.sh localhost:5000/toaweb-development "${RUNNER_TEMP}/images" "${DIGESTS}"
+
+      # The id, not the name, is what publish downloads.
       - name: Upload the scanned images
         id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
