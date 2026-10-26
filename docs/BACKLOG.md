@@ -13,6 +13,8 @@ line in the same commit; when it becomes a milestone task, move it into `docs/PL
 
 ## Code and structure
 
+- Media storage on S3 (or a compatible service) as a second implementation of the storage interface; M1.2 has the local volume only. — M1.2 brief
+
 - `apps/admin` has its own copy of `globals.css` and `tokens/colors.css`, identical to `themes/default`; decide whether they should be shared, for example in `packages/nuxt-base`. — issue #6
 - `nuxt dev` prints a note that Vite found `zod` at runtime (via the alias to `shared/src`); harmless, costs at most one reload. — issue #6
 - The placeholder tests in `packages/sdk` and `packages/ui` stay until those packages get content. — issue #6
@@ -26,5 +28,3 @@ line in the same commit; when it becomes a milestone task, move it into `docs/PL
 - Decide which core blocks M1.3 has (list, heading, quote, code, image, columns and group suggested; the rest later). — docs/decisions/0001-editor-model.md
 - Decide the content for M1.8: by hand, or the WXR import (in whole or in part) moved forward from phase 2. — docs/decisions/0001-editor-model.md
 - Decide the keyboard move into and out of columns: keep the prototype's behaviour, or do as Gutenberg (same parent only, plus «move to»). — docs/decisions/0001-editor-model.md
-- When the editor prototype is removed (M1.1–M1.3), a migration deletes its drafts (`content` rows with slug `editor-prototype-<account id>` and their `content_author` rows). — docs/decisions/0001-editor-model.md
-- The prototype's uploads share one limit of 50 files for the whole site, so one account can push out another's images; the media library (M1.2) replaces it. — docs/decisions/0001-editor-model.md
