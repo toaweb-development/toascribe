@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { validateDocument } from '@toascribe/blocks'
+import type { ContentMediaRef } from '@toascribe/shared'
 
 // A stored block document as HTML. The blocks are checked against their block.json first, here too: what the api stored passed
 // the same check, so a failure means the data was changed behind the api's back. It is then not shown at all (PLAN: an invalid
 // block is an error box, never a broken page).
-const props = defineProps<{ blocks: readonly unknown[] }>()
+const props = defineProps<{ blocks: readonly unknown[]; media?: readonly ContentMediaRef[] }>()
+
+// The media the blocks use, for the image views below (a component that already provided them, the editor, keeps its own).
+if (props.media !== undefined) {
+  provideMediaRefs(props.media)
+}
 
 const result = computed(() => validateDocument(props.blocks))
 </script>

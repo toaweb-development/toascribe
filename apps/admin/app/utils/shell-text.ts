@@ -26,6 +26,12 @@ export function menuLabel({ t, te }: Translator, key: string): string {
       return t('menu.postsCategories')
     case 'menu.postsTags':
       return t('menu.postsTags')
+    case 'menu.media':
+      return t('menu.media')
+    case 'menu.mediaLibrary':
+      return t('menu.mediaLibrary')
+    case 'menu.mediaNew':
+      return t('menu.mediaNew')
     case 'menu.pages':
       return t('menu.pages')
     case 'menu.pagesAll':
@@ -40,6 +46,10 @@ export function menuLabel({ t, te }: Translator, key: string): string {
       return t('menu.usersProfile')
     case 'menu.profile':
       return t('menu.profile')
+    case 'menu.settings':
+      return t('menu.settings')
+    case 'menu.settingsMedia':
+      return t('menu.settingsMedia')
     default:
       return te(key) ? t(key) : t('menu.unknown')
   }

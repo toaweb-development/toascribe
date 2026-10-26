@@ -29,6 +29,11 @@ if (import.meta.server && !mayEdit.value) {
 
 const editor = useBlockEditor()
 provideBlockEditor(editor)
+// The files the image blocks use: from the api with the item, and the ones picked in the library while editing.
+const mediaRefs = provideMediaRefs()
+function keepMedia(loaded: ContentItem): void {
+  for (const entry of loaded.media) mediaRefs.value.set(entry.id, entry)
+}
 
 const { data, status, error, refresh } = await useAsyncData(
   `content:editor:${props.id ?? 'new'}`,
@@ -45,6 +50,7 @@ watch(
   (loaded) => {
     if (loaded == null) return
     item.value = loaded
+    keepMedia(loaded)
     title.value = loaded.title
     savedTitle.value = loaded.title
     const checked = validateDocument(loaded.blocks)
@@ -112,6 +118,7 @@ async function save(publish = false): Promise<void> {
         : await contentApi.update(item.value.id, { title: title.value, ...(blocks === undefined ? {} : { blocks }) })
     // Kept at once: if the publish below fails, the next save changes this item instead of making a second one.
     item.value = saved
+    keepMedia(saved)
     if (publish) {
       saved = await contentApi.publish(saved.id)
       item.value = saved
