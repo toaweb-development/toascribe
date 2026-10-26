@@ -1,12 +1,22 @@
 // «Rediger bilde» in the admin: the steps sent to the api, and the preview transform that must draw what sharp will make.
 import { describe, expect, it } from 'vitest'
 
-import { NO_EDIT, fittedCrop, operationsOf, previewMatrix, rectBetween, turned, turnedSize } from '../app/utils/media-edit.ts'
+import {
+  NO_EDIT,
+  fittedCrop,
+  operationsOf,
+  previewMatrix,
+  rectBetween,
+  turned,
+  turnedSize,
+} from '../app/utils/media-edit.ts'
 import type { EditState } from '../app/utils/media-edit.ts'
 
 /** Applies an SVG matrix string to a point. */
 function apply(matrix: string, x: number, y: number): [number, number] {
-  const [a = 0, b = 0, c = 0, d = 0, e = 0, f = 0] = (/matrix\(([^)]*)\)/.exec(matrix)?.[1] ?? '').split(' ').map(Number)
+  const [a = 0, b = 0, c = 0, d = 0, e = 0, f = 0] = (/matrix\(([^)]*)\)/.exec(matrix)?.[1] ?? '')
+    .split(' ')
+    .map(Number)
   return [a * x + c * y + e, b * x + d * y + f]
 }
 
@@ -62,12 +72,27 @@ describe('the preview transform', () => {
 describe('the crop', () => {
   const bounds = { width: 800, height: 600 }
   it('is the rectangle between two points, either way, kept inside the image', () => {
-    expect(rectBetween({ x: 500, y: 400 }, { x: 100.4, y: -20 }, bounds)).toEqual({ x: 100, y: 0, width: 400, height: 400 })
-    expect(rectBetween({ x: 700, y: 500 }, { x: 900, y: 700 }, bounds)).toEqual({ x: 700, y: 500, width: 100, height: 100 })
+    expect(rectBetween({ x: 500, y: 400 }, { x: 100.4, y: -20 }, bounds)).toEqual({
+      x: 100,
+      y: 0,
+      width: 400,
+      height: 400,
+    })
+    expect(rectBetween({ x: 700, y: 500 }, { x: 900, y: 700 }, bounds)).toEqual({
+      x: 700,
+      y: 500,
+      width: 100,
+      height: 100,
+    })
   })
 
   it('fits typed numbers into the image, and has none without an area', () => {
-    expect(fittedCrop({ x: 700, y: 0, width: 300, height: 100 }, bounds)).toEqual({ x: 700, y: 0, width: 100, height: 100 })
+    expect(fittedCrop({ x: 700, y: 0, width: 300, height: 100 }, bounds)).toEqual({
+      x: 700,
+      y: 0,
+      width: 100,
+      height: 100,
+    })
     expect(fittedCrop({ x: 10, y: 10, width: 0, height: 100 }, bounds)).toBeNull()
   })
 })

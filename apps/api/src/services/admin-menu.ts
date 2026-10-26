@@ -81,7 +81,9 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     position: 80,
     capability: 'manage_options',
     to: '/settings/media',
-    children: [{ id: 'settings.media', labelKey: 'menu.settingsMedia', capability: 'manage_options', to: '/settings/media' }],
+    children: [
+      { id: 'settings.media', labelKey: 'menu.settingsMedia', capability: 'manage_options', to: '/settings/media' },
+    ],
   },
   {
     // WordPress shows «Profil» as a top-level item, in the place of «Brukere», to accounts that cannot list users.

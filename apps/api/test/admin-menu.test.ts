@@ -99,7 +99,11 @@ describe('the core menu', () => {
     expect(byId.get('dashboard')).toMatchObject({ position: 2, icon: 'i-lucide-gauge' })
     expect(byId.get('posts')).toMatchObject({ position: 5, icon: 'i-lucide-pin', capability: 'edit_posts' })
     expect(byId.get('media')).toMatchObject({ position: 10, icon: 'i-lucide-image', capability: 'upload_files' })
-    expect(byId.get('settings')).toMatchObject({ position: 80, icon: 'i-lucide-settings', capability: 'manage_options' })
+    expect(byId.get('settings')).toMatchObject({
+      position: 80,
+      icon: 'i-lucide-settings',
+      capability: 'manage_options',
+    })
     expect(byId.get('pages')).toMatchObject({ position: 20, icon: 'i-lucide-file-text', capability: 'edit_pages' })
     expect(byId.get('users')).toMatchObject({ position: 70, icon: 'i-lucide-users' })
     expect(byId.get('profile')).toMatchObject({ position: 70, icon: 'i-lucide-user', unlessCapability: 'list_users' })
@@ -246,7 +250,13 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('GET /api/v1/admin/menu (needs 
   })
 
   it('gives an editor and a subscriber Profil on its own, with no capability rules in the answer', async () => {
-    expect((await menuAs('editor')).map((entry) => entry.id)).toEqual(['dashboard', 'posts', 'media', 'pages', 'profile'])
+    expect((await menuAs('editor')).map((entry) => entry.id)).toEqual([
+      'dashboard',
+      'posts',
+      'media',
+      'pages',
+      'profile',
+    ])
     const items = await menuAs('subscriber')
     expect(items.map((entry) => entry.id)).toEqual(['dashboard', 'profile'])
     expect(JSON.stringify(items)).not.toMatch(/capability|unless/i)

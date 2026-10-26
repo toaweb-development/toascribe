@@ -60,7 +60,10 @@ export function createMediaProducer(options: {
     async send(job) {
       const payload = MediaJob.parse(job)
       const boss = await ready()
-      await boss.send(MEDIA_QUEUE, payload, { ...MEDIA_JOB_OPTIONS, singletonKey: `${payload.kind}:${payload.mediaId}` })
+      await boss.send(MEDIA_QUEUE, payload, {
+        ...MEDIA_JOB_OPTIONS,
+        singletonKey: `${payload.kind}:${payload.mediaId}`,
+      })
     },
     async stop() {
       const running = booting
