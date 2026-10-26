@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { TestEmailResponse } from '@toascribe/shared'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createMailQueue } from '../src/adapters/mail-queue.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
@@ -121,8 +121,14 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
       expect(message.Text).toContain('Meldingen er sendt etter ønske fra e2e-admin.')
       expect(message.HTML).toContain('<html lang="nb">')
 
-      const [job] = await env.query<{ state: string }>('select state from pgboss.job where id = $1', [jobId])
-      expect(job?.state).toBe('completed')
+      // The worker marks the job completed after SMTP accepted the mail, so Mailpit can have it a moment before that.
+      await vi.waitFor(
+        async () => {
+          const [job] = await env.query<{ state: string }>('select state from pgboss.job where id = $1', [jobId])
+          expect(job?.state).toBe('completed')
+        },
+        { timeout: 10_000, interval: 100 },
+      )
     })
 
     it("uses the signed-in account's own address when none is given", async () => {
