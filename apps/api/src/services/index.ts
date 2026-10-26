@@ -15,6 +15,8 @@ import type { AuthService } from './auth.ts'
 import { createContentService } from './content.ts'
 import type { ContentService } from './content.ts'
 import { createDashboardService } from './dashboard.ts'
+import { createTermService } from './terms.ts'
+import type { TermService } from './terms.ts'
 import { createEditorPrototypeService } from './editor-prototype.ts'
 import type { EditorPrototypeService } from './editor-prototype.ts'
 import type { DashboardService } from './dashboard.ts'
@@ -82,6 +84,8 @@ export interface Services {
   readonly users: UserService
   /** Posts and pages: the lists, the editor's saves, the status changes and the bulk actions (M1.1). */
   readonly content: ContentService
+  /** Categories and tags (M1.2). */
+  readonly terms: TermService
   /** PROTOTYPE (M0.6): the editor prototype's image uploads, until the media library of M1.2. */
   readonly editorPrototype: EditorPrototypeService
   /** Second factor: enrolment, recovery codes, the second step of a login (K-023). */
@@ -163,6 +167,12 @@ export function createServices(deps: ServiceDeps): Services {
     }),
     users: createUserService({ db, clock, audit }),
     content,
+    terms: createTermService({
+      db,
+      clock,
+      audit,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
     editorPrototype: createEditorPrototypeService({ uploadDir: deps.prototypeUploadDir }),
     mfa: createMfaService({
       db,

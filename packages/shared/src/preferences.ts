@@ -12,7 +12,7 @@ export const AdminColorScheme = z.enum(ADMIN_COLOR_SCHEMES)
 export type AdminColorScheme = z.infer<typeof AdminColorScheme>
 
 /** The columns of a content list that «Skjermalternativer» can hide (K-037). The title is always shown. */
-export const CONTENT_LIST_COLUMNS = ['author', 'date'] as const
+export const CONTENT_LIST_COLUMNS = ['author', 'categories', 'tags', 'date'] as const
 export const ContentListColumn = z.enum(CONTENT_LIST_COLUMNS)
 export type ContentListColumn = z.infer<typeof ContentListColumn>
 

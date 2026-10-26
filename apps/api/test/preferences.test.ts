@@ -104,7 +104,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('preferences (needs TEST_DATABA
     expect(res.status).toBe(200)
     expect(Preferences.parse(await res.json()).postsScreen).toEqual({ hiddenColumns: ['author'], perPage: 50 })
     expect(
-      (await client.patch('/api/v1/me/preferences', { pagesScreen: { hiddenColumns: ['tags'], perPage: 20 } })).status,
+      (await client.patch('/api/v1/me/preferences', { pagesScreen: { hiddenColumns: ['comments'], perPage: 20 } }))
+        .status,
     ).toBe(400)
     expect(
       (await client.patch('/api/v1/me/preferences', { pagesScreen: { hiddenColumns: [], perPage: 101 } })).status,

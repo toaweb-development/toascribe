@@ -316,6 +316,47 @@ const CASES: readonly MatrixCase[] = [
     path: `/api/v1/content/${NO_SUCH_CONTENT}/${action}`,
     expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 403 },
   })),
+  // Taxonomies and terms (M1.2): every role that edits content reads them; only manage_categories (administrator, editor) changes
+  // them. A term nobody has answers 404 to those who get through.
+  {
+    route: 'GET /api/v1/taxonomies',
+    method: 'GET',
+    path: '/api/v1/taxonomies',
+    expected: { ...ok, subscriber: 403 },
+  },
+  {
+    route: 'GET /api/v1/taxonomies/:tax/terms',
+    method: 'GET',
+    path: '/api/v1/taxonomies/category/terms',
+    expected: { ...ok, subscriber: 403 },
+  },
+  {
+    route: 'GET /api/v1/taxonomies/:tax/terms/:id',
+    method: 'GET',
+    path: `/api/v1/taxonomies/post_tag/terms/${NO_SUCH_CONTENT}`,
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 403 },
+  },
+  {
+    route: 'POST /api/v1/taxonomies/:tax/terms',
+    method: 'POST',
+    path: '/api/v1/taxonomies/post_tag/terms',
+    body: (actor) => ({ name: `Matrise ${actor}` }),
+    expected: { ...ok, administrator: 201, editor: 201, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'POST /api/v1/taxonomies/:tax/terms/bulk',
+    method: 'POST',
+    path: '/api/v1/taxonomies/post_tag/terms/bulk',
+    json: { action: 'delete', ids: [NO_SUCH_CONTENT] },
+    expected: { ...ok, author: 403, contributor: 403, subscriber: 403 },
+  },
+  ...(['PATCH', 'DELETE'] as const).map((method) => ({
+    route: `${method} /api/v1/taxonomies/:tax/terms/:id`,
+    method,
+    path: `/api/v1/taxonomies/post_tag/terms/${NO_SUCH_CONTENT}`,
+    ...(method === 'PATCH' ? { json: { name: 'x' } } : {}),
+    expected: { ...ok, administrator: 404, editor: 404, author: 403, contributor: 403, subscriber: 403 },
+  })),
   // PROTOTYPE (M0.6): the editor's image uploads. `upload_files` (not the contributor or the subscriber) for an upload, sent as
   // JSON here, so a role that may upload gets the validator's 415 (not multipart).
   {

@@ -29,6 +29,9 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     children: [
       { id: 'posts.all', labelKey: 'menu.postsAll', capability: 'edit_posts', to: '/posts' },
       { id: 'posts.new', labelKey: 'menu.postsNew', capability: 'edit_posts', to: '/posts/new' },
+      // WordPress shows Kategorier and Stikkord to those who may manage terms (`manage_categories`).
+      { id: 'posts.categories', labelKey: 'menu.postsCategories', capability: 'manage_categories', to: '/categories' },
+      { id: 'posts.tags', labelKey: 'menu.postsTags', capability: 'manage_categories', to: '/tags' },
     ],
   },
   {

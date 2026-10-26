@@ -49,6 +49,14 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'POST /api/v1/content/:id/publish': 'capability:edit_posts|edit_pages',
   'POST /api/v1/content/:id/trash': 'capability:edit_posts|edit_pages',
   'POST /api/v1/content/:id/restore': 'capability:edit_posts|edit_pages',
+  // Taxonomies and terms (M1.2): reading for those who can edit content, changing for manage_categories.
+  'GET /api/v1/taxonomies': 'capability:edit_posts|edit_pages',
+  'GET /api/v1/taxonomies/:tax/terms': 'capability:edit_posts|edit_pages',
+  'GET /api/v1/taxonomies/:tax/terms/:id': 'capability:edit_posts|edit_pages',
+  'POST /api/v1/taxonomies/:tax/terms': 'capability:manage_categories',
+  'POST /api/v1/taxonomies/:tax/terms/bulk': 'capability:manage_categories',
+  'PATCH /api/v1/taxonomies/:tax/terms/:id': 'capability:manage_categories',
+  'DELETE /api/v1/taxonomies/:tax/terms/:id': 'capability:manage_categories',
   // PROTOTYPE (M0.6): the editor's image uploads, until the media library (M1.2).
   'POST /api/v1/prototype/editor/uploads': 'capability:upload_files',
   'GET /api/v1/prototype/editor/uploads/:name': 'capability:edit_posts',

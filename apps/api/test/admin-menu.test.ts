@@ -29,18 +29,18 @@ describe('the core menu', () => {
   it('shows an administrator Kontrollpanel, Innlegg, Sider and Brukere, and not the top-level Profil', () => {
     expect(shape('administrator')).toEqual([
       { id: 'dashboard', to: '/', children: ['dashboard.home'] },
-      { id: 'posts', to: '/posts', children: ['posts.all', 'posts.new'] },
+      { id: 'posts', to: '/posts', children: ['posts.all', 'posts.new', 'posts.categories', 'posts.tags'] },
       { id: 'pages', to: '/pages', children: ['pages.all', 'pages.new'] },
       { id: 'users', to: '/users', children: ['users.all', 'users.profile'] },
     ])
   })
 
-  it('shows an editor Innlegg and Sider; an author and a contributor Innlegg only (no edit_pages)', () => {
+  it('shows an editor Innlegg (with Kategorier and Stikkord) and Sider; an author and a contributor Innlegg only', () => {
     const dashboard = { id: 'dashboard', to: '/', children: ['dashboard.home'] }
     const profile = { id: 'profile', to: '/profile', children: [] }
     expect(shape('editor')).toEqual([
       dashboard,
-      { id: 'posts', to: '/posts', children: ['posts.all', 'posts.new'] },
+      { id: 'posts', to: '/posts', children: ['posts.all', 'posts.new', 'posts.categories', 'posts.tags'] },
       { id: 'pages', to: '/pages', children: ['pages.all', 'pages.new'] },
       profile,
     ])
@@ -101,6 +101,8 @@ describe('the core menu', () => {
       'dashboard.home',
       'posts.all',
       'posts.new',
+      'posts.categories',
+      'posts.tags',
       'pages.all',
       'pages.new',
       'users.all',
