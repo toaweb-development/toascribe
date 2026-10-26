@@ -27,8 +27,8 @@ packages:
 # Versions verified against the npm registry 2026-10-20 (`npm view <pkg> version`).
 catalog:
   # Language and tooling
-  typescript: ~6.0.3 # 6.0 only: typescript-eslint and vue-tsc need the compiler API (7 has none until 7.1)
-  '@types/node': ^24.19.2 # matches the Node 24 LTS floor
+  typescript: ~7.0.2 # 6.0 only: typescript-eslint and vue-tsc need the compiler API (7 has none until 7.1)
+  '@types/node': ^26.6.5 # matches the Node 24 LTS floor
   eslint: ^10.13.0
   '@eslint/js': ^10.0.1
   typescript-eslint: ^8.72.0
