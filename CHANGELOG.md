@@ -6,6 +6,43 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+Posts and pages (M1.1): the content API and the lists «Alle innlegg» and «Alle sider». One migration (`0007_content_api`): three
+indexes for the scheduler and the trash, and the removal of the editor prototype's per-account drafts. No new setting or
+environment variable.
+
+### Added
+
+- The content API under `/api/v1/content`: list posts or pages (views, author, search, month, sort, pages, `X-Total-Count` and
+  `X-Total-Pages`), make, read, change and delete them, publish, move to the trash and restore, bulk actions, and the list of
+  possible authors. Who may do what follows WordPress: posts and pages have their own capabilities, own and others' items,
+  published and not, and a contributor can send for review but not publish.
+- Statuses as in WordPress: draft, pending, scheduled, published, private and trash. A scheduled item is published, and a
+  published item with an unpublish time goes back to draft, by a job in the worker every minute; each change happens once, also
+  with two workers. The trash is emptied after 30 days, and a restored item gets its old status back.
+- Slugs as WordPress makes them (`Blåbær på Ørland` becomes `blabaer-pa-orland`), unique per type, language and parent with
+  `-2`, `-3` when taken; a trashed item's slug gets `__trashed` until it is restored.
+- Short links (`/?p=<number>`) in every answer, several authors per item, password protection (the password is stored hashed and
+  can be replaced, not read), private items, sticky posts, and the parent, order and template of pages.
+- Search finds text in the title, the excerpt and the blocks; the blocks are checked against their `block.json` on every save.
+- The admin menu has «Innlegg» (Alle innlegg, Legg til nytt) and «Sider» (Alle sider, Legg til ny). The lists have the views with
+  their counts, a month filter, search, sorting, pages, child pages under their parent, row actions (Rediger, Hurtigredigering,
+  Papirkurv, Forhåndsvis; in the trash Gjenopprett and Slett permanent), quick edit, bulk actions (Rediger, Flytt til
+  papirkurven, Gjenopprett, Slett permanent, Tøm papirkurven) and «Skjermalternativer» for the columns and the number per page,
+  saved with the account.
+- «Legg til nytt» and «Rediger» open the block editor on the post or page, with a title field, «Lagre utkast» and «Publiser».
+  «Forhåndsvis» shows the item drawn from its blocks.
+
+### Changed
+
+- «I korte trekk» on the dashboard counts published posts and pages with the content API, and links to the lists.
+
+### Removed
+
+- The editor prototype's own page, its preview and its per-account draft endpoints; the editor now saves real posts and pages.
+  The prototype's image upload stays until the media library (M1.2).
+- Images from another address in the editor: they will be brought into the media library first (M1.2). The admin no longer lets
+  images in from other hosts on any page.
+
 ## [0.6.0] - 2026-10-26
 
 The last milestone of phase 0: a prototype of the block editor, to answer whether the editor model in the plan holds before
