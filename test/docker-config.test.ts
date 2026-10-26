@@ -738,7 +738,9 @@ describe('the local release gate', () => {
 
   it('sends the refused paths to the proxy as written', () => {
     const routes = read('scripts/check-routes.sh')
-    for (const call of routes.match(/curl [^"]+/g) ?? []) expect(call).toContain('--path-as-is')
+    const calls = withoutComments(routes).match(/\$\(curl [^"]+/g) ?? []
+    expect(calls).toHaveLength(3)
+    for (const call of calls) expect(call).toContain('--path-as-is')
     expect(routes).toContain('check /api/%2e%2e/admin 400')
   })
 
