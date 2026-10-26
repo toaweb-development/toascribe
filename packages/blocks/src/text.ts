@@ -1,6 +1,6 @@
 // The words of a block document, for the search vector (`content.search`, weight C; DATAMODEL «Full-text search»). Only the block
 // registry knows which attributes hold text: a `rich-text` attribute gives its text, a `string` attribute gives its value unless it
-// is an address (`format: url`) or a choice from a list (`enum`). Run it on a document that passed `validateDocument`.
+// is an address or an id (`format`) or a choice from a list (`enum`). Run it on a document that passed `validateDocument`.
 import type { Block } from './block.ts'
 import type { InlineNode } from './inline.ts'
 import { inlineText } from './inline.ts'
@@ -17,7 +17,7 @@ function blockText(block: Block): string[] {
       } else if (
         schema.type === 'string' &&
         typeof value === 'string' &&
-        schema.format !== 'url' &&
+        schema.format === undefined &&
         schema.enum === undefined
       ) {
         own.push(value)

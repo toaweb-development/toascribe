@@ -71,3 +71,13 @@ export async function detectType(
   }
   return { ok: true, ext, mime: entry.mime, group: entry.group }
 }
+
+/** The extension the content shows, when it is one of the library's types (for a file fetched from an address without one). */
+export async function contentExtension(bytes: Uint8Array): Promise<string | undefined> {
+  const found = await fileTypeFromBuffer(bytes)
+  if (found === undefined) {
+    return undefined
+  }
+  const ext = found.ext === 'jpg' ? 'jpg' : found.ext === 'tif' ? 'tif' : found.ext
+  return MEDIA_TYPES[ext] === undefined ? undefined : ext
+}

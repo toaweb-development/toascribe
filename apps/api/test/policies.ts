@@ -57,9 +57,25 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'POST /api/v1/taxonomies/:tax/terms/bulk': 'capability:manage_categories',
   'PATCH /api/v1/taxonomies/:tax/terms/:id': 'capability:manage_categories',
   'DELETE /api/v1/taxonomies/:tax/terms/:id': 'capability:manage_categories',
-  // PROTOTYPE (M0.6): the editor's image uploads, until the media library (M1.2).
-  'POST /api/v1/prototype/editor/uploads': 'capability:upload_files',
-  'GET /api/v1/prototype/editor/uploads/:name': 'capability:edit_posts',
+  // The media library (M1.2): upload_files at the door (the service checks the file's own rights); regeneration and Settings → Media
+  // are manage_options. /uploads/* serves the public files to anyone.
+  'GET /api/v1/media': 'capability:upload_files',
+  'POST /api/v1/media': 'capability:upload_files',
+  'POST /api/v1/media/from-url': 'capability:upload_files',
+  'POST /api/v1/media/regenerate': 'capability:manage_options',
+  'GET /api/v1/media/:id': 'capability:upload_files',
+  'GET /api/v1/media/:id/file': 'capability:upload_files',
+  'PATCH /api/v1/media/:id': 'capability:upload_files',
+  'DELETE /api/v1/media/:id': 'capability:upload_files',
+  'POST /api/v1/media/:id/replace': 'capability:upload_files',
+  'POST /api/v1/media/:id/edit': 'capability:upload_files',
+  'GET /api/v1/media-folders': 'capability:upload_files',
+  'POST /api/v1/media-folders': 'capability:upload_files',
+  'PATCH /api/v1/media-folders/:id': 'capability:upload_files',
+  'DELETE /api/v1/media-folders/:id': 'capability:upload_files',
+  'GET /api/v1/settings/media': 'capability:manage_options',
+  'PATCH /api/v1/settings/media': 'capability:manage_options',
+  'GET /uploads/*': 'public',
   // The setup wizard (M0.4): open only until the site is installed, and then only with the one-time setup token.
   'GET /api/v1/setup/status': 'public',
   'GET /api/v1/setup/state': 'setup-token',

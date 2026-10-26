@@ -25,13 +25,30 @@ export interface ValidationIssue {
     | 'invalid_attribute'
     | 'child_count'
     | 'too_large'
+    | 'alt_required'
   readonly message: string
 }
 
 export type ValidationResult =
   { readonly ok: true; readonly blocks: Block[] } | { readonly ok: false; readonly issues: ValidationIssue[] }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
 const validators = new WeakMap<AttributeSchema, z.ZodType>()
+
+/**
+ * Rules of one block type that look at more than one attribute. An image needs its alt text unless it is decorative (WordPress'
+ * guidance, PLAN «Visning»: «Alt-tekst er påkrevd når bildet ikke er dekorativt»); without a chosen file there is nothing to describe.
+ */
+function blockRules(type: string, attrs: Readonly<Record<string, unknown>>): ValidationIssue[] {
+  if (type === 'core/image' && attrs['mediaId'] !== '' && attrs['decorative'] !== true) {
+    const alt = attrs['alt']
+    if (typeof alt !== 'string' || alt.trim() === '') {
+      return [{ path: ['alt'], code: 'alt_required', message: 'Describe the image, or mark it as decorative' }]
+    }
+  }
+  return []
+}
 
 /** The Zod check for one attribute schema of a block.json, made once per schema. */
 export function attributeValidator(schema: AttributeSchema): z.ZodType {
@@ -48,12 +65,14 @@ export function attributeValidator(schema: AttributeSchema): z.ZodType {
       }
       const allowed = schema.enum
       const isUrl = schema.format === 'url'
+      const isUuid = schema.format === 'uuid'
       validator = base
         .refine((value) => allowed === undefined || allowed.includes(value), {
           message: 'Not one of the allowed values',
         })
         // An empty address is the default: «no image chosen yet».
         .refine((value) => !isUrl || value === '' || isSafeMediaUrl(value), { message: 'Not an allowed address' })
+        .refine((value) => !isUuid || value === '' || UUID.test(value), { message: 'Not an id' })
       break
     }
     case 'number':
@@ -193,6 +212,12 @@ export function validateDocument(input: unknown): ValidationResult {
     const attrs = validateAttrs(definition, Reflect.get(node, 'attrs'))
     if (!attrs.ok) {
       issues.push(...attrs.issues.map((issue) => ({ ...issue, path: [...path, 'attrs', ...issue.path] })))
+    } else {
+      const ruleIssues = blockRules(definition.name, attrs.attrs)
+      issues.push(...ruleIssues.map((issue) => ({ ...issue, path: [...path, 'attrs', ...issue.path] })))
+      if (ruleIssues.length > 0) {
+        return undefined
+      }
     }
     if (!Array.isArray(children)) {
       issues.push({ path: [...path, 'children'], code: 'invalid_shape', message: 'children must be an array' })

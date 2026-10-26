@@ -479,9 +479,15 @@ importers:
       '@toascribe/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@toascribe/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@toascribe/install':
         specifier: workspace:*
         version: link:../../packages/install
+      '@toascribe/media':
+        specifier: workspace:*
+        version: link:../../packages/media
       '@toascribe/shared':
         specifier: workspace:*
         version: link:../../packages/shared

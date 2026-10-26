@@ -12,7 +12,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { hashPassword } from '@toascribe/auth'
-import { documentText, validateDocument } from '@toascribe/blocks'
+import { documentMediaRefs, documentText, legacyImageUrls, migrateDocument, validateDocument } from '@toascribe/blocks'
 import type { Block } from '@toascribe/blocks'
 import { deleteContentPermanently, legacyBlocksText, uniqueContentSlug } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
@@ -101,6 +101,8 @@ import {
 } from '../repositories/terms.ts'
 import type { ContentTermRow } from '../repositories/terms.ts'
 import type { Auditor, RequestContext } from './support.ts'
+import type { MediaService } from './media.ts'
+import { replaceMediaRefs } from '../repositories/media.ts'
 
 export interface ContentService {
   list: (auth: SessionAuth, query: ContentListQuery) => Promise<ContentListResponse>
@@ -189,24 +191,10 @@ function baseFields(
   }
 }
 
-/** True when the stored tree is in toascribe's block format (an empty tree is). */
-function isBlockFormat(blocks: Blocks): boolean {
-  return validateDocument(blocks).ok
-}
-
 /** The words of a stored tree: toascribe blocks through their block.json, WordPress' parsed blocks through their HTML. */
 function storedBlocksText(blocks: Blocks): string {
   const checked = validateDocument(blocks)
   return checked.ok ? documentText(checked.blocks) : legacyBlocksText(blocks)
-}
-
-/** Checks a block tree against the block.json of every block; the stored form is what the validator returns. */
-function checkBlocks(blocks: readonly unknown[]): { stored: Blocks; text: string } {
-  const result = validateDocument(blocks)
-  if (!result.ok) {
-    throw new InvalidBlocksError(result.issues.map((issue) => ({ ...issue, path: [...issue.path] })))
-  }
-  return { stored: toJson(result.blocks), text: documentText(result.blocks) }
 }
 
 function toJson(blocks: readonly Block[]): Blocks {
@@ -347,9 +335,28 @@ export function createContentService(options: {
   readonly db: Database
   readonly clock: () => Date
   readonly audit: Auditor
+  /** The media library: the addresses of old image blocks, and the files a document uses. */
+  readonly media: Pick<MediaService, 'contentRefs' | 'idsForUrls'>
   readonly onInvalidSetting?: (key: string) => void
 }): ContentService {
-  const { db, clock, audit } = options
+  const { db, clock, audit, media } = options
+
+  /** A stored or sent tree with every block upgraded to its current version (core/image: an address becomes a media id). */
+  async function migrated(blocks: unknown): Promise<unknown> {
+    const urls = legacyImageUrls(blocks)
+    const ids = urls.length === 0 ? new Map<string, string>() : await media.idsForUrls(urls)
+    return migrateDocument(blocks, { mediaIdForUrl: (url) => ids.get(url) }).blocks
+  }
+
+  /** Checks a sent tree after upgrading it; the stored form, its text and the media it uses. */
+  async function checkSent(blocks: readonly unknown[]) {
+    const upgraded = await migrated(blocks)
+    const result = validateDocument(upgraded)
+    if (!result.ok) {
+      throw new InvalidBlocksError(result.issues.map((issue) => ({ ...issue, path: [...issue.path] })))
+    }
+    return { stored: toJson(result.blocks), text: documentText(result.blocks), refs: documentMediaRefs(result.blocks) }
+  }
 
   const settingsOf = (executor: Executor) => readSettings(executor, SETTINGS, options.onInvalidSetting)
 
@@ -360,11 +367,21 @@ export function createContentService(options: {
       throw new NotFoundError()
     }
     const terms = (await termsOfContent(executor, [id])).get(id)
+    const blocks = await migrated(row.blocks)
+    const checked = validateDocument(blocks)
+    const refs = checked.ok ? documentMediaRefs(checked.blocks) : []
     return {
       ...baseFields(row, authors, actor, terms),
       excerpt: row.excerpt,
-      blocks: row.blocks,
-      blocksFormat: isBlockFormat(row.blocks) ? 'blocks' : 'legacy',
+      blocks: checked.ok ? toJson(checked.blocks) : row.blocks,
+      blocksFormat: checked.ok ? 'blocks' : 'legacy',
+      media:
+        refs.length === 0
+          ? []
+          : await media.contentRefs(
+              actor,
+              refs.map((ref) => ref.mediaId),
+            ),
     }
   }
 
@@ -543,7 +560,7 @@ export function createContentService(options: {
       toDate(request.unpublishAt) ?? null,
       now,
     )
-    const blocks = request.blocks === undefined ? { stored: [], text: '' } : checkBlocks(request.blocks)
+    const blocks = request.blocks === undefined ? { stored: [], text: '', refs: [] } : await checkSent(request.blocks)
     const passwordHash =
       request.password === undefined || request.password === null ? null : await hashPassword(request.password)
     const settings = await settingsOf(db)
@@ -582,6 +599,7 @@ export function createContentService(options: {
         await updateContent(tx, inserted.id, { slug: fromId }, now)
       }
       await replaceAuthors(tx, inserted.id, authors, now)
+      await replaceMediaRefs(tx, inserted.id, blocks.refs, now)
       await applyTerms(tx, { id: inserted.id, type }, request, true, now)
       await audit(tx, ctx, {
         actor: { id: actor.id, username: auth.account.username },
@@ -677,7 +695,7 @@ export function createContentService(options: {
 
     const title = request.title ?? row.title
     const excerpt = request.excerpt ?? row.excerpt
-    const blocks = request.blocks === undefined ? undefined : checkBlocks(request.blocks)
+    const blocks = request.blocks === undefined ? undefined : await checkSent(request.blocks)
 
     // The slug: one that was sent; or, while the item is a draft or pending, a new one from a changed title when the old one was
     // made from the title; otherwise the old one. It is made unique again when it or the parent changes.
@@ -753,6 +771,9 @@ export function createContentService(options: {
         }
       : undefined
     await updateContent(tx, row.id, changes, now, search)
+    if (changes.blocks !== undefined && blocks !== undefined) {
+      await replaceMediaRefs(tx, row.id, blocks.refs, now)
+    }
     if (authorsChanged) {
       await replaceAuthors(tx, row.id, nextAuthors, now)
     }

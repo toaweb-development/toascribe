@@ -1,4 +1,6 @@
 import type { Database } from '@toascribe/db'
+import type { MediaStorage } from '@toascribe/media'
+import type { MediaJobPort } from '../ports/media-jobs.ts'
 import { createInstallService } from '@toascribe/install'
 import type { InstallMail, InstallService } from '@toascribe/install'
 import type { KeyRing } from '@toascribe/shared'
@@ -17,8 +19,8 @@ import type { ContentService } from './content.ts'
 import { createDashboardService } from './dashboard.ts'
 import { createTermService } from './terms.ts'
 import type { TermService } from './terms.ts'
-import { createEditorPrototypeService } from './editor-prototype.ts'
-import type { EditorPrototypeService } from './editor-prototype.ts'
+import { createMediaService } from './media.ts'
+import type { MediaService } from './media.ts'
 import type { DashboardService } from './dashboard.ts'
 import { createMeService } from './me.ts'
 import type { MeService } from './me.ts'
@@ -64,8 +66,11 @@ export interface ServiceDeps {
   readonly trustedProxy?: string
   /** Told about a stored setting that failed validation, so it can be logged. */
   readonly onInvalidSetting?: (key: string) => void
-  /** The temporary folder of the editor prototype's uploads (PROTOTYPE, M0.6). */
-  readonly prototypeUploadDir: string
+  /** The media library's files (M1.2). */
+  readonly storage: MediaStorage
+  readonly mediaJobs: MediaJobPort
+  /** UPLOAD_MAX_SIZE_MB. */
+  readonly uploadCapMb: number
 }
 
 /** Everything the routes and the later flows (MFA, lost password, registration) build on, made once at start-up. */
@@ -86,8 +91,8 @@ export interface Services {
   readonly content: ContentService
   /** Categories and tags (M1.2). */
   readonly terms: TermService
-  /** PROTOTYPE (M0.6): the editor prototype's image uploads, until the media library of M1.2. */
-  readonly editorPrototype: EditorPrototypeService
+  /** The media library (M1.2). */
+  readonly media: MediaService
   /** Second factor: enrolment, recovery codes, the second step of a login (K-023). */
   readonly mfa: MfaService
   /** Lost password, first password, registration (K-003, K-005). */
@@ -132,10 +137,22 @@ export function createServices(deps: ServiceDeps): Services {
   const proxy = createProxyCheck({ trustedProxy: deps.trustedProxy ?? '', logger: deps.logger, clock })
   const adminMenu = createCoreAdminMenu()
   const installMail = installMailOf(deps.mail)
+  const media = createMediaService({
+    db,
+    clock,
+    audit,
+    storage: deps.storage,
+    jobs: deps.mediaJobs,
+    logger: deps.logger,
+    uploadCapMb: deps.uploadCapMb,
+    publicOrigin: deps.publicOrigin,
+    ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+  })
   const content = createContentService({
     db,
     clock,
     audit,
+    media,
     ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
   })
   const install = createInstallService({
@@ -173,7 +190,7 @@ export function createServices(deps: ServiceDeps): Services {
       audit,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
-    editorPrototype: createEditorPrototypeService({ uploadDir: deps.prototypeUploadDir }),
+    media,
     mfa: createMfaService({
       db,
       clock,

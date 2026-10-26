@@ -1,9 +1,11 @@
 import { createDb } from '@toascribe/db'
 import { createKeyRing, parseKeyMaterial } from '@toascribe/shared'
+import type { MediaJob } from '@toascribe/shared'
 import { pino } from 'pino'
 
 import { buildApp } from '../src/app.ts'
 import type { MailOptions, MailPort, MailRequest } from '../src/ports/mail.ts'
+import type { MediaJobPort } from '../src/ports/media-jobs.ts'
 import { TEST_DATABASE_URL, SKIP_REASON, noticeIfSkipped } from './db.ts'
 
 export { SKIP_REASON, TEST_DATABASE_URL, noticeIfSkipped }
@@ -93,8 +95,21 @@ export function makeApp(connectionString: string, versionOrOptions: string | Mak
     signingKey: TEST_SIGNING_KEY,
     keyRing: testKeyRing,
     mail,
+    mediaJobs: recordingMediaJobs(),
     ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.trustedProxy === undefined ? {} : { trustedProxy: options.trustedProxy }),
   })
   return { app: built.app, services: built.services, db, pool, mail, ...log }
+}
+
+/** A media job port that keeps the jobs it is given, for the tests (the worker's tests run the jobs themselves). */
+export function recordingMediaJobs(): MediaJobPort & { readonly jobs: MediaJob[] } {
+  const jobs: MediaJob[] = []
+  return {
+    jobs,
+    send(job) {
+      jobs.push(job)
+      return Promise.resolve()
+    },
+  }
 }

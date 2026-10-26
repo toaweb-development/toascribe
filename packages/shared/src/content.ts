@@ -187,11 +187,27 @@ export type ContentListResponse = z.infer<typeof ContentListResponse>
  * install hold WordPress' parsed blocks (`blocksFormat: legacy`), which the editor shows but cannot change.
  */
 // `blocks` is not the recursive `Blocks` (z.json()): the OpenAPI generator cannot walk a recursive schema.
+/** A media file a document's blocks use, as the editor and the view need it (the address is worked out from the id, never stored). */
+export const ContentMediaRef = z.object({
+  id: z.uuid(),
+  url: z.string(),
+  width: z.int().nullable(),
+  height: z.int().nullable(),
+  alt: z.string(),
+  mime: z.string(),
+  /** The generated sizes, smallest first: the view's srcset. */
+  sizes: z.array(z.object({ name: z.string(), width: z.int(), height: z.int(), url: z.string() })),
+})
+export type ContentMediaRef = z.infer<typeof ContentMediaRef>
+
 export const ContentItem = z.object({
   ...contentFields,
   excerpt: z.string(),
+  /** The block tree, upgraded to the current block versions (an older stored tree is migrated on read; it is stored on the next save). */
   blocks: z.array(z.record(z.string(), z.unknown())),
   blocksFormat: z.enum(['blocks', 'legacy']),
+  /** The media the blocks use, by id, that the account may see. */
+  media: z.array(ContentMediaRef),
 })
 export type ContentItem = z.infer<typeof ContentItem>
 

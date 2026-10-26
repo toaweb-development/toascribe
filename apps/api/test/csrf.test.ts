@@ -333,6 +333,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('CSRF and request origin (needs
           logger: (await import('pino')).pino({ level: 'silent' }),
           version: '9.9.9',
           publicOrigin: TEST_ORIGIN,
+          mediaJobs: { send: () => Promise.resolve() },
           signingKey: new Uint8Array(32).fill(9),
           keyRing: (await import('./helpers.ts')).testKeyRing,
           mail: (await import('./helpers.ts')).recordingMail(),

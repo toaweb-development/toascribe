@@ -6,6 +6,7 @@ import { createKeyRing } from '@toascribe/shared'
 import { pino } from 'pino'
 
 import { createMailQueue } from './adapters/mail-queue.ts'
+import { createMediaQueue } from './adapters/media-queue.ts'
 import { buildApp } from './app.ts'
 import { ConfigError, loadConfig } from './config.ts'
 import { createLogger } from './lib/logger.ts'
@@ -49,6 +50,7 @@ pool.on('error', (err) => {
 })
 
 const mailQueue = createMailQueue({ connectionString: config.DATABASE_URL, keyRing, logger })
+const mediaQueue = createMediaQueue({ connectionString: config.DATABASE_URL, logger })
 
 const { app, services } = buildApp({
   pool,
@@ -60,6 +62,9 @@ const { app, services } = buildApp({
   trustedProxy: config.TOASCRIBE_TRUSTED_PROXY,
   keyRing,
   mail: mailQueue,
+  mediaJobs: mediaQueue,
+  uploadsDir: config.UPLOADS_DIR,
+  uploadCapMb: config.UPLOAD_MAX_SIZE_MB,
 })
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   logger.info({ port: info.port, env: config.NODE_ENV }, 'api listening')
@@ -115,6 +120,7 @@ async function shutdown(reason: string, exitCode: number): Promise<void> {
       // close() also closes idle keep-alive connections (Node 19+); active requests finish first.
     })
     await mailQueue.stop()
+    await mediaQueue.stop()
     await pool.end()
     logger.info('shutdown complete')
     process.exit(exitCode)

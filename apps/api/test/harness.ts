@@ -1,3 +1,7 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 // A real app on a real PostgreSQL for the auth tests: migrated database, accounts in every built-in role, and a small HTTP
 // client that keeps the session cookie and the CSRF token like a browser does. Later tasks (MFA, lost password, ...) build
 // on it.
@@ -12,7 +16,14 @@ import { buildApp } from '../src/app.ts'
 import { createTestDatabase } from './db.ts'
 import type { TestDatabase } from './db.ts'
 import type { MailPort } from '../src/ports/mail.ts'
-import { TEST_ORIGIN, TEST_SIGNING_KEY, memoryLogger, recordingMail, testKeyRing } from './helpers.ts'
+import {
+  TEST_ORIGIN,
+  TEST_SIGNING_KEY,
+  memoryLogger,
+  recordingMail,
+  recordingMediaJobs,
+  testKeyRing,
+} from './helpers.ts'
 
 export const SESSION_COOKIE_NAME = '__Host-toa_session'
 
@@ -179,6 +190,10 @@ export interface AuthTestApp {
   readonly mail: ReturnType<typeof recordingMail>
   /** The test clock. Starts at the real time; `setNow` pins it, `advance` moves it. */
   readonly clock: { now: () => Date; set: (at: Date) => void; advance: (ms: number) => void }
+  /** The media jobs the app sent (the worker's tests run them). */
+  readonly mediaJobs: ReturnType<typeof recordingMediaJobs>
+  /** The media library's folder. */
+  readonly uploadsDir: string
   /**
    * Another app over the same database with its own mail port or timing, for a test of a different configuration. It shares
    * the database, the clock and the accounts; its log lines and its recorded mail are its own.
@@ -199,8 +214,10 @@ export interface StartOptions {
    * keeps what it is asked to send. A port with a `stop` is stopped when the app is closed.
    */
   readonly mail?: (database: TestDatabase) => MailPort & { readonly stop?: () => Promise<void> }
-  /** PROTOTYPE (M0.6): the editor prototype's upload folder. Default: the app's own default under the OS temp folder. */
-  readonly prototypeUploadDir?: string
+  /** The media library's folder. Default: a new temporary folder, removed by close(). */
+  readonly uploadsDir?: string
+  /** UPLOAD_MAX_SIZE_MB. Default 64. */
+  readonly uploadCapMb?: number
 }
 
 export interface VariantOptions {
@@ -219,6 +236,8 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
     const log = memoryLogger()
     const mail = recordingMail()
     const custom = options.mail?.(database)
+    const uploadsDir = options.uploadsDir ?? (await mkdtemp(join(tmpdir(), 'toascribe-uploads-test-')))
+    const mediaJobs = recordingMediaJobs()
     let pinned: Date | undefined
     let offsetMs = 0
     const clock = {
@@ -245,7 +264,9 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
       mail: custom ?? mail,
       clock: clock.now,
       minimumResponseMs: options.minimumResponseMs ?? 0,
-      ...(options.prototypeUploadDir === undefined ? {} : { prototypeUploadDir: options.prototypeUploadDir }),
+      uploadsDir,
+      mediaJobs,
+      ...(options.uploadCapMb === undefined ? {} : { uploadCapMb: options.uploadCapMb }),
     })
 
     const roleIds = new Map<string, string>()
@@ -262,6 +283,8 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
       lines: log.lines,
       mail,
       clock,
+      mediaJobs,
+      uploadsDir,
 
       async createAccount(input) {
         defaultHash ??= hashPassword(TEST_PASSWORD)
@@ -303,6 +326,8 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
           version: '9.9.9',
           publicOrigin: options.publicOrigin ?? TEST_ORIGIN,
           signingKey: TEST_SIGNING_KEY,
+          uploadsDir,
+          mediaJobs,
           keyRing: testKeyRing,
           mail: variantOptions.mail ?? recordingMail(),
           clock: clock.now,
@@ -324,6 +349,9 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
         await custom?.stop?.()
         await Promise.all([pool.end(), owner.end()])
         await database.drop()
+        if (options.uploadsDir === undefined) {
+          await rm(uploadsDir, { recursive: true, force: true })
+        }
       },
     }
   } catch (err) {

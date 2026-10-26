@@ -755,7 +755,8 @@
       "unknownAttribute": "Blokken har et felt den ikke skal ha.",
       "invalidAttribute": "Et felt i blokken har en verdi som ikke er tillatt.",
       "childCount": "Blokken har for få eller for mange kolonner.",
-      "tooLarge": "Dokumentet er for stort."
+      "tooLarge": "Dokumentet er for stort.",
+      "altRequired": "Bildet mangler alternativ tekst. Beskriv bildet, eller merk det som dekorativt."
     },
     "previewPage": {
       "invalid": "Utkastet har blokker som ikke kan vises."
