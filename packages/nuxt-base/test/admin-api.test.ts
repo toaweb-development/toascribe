@@ -1,9 +1,10 @@
+import { DEFAULT_PREFERENCES } from '@toascribe/shared'
 import { describe, expect, it, vi } from 'vitest'
 
 import { createAdminApi } from '../app/lib/api/admin.ts'
 import { createMeApi } from '../app/lib/api/me.ts'
 
-const PREFERENCES = { adminColorScheme: 'default', showToolbarOnSite: true, dismissedWelcome: false }
+const PREFERENCES = DEFAULT_PREFERENCES
 
 describe('the admin shell API layer', () => {
   it('asks the menu, the glance and the notices, and parses what comes back', async () => {

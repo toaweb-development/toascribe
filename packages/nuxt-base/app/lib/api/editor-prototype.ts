@@ -1,21 +1,15 @@
-import { PrototypeDocument, PrototypeUploadResponse } from '@toascribe/shared'
+import { PrototypeUploadResponse } from '@toascribe/shared'
 
 import type { ApiCall } from './client.ts'
 
 const BASE = '/v1/prototype/editor'
 
 /**
- * PROTOTYPE (M0.6): the editor prototype's draft and image uploads. `get` and `save` need `edit_posts`, `upload` needs
- * `upload_files`. A save the server refuses is an ApiRequestError with status 400 and code `invalid_blocks`. Replaced by the
- * content API (M1.1) and the media library (M1.2).
+ * PROTOTYPE (M0.6): the editor's image uploads (`upload_files`), kept in the api's temporary folder until the media library of
+ * M1.2 replaces them. The editor saves its content through the content API (lib/api/content.ts).
  */
 export function createEditorPrototypeApi(api: ApiCall) {
   return {
-    /** The signed-in account's own prototype draft (no blocks before the first save). */
-    get: async () => PrototypeDocument.parse(await api(`${BASE}/document`)),
-    /** Replaces the draft's blocks. The server checks them against each block.json again. */
-    save: async (blocks: readonly unknown[]) =>
-      PrototypeDocument.parse(await api(`${BASE}/document`, { method: 'PUT', body: { blocks } })),
     /** Keeps an image in the api's temporary folder and answers with its address on this site. */
     upload: async (file: File) => {
       const form = new FormData()
