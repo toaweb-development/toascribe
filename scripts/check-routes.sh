@@ -5,6 +5,7 @@
 #   scripts/check-routes.sh after BASE_URL    the same stack after `toa core install`
 #
 # «after» holds only after the install and «before» only before it, so each proves the other's checks are not vacuous.
+# --path-as-is: curl sends the path as written; newer curl would otherwise resolve %2e%2e itself and the proxy would never see it.
 set -euo pipefail
 
 phase="${1:?usage: check-routes.sh before|after BASE_URL}"
@@ -22,7 +23,7 @@ fail() {
 check() {
   local code=""
   for attempt in $(seq "${attempts}"); do
-    code="$(curl -s -o /dev/null -w '%{http_code}' "${base}$1")"
+    code="$(curl -s --path-as-is -o /dev/null -w '%{http_code}' "${base}$1")"
     echo "$1 -> ${code} (attempt ${attempt})"
     if [ "${code}" = "$2" ]; then return 0; fi
     if [ "${attempt}" -lt "${attempts}" ]; then sleep 1; fi
@@ -33,7 +34,7 @@ check() {
 # A redirect to the wizard: the code and the end of Location (the app sends a relative or an absolute address).
 check_wizard() {
   local out code location
-  out="$(curl -s -o /dev/null -w '%{http_code} %header{location}' "${base}$1")"
+  out="$(curl -s --path-as-is -o /dev/null -w '%{http_code} %header{location}' "${base}$1")"
   echo "$1 -> ${out}"
   code="${out%% *}"
   location="${out#* }"
@@ -45,7 +46,7 @@ check_wizard() {
 installed_is() {
   local status installed=""
   for attempt in $(seq "${attempts}"); do
-    status="$(curl -s "${base}/api/v1/setup/status")"
+    status="$(curl -s --path-as-is "${base}/api/v1/setup/status")"
     echo "/api/v1/setup/status -> ${status} (attempt ${attempt})"
     installed="$(jq -r '.installed' <<<"${status}" || true)"
     if [ "${installed}" = "$1" ]; then return 0; fi

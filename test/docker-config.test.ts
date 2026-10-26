@@ -736,6 +736,12 @@ describe('the local release gate', () => {
     expect(releaseCheck).toContain('trap cleanup EXIT')
   })
 
+  it('sends the refused paths to the proxy as written', () => {
+    const routes = read('scripts/check-routes.sh')
+    for (const call of routes.match(/curl [^"]+/g) ?? []) expect(call).toContain('--path-as-is')
+    expect(routes).toContain('check /api/%2e%2e/admin 400')
+  })
+
   it('scans valkey at the digest compose.yaml runs', () => {
     const inCompose = /valkey\/valkey:[^\s@]+@sha256:[0-9a-f]{64}/.exec(compose)?.[0]
     expect(inCompose).toBeDefined()
