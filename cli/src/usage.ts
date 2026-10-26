@@ -36,6 +36,11 @@ export const CORE_INSTALL_USAGE = `  core install [--url <origin>] [--title <tex
                          wizard stores instead. --no-index asks search engines not to index the site. Exit 1 when the site is
                          already installed (nothing is changed). Needs DATABASE_URL and PUBLIC_ORIGIN.`
 
+export const MEDIA_REGENERATE_USAGE = `  media regenerate [--id <uuid>]
+                         Make the image sizes again (every image, or the one with --id), for example after the sizes in Settings →
+                         Media changed. Marks them pending and queues a job per image; the worker makes them. Writes an audit
+                         entry. Needs DATABASE_URL.`
+
 export const CORE_IS_INSTALLED_USAGE = `  core is-installed
                          Exit 0 when the site is installed, 1 when it is not, 2 on an error. Prints nothing. Needs DATABASE_URL.`
 
@@ -74,6 +79,7 @@ ${USER_CREATE_USAGE}
 ${USER_RESET_PASSWORD_USAGE}
 ${USER_RESET_LOGIN_LIMIT_USAGE}
 ${USER_MFA_RESET_USAGE}
+${MEDIA_REGENERATE_USAGE}
 
 ${EXIT_CODES_USAGE}
 `

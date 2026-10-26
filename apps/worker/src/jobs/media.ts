@@ -216,14 +216,7 @@ export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<v
 }
 
 /** The media queue as the api creates it: stately, so a file has at most one waiting job per kind. */
-export const MEDIA_QUEUE_OPTIONS = {
-  retryLimit: 2,
-  retryDelay: 60,
-  expireInSeconds: 600,
-  retentionSeconds: 7 * 24 * 60 * 60,
-  deleteAfterSeconds: 7 * 24 * 60 * 60,
-  policy: 'stately',
-} as const
+export { MEDIA_QUEUE_OPTIONS } from '@toascribe/db'
 
 export const MEDIA_SWEEP = 'media.sweep'
 /** A file pending this long without being done has lost its job (the api could not queue it): the sweep queues it again. */
