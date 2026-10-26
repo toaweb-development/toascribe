@@ -1,197 +1,279 @@
-# Release when a new version reaches main (VERSIONING_STANDARD_2026 §5, «Tag ved merge»): toascribe is a product that others
-# run, so it deploys nowhere. When v<version> does not exist yet, this workflow
+# Release when Tor pushes a tag vX.Y.Z (VERSIONING_STANDARD_2026 §4, §4.1). toascribe is a product that others run, so it
+# deploys nowhere: a release is the six images in ghcr.io/toaweb-development/toascribe-* and a GitHub Release. Nothing runs on
+# a push to a branch or on a pull request; the checks before a tag are local (`pnpm check` in pre-push, `pnpm release:check`).
 #
-#   1. builds every image with provenance and SBOM attestations into a throwaway registry on the runner and scans each one
-#      there with the rules of the image gate in ci.yml (job «images», first half),
-#   2. only if every scan is clean, logs in to ghcr.io and copies the scanned images there as they are, tagged <version>
-#      and sha-<short> (job «images», second half),
-#   3. only after that, creates the annotated tag v<version> and the GitHub Release with that version's CHANGELOG section
-#      and the files an installation without a clone needs (job «release»).
+#   build    contents: read. Checks that the tag is the version in package.json and has a CHANGELOG section, builds every
+#            image with provenance and SBOM attestations into a throwaway registry on the runner, writes them into an OCI
+#            layout by digest (scripts/export-images.sh), scans each one by that digest (Critical and High with a known fix
+#            fail), and only then uploads the layout as an artifact. Its digests and the artifact id are job outputs.
+#   publish  packages: write, this job only. Runs no third-party code: first-party actions/* and the runner's docker CLI and
+#            jq only. Downloads the artifact by id (the download fails on a digest mismatch), logs in to ghcr.io and copies
+#            each image by the digest the build scanned (scripts/publish-images.sh), tagged <version> and sha-<short>.
+#   release  contents: write, this job only, and not for a -rc tag: the GitHub Release with the version's CHANGELOG section
+#            (scripts/release-notes.sh) and the two files an installation without a clone needs. Runs no third-party code.
 #
-# So a failed scan leaves no image and no tag. A run that fails after some images were pushed can be re-run: no tag exists
-# yet, so the jobs run again; an image whose version tag is already in ghcr.io is left as it is (copy-images.sh).
+# A failed scan leaves no artifact, no image and no release. A tag is never moved: when a run failed outside the code (a
+# network error), «Run workflow» with the same tag runs it again; an image whose version tag is already in ghcr.io and a
+# release that already exists are left as they are.
 #
-# Tags made with the workflow token do not start other workflows, which is why the images are published by this workflow
-# and not by one that listens for the tag.
-#
-# Rights: contents: read for everything; packages: write for the job «images» only (it also builds and scans, so the token
-# exists while pinned third-party actions run; the login happens after the scans and nothing else gets the password);
-# contents: write for the job «release» only, which runs no third-party code.
-#
-# DRY RUN. «Run workflow» (workflow_dispatch) with push left at false does steps 1 and the copy into a second throwaway
-# registry, and skips the login, the push to ghcr.io and the tag. The same build, scan and copy also run on every pull
-# request (ci.yml, job «release-dry-run»), where packages: write is never granted.
+# Every job runs on GitHub's ubuntu-latest: the repository is public and never uses the organisation's self-hosted runners
+# (DEPLOYMENT_STRATEGY_2026, «Runnere»).
 name: Release
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
     inputs:
-      push:
-        description: 'Really release: push to ghcr.io and tag. Only from main, and only if v<version> does not exist. Leave off for a dry run.'
-        type: boolean
-        default: false
+      tag:
+        description: 'The existing tag to release again, e.g. v0.6.0'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  plan:
-    name: Plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      version: ${{ steps.plan.outputs.version }}
-      publish: ${{ steps.plan.outputs.publish }}
-      real: ${{ steps.plan.outputs.real }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0 # the tags
-          persist-credentials: false
-      - name: Decide what this run does
-        id: plan
-        env:
-          VERSION_FILE: package.json # same as in version.yml
-          EVENT_NAME: ${{ github.event_name }}
-          PUSH_INPUT: ${{ inputs.push }}
-          REF: ${{ github.ref }}
-        run: |
-          set -euo pipefail
-          version="$(jq -er .version "${VERSION_FILE}")"
-          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::${VERSION_FILE} version '${version}' is not MAJOR.MINOR.PATCH"
-            exit 1
-          fi
-          tag="v${version}"
-          exists=false
-          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then exists=true; fi
-
-          # real: this run publishes (a merge to main, or a manual run with push on). Otherwise it is a dry run.
-          real=false
-          if [ "${EVENT_NAME}" = push ]; then
-            real=true
-          elif [ "${PUSH_INPUT}" = true ]; then
-            if [ "${REF}" != refs/heads/main ]; then
-              echo "::error::push can only be turned on for a run on main, not on ${REF}"
-              exit 1
-            fi
-            real=true
-          fi
-
-          # A real run for a version that is already tagged has nothing to do. A dry run always runs.
-          publish=true
-          if [ "${real}" = true ] && [ "${exists}" = true ]; then
-            echo "::notice::${tag} already exists - nothing to publish."
-            publish=false
-          fi
-          {
-            echo "version=${version}"
-            echo "publish=${publish}"
-            echo "real=${real}"
-          } >> "$GITHUB_OUTPUT"
-
-  images:
-    name: Build, scan and publish the images
-    needs: plan
-    if: needs.plan.outputs.publish == 'true'
+  build:
+    name: Build and scan
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
       contents: read
-      packages: write # this job only: the copy to ghcr.io
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      sha: ${{ steps.commit.outputs.sha }}
+      digests: ${{ steps.export.outputs.digests }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false # the job runs third-party code
-
-      # Build with attestations into localhost:5000, scan every image there. No login yet.
-      - name: Build and scan
-        id: build
-        uses: ./.github/actions/build-scan-images
-        with:
-          cache-to: 'true'
-
-      # Everything below runs only after every scan passed.
-      - name: Log in to ghcr.io
-        if: needs.plan.outputs.real == 'true'
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish the scanned images
-        if: needs.plan.outputs.real == 'true'
+      # The tag from the push, or from the input of a manual run. Checked before it is used anywhere.
+      - name: Read the tag
+        id: tag
         env:
-          VERSION: ${{ steps.build.outputs.version }}
-        run: |
-          .github/scripts/copy-images.sh localhost:5000/toaweb-development ghcr.io/toaweb-development "${VERSION}" "sha-${GITHUB_SHA::7}"
-
-      # Dry run: the same copy, into a second throwaway registry, so only the login and the target differ from a release.
-      - name: Dry run - start a second registry
-        if: needs.plan.outputs.real != 'true'
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          docker run -d --name target-registry -p 127.0.0.1:5001:5000 \
-            registry:3.1.1@sha256:325b4b29b041e82803abeb703e201655e4e23ab83264ec1a7c9ddb0a5b14a6e0
-          for _ in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:5001/v2/ > /dev/null && exit 0
-            sleep 1
-          done
-          echo "::error::the second registry did not start"
-          exit 1
-      - name: Dry run - copy the scanned images (nothing is pushed to ghcr.io)
-        if: needs.plan.outputs.real != 'true'
-        env:
-          VERSION: ${{ steps.build.outputs.version }}
-        run: |
-          .github/scripts/copy-images.sh localhost:5000/toaweb-development localhost:5001/toaweb-development "${VERSION}" "sha-${GITHUB_SHA::7}"
-
-  release:
-    name: Tag and release
-    needs: [plan, images]
-    if: needs.plan.outputs.real == 'true' && needs.plan.outputs.publish == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: write # tag and release; this job only
-    env:
-      VERSION_FILE: package.json # same as in version.yml
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      # The job runs no third-party code, so the token may stay in the checkout (git push of the tag).
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Tag and release
-        run: |
-          version="$(python3 -c '
-          import json, sys
-          print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])
-          ' "$VERSION_FILE")"
-          tag="v${version}"
-          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-            echo "${tag} already exists - nothing to tag."
-            exit 0
+          if [ "${EVENT_NAME}" = workflow_dispatch ]; then
+            tag="${INPUT_TAG}"
+          elif [ "${REF}" = "refs/tags/${REF_NAME}" ]; then
+            tag="${REF_NAME}"
+          else
+            echo "::error::not a tag: ${REF}"
+            exit 1
           fi
-          awk -v v="${version}" '
-            $0 ~ "^## \\[" v "\\]" { on = 1; next }
-            /^## \[/ || /^\[[^]]+\]: / { on = 0 }
-            on
-          ' CHANGELOG.md > "${RUNNER_TEMP}/notes.md"
-          if [ ! -s "${RUNNER_TEMP}/notes.md" ]; then
-            echo "::error::CHANGELOG.md has no section for ${version}"
+          # bash's [[ =~ ]] matches the whole string (a newline in the value would pass grep and write a second output).
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "::error::'${tag}' is not vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-rc.N"
             exit 1
           fi
           {
+            echo "tag=${tag}"
+            echo "version=${tag#v}"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ steps.tag.outputs.tag }}
+          persist-credentials: false # the job runs third-party code
+
+      - name: Record the commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Check that the tag is the version
+        env:
+          VERSION_FILE: package.json # the single source of truth; the workspace packages mirror it (test/version-mirror.test.ts)
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: scripts/check-release-tag.sh "${TAG}"
+
+      # registry:3, pinned by tag and digest. Loopback only; no authentication is needed for a registry that lives for one job.
+      # Why a registry: the attestations only exist on an image that is pushed (DOCKER_STANDARD, «CI-bygg»; the docker
+      # exporter and `load` drop them), and the scan has to happen before anything leaves the runner.
+      - name: Start a throwaway registry
+        run: |
+          set -euo pipefail
+          docker run -d --name build-registry -p 127.0.0.1:5000:5000 \
+            registry:3.1.1@sha256:325b4b29b041e82803abeb703e201655e4e23ab83264ec1a7c9ddb0a5b14a6e0
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:5000/v2/ > /dev/null && exit 0
+            sleep 1
+          done
+          echo "::error::the local registry did not start"
+          exit 1
+
+      # network=host so that the builder reaches localhost:5000 (docs.docker.com/build/ci/github-actions/local-registry/).
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: network=host
+
+      # `push: true` pushes to the registry named in the image tags: TOASCRIBE_REGISTRY, here the local one. The images and
+      # build arguments are those of docker/compose.build.yaml, which match compose.yaml (a test checks that).
+      - name: Build the images with attestations
+        uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
+        env:
+          TOASCRIBE_VERSION: ${{ steps.tag.outputs.version }}
+          TOASCRIBE_REGISTRY: localhost:5000/toaweb-development
+        with:
+          source: .
+          files: docker/compose.build.yaml
+          push: true
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+            *.attest=type=provenance,mode=max
+            *.attest=type=sbom
+
+      # The images by digest into one OCI layout folder; the digests are what the scans below check and what publish copies.
+      - name: Write the images into an OCI layout
+        id: export
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          digests="$(scripts/export-images.sh localhost:5000/toaweb-development "${VERSION}" "${RUNNER_TEMP}/images")"
+          echo "digests=${digests}" >> "$GITHUB_OUTPUT"
+
+      # Critical and High with a known fix fail the job (SECURITY_STANDARD_2026 §9). One step per image, each by the digest
+      # in the layout. The same rules as `pnpm release:check` (scripts/release-check.sh; a test checks that).
+      - name: Scan the api image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: localhost:5000/toaweb-development/toascribe-api@${{ fromJSON(steps.export.outputs.digests).api }}
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan the site image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: localhost:5000/toaweb-development/toascribe-site@${{ fromJSON(steps.export.outputs.digests).site }}
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan the admin image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: localhost:5000/toaweb-development/toascribe-admin@${{ fromJSON(steps.export.outputs.digests).admin }}
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan the proxy image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: localhost:5000/toaweb-development/toascribe-proxy@${{ fromJSON(steps.export.outputs.digests).proxy }}
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan the postgres image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: localhost:5000/toaweb-development/toascribe-postgres@${{ fromJSON(steps.export.outputs.digests).postgres }}
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan the mailpit image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: localhost:5000/toaweb-development/toascribe-mailpit@${{ fromJSON(steps.export.outputs.digests).mailpit }}
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+      # Only scanned images get here. The id, not the name, is what publish downloads.
+      - name: Upload the scanned images
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: images-${{ steps.tag.outputs.tag }}
+          path: ${{ runner.temp }}/images
+          if-no-files-found: error
+          compression-level: 0 # the layers are compressed already
+          retention-days: 1
+
+  publish:
+    name: Publish the images
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write # this job only: the copy to ghcr.io
+    steps:
+      # The scripts of the tagged commit. No dependency is installed and nothing is built here.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.build.outputs.sha }}
+          persist-credentials: false
+
+      # By id from this run; download-artifact checks the archive against the digest recorded at upload and fails otherwise.
+      - name: Download the scanned images
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: ${{ runner.temp }}/images
+          digest-mismatch: error
+
+      # The runner's docker CLI, password on standard input. The login is removed again at the end of the job.
+      - name: Log in to ghcr.io
+        env:
+          ACTOR: ${{ github.actor }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "${TOKEN}" | docker login ghcr.io --username "${ACTOR}" --password-stdin
+
+      # Each image by the digest the build scanned; the script stops when the artifact or the target has another digest.
+      - name: Publish the scanned images
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          SHA: ${{ needs.build.outputs.sha }}
+          DIGESTS: ${{ needs.build.outputs.digests }}
+        run: |
+          scripts/publish-images.sh "${RUNNER_TEMP}/images" ghcr.io/toaweb-development "${VERSION}" "sha-${SHA::7}" "${DIGESTS}"
+
+      - name: Log out of ghcr.io
+        if: always()
+        run: docker logout ghcr.io
+
+  release:
+    name: GitHub Release
+    needs: [build, publish]
+    if: ${{ !contains(needs.build.outputs.tag, '-rc.') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # this job only: the GitHub Release
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.build.outputs.tag }}
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.build.outputs.sha }}
+          persist-credentials: false
+      - name: GitHub Release
+        run: |
+          set -euo pipefail
+          if gh release view "${TAG}" > /dev/null 2>&1; then
+            echo "::notice::the release ${TAG} exists already; not changed."
+            exit 0
+          fi
+          scripts/release-notes.sh "${TAG}" > "${RUNNER_TEMP}/notes.md"
+          {
             printf '\n### Images\n\n'
-            printf 'ghcr.io/toaweb-development/toascribe-{proxy,site,admin,api,postgres,mailpit}:%s, scanned before they were published.\n' "${version}"
+            printf 'ghcr.io/toaweb-development/toascribe-{proxy,site,admin,api,postgres,mailpit}:%s, scanned before they were published.\n' "${VERSION}"
             cat <<'TEXT'
           `compose.yaml` and `env.example` (the `.env.example`) start them without cloning the repository: see «Installer uten å klone repoet» in the README.
           TEXT
@@ -199,9 +281,5 @@ jobs:
           # GitHub renames an asset whose name starts with a dot, so .env.example is attached as env.example.
           cp docker/compose.yaml "${RUNNER_TEMP}/compose.yaml"
           cp docker/.env.example "${RUNNER_TEMP}/env.example"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${tag}" -m "${tag}" "${GITHUB_SHA}"
-          git push origin "${tag}"
-          gh release create "${tag}" --verify-tag --title "${tag}" --notes-file "${RUNNER_TEMP}/notes.md" \
+          gh release create "${TAG}" --verify-tag --title "${TAG}" --notes-file "${RUNNER_TEMP}/notes.md" \
             "${RUNNER_TEMP}/compose.yaml" "${RUNNER_TEMP}/env.example"

@@ -197,7 +197,9 @@ describe('the root scripts', () => {
     }
   })
 
-  it('is what CI runs', () => {
-    expect(read('.github/workflows/ci.yml')).toMatch(/^\s+run: pnpm check$/m)
+  it('is what pre-push runs, and what release:check runs with the database and e-mail tests', () => {
+    expect(read('lefthook.yml')).toMatch(/^pre-push:\n(?:\s*#.*\n)*\s+commands:\n\s+check:\n\s+run: pnpm check\b/m)
+    expect(read('lefthook.yml')).toMatch(/'protect-main\.sh':\n\s+runner: bash\n\s+use_stdin: true/)
+    expect(read('scripts/release-check.sh')).toMatch(/^\s+pnpm check$/m)
   })
 })

@@ -1,25 +1,34 @@
-# Dependabot for every ecosystem in the repo (SECURITY_STANDARD_2026 §9). Actions are pinned to a commit SHA with the
-# version in a comment; the version updates below keep those pins current. Image updates are version updates only:
-# the image scan in ci.yml is the safety net for docker and docker-compose.
+# Dependabot for every ecosystem in the repo (SECURITY_STANDARD_2026 §9). Version updates come once a month, one pull request
+# per ecosystem (the group `all` in each), so the local checks run once for the batch. Security updates are not part of these
+# groups (`applies-to: version-updates`) and still come as soon as an advisory is out. Dependabot pull requests are proposals:
+# no workflow runs on them; check them locally (`pnpm check`, and `pnpm release:check` before a release) before merging.
+# Actions are pinned to a commit SHA with the version in a comment; the version updates keep those pins current. Image updates
+# are version updates only: the image scan (release.yml, `pnpm release:check`) is the safety net for docker and docker-compose.
 version: 2
 updates:
   - package-ecosystem: npm # the pnpm workspace, including the catalog in pnpm-workspace.yaml
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 7 # wait a week after a release before proposing it (security updates are not delayed)
+    groups:
+      all:
+        applies-to: version-updates
+        patterns: ['*']
     commit-message:
       prefix: chore
       include: scope
   - package-ecosystem: github-actions
-    directories:
-      - /
-      - /.github/actions/* # the composite action that builds and scans the release images
+    directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
-      default-days: 7 # wait a week after a release before proposing it (security updates are not delayed)
+      default-days: 7
+    groups:
+      all:
+        applies-to: version-updates
+        patterns: ['*']
     commit-message:
       prefix: ci
       include: scope
@@ -27,18 +36,26 @@ updates:
     directories:
       - /docker/*
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
-      default-days: 7 # wait a week after a release before proposing it (security updates are not delayed)
+      default-days: 7
+    groups:
+      all:
+        applies-to: version-updates
+        patterns: ['*']
     commit-message:
       prefix: chore
       include: scope
   - package-ecosystem: docker-compose # docker/compose.yaml
     directory: /docker
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
-      default-days: 7 # wait a week after a release before proposing it (security updates are not delayed)
+      default-days: 7
+    groups:
+      all:
+        applies-to: version-updates
+        patterns: ['*']
     commit-message:
       prefix: chore
       include: scope

@@ -1,7 +1,7 @@
 // Checks on the files a user downloads and runs (docker/compose.yaml, docker/.env.example) that a build or a
 // type check cannot catch. The stack itself is proven by CI, which builds the images and runs `docker compose up`.
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,10 +19,11 @@ const envExample = read('docker/.env.example')
 const caddyfile = read('docker/proxy/Caddyfile')
 const readme = read('README.md')
 const composeBuild = read('docker/compose.build.yaml')
-const ciWorkflow = read('.github/workflows/ci.yml')
 const releaseWorkflow = read('.github/workflows/release.yml')
-const buildScanAction = read('.github/actions/build-scan-images/action.yml')
-const copyImagesScript = read('.github/scripts/copy-images.sh')
+const auditWorkflow = read('.github/workflows/audit.yml')
+const releaseCheck = read('scripts/release-check.sh')
+const exportImagesScript = read('scripts/export-images.sh')
+const publishImagesScript = read('scripts/publish-images.sh')
 const initScript = read('docker/postgres/10-init.sh')
 const postgresEntrypoint = read('docker/postgres/entrypoint.sh')
 const postgresDockerfile = read('docker/postgres/Dockerfile')
@@ -222,13 +223,13 @@ describe('docker/compose.yaml', () => {
     expect(compose.replace(mailpit, '')).not.toMatch(/^\s+mailpit:\n\s+condition:/m)
   })
 
-  it('builds mailpit here, on the official image that CI starts for the e-mail tests', () => {
+  it('builds mailpit here, on the official image that release:check starts for the e-mail tests', () => {
     expect(service('mailpit')).toContain('image: ghcr.io/toaweb-development/toascribe-mailpit:')
     expect(service('mailpit')).toContain('dockerfile: docker/mailpit/Dockerfile')
     const pattern = /axllent\/mailpit:v[0-9.]+@sha256:[0-9a-f]{64}/
     const inDockerfile = pattern.exec(mailpitDockerfile)?.[0]
     expect(inDockerfile).toBeDefined()
-    expect(ciWorkflow).toContain(String(inDockerfile))
+    expect(releaseCheck).toContain(String(inDockerfile))
   })
 
   it('needs no file from the repo at run time', () => {
@@ -516,122 +517,202 @@ describe('docker/postgres/entrypoint.sh', () => {
 })
 
 describe('the release workflow', () => {
-  const images = job(releaseWorkflow, 'images')
+  const build = job(releaseWorkflow, 'build')
+  const publish = job(releaseWorkflow, 'publish')
   const release = job(releaseWorkflow, 'release')
-  const plan = job(releaseWorkflow, 'plan')
-  const dryRun = job(ciWorkflow, 'release-dry-run')
+  const workflows = [releaseWorkflow, auditWorkflow]
 
-  it('gives packages: write to the job that publishes and to nothing else', () => {
-    expect(withoutComments(releaseWorkflow).match(/packages: write/g)).toHaveLength(1)
-    expect(images).toContain('packages: write')
-    expect(plan).not.toContain('write')
-    expect(release).not.toContain('packages:')
-    // Neither workflow-level permissions nor a pull request run can write packages.
-    expect(releaseWorkflow).toMatch(/^permissions:\n {2}contents: read\n/m)
-    expect(ciWorkflow).toMatch(/^permissions:\n {2}contents: read\n/m)
-    expect(withoutComments(ciWorkflow)).not.toContain('write')
-    expect(withoutComments(buildScanAction)).not.toContain('write')
-    expect(releaseWorkflow).not.toMatch(/^on:[\s\S]*pull_request/m)
-  })
-
-  it('gives contents: write to the tag and release job only', () => {
-    expect(withoutComments(releaseWorkflow).match(/contents: write/g)).toHaveLength(1)
-    expect(release).toContain('contents: write')
-    expect(release).not.toContain('uses: docker/')
-  })
-
-  it('tags only after the images are published, and only when the tag does not exist', () => {
-    expect(release).toMatch(/needs: \[plan, images\]/)
-    expect(release).toContain("needs.plan.outputs.real == 'true'")
-    expect(plan).toContain('git rev-parse -q --verify "refs/tags/${tag}"')
-    expect(images).toContain("if: needs.plan.outputs.publish == 'true'")
-    expect(release).toContain("needs.plan.outputs.publish == 'true'")
-  })
-
-  it('scans before the login, and logs in and pushes only in a real run', () => {
-    const scan = images.indexOf('uses: ./.github/actions/build-scan-images')
-    const login = images.indexOf('uses: docker/login-action@')
-    const push = images.indexOf('copy-images.sh localhost:5000/toaweb-development ghcr.io/toaweb-development')
-    expect(scan).toBeGreaterThan(-1)
-    expect(login).toBeGreaterThan(scan)
-    expect(push).toBeGreaterThan(login)
-    for (const at of [login, push]) {
-      expect(images.slice(images.lastIndexOf('- name:', at), at + 200)).toContain(
-        "if: needs.plan.outputs.real == 'true'",
-      )
+  it('runs on a v* tag and on a manual run with a tag, never on a branch push or a pull request', () => {
+    expect(releaseWorkflow).toMatch(/^on:\n {2}push:\n {4}tags: \['v\*'\]\n {2}workflow_dispatch:\n/m)
+    expect(releaseWorkflow).toMatch(/inputs:\n\s+tag:\n/)
+    for (const workflow of workflows) {
+      expect(withoutComments(workflow)).not.toMatch(/^\s+branches:/m)
+      expect(withoutComments(workflow)).not.toMatch(/pull_request|workflow_run|workflow_call/)
     }
-    // The login is the only step that sees the token.
+    expect(auditWorkflow).toMatch(/^on:\n {2}schedule:\n[^\n]+\n {2}workflow_dispatch:\n\n/m)
+  })
+
+  it('has no other workflows: the checks before a tag are local', () => {
+    const dir = fileURLToPath(new URL('.github/workflows/', ROOT))
+    expect(readdirSync(dir).sort()).toEqual(['audit.yml', 'release.yml'])
+  })
+
+  it('runs every job on GitHub runners, written out, never a self-hosted runner variable', () => {
+    for (const workflow of workflows) {
+      const runsOn = [...workflow.matchAll(/^\s+runs-on: (.+)$/gm)].map((match) => match[1])
+      expect(runsOn.length).toBeGreaterThan(0)
+      for (const value of runsOn) expect(value?.split(' #')[0]).toBe('ubuntu-latest')
+      expect(withoutComments(workflow)).not.toContain('vars.')
+      expect(withoutComments(workflow)).not.toContain('self-hosted')
+    }
+  })
+
+  it('gives packages: write to publish only and contents: write to release only', () => {
+    expect(releaseWorkflow).toMatch(/^permissions:\n {2}contents: read\n/m)
+    expect(auditWorkflow).toMatch(/^permissions:\n {2}contents: read\n/m)
+    expect(withoutComments(releaseWorkflow).match(/packages: write/g)).toHaveLength(1)
+    expect(withoutComments(releaseWorkflow).match(/contents: write/g)).toHaveLength(1)
+    expect(withoutComments(auditWorkflow)).not.toContain('write')
+    expect(publish).toContain('packages: write')
+    expect(release).toContain('contents: write')
+    expect(withoutComments(build)).not.toContain('write')
+  })
+
+  it('runs no third-party code where a token can write', () => {
+    for (const text of [publish, release]) {
+      const uses = [...text.matchAll(/^\s+(?:- )?uses: (\S+)/gm)].map((match) => match[1] ?? '')
+      for (const action of uses) expect(action).toMatch(/^actions\/(checkout|download-artifact)@[0-9a-f]{40}$/)
+      expect(text).not.toMatch(/pnpm|npm |npx|docker (run|build|compose)|bake/)
+    }
+    // The only step that sees the package token is the login, through env and standard input.
     expect(releaseWorkflow.match(/secrets\.GITHUB_TOKEN/g)).toHaveLength(1)
+    expect(publish).toContain('docker login ghcr.io --username "${ACTOR}" --password-stdin')
   })
 
-  it('cannot be a real run off main, and a dry run is the default of a manual run', () => {
-    expect(releaseWorkflow).toMatch(/push:\n\s+description: [^\n]+\n\s+type: boolean\n\s+default: false/)
-    expect(plan).toContain('"${REF}" != refs/heads/main')
+  it('checks the tag before it builds, and checks out the tag', () => {
+    expect(build).toContain('^v[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?$')
+    expect(build).toContain('ref: refs/tags/${{ steps.tag.outputs.tag }}')
+    expect(build).toContain('VERSION_FILE: package.json')
+    expect(build.indexOf('scripts/check-release-tag.sh')).toBeGreaterThan(-1)
+    expect(build.indexOf('scripts/check-release-tag.sh')).toBeLessThan(build.indexOf('uses: docker/'))
   })
 
-  it('does not leave the token in the checkout of the job that runs third-party code', () => {
-    expect(images).toMatch(/actions\/checkout@[0-9a-f]{40} # v[0-9.]+\n\s+with:\n\s+persist-credentials: false/)
-    expect(plan).toContain('persist-credentials: false')
+  it('scans every image by the digest in the layout before the artifact is uploaded', () => {
+    expect(build).toContain('TOASCRIBE_REGISTRY: localhost:5000/toaweb-development')
+    expect(build).toContain('*.attest=type=provenance,mode=max')
+    expect(build).toContain('*.attest=type=sbom')
+    expect(build).toMatch(/registry:3\.\d+\.\d+@sha256:[0-9a-f]{64}/)
+    const exported = build.indexOf('scripts/export-images.sh localhost:5000/toaweb-development')
+    const upload = build.indexOf('uses: actions/upload-artifact@')
+    for (const name of ['api', 'site', 'admin', 'proxy', 'postgres', 'mailpit']) {
+      const scan = build.indexOf(
+        `image-ref: localhost:5000/toaweb-development/toascribe-${name}@\${{ fromJSON(steps.export.outputs.digests).${name} }}`,
+      )
+      expect(scan, name).toBeGreaterThan(exported)
+      expect(scan, name).toBeLessThan(upload)
+      expect(exportImagesScript).toContain(name)
+      expect(publishImagesScript).toContain(name)
+    }
+  })
+
+  it('scans with the same rules here and in release:check', () => {
+    const rules = [
+      ...build.matchAll(/scanners: (\S+)\n\s+severity: (\S+)\n\s+ignore-unfixed: (\S+)\n\s+exit-code: '(\d)'/g),
+    ]
+    expect(rules).toHaveLength(6)
+    for (const rule of rules) expect(rule.slice(1).join('|')).toBe('vuln|CRITICAL,HIGH|true|1')
+    expect(releaseCheck).toContain('--scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1')
+  })
+
+  it('hands the scanned images to publish by artifact id and digests, and publish checks both', () => {
+    expect(build).toContain('artifact-id: ${{ steps.upload.outputs.artifact-id }}')
+    expect(build).toContain('digests: ${{ steps.export.outputs.digests }}')
+    expect(publish).toContain('needs: build')
+    expect(publish).toContain('artifact-ids: ${{ needs.build.outputs.artifact-id }}')
+    expect(publish).not.toMatch(/^\s+name: images/m)
+    expect(publish).toContain('digest-mismatch: error')
+    expect(publish).toContain('DIGESTS: ${{ needs.build.outputs.digests }}')
+    expect(publish).toContain(
+      'scripts/publish-images.sh "${RUNNER_TEMP}/images" ghcr.io/toaweb-development "${VERSION}" "sha-${SHA::7}" "${DIGESTS}"',
+    )
+    expect(publish).toContain('ref: ${{ needs.build.outputs.sha }}')
+  })
+
+  it('copies by digest, checks the layout and the target, and never overwrites a version', () => {
+    expect(exportImagesScript).toContain('"${source_prefix}/toascribe-${name}@${digest}"')
+    expect(exportImagesScript).toContain('"${got}" != "${digest}"')
+    expect(publishImagesScript).toContain('^sha256:[0-9a-f]{64}$')
+    expect(publishImagesScript).toContain('"${in_layout}" != "${want}"')
+    expect(publishImagesScript).toContain('"oci-layout://${layout}@${want}"')
+    expect(publishImagesScript).toContain('"${got}" != "${want}"')
+    expect(publishImagesScript).toContain('not overwritten')
+    for (const script of [exportImagesScript, publishImagesScript]) {
+      expect(script).not.toMatch(/docker (buildx )?(build|bake)\b/)
+    }
+  })
+
+  it('makes the GitHub Release after the images, not for an -rc tag, with the CHANGELOG section', () => {
+    expect(release).toContain('needs: [build, publish]')
+    expect(release).toContain("if: ${{ !contains(needs.build.outputs.tag, '-rc.') }}")
+    expect(release).toContain('scripts/release-notes.sh "${TAG}"')
+    expect(release).toContain('gh release create "${TAG}" --verify-tag')
+  })
+
+  it('does not leave the token in a checkout', () => {
+    for (const workflow of workflows) {
+      const checkouts = [
+        ...workflow.matchAll(/uses: actions\/checkout@[0-9a-f]{40} # v[0-9.]+\n\s+with:\n((?:\s+[a-z-]+: .+\n)+)/g),
+      ]
+      expect(checkouts.length).toBe(workflow.match(/uses: actions\/checkout@/g)?.length)
+      for (const checkout of checkouts) expect(checkout[1]).toContain('persist-credentials: false')
+    }
   })
 
   it('takes event values through env, never inline in a script', () => {
-    for (const workflow of [releaseWorkflow, buildScanAction, job(ciWorkflow, 'release-dry-run')]) {
-      const scripts = runScripts(workflow)
-      expect(scripts.length).toBeGreaterThan(0)
-      for (const script of scripts) expect(script).not.toContain('${{')
+    for (const workflow of workflows) {
+      for (const script of runScripts(workflow)) expect(script).not.toContain('${{')
+      for (const line of workflow.matchAll(/^\s+(?:- )?run: (?!\|)(.+)$/gm)) expect(line[1]).not.toContain('${{')
     }
   })
 
-  it('pins every third-party action to a commit SHA', () => {
-    for (const workflow of [releaseWorkflow, ciWorkflow, buildScanAction]) {
-      const uses = [...workflow.matchAll(/^\s+(?:- )?uses: (\S+)/gm)].map((match) => match[1] ?? '')
+  it('pins every third-party action to a commit SHA with its version', () => {
+    for (const workflow of workflows) {
+      const uses = [...workflow.matchAll(/^\s+(?:- )?uses: (\S+)(.*)$/gm)]
       expect(uses.length).toBeGreaterThan(0)
-      for (const action of uses) {
-        if (action.startsWith('./')) continue
+      for (const [, action, comment] of uses) {
         expect(action).toMatch(/^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/)
+        expect(comment).toMatch(/^ # v\d+\.\d+\.\d+$/)
       }
     }
   })
+})
 
-  it('builds all six images with provenance and SBOM into the local registry and scans each one there', () => {
-    expect(buildScanAction).toContain('TOASCRIBE_REGISTRY: localhost:5000/toaweb-development')
-    expect(buildScanAction).toContain('*.attest=type=provenance,mode=max')
-    expect(buildScanAction).toContain('*.attest=type=sbom')
-    expect(buildScanAction).toMatch(/driver-opts: network=host/)
-    expect(buildScanAction).toMatch(/registry:3\.\d+\.\d+@sha256:[0-9a-f]{64}/)
-    expect(buildScanAction).not.toContain('login-action')
-    for (const name of ['api', 'site', 'admin', 'proxy', 'postgres', 'mailpit']) {
-      expect(buildScanAction).toContain(`image-ref: localhost:5000/toaweb-development/toascribe-${name}:`)
-      expect(copyImagesScript).toContain(name)
+describe('the local release gate', () => {
+  it('is one command', () => {
+    const scripts = (JSON.parse(read('package.json')) as { scripts: Record<string, string> }).scripts
+    expect(scripts['release:check']).toBe('scripts/release-check.sh')
+  })
+
+  it('does everything the old CI did', () => {
+    for (const part of [
+      'actionlint',
+      'scripts/audit.sh',
+      'TEST_DATABASE_URL=',
+      'MAILPIT_URL=',
+      'pnpm check',
+      'docker buildx bake',
+      "--set '*.attest=type=provenance,mode=max' --set '*.attest=type=sbom'",
+      'scripts/export-images.sh',
+      'trivy image',
+      'scan "${valkey_image}"',
+      'scripts/check-routes.sh before',
+      'toa core install',
+      '--admin-password-stdin',
+      'scripts/check-routes.sh after',
+      'scripts/publish-images.sh',
+      'apps/admin/e2e/stack.sh up',
+      'pnpm test:e2e',
+    ]) {
+      expect(releaseCheck, part).toContain(part)
     }
   })
 
-  it('scans with the rules of the image gate in ci.yml', () => {
-    const rules = (text: string) =>
-      [...text.matchAll(/scanners: (\S+)\n\s+severity: (\S+)\n\s+ignore-unfixed: (\S+)\n\s+exit-code: '(\d)'/g)].map(
-        (match) => match.slice(1).join('|'),
-      )
-    const fromCi = rules(job(ciWorkflow, 'images'))
-    const fromRelease = rules(buildScanAction)
-    expect(fromRelease).toHaveLength(6)
-    expect(fromCi.length).toBeGreaterThanOrEqual(6)
-    for (const rule of [...fromCi, ...fromRelease]) expect(rule).toBe('vuln|CRITICAL,HIGH|true|1')
+  it('fails clearly without trivy or actionlint, and checks only what is committed', () => {
+    expect(releaseCheck).toMatch(/for tool in [^\n]*\btrivy\b[^\n]*\bactionlint\b/)
+    expect(releaseCheck).toContain('git status --porcelain')
+    expect(releaseCheck).toContain('trap cleanup EXIT')
   })
 
-  it('has a dry run on every pull request that uses the same action and script, and has no login', () => {
-    expect(dryRun).toContain('uses: ./.github/actions/build-scan-images')
-    expect(dryRun).toContain(
-      '.github/scripts/copy-images.sh localhost:5000/toaweb-development localhost:5001/toaweb-development',
-    )
-    expect(dryRun).not.toContain('login-action')
-    expect(dryRun).not.toContain('ghcr.io')
-    expect(ciWorkflow).toMatch(/^on:\n {2}pull_request:\n/m)
+  it('scans valkey at the digest compose.yaml runs', () => {
+    const inCompose = /valkey\/valkey:[^\s@]+@sha256:[0-9a-f]{64}/.exec(compose)?.[0]
+    expect(inCompose).toBeDefined()
+    expect(releaseCheck).toContain(`valkey_image='${String(inCompose)}'`)
   })
 
-  it('copies the manifest list as it is and stops if a digest changes', () => {
-    expect(copyImagesScript).toContain('docker buildx imagetools create')
-    expect(copyImagesScript).toContain('"${got}" != "${want}"')
-    expect(copyImagesScript).toContain('not overwritten')
-    expect(copyImagesScript).not.toMatch(/docker (buildx )?build\b/)
+  it('pins trivy and actionlint by version and sha256', () => {
+    const install = read('scripts/install-tools.sh')
+    expect(install).toMatch(/^TRIVY_VERSION=\d+\.\d+\.\d+\nTRIVY_SHA256=[0-9a-f]{64}$/m)
+    expect(install).toMatch(/^ACTIONLINT_VERSION=\d+\.\d+\.\d+\nACTIONLINT_SHA256=[0-9a-f]{64}$/m)
+    expect(install).toContain('sha256sum --check')
   })
 })

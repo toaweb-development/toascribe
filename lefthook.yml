@@ -11,7 +11,12 @@ pre-commit:
     lint-and-typecheck:
       run: pnpm lint && pnpm typecheck
 
+# The local gate before a push (GIT_STANDARD_2026): push is only a backup and starts no workflow, so `pnpm check` runs here.
+# protect-main.sh refuses a force push to main, deleting main, and moving or deleting a v* tag.
 pre-push:
+  commands:
+    check:
+      run: pnpm check # format check, lint, typecheck, full test suite, build
   scripts:
     'protect-main.sh':
       runner: bash
