@@ -11,6 +11,21 @@ export const ADMIN_COLOR_SCHEMES = ['default', 'light', 'midnight', 'ocean'] as 
 export const AdminColorScheme = z.enum(ADMIN_COLOR_SCHEMES)
 export type AdminColorScheme = z.infer<typeof AdminColorScheme>
 
+/** The columns of a content list that «Skjermalternativer» can hide (K-037). The title is always shown. */
+export const CONTENT_LIST_COLUMNS = ['author', 'date'] as const
+export const ContentListColumn = z.enum(CONTENT_LIST_COLUMNS)
+export type ContentListColumn = z.infer<typeof ContentListColumn>
+
+/** «Skjermalternativer» of one list screen (WordPress' `manageedit-postcolumnshidden` and `edit_post_per_page`). */
+export const ListScreenOptions = z.strictObject({
+  hiddenColumns: z.array(ContentListColumn).max(CONTENT_LIST_COLUMNS.length),
+  /** WordPress' default is 20; the API gives at most 100 a page. */
+  perPage: z.int().min(1).max(100),
+})
+export type ListScreenOptions = z.infer<typeof ListScreenOptions>
+
+export const DEFAULT_LIST_SCREEN_OPTIONS: ListScreenOptions = { hiddenColumns: [], perPage: 20 }
+
 /** The preferences of an account, every key filled in. */
 export const Preferences = z.object({
   adminColorScheme: AdminColorScheme,
@@ -18,6 +33,10 @@ export const Preferences = z.object({
   showToolbarOnSite: z.boolean(),
   /** The dashboard's welcome panel has been dismissed («Avvis»). */
   dismissedWelcome: z.boolean(),
+  /** «Skjermalternativer» of «Alle innlegg». */
+  postsScreen: ListScreenOptions,
+  /** «Skjermalternativer» of «Alle sider». */
+  pagesScreen: ListScreenOptions,
 })
 export type Preferences = z.infer<typeof Preferences>
 
@@ -26,6 +45,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   adminColorScheme: 'default',
   showToolbarOnSite: true,
   dismissedWelcome: false,
+  postsScreen: DEFAULT_LIST_SCREEN_OPTIONS,
+  pagesScreen: DEFAULT_LIST_SCREEN_OPTIONS,
 }
 
 /** PATCH /me/preferences: any of the preferences, at least one. An unknown key or value is a 400. */
@@ -34,6 +55,8 @@ export const UpdatePreferencesRequest = z
     adminColorScheme: Preferences.shape.adminColorScheme,
     showToolbarOnSite: Preferences.shape.showToolbarOnSite,
     dismissedWelcome: Preferences.shape.dismissedWelcome,
+    postsScreen: Preferences.shape.postsScreen,
+    pagesScreen: Preferences.shape.pagesScreen,
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one field' })

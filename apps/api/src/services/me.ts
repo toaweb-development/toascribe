@@ -53,6 +53,8 @@ export function readPreferences(stored: unknown): Preferences {
     dismissedWelcome: field.dismissedWelcome
       .catch(DEFAULT_PREFERENCES.dismissedWelcome)
       .parse(source['dismissedWelcome']),
+    postsScreen: field.postsScreen.catch(DEFAULT_PREFERENCES.postsScreen).parse(source['postsScreen']),
+    pagesScreen: field.pagesScreen.catch(DEFAULT_PREFERENCES.pagesScreen).parse(source['pagesScreen']),
   }
 }
 

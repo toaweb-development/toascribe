@@ -1,4 +1,5 @@
 import type { MeResponse } from '@toascribe/shared'
+import { DEFAULT_PREFERENCES } from '@toascribe/shared'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -45,7 +46,7 @@ function account(profile: Partial<MeResponse['profile']> = {}): MeResponse {
       displayNameChoice: 'username',
       ...profile,
     },
-    preferences: { adminColorScheme: 'default', showToolbarOnSite: true, dismissedWelcome: false },
+    preferences: DEFAULT_PREFERENCES,
     pendingEmail: null,
   }
 }
