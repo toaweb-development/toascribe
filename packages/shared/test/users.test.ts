@@ -18,20 +18,20 @@ describe('UserListQuery', () => {
       orderby: 'username',
       order: 'asc',
       page: 1,
-      perPage: USERS_DEFAULT_PER_PAGE,
+      per_page: USERS_DEFAULT_PER_PAGE,
     })
     expect(USERS_DEFAULT_PER_PAGE).toBe(20)
   })
 
   it('reads the numbers from the query string and trims the search', () => {
     expect(
-      UserListQuery.parse({ search: '  kari  ', page: '3', perPage: '50', orderby: 'registered', order: 'desc' }),
+      UserListQuery.parse({ search: '  kari  ', page: '3', per_page: '50', orderby: 'registered', order: 'desc' }),
     ).toEqual({
       search: 'kari',
       orderby: 'registered',
       order: 'desc',
       page: 3,
-      perPage: 50,
+      per_page: 50,
     })
   })
 
@@ -41,8 +41,8 @@ describe('UserListQuery', () => {
   })
 
   it.each([
-    { perPage: String(USERS_MAX_PER_PAGE + 1) },
-    { perPage: '0' },
+    { per_page: String(USERS_MAX_PER_PAGE + 1) },
+    { per_page: '0' },
     { page: '0' },
     { page: '1.5' },
     { page: 'x' },
