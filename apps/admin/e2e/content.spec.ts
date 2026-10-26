@@ -81,9 +81,9 @@ test('make a post in the editor and save it as a draft; quick edit and publish i
   await expect(page.getByText(`${published} — Kladd`).filter({ visible: true })).toHaveCount(0)
 
   // To the trash, and back.
-  await page.getByRole('button', { name: `Flytt «${published}» til papirkurven` }).click()
+  await page.getByRole('button', { name: `Papirkurv «${published}»` }).click()
   await expect(page.getByText('1 element flyttet til papirkurven.').filter({ visible: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: `Flytt «${published}» til papirkurven` })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: `Papirkurv «${published}»` })).toHaveCount(0)
   await page
     .getByRole('navigation', { name: 'Innlegg etter status' })
     .getByRole('link', { name: /^Papirkurv \(\d+\)$/ })
@@ -120,7 +120,7 @@ test('a bulk action moves the ticked posts to the trash, and the trash is emptie
 
   // In the trash: delete one of them for good, after the question.
   await page.goto(`/admin/posts?status=trash&search=${word}`)
-  await page.getByRole('button', { name: `Slett «${first}» permanent` }).click()
+  await page.getByRole('button', { name: `Slett permanent «${first}»` }).click()
   const confirm = page.getByRole('dialog', { name: 'Slette permanent?' })
   await expect(confirm).toBeVisible()
   await confirm.getByRole('button', { name: 'Slett permanent' }).click()

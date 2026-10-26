@@ -41,11 +41,38 @@ function fill(item: MediaItem): void {
   })
 }
 
-async function load(): Promise<void> {
+// While the worker makes the sizes (or the edited picture), the window asks again every two seconds, for at most two minutes, so the
+// person sees the file become ready; the fields they are typing in are filled again only when nothing was changed in them.
+const POLL_MS = 2000
+const POLL_LIMIT = 60
+let polls = 0
+let timer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => clearTimeout(timer))
+
+function untouched(item: MediaItem): boolean {
+  return (
+    form.fileTitle === item.title &&
+    form.alt === item.alt &&
+    form.caption === item.caption &&
+    form.about === item.description &&
+    form.visibility === item.visibility &&
+    form.folder === (item.folderId ?? 'none')
+  )
+}
+
+async function load(poll = false): Promise<void> {
   loadError.value = undefined
+  if (!poll) polls = 0
   try {
-    detail.value = await mediaApi.get(props.id)
-    fill(detail.value)
+    const before = detail.value
+    const next = await mediaApi.get(props.id)
+    if (before === undefined || !poll || untouched(before)) fill(next)
+    detail.value = next
+    clearTimeout(timer)
+    if (import.meta.client && next.processing === 'pending' && polls < POLL_LIMIT) {
+      polls += 1
+      timer = setTimeout(() => void load(true), POLL_MS)
+    }
   } catch (caught) {
     loadError.value = errorText(caught)
   }
@@ -250,9 +277,7 @@ const facts = computed(() => {
           <!-- eslint-enable vue/html-self-closing -->
           <div v-else class="flex items-center gap-3 rounded-md border border-default p-6">
             <UIcon name="i-lucide-file" class="size-10 text-muted" />
-            <a :href="item.url" class="text-primary underline-offset-4 hover:underline wrap-anywhere">{{
-              item.fileName
-            }}</a>
+            <a :href="item.url" class="text-primary underline underline-offset-4 wrap-anywhere">{{ item.fileName }}</a>
           </div>
           <p v-if="processingLabel($t, item.processing)" class="text-sm text-warning" role="status">
             {{ processingLabel($t, item.processing) }}
@@ -316,7 +341,7 @@ const facts = computed(() => {
             <h3 :id="`${uid}-used`" class="font-semibold text-highlighted">{{ $t('media.details.usedBy') }}</h3>
             <ul v-if="item.usedBy.length > 0" class="flex flex-col gap-1 text-sm">
               <li v-for="use in item.usedBy" :key="use.id">
-                <NuxtLink :to="usageLink(use)" class="text-primary underline-offset-4 hover:underline">{{
+                <NuxtLink :to="usageLink(use)" class="text-primary underline underline-offset-4">{{
                   titleOf($t, use.title)
                 }}</NuxtLink>
                 <span class="text-toned"> · {{ usageStatus($t, use.status) }}</span>

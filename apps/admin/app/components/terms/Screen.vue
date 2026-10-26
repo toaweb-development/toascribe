@@ -358,7 +358,7 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
                   </p>
                   <p class="text-sm text-toned wrap-anywhere">
                     {{ $t('terms.slug') }}: {{ term.slug }} ·
-                    <NuxtLink :to="postsLink(term)" class="text-primary underline-offset-4 hover:underline">
+                    <NuxtLink :to="postsLink(term)" class="text-primary underline underline-offset-4">
                       {{ $t('terms.countLabel', { n: term.count }, term.count) }}
                     </NuxtLink>
                   </p>

@@ -207,14 +207,7 @@ async function fromAddress(): Promise<void> {
         :name="`${uid}-url`"
       >
         <div class="flex flex-wrap gap-2">
-          <UInput
-            v-model="address"
-            type="url"
-            inputmode="url"
-            size="xl"
-            class="min-w-0 flex-1"
-            autocomplete="off"
-          />
+          <UInput v-model="address" type="url" inputmode="url" size="xl" class="min-w-0 flex-1" autocomplete="off" />
           <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11" :loading="fetching">
             {{ $t('media.upload.fetch') }}
           </UButton>

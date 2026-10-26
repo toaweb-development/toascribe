@@ -57,6 +57,28 @@ const { data: folderData, refresh: refreshFolders } = await useAsyncData(
 const folders = computed(() => folderData.value ?? [])
 const items = computed(() => data.value?.items ?? [])
 
+// A file whose sizes the worker is still making shows «Bildestørrelsene lages …»: the list asks again every three seconds while one is
+// shown, for at most two minutes, so the thumbnail appears without a reload.
+let polls = 0
+let timer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => clearTimeout(timer))
+watch(
+  items,
+  (rows) => {
+    clearTimeout(timer)
+    if (!import.meta.client) return
+    if (!rows.some((row) => row.processing === 'pending')) {
+      polls = 0
+      return
+    }
+    if (polls < 40) {
+      polls += 1
+      timer = setTimeout(() => void refresh(), 3000)
+    }
+  },
+  { immediate: true },
+)
+
 const groupItems = computed(() => [
   { value: ALL, label: t('media.filters.allTypes') },
   ...MEDIA_GROUPS.map((group) => ({ value: group, label: groupLabel(t, group) })),
@@ -218,9 +240,11 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
           class="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           :class="chosen === item.id ? 'border-primary ring-2 ring-primary' : 'border-default'"
           :aria-pressed="picker ? chosen === item.id : undefined"
-          :aria-label="labelOf(item)"
           @click="open(item)"
         >
+          <!-- The name is the file's title, then what the tile shows in words (WCAG 2.5.3: the visible text is part of the name). -->
+          <span v-if="item.group === 'image' && item.processing !== 'failed'" class="sr-only">{{ labelOf(item) }}</span>
+          <span v-else-if="labelOf(item) !== item.fileName" class="sr-only">{{ labelOf(item) }}</span>
           <!-- eslint-disable vue/html-self-closing -->
           <img
             v-if="item.group === 'image' && item.processing !== 'failed'"

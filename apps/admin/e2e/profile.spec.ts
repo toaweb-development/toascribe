@@ -62,7 +62,7 @@ test('the page has the sections of profile.php, in order, and no axe violations'
   ])
   await expect(page.getByRole('heading', { level: 3 })).toHaveText(['Nytt passord', 'Tofaktorautentisering', 'Økter'])
   await expect(page.getByText('Tofaktor er av.')).toBeVisible()
-  await expect(page.getByText('Du er bare logget inn her')).toBeVisible()
+  await expect(page.getByText('Du er bare innlogget herfra.')).toBeVisible()
   await expectNoAxeViolations(page, 'the profile page')
 })
 
@@ -386,7 +386,7 @@ test('two-factor required by the role: the last app cannot be removed', async ({
 
 test('sessions: a second browser appears, and «Logg ut alle andre steder» ends it', async ({ page, browser }) => {
   const user = await onProfile(page, 'subscriber', 'ses')
-  await expect(page.getByText('Du er bare logget inn her')).toBeVisible()
+  await expect(page.getByText('Du er bare innlogget herfra.')).toBeVisible()
   const other = await openSecondSession(browser, user)
 
   await page.reload()
@@ -409,7 +409,7 @@ test('sessions: a second browser appears, and «Logg ut alle andre steder» ends
   await page.getByRole('dialog').getByRole('button', { name: 'Logg ut alle andre steder' }).click()
   await expect(page.getByText('1 økt er avsluttet.')).toBeVisible()
   await expect(list.getByRole('listitem')).toHaveCount(1)
-  await expect(page.getByText('Du er bare logget inn her')).toBeVisible()
+  await expect(page.getByText('Du er bare innlogget herfra.')).toBeVisible()
   await expect(page.getByRole('heading', { level: 3, name: 'Økter' })).toBeFocused()
 
   // The other browser's next request is signed out.

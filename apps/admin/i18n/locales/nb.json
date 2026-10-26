@@ -872,13 +872,13 @@
       "quickEdit": "Hurtigrediger",
       "quickEditNamed": "Hurtigrediger «{title}»",
       "trash": "Papirkurv",
-      "trashNamed": "Flytt «{title}» til papirkurven",
+      "trashNamed": "Papirkurv «{title}»",
       "preview": "Forhåndsvis",
       "previewNamed": "Forhåndsvis «{title}»",
       "restore": "Gjenopprett",
       "restoreNamed": "Gjenopprett «{title}» fra papirkurven",
       "remove": "Slett permanent",
-      "removeNamed": "Slett «{title}» permanent"
+      "removeNamed": "Slett permanent «{title}»"
     },
     "bulk": {
       "label": "Massehandlinger",
