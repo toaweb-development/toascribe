@@ -183,6 +183,19 @@ describe('docker/compose.yaml', () => {
     }
   })
 
+  it('shares the uploads volume between the api and the worker only, with the same cap in the api and the proxy (M1.2)', () => {
+    for (const name of ['api', 'worker']) {
+      expect(service(name), name).toContain('- uploads:/var/lib/toascribe/uploads')
+      expect(service(name), name).toContain('UPLOADS_DIR: /var/lib/toascribe/uploads')
+    }
+    for (const name of ['proxy', 'site', 'admin', 'migrate', 'postgres']) {
+      expect(service(name), name).not.toContain('uploads:/')
+    }
+    expect(service('api')).toContain('UPLOAD_MAX_SIZE_MB: ${TOASCRIBE_UPLOAD_MAX_SIZE_MB:-64}')
+    expect(service('proxy')).toContain('TOASCRIBE_UPLOAD_MAX_SIZE_MB: ${TOASCRIBE_UPLOAD_MAX_SIZE_MB:-64}')
+    expect(compose).toMatch(/^volumes:\n(\s+.*\n)*\s+uploads: \{\}/m)
+  })
+
   it('gives the encryption keys and the public origin to the api and the worker, the same way', () => {
     for (const name of ['api', 'worker']) {
       const text = service(name)
@@ -359,8 +372,15 @@ describe('docker/proxy/Caddyfile', () => {
     // Every reverse_proxy replaces X-Real-IP with Caddy's own client_ip (the apps read that header only).
     const proxies = code.match(/reverse_proxy /g) ?? []
     const withHeader = code.match(/reverse_proxy \S+ \{\n\s*header_up X-Real-IP \{client_ip\}\n\s*\}/g) ?? []
-    expect(proxies).toHaveLength(3)
+    // The api (twice: the upload routes with their own body limit, and the rest), /uploads, the admin and the site.
+    expect(proxies).toHaveLength(5)
     expect(withHeader).toHaveLength(proxies.length)
+  })
+
+  it('limits the body of the two upload routes to TOASCRIBE_UPLOAD_MAX_SIZE_MB, and sends /uploads to the api (M1.2)', () => {
+    expect(caddyfile).toMatch(/path_regexp \^\/api\/v1\/media\(\/\[0-9a-fA-F-\]\{36\}\/replace\)\?\$/)
+    expect(caddyfile).toMatch(/max_size \{\$TOASCRIBE_UPLOAD_MAX_SIZE_MB:64\}MB/)
+    expect(caddyfile).toMatch(/handle \/uploads\/\* \{\n\s*reverse_proxy api:3001 \{/)
   })
 
   it('is documented to trust one address, never a network', () => {

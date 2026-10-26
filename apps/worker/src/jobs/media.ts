@@ -19,6 +19,9 @@ import { readSettings } from '../repositories/settings.ts'
 
 const { media } = schema
 
+// No cache of decoded images between jobs: each job is one image, and the memory is the worker's only limit.
+sharp.cache(false)
+
 /** WebP quality for the sizes (WordPress' default for WebP is 86; the house standard for photos 82). */
 export const WEBP_QUALITY = 82
 

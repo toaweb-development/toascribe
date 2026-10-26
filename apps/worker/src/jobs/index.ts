@@ -60,12 +60,12 @@ export async function registerJobs(boss: PgBoss, options: JobsOptions, logger: L
     })
     await boss.schedule(job.queue, job.cron, null, { tz: SCHEDULE_TIMEZONE })
   }
-  // Media: two images at a time (each decode holds up to the pixel limit in memory), and every five minutes a sweep that queues the
-  // images whose job was lost between the upload and the queue.
+  // Media: one image at a time (a decode holds up to the pixel limit in memory, and the worker has 1 GB), and every five minutes a
+  // sweep that queues the images whose job was lost between the upload and the queue.
   await boss.createQueue(MEDIA_QUEUE, MEDIA_QUEUE_OPTIONS)
   await boss.work(
     MEDIA_QUEUE,
-    { batchSize: 1, localConcurrency: 2, pollingIntervalSeconds: options.pollingSeconds ?? 2 },
+    { batchSize: 1, localConcurrency: 1, pollingIntervalSeconds: options.pollingSeconds ?? 2 },
     async ([job]) => {
       if (job !== undefined) {
         await runMediaJob(options.media, job.data)

@@ -31,6 +31,7 @@ const ITEM = {
   excerpt: '',
   blocks: [],
   blocksFormat: 'blocks',
+  media: [],
 }
 
 describe('the content query string', () => {

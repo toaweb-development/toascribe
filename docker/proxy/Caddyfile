@@ -140,7 +140,31 @@
 		redir * /admin 308
 	}
 
+	# The two routes that take a file (an upload and a replacement, M1.2) may send up to TOASCRIBE_UPLOAD_MAX_SIZE_MB, the whole
+	# form; the api has the same cap (UPLOAD_MAX_SIZE_MB) and its own 1 MB for every other body. Settings → Media can lower the
+	# limit in the api, not raise it.
+	@upload {
+		method POST
+		path_regexp ^/api/v1/media(/[0-9a-fA-F-]{36}/replace)?$
+	}
+	handle @upload {
+		request_body {
+			max_size {$TOASCRIBE_UPLOAD_MAX_SIZE_MB:64}MB
+		}
+		reverse_proxy api:3001 {
+			header_up X-Real-IP {client_ip}
+		}
+	}
+
 	handle /api/* {
+		reverse_proxy api:3001 {
+			header_up X-Real-IP {client_ip}
+		}
+	}
+
+	# The public files of the media library (M1.2): served by the api, which checks the key and the visibility (a private file is
+	# never served here) and sets the type, nosniff and the download header.
+	handle /uploads/* {
 		reverse_proxy api:3001 {
 			header_up X-Real-IP {client_ip}
 		}
