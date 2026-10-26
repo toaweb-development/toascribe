@@ -6,12 +6,16 @@ import type { Logger } from 'pino'
 
 import { CLEANUP_JOBS, CLEANUP_QUEUE_OPTIONS } from './cleanup.ts'
 import type { CleanupDeps } from './cleanup.ts'
+import { CONTENT_JOBS, CONTENT_SCHEDULER, SCHEDULER_QUEUE_OPTIONS } from './content.ts'
+import type { ContentJobDeps } from './content.ts'
 import { emailHandler } from './email.ts'
 import type { EmailJobDeps } from './email.ts'
 
 export interface JobsOptions {
   readonly email: EmailJobDeps
   readonly cleanup: CleanupDeps
+  /** The content scheduler and the trash purge (M1.1). */
+  readonly content: ContentJobDeps
   /** How often a worker looks for a new job, in seconds, on every queue. Default: 2 for mail (pg-boss's own), 30 for the clean-up. Tests set it low. */
   readonly pollingSeconds?: number
 }
@@ -43,8 +47,20 @@ export async function registerJobs(boss: PgBoss, options: JobsOptions, logger: L
     })
     await boss.schedule(job.queue, job.cron, null, { tz: SCHEDULE_TIMEZONE })
   }
+  // Content: the scheduler every minute and the trash purge at night. One worker per queue at a time; the statements themselves
+  // are safe on two workers at once (jobs/content.ts).
+  for (const job of CONTENT_JOBS) {
+    await boss.createQueue(job.queue, job.queue === CONTENT_SCHEDULER ? SCHEDULER_QUEUE_OPTIONS : CLEANUP_QUEUE_OPTIONS)
+    await boss.work(job.queue, { batchSize: 1, pollingIntervalSeconds: options.pollingSeconds ?? 10 }, async () => {
+      await job.run(options.content)
+    })
+    await boss.schedule(job.queue, job.cron, null, { tz: SCHEDULE_TIMEZONE })
+  }
   logger.info(
-    { queues: [EMAIL_QUEUE, ...CLEANUP_JOBS.map((job) => job.queue)], schedules: CLEANUP_JOBS.length },
+    {
+      queues: [EMAIL_QUEUE, ...CLEANUP_JOBS.map((job) => job.queue), ...CONTENT_JOBS.map((job) => job.queue)],
+      schedules: CLEANUP_JOBS.length + CONTENT_JOBS.length,
+    },
     'jobs registered',
   )
 }

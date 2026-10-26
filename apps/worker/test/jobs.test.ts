@@ -10,6 +10,7 @@ import { PgBoss } from 'pg-boss'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { CLEANUP_CREDENTIALS, CLEANUP_IP_RETENTION, CLEANUP_JOBS, CLEANUP_SPAM_COMMENTS } from '../src/jobs/cleanup.ts'
+import { CONTENT_JOBS, CONTENT_SCHEDULER } from '../src/jobs/content.ts'
 import { startWorker } from '../src/worker.ts'
 import type { Worker } from '../src/worker.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './helpers.ts'
@@ -65,14 +66,14 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('queues and schedules (needs TE
     await env.database.drop()
   })
 
-  it('schedules the three clean-up jobs daily at night (UTC), and a restart does not duplicate them', async () => {
+  it('schedules the clean-up jobs and the content jobs (UTC), and a restart does not duplicate them', async () => {
     const read = async () =>
       (await observer.getSchedules())
         .map((s) => ({ name: s.name, cron: s.cron, timezone: s.timezone }))
         .sort((a, b) => a.name.localeCompare(b.name))
-    const expected = CLEANUP_JOBS.map((job) => ({ name: job.queue, cron: job.cron, timezone: 'UTC' })).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    )
+    const expected = [...CLEANUP_JOBS, ...CONTENT_JOBS]
+      .map((job) => ({ name: job.queue, cron: job.cron, timezone: 'UTC' }))
+      .sort((a, b) => a.name.localeCompare(b.name))
     const first = await start()
     expect(await read()).toEqual(expected)
     await first.stop()
@@ -86,6 +87,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('queues and schedules (needs TE
     for (const job of CLEANUP_JOBS) {
       expect(job.cron).toMatch(/^\d{1,2} [0-4] \* \* \*$/)
     }
+    // The scheduler runs every minute (K-063); the trash purge daily.
+    expect(CONTENT_JOBS.find((job) => job.queue === CONTENT_SCHEDULER)?.cron).toBe('* * * * *')
   })
 
   it('creates the e-mail queue with the retry and expiry policy, and registers the clean-up queues', async () => {
@@ -101,9 +104,13 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('queues and schedules (needs TE
       deleteAfterSeconds: EMAIL_JOB_OPTIONS.deleteAfterSeconds,
       partition: false,
     })
-    for (const job of CLEANUP_JOBS) {
+    for (const job of [...CLEANUP_JOBS, ...CONTENT_JOBS]) {
       expect(queues.map((queue) => queue.name)).toContain(job.queue)
     }
+    expect(queues.find((queue) => queue.name === CONTENT_SCHEDULER)).toMatchObject({
+      policy: 'exclusive',
+      retryLimit: 0,
+    })
     expect(queues.every((queue) => queue.partition === false)).toBe(true)
   })
 

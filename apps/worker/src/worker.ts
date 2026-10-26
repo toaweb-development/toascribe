@@ -70,6 +70,7 @@ export async function startWorker(options: WorkerOptions): Promise<Worker> {
           ...(options.transport === undefined ? {} : { transport: options.transport }),
         },
         cleanup: { db: options.db, logger, ...(options.now === undefined ? {} : { now: options.now }) },
+        content: { db: options.db, logger, ...(options.now === undefined ? {} : { now: options.now }) },
         ...(options.pollingSeconds === undefined ? {} : { pollingSeconds: options.pollingSeconds }),
       },
       logger,
