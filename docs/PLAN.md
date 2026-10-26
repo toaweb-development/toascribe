@@ -229,7 +229,7 @@ Alle stier ligger under `/api/v1`. Ressurser følger mønsteret liste, opprett, 
 | Innlogging | `POST /auth/login`, `/auth/logout`, `/auth/register`, `/auth/mfa/verify`, `/auth/password/lost`, `/auth/password/reset`, `/auth/password/set`; `GET /auth/session`, `/auth/options` | – | 0 |
 | Meg | `GET/PATCH /me`, `PATCH /me/password`, `POST /me/email-change`, `/me/email-change/confirm`; `GET/DELETE /me/sessions`, `DELETE /me/sessions/{id}`; `GET /me/mfa`, `POST /me/mfa/totp`, `/me/mfa/totp/{id}/confirm`, `/me/mfa/recovery-codes`, `DELETE /me/mfa/{id}`; `/me/app-passwords`, `PATCH /me/preferences` | read; passord, e-post og tofaktor krever passordet på nytt | 0–1 |
 | Brukere og roller | `/users`, `POST /users/bulk`, `POST /users/{id}/reset-password`, `DELETE /users/{id}?reassign=`, `/roles` | list\_users, edit\_users, promote\_users | 0–1 |
-| Innhold | `/content?type=`, `POST /content/{id}/publish`, `/trash`, `/restore`, `/preview-link`, `POST /content/bulk`; `GET /content/{id}/revisions`, `PUT /content/{id}/autosave`, `GET/PUT/DELETE /content/{id}/draft`, `POST /content/{id}/lock` | edit\_posts, publish\_posts, edit\_others\_posts | 1–2 |
+| Innhold | `/content?type=`, `POST /content/{id}/publish`, `/trash`, `/restore`, `/preview-link`, `POST /content/bulk`, `GET /content/authors?type=`; `GET /content/{id}/revisions`, `PUT /content/{id}/autosave`, `GET/PUT/DELETE /content/{id}/draft`, `POST /content/{id}/lock` | edit\_posts, publish\_posts, edit\_others\_posts | 1–2 |
 | Innholdstyper og felter | `/content-types`, `/field-groups` | manage\_options | 2 |
 | Taxonomies | `/taxonomies`, `/taxonomies/{tax}/terms` | manage\_categories | 1 |
 | Media | `/media` (multipart), `POST /media/{id}/replace`, `/media/{id}/edit`, `/media/regenerate`, `/media-folders` | upload\_files | 1 |
@@ -595,6 +595,7 @@ blocks/bildegalleri/
 - Nettsted: tittel, logo, slagord, navigasjon, brødsmuler, søk, innloggings-/utloggingslenke
 - Innhold: innleggstittel, innleggsinnhold, utdrag, dato, forfatter, fremhevet bilde, kategorier og stikkord, kommentarer, paginering
 - Dynamisk: Query Loop, siste innlegg, arkiver, kategoriliste
+- Rekkefølge: M1.3 leverer avsnitt, overskrift, liste, sitat, bilde, knapper, kolonner, gruppe, skillelinje, mellomrom, kode, forhåndsformatert, tabell, egendefinert HTML og galleri. Innbygging kommer med oEmbed i M1.6; resten av lista og «Les mer», sideskift og fotnoter kommer i fase 2.
 
 **Mønstre og gjenbruk**
 
@@ -617,10 +618,13 @@ I WordPress må en blokk bære med seg alle gamle versjoner av markupen sin, ell
 **Regler for blokker**
 
 1. Attributter valideres mot skjemaet både i editoren og i backend før lagring.
-2. HTML i tekstattributter renses mot en tillatt liste (tilsvarer `kses`).
+2. Rik tekst lagres som JSON-noder (TipTap/ProseMirror), ikke som HTML. Skjemaet er selve tillatt-listen, så editoren og visningen trenger verken HTML-renser eller `v-html`; HTML lages bare ved visning og eksport. Bare blokken «Egendefinert HTML» har rå HTML, og den kan bare brukes av dem som har `unfiltered_html` (besluttet etter M0.6).
 3. `View.vue` skal rendres på serveren uten JavaScript; interaktivitet legges på etterpå (tilsvarer WordPress' Interactivity API).
 4. Blokker fra utvidelser vises med utvidelsens navn i innsetteren og forsvinner ikke stille hvis utvidelsen deaktiveres; de vises som en plassholder.
 5. Blokker skal være tilgjengelige: tastaturbruk i editoren og semantisk HTML i visningen.
+6. Plassering: skjemaet (block.json) og validering ligger i packages/blocks som rent TypeScript. Edit.vue ligger i admin, og visningskomponentene (View.vue) for kjerneblokkene i en egen pakke som nettstedet og temaene bruker. Et tema overstyrer visningen av en blokk med blocks/\<navn>/View.vue i sitt Nuxt-layer. Utvidelser leverer begge deler i sin frontend-del.
+7. Bilder fra andre adresser hentes inn i mediebiblioteket med safeFetch når de settes inn, som «Last opp fra URL». Innholdet peker aldri på eksterne bilder, og admin beholder img-src 'self'.
+8. Blokker kan flyttes inn i og ut av kolonner og grupper med tastaturet (Alt+Shift+pil), også på tvers av foreldre. Det går lenger enn Gutenberg.
 
 **Verktøy**: `toa block create <navn>` lager ny blokk i et tema eller en utvidelse, og en blokk-lekeplass i admin viser alle blokker med alle varianter for testing.
 
@@ -631,7 +635,7 @@ Editoren er et blokktre i en egen Vue-modell, der hver tekstblokk har sin egen T
 - Ekstra kjerneblokker: egendefinert HTML, klassisk (renset HTML fra import), «Les mer», sideskift, forhåndsformatert tekst og fotnoter.
 - WXR-import gjør Gutenberg-kommentarer om til blokker der typen er kjent, og legger resten i en klassisk blokk.
 - Innliming fra Word og Google Docs renses og gjøres om til blokker.
-- Rettigheten `unfiltered_html` har bare Administrator som standard, og administrator kan gi den til andre roller; alle andre får HTML renset. Det avviker fra WordPress, der også Redaktør har den.
+- Rettigheten `unfiltered_html` har bare Administrator som standard; administrator kan gi den til andre roller, og alle andre får HTML renset. Det avviker fra WordPress, der også Redaktør har den.
 
 **Egendefinerte felter (fase 2)**
 
@@ -1173,6 +1177,11 @@ Ingen åpne beslutninger står igjen. Nye spørsmål legges her før de får kod
 **Besluttet så langt**
 
 - Stacken er TypeScript hele veien: Nuxt 4, Hono på Node, Zod, Drizzle og pg-boss, etter toa-rules TYPESCRIPT\_STANDARD\_2026. Den erstatter FastAPI-planen, slik at kjerne og utvidelser deler språk, typer og runtime
+- Editor-modellen fra M0.6 beholdes (beslutningsnotat docs/decisions/0001-editor-model.md): blokktre i Vue med TipTap per tekstblokk og én historikk for hele dokumentet. Fase 1 er anslått til 30–43 arbeidsdager pluss 14 dagers drift; M1.3 er størst og mest usikker.
+- Bloggen i M1.8 får innhold skrevet for hånd i den nye editoren, som også er den beste testen av M1.3. Det lages ingen egen Markdown-import; WXR-import kommer i fase 2 for dem som flytter fra WordPress.
+- Utviklingen er local first: milepæler bygges, sjekkes og merges lokalt, og det pushes til GitHub bare når en versjon skal slippes. CI og release på GitHub er siste kontroll før publisering, ikke arbeidsflaten.
+- Media (M1.2): bildebehandling med sharp (libvips) bare i workeren. Standardstørrelser som WordPress (thumbnail 150×150 beskåret, medium 300, medium\_large 768, large 1024, 1536 og 2048, og originaler over 2560 skaleres ned), styrt fra Innstillinger → Media. Variantene lages som WebP, originalen beholdes. Bildeblokken lagrer mediaId; URL avledes ved visning, og gamle blokker oppgraderes med blokkens versjonsmigrering. Filene lagres på et lokalt volum bak et lagringsgrensesnitt; S3 kommer senere. Tillatte filtyper som WordPress' standardliste, uten SVG.
+- API-et bruker per\_page i alle lister, som WordPress' REST API.
 - Navnet er toascribe, med hjem på toascribe.dev. Det gamle Git-baserte toa-scribe for Hugo/Astro legges ned, og toascribe tar over navnet
 - Kjernen lisensieres under MIT, med en egen varemerkepolicy for navnet «toascribe»; temaer og utvidelser velger egen lisens som tillater bruk og endring
 - Jobbkøen ligger i PostgreSQL med pg-boss; jobber legges i samme transaksjon som endringen som utløser dem
