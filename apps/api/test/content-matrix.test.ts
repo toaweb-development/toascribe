@@ -22,6 +22,7 @@ type Fixture =
   | 'othersPrivate'
   | 'ownTrashed'
   | 'othersTrashed'
+  | 'othersTrashedPrivate'
 type Operation = 'get' | 'patch' | 'publish' | 'trash' | 'restore' | 'delete'
 
 /** Statuses in the order administrator, editor, author, contributor, subscriber. */
@@ -91,6 +92,12 @@ const POSTS: Readonly<Record<Fixture, Partial<Record<Operation, Row>>>> = {
     restore: [200, 200, 404, 404, 403],
     delete: [204, 204, 404, 404, 403],
   },
+  // Someone else's, trashed while private: the trash keeps it private (read_private_posts and edit_private_posts are needed).
+  othersTrashedPrivate: {
+    get: [200, 200, 404, 404, 403],
+    restore: [200, 200, 404, 404, 403],
+    delete: [204, 204, 404, 404, 403],
+  },
 }
 
 /** Pages: the author and the contributor have no edit_pages, so no page is theirs to see (404), their own included. */
@@ -143,6 +150,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('content rights matrix (needs T
       othersPrivate: ['private', null],
       ownTrashed: ['trash', 'draft'],
       othersTrashed: ['trash', 'publish'],
+      othersTrashedPrivate: ['trash', 'private'],
     }
     const [current, before] = status[kind]
     const published = current === 'publish' || before === 'publish' || current === 'private'
@@ -242,6 +250,21 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('content rights matrix (needs T
         [sees, accounts.get(role)?.id],
       )
       expect(body.counts.private, role).toBe(visible?.n)
+    }
+  })
+
+  it('keeps someone else’s private post out of the trash view without read_private_posts', async () => {
+    const id = await fixture('post', 'othersTrashedPrivate', 'contributor')
+    for (const [role, sees] of [
+      ['editor', true],
+      ['contributor', false],
+    ] as const) {
+      const res = await accounts.get(role)?.client.get('/api/v1/content?type=post&status=trash&per_page=100')
+      const body = (await res?.json()) as { items: { id: string }[] }
+      expect(
+        body.items.some((item) => item.id === id),
+        role,
+      ).toBe(sees)
     }
   })
 

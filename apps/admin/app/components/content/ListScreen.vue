@@ -253,8 +253,11 @@ async function runBulk(action: BulkAction | 'empty_trash', ids: string[], change
       action === 'empty_trash'
         ? await contentApi.bulk({ action, type: props.type })
         : action === 'edit'
-          ? await contentApi.bulk({ action, ids, changes: changes ?? { status: 'draft' } })
+          ? changes === undefined
+            ? undefined
+            : await contentApi.bulk({ action, ids, changes })
           : await contentApi.bulk({ action, ids })
+    if (response === undefined) return
     report.value = describeBulk(t, action, response)
     selected.value = selected.value.filter((id) => !response.changed.includes(id) && !response.unchanged.includes(id))
     bulkAction.value = ''

@@ -118,8 +118,15 @@ test.describe('the dashboard', () => {
     await signIn(page, user)
 
     const glance = page.getByRole('region', { name: 'I korte trekk' })
-    await expect(glance.getByText('1 innlegg')).toBeVisible()
-    await expect(glance.getByText('1 side', { exact: true })).toBeVisible()
+    // Other specs publish posts and pages in the same database (M1.1), so the counts are read as numbers, and they link to the lists.
+    await expect(glance.getByRole('link', { name: /^\d+ innlegg$/ })).toHaveAttribute(
+      'href',
+      '/admin/posts?status=publish',
+    )
+    await expect(glance.getByRole('link', { name: /^\d+ sider?$/ })).toHaveAttribute(
+      'href',
+      '/admin/pages?status=publish',
+    )
     await expect(glance.getByText('1 kommentar', { exact: true })).toBeVisible()
     await expect(glance.getByText('0 venter på godkjenning')).toBeVisible()
     await expect(glance.getByText(/^toascribe \d+\.\d+\.\d+/)).toBeVisible()

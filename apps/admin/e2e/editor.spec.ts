@@ -122,7 +122,7 @@ test('build a document with columns, an image and formatted text; undo and redo;
 
   // Save, reload: the same document.
   await page.getByRole('button', { name: 'Lagre utkast' }).click()
-  await expect(page.getByText('Lagret.')).toBeVisible()
+  await expect(page.getByText('Lagret.').first()).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/posts\/[0-9a-f-]{36}$/)
   const id = page.url().split('/').pop() ?? ''
   await page.reload()

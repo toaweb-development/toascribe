@@ -110,10 +110,12 @@ async function save(publish = false): Promise<void> {
       item.value === null
         ? await contentApi.create({ type: props.type, title: title.value, ...(blocks === undefined ? {} : { blocks }) })
         : await contentApi.update(item.value.id, { title: title.value, ...(blocks === undefined ? {} : { blocks }) })
+    // Kept at once: if the publish below fails, the next save changes this item instead of making a second one.
+    item.value = saved
     if (publish) {
       saved = await contentApi.publish(saved.id)
+      item.value = saved
     }
-    item.value = saved
     savedTitle.value = saved.title
     if (!legacy.value) editor.markSaved(document)
     toast.add({

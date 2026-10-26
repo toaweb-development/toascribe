@@ -125,10 +125,7 @@ export async function deleteContentPermanently<TSchema extends Record<string, un
   for (const child of children) {
     const scope = { type: child.type, locale: child.locale, parentId: item.parentId }
     const slug = await uniqueContentSlug(db, scope, child.slug, child.id)
-    await db
-      .update(content)
-      .set({ parentId: item.parentId, slug, modifiedAt: sql`now()` })
-      .where(eq(content.id, child.id))
+    await db.update(content).set({ parentId: item.parentId, slug }).where(eq(content.id, child.id))
   }
   await db.delete(content).where(eq(content.id, id))
   return { id: item.id, type: item.type, title: item.title, slug: item.slug }

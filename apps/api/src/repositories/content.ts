@@ -92,14 +92,16 @@ function isAuthor(accountId: string): SQL {
     where ${contentAuthor.contentId} = ${content.id} and ${contentAuthor.accountId} = ${accountId})`
 }
 
-/** The items of the type the account may see in a list: everything but someone else's private item without `read_private_*`. */
+/**
+ * The items of the type the account may see in a list: everything but someone else's private item without `read_private_*`, also
+ * once it is in the trash (a trashed item keeps the protection of the status it had).
+ */
 function visibleCondition(visibility: Visibility): SQL {
   const own = isAuthor(visibility.accountId)
+  const wasPrivate = sql`(${content.status} = 'private' or (${content.status} = 'trash' and ${content.statusBeforeTrash} = 'private'))`
   return (
-    and(
-      eq(content.type, visibility.type),
-      visibility.readPrivate ? undefined : or(ne(content.status, 'private'), own),
-    ) ?? sql`true`
+    and(eq(content.type, visibility.type), visibility.readPrivate ? undefined : or(sql`not ${wasPrivate}`, own)) ??
+    sql`true`
   )
 }
 
@@ -306,19 +308,26 @@ export async function findContent(
   return rows[0]
 }
 
-/** The ids of the parent chain of a page, from its parent up (for the cycle check). Stops after 100 levels. */
+/** Serialises the changes of parents in one page tree (type and language) until the end of the transaction. */
+export async function lockPageTree(db: Executor, type: string, locale: string): Promise<void> {
+  await db.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`toascribe:content-tree:${type}:${locale}`}, 0))`,
+  )
+}
+
+/** The ids of the parent chain of a page, from its parent up (for the cycle check). Stops after 10 000 levels. */
 export async function ancestorIds(db: Executor, id: string): Promise<string[]> {
   const result = await db.execute<{ id: string }>(sql`
     with recursive chain(id, parent_id, depth) as (
       select id, parent_id, 0 from content where id = ${id}
       union all
-      select c.id, c.parent_id, chain.depth + 1 from content c join chain on c.id = chain.parent_id where chain.depth < 100
+      select c.id, c.parent_id, chain.depth + 1 from content c join chain on c.id = chain.parent_id where chain.depth < 10000
     )
     select id from chain where depth > 0`)
   return result.rows.map((row) => row.id)
 }
 
-/** The accounts among `ids` and the capabilities their roles give them. An unknown id is not in the map. */
+/** The active accounts among `ids` and the capabilities their roles give them. An unknown or inactive id is not in the map. */
 export async function capabilitiesOf(db: Executor, ids: readonly string[]): Promise<Map<string, Set<string>>> {
   const found = new Map<string, Set<string>>()
   if (ids.length === 0) {
@@ -327,7 +336,7 @@ export async function capabilitiesOf(db: Executor, ids: readonly string[]): Prom
   const accounts = await db
     .select({ id: account.id })
     .from(account)
-    .where(inArray(account.id, [...ids]))
+    .where(and(inArray(account.id, [...ids]), eq(account.status, 'active')))
   for (const row of accounts) {
     found.set(row.id, new Set())
   }

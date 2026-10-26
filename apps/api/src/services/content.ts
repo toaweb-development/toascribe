@@ -59,6 +59,7 @@ import type { AccessItem, Actor } from '../lib/content-access.ts'
 import { AppError, ForbiddenError, InvalidBlocksError, NotFoundError } from '../lib/errors.ts'
 import {
   accountsWithCapability,
+  lockPageTree,
   ancestorIds,
   authorsOf,
   capabilitiesOf,
@@ -383,6 +384,11 @@ export function createContentService(options: {
     if (item.type !== 'page') {
       throw new AppError(400, 'invalid_parent', 'Only pages have a parent')
     }
+    if (item.id !== null) {
+      // One change of a page's parent at a time per type and language: two at once (A under B, B under A) would each pass the cycle
+      // check against the other's old place.
+      await lockPageTree(executor, item.type, item.locale)
+    }
     const parent = await findParentCandidate(executor, parentId)
     if (parent?.type !== item.type || parent.locale !== item.locale || parent.status === 'trash') {
       throw new AppError(400, 'invalid_parent', 'The parent must be a page in the same language, not in the trash')
@@ -515,9 +521,17 @@ export function createContentService(options: {
     const requestedStatus: SettableContentStatus = request.status ?? row.status
     const publishedAt = request.publishedAt === undefined ? row.publishedAt : (toDate(request.publishedAt) ?? null)
     const unpublishAt = request.unpublishAt === undefined ? row.unpublishAt : (toDate(request.unpublishAt) ?? null)
-    const schedule = resolveSchedule(requestedStatus, publishedAt, unpublishAt, now)
-
+    // The unpublish date is checked against the publish date (or now) only when it changes or the item is being published: a stored
+    // one that has passed on a draft must not block every later save of it.
+    const schedule = resolveSchedule(requestedStatus, publishedAt, null, now)
     const statusChanged = schedule.status !== row.status
+    if (
+      unpublishAt !== null &&
+      (request.unpublishAt !== undefined || (statusChanged && PUBLISHING.has(schedule.status)))
+    ) {
+      resolveSchedule(schedule.status, schedule.publishedAt, unpublishAt, now)
+    }
+
     const wasPublished = row.status === 'publish' || row.status === 'future'
     if (
       (statusChanged && PUBLISHING.has(schedule.status)) ||
@@ -534,7 +548,12 @@ export function createContentService(options: {
       if (!canEditOthersType(actor, type)) {
         throw new AppError(403, 'cannot_assign_authors', 'You may not choose the authors')
       }
-      await checkAuthors(tx, type, nextAuthors)
+      // Only the newly named authors are checked: an author who has since been disabled may stay where they were.
+      await checkAuthors(
+        tx,
+        type,
+        nextAuthors.filter((id) => !currentAuthors.includes(id)),
+      )
     }
 
     const parentId = request.parentId === undefined ? row.parentId : request.parentId
@@ -658,6 +677,10 @@ export function createContentService(options: {
       throw new AppError(409, 'not_trashed', 'The item is not in the trash')
     }
     const status = row.statusBeforeTrash ?? 'draft'
+    // Back to a publishing status is a publish like any other: it needs the publish capability.
+    if (PUBLISHING.has(status)) {
+      requirePublish(actor, row.type)
+    }
     const scope = { type: row.type, locale: row.locale, parentId: row.parentId }
     const slug = await uniqueContentSlug(tx, scope, untrashedSlug(row.slug) || String(row.shortId), row.id)
     await updateContent(tx, row.id, { status, statusBeforeTrash: null, slug }, clock())
@@ -860,7 +883,9 @@ export function createContentService(options: {
       const emptying = request.action === 'empty_trash'
       return inTransaction(db, async (tx) => {
         const result: ContentBulkResponse = { changed: [], unchanged: [], skipped: [] }
-        for (const id of ids) {
+        // In a fixed order, so two bulk requests over the same items lock them in the same order and cannot deadlock. The answer is
+        // put back in the request's order below.
+        for (const id of [...ids].sort()) {
           try {
             // A savepoint per item: one that is refused leaves the others' changes standing.
             const outcome = await tx.transaction((savepoint) => act(savepoint, id))
@@ -876,7 +901,13 @@ export function createContentService(options: {
             }
           }
         }
-        return result
+        const position = new Map(ids.map((id, index) => [id, index]))
+        const byRequest = (a: string, b: string) => (position.get(a) ?? 0) - (position.get(b) ?? 0)
+        return {
+          changed: result.changed.sort(byRequest),
+          unchanged: result.unchanged.sort(byRequest),
+          skipped: result.skipped.sort((a, b) => byRequest(a.id, b.id)),
+        }
       })
     },
   }

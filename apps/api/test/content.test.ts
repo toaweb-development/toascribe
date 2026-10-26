@@ -260,6 +260,42 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the content API (needs TEST_DA
       expect(await errorCode(await patch(editor, made.id, { authors: [subscriber.id] }))).toBe('invalid_author')
     })
 
+    it('lets a draft with an unpublish date that has passed still be saved', async () => {
+      const made = await create(editor, { title: 'Gammel avpublisering' })
+      await env.query(`update content set unpublish_at = now() - interval '1 day' where id = $1`, [made.id])
+      expect((await item(await patch(editor, made.id, { title: 'Fortsatt lagret' }))).title).toBe('Fortsatt lagret')
+      // Publishing it with that date in the past is refused.
+      expect(await errorCode(await patch(editor, made.id, { status: 'publish' }))).toBe('invalid_schedule')
+    })
+
+    it('needs the publish capability to restore an item to a publishing status', async () => {
+      // A role that may delete others' posts but not publish (not a built-in one; an administrator could make it).
+      await env.query(
+        `insert into role (slug, name, capabilities) values ('trash-keeper', 'Trash keeper',
+          array['read','edit_posts','edit_others_posts','edit_published_posts','delete_posts','delete_others_posts','delete_published_posts'])`,
+      )
+      const keeper = await env.createAccount({ username: 'c-keeper', role: null })
+      await env.query(
+        `insert into account_role (account_id, role_id) select $1, id from role where slug = 'trash-keeper'`,
+        [keeper.id],
+      )
+      const client = env.client()
+      expect((await client.login('c-keeper', TEST_PASSWORD)).status).toBe(200)
+      const published = await create(editor, { title: 'Publisert og kastet', status: 'publish' })
+      expect((await client.post(`/api/v1/content/${published.id}/trash`)).status).toBe(200)
+      const refused = await client.post(`/api/v1/content/${published.id}/restore`)
+      expect([refused.status, await errorCode(refused)]).toEqual([403, 'cannot_publish'])
+      const draft = await create(editor, { title: 'Utkast og kastet' })
+      expect((await client.post(`/api/v1/content/${draft.id}/trash`)).status).toBe(200)
+      expect((await client.post(`/api/v1/content/${draft.id}/restore`)).status).toBe(200)
+    })
+
+    it('refuses a disabled account as a new author', async () => {
+      const made = await create(editor, { title: 'Ikke aktiv' })
+      const disabled = await env.createAccount({ username: 'c-disabled', role: 'author', status: 'disabled' })
+      expect(await errorCode(await patch(editor, made.id, { authors: [disabled.id] }))).toBe('invalid_author')
+    })
+
     it('refuses a page as its own grandparent', async () => {
       const top = await create(editor, { type: 'page', title: 'Topp' })
       const middle = await create(editor, { type: 'page', title: 'Midt', parentId: top.id })

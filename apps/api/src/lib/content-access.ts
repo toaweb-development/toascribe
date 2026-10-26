@@ -37,6 +37,14 @@ export function typeCapabilities(type: ContentTypeKey) {
 
 const PUBLISHED: readonly string[] = ['publish', 'future']
 
+/**
+ * The status the rules look at for someone else's item: a trashed item keeps the protection of the status it had (Tor's rule «private
+ * stays private», stricter than WordPress, which treats a trashed item of someone else as a plain one).
+ */
+function effectiveStatus(item: AccessItem): ContentStatus {
+  return item.status === 'trash' && item.statusBeforeTrash !== null ? item.statusBeforeTrash : item.status
+}
+
 function isOwn(item: AccessItem, actor: Actor): boolean {
   return item.authorIds.includes(actor.id)
 }
@@ -74,10 +82,11 @@ export function canEdit(actor: Actor, item: AccessItem): boolean {
     return holdsAll(actor, [wasPublished ? caps.editPublished : caps.edit])
   }
   const needed: string[] = [caps.editOthers]
-  if (PUBLISHED.includes(item.status)) {
+  const status = effectiveStatus(item)
+  if (PUBLISHED.includes(status)) {
     needed.push(caps.editPublished)
-  } else if (item.status === 'private') {
-    needed.push(caps.editPrivate)
+  } else if (status === 'private') {
+    needed.push(caps.editPrivate, caps.readPrivate)
   }
   return holdsAll(actor, needed)
 }
@@ -92,10 +101,11 @@ export function canDelete(actor: Actor, item: AccessItem): boolean {
     return holdsAll(actor, [wasPublished ? caps.deletePublished : caps.delete])
   }
   const needed: string[] = [caps.deleteOthers]
-  if (PUBLISHED.includes(item.status)) {
+  const status = effectiveStatus(item)
+  if (PUBLISHED.includes(status)) {
     needed.push(caps.deletePublished)
-  } else if (item.status === 'private') {
-    needed.push(caps.deletePrivate)
+  } else if (status === 'private') {
+    needed.push(caps.deletePrivate, caps.readPrivate)
   }
   return holdsAll(actor, needed)
 }
@@ -114,6 +124,7 @@ export function canRead(actor: Actor, item: AccessItem): boolean {
   if (item.status === 'private') {
     return isOwn(item, actor) || actor.capabilities.has(typeCapabilities(item.type).readPrivate)
   }
+  // A draft, pending, scheduled or trashed item: whoever may edit it (for someone else's trashed item, by the status it had).
   return canEdit(actor, item)
 }
 

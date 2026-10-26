@@ -57,14 +57,14 @@ test('make a post in the editor and save it as a draft; quick edit and publish i
   await expect(page.getByRole('heading', { level: 1, name: 'Legg til nytt innlegg' })).toBeVisible()
   await page.getByLabel('Tittel').fill(title)
   await page.getByRole('button', { name: 'Lagre utkast' }).click()
-  await expect(page.getByText('Lagret.')).toBeVisible()
+  await expect(page.getByText('Lagret.').first()).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/posts\/[0-9a-f-]{36}$/)
-  await expect(page.getByText('Status: Utkast')).toBeVisible()
+  await expect(page.getByText('Status: Utkast').filter({ visible: true })).toBeVisible()
   await expectNoAxeViolations(page, 'the editor of a saved draft')
 
   // In the list, as a draft.
   await openList(page, 'posts', word)
-  await expect(page.getByText(`${title} — Utkast`)).toBeVisible()
+  await expect(page.getByText(`${title} — Utkast`).filter({ visible: true })).toBeVisible()
 
   // Quick edit: a new title and Publisert.
   await page.getByRole('button', { name: `Hurtigredigering «${title}»` }).click()
@@ -76,13 +76,13 @@ test('make a post in the editor and save it as a draft; quick edit and publish i
   await choose(page, 'Status', 'Publisert')
   await dialog.getByRole('button', { name: 'Oppdater' }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.getByText('Endringene er lagret.')).toBeVisible()
+  await expect(page.getByText('Endringene er lagret.').filter({ visible: true })).toBeVisible()
   await expect(page.getByRole('button', { name: `Hurtigredigering «${published}»` })).toBeVisible()
-  await expect(page.getByText(`${published} — Utkast`)).toHaveCount(0)
+  await expect(page.getByText(`${published} — Utkast`).filter({ visible: true })).toHaveCount(0)
 
   // To the trash, and back.
   await page.getByRole('button', { name: `Papirkurv «${published}»` }).click()
-  await expect(page.getByText('1 element flyttet til papirkurven.')).toBeVisible()
+  await expect(page.getByText('1 element flyttet til papirkurven.').filter({ visible: true })).toBeVisible()
   await expect(page.getByRole('button', { name: `Papirkurv «${published}»` })).toHaveCount(0)
   await page
     .getByRole('navigation', { name: 'Innlegg etter status' })
@@ -91,10 +91,10 @@ test('make a post in the editor and save it as a draft; quick edit and publish i
   await expect(page).toHaveURL(/status=trash/)
   await expectNoAxeViolations(page, 'the trash')
   await page.getByRole('button', { name: `Gjenopprett «${published}»` }).click()
-  await expect(page.getByText('1 element gjenopprettet fra papirkurven.')).toBeVisible()
+  await expect(page.getByText('1 element gjenopprettet fra papirkurven.').filter({ visible: true })).toBeVisible()
   await openList(page, 'posts', word)
   await expect(page.getByRole('button', { name: `Hurtigredigering «${published}»` })).toBeVisible()
-  await expect(page.getByText(`${published} — Utkast`)).toHaveCount(0)
+  await expect(page.getByText(`${published} — Utkast`).filter({ visible: true })).toHaveCount(0)
 })
 
 test('a bulk action moves the ticked posts to the trash, and the trash is emptied for good', async ({ page }) => {
@@ -108,14 +108,14 @@ test('a bulk action moves the ticked posts to the trash, and the trash is emptie
   await makeItem(page, { type: 'post', title: kept })
 
   await openList(page, 'posts', word)
-  await expect(page.getByText(/^3 elementer$/)).toBeVisible()
+  await expect(page.getByText(/^3 elementer$/).filter({ visible: true })).toBeVisible()
   await page.getByRole('checkbox', { name: `Velg «${first}»` }).check()
   await page.getByRole('checkbox', { name: `Velg «${second}»` }).check()
-  await expect(page.getByText('2 valgt')).toBeVisible()
+  await expect(page.getByText('2 valgt').filter({ visible: true })).toBeVisible()
   await choose(page, 'Massehandlinger', 'Flytt til papirkurven')
-  await page.getByRole('button', { name: 'Bruk' }).click()
-  await expect(page.getByText('2 elementer flyttet til papirkurven.')).toBeVisible()
-  await expect(page.getByText(/^1 element$/)).toBeVisible()
+  await page.getByRole('button', { name: 'Bruk', exact: true }).click()
+  await expect(page.getByText('2 elementer flyttet til papirkurven.').filter({ visible: true })).toBeVisible()
+  await expect(page.getByText(/^1 element$/).filter({ visible: true })).toBeVisible()
   await expect(page.getByRole('checkbox', { name: `Velg «${kept}»` })).toBeVisible()
 
   // In the trash: delete one of them for good, after the question.
@@ -124,7 +124,7 @@ test('a bulk action moves the ticked posts to the trash, and the trash is emptie
   const confirm = page.getByRole('dialog', { name: 'Slette permanent?' })
   await expect(confirm).toBeVisible()
   await confirm.getByRole('button', { name: 'Slett permanent' }).click()
-  await expect(page.getByText('1 element slettet permanent.')).toBeVisible()
+  await expect(page.getByText('1 element slettet permanent.').filter({ visible: true })).toBeVisible()
   await expect(page.getByRole('button', { name: `Gjenopprett «${second}»` })).toBeVisible()
   await expect(page.getByRole('button', { name: `Gjenopprett «${first}»` })).toHaveCount(0)
 })
@@ -154,7 +154,7 @@ test('a page under another page shows under it with «— », after a quick edit
   await expect(dialog).toBeHidden()
 
   // The tree: the child right after its parent, with a dash.
-  await expect(page.getByText(`— ${child}`)).toBeVisible()
+  await expect(page.getByText(`— ${child}`).filter({ visible: true })).toBeVisible()
   const titles = await page
     .getByRole((page.viewportSize()?.width ?? 1280) < 768 ? 'listitem' : 'row')
     .filter({ hasText: word })
@@ -174,7 +174,7 @@ test('screen options hide the author column and are kept with the account', asyn
   await expectNoAxeViolations(page, 'screen options')
   await dialog.getByRole('checkbox', { name: 'Forfatter' }).uncheck()
   await dialog.getByLabel('Antall elementer per side').fill('5')
-  await dialog.getByRole('button', { name: 'Bruk' }).click()
+  await dialog.getByRole('button', { name: 'Bruk', exact: true }).click()
   await expect(dialog).toBeHidden()
   await page.reload()
   const isTable = (page.viewportSize()?.width ?? 1280) >= 768

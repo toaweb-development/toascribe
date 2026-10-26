@@ -107,6 +107,14 @@ describe('the rights of the built-in roles (map_meta_cap)', () => {
     expect(canRead(actor('author'), post('private', true))).toBe(true)
   })
 
+  it('keeps someone else’s trashed private post private: edit_others alone is not enough', () => {
+    const othersOnly = { id: 'me', capabilities: new Set(['edit_posts', 'edit_others_posts', 'delete_others_posts']) }
+    expect(canRead(othersOnly, post('trash', false, 'private'))).toBe(false)
+    expect(canDelete(othersOnly, post('trash', false, 'private'))).toBe(false)
+    expect(canRead(othersOnly, post('trash', false, 'draft'))).toBe(true)
+    expect(canDelete(othersOnly, post('trash', false, 'publish'))).toBe(false)
+  })
+
   it('lets an editor do everything with others’ posts and pages, a subscriber nothing', () => {
     for (const status of ['draft', 'pending', 'future', 'publish', 'private'] as const) {
       expect(canEdit(actor('editor'), post(status, false)), status).toBe(true)
