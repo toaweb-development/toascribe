@@ -387,7 +387,7 @@ export function createContentService(options: {
     if (item.id !== null) {
       // One change of a page's parent at a time per type and language: two at once (A under B, B under A) would each pass the cycle
       // check against the other's old place.
-      await lockPageTree(executor, item.type, item.locale)
+      await lockPageTree(executor, item.type)
     }
     const parent = await findParentCandidate(executor, parentId)
     if (parent?.type !== item.type || parent.locale !== item.locale || parent.status === 'trash') {
@@ -527,7 +527,9 @@ export function createContentService(options: {
     const statusChanged = schedule.status !== row.status
     if (
       unpublishAt !== null &&
-      (request.unpublishAt !== undefined || (statusChanged && PUBLISHING.has(schedule.status)))
+      (request.unpublishAt !== undefined ||
+        (statusChanged && PUBLISHING.has(schedule.status)) ||
+        !sameDate(schedule.publishedAt, row.publishedAt))
     ) {
       resolveSchedule(schedule.status, schedule.publishedAt, unpublishAt, now)
     }
@@ -881,7 +883,12 @@ export function createContentService(options: {
       }
 
       const emptying = request.action === 'empty_trash'
+      const movesPages = request.action === 'edit' && request.changes.parentId !== undefined
       return inTransaction(db, async (tx) => {
+        if (movesPages) {
+          // Before any row is locked: the single PATCH takes the row first and then this lock, so taking it later here could deadlock.
+          await lockPageTree(tx, 'page')
+        }
         const result: ContentBulkResponse = { changed: [], unchanged: [], skipped: [] }
         // In a fixed order, so two bulk requests over the same items lock them in the same order and cannot deadlock. The answer is
         // put back in the request's order below.

@@ -264,6 +264,15 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the content API (needs TEST_DA
       const made = await create(editor, { title: 'Gammel avpublisering' })
       await env.query(`update content set unpublish_at = now() - interval '1 day' where id = $1`, [made.id])
       expect((await item(await patch(editor, made.id, { title: 'Fortsatt lagret' }))).title).toBe('Fortsatt lagret')
+      // Moving the publish date of a published item past its unpublish date is refused.
+      const live = await create(editor, {
+        title: 'Live',
+        status: 'publish',
+        unpublishAt: new Date(Date.now() + 3_600_000).toISOString(),
+      })
+      expect(
+        await errorCode(await patch(editor, live.id, { publishedAt: new Date(Date.now() + 7_200_000).toISOString() })),
+      ).toBe('invalid_schedule')
       // Publishing it with that date in the past is refused.
       expect(await errorCode(await patch(editor, made.id, { status: 'publish' }))).toBe('invalid_schedule')
     })

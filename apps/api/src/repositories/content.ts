@@ -308,11 +308,9 @@ export async function findContent(
   return rows[0]
 }
 
-/** Serialises the changes of parents in one page tree (type and language) until the end of the transaction. */
-export async function lockPageTree(db: Executor, type: string, locale: string): Promise<void> {
-  await db.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`toascribe:content-tree:${type}:${locale}`}, 0))`,
-  )
+/** Serialises the changes of parents of one type (all its page trees) until the end of the transaction. Re-entrant per transaction. */
+export async function lockPageTree(db: Executor, type: string): Promise<void> {
+  await db.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`toascribe:content-tree:${type}`}, 0))`)
 }
 
 /** The ids of the parent chain of a page, from its parent up (for the cycle check). Stops after 10 000 levels. */
