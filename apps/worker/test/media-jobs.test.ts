@@ -146,6 +146,19 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('media jobs (needs TEST_DATABAS
     ).toBe(createHash('sha256').update(original).digest('hex'))
   })
 
+  it('edits a big photo in the pixels of its -scaled copy, the image the person saw', async () => {
+    const { id } = await stored(await photo(4000, 3000), 'image/jpeg', 'jpg')
+    await runMediaJob(deps(), { kind: 'process', mediaId: id })
+    // The api checked this crop against the 2560 × 1920 copy; in the original it would be a different part of the picture.
+    await runMediaJob(deps(), {
+      kind: 'edit',
+      mediaId: id,
+      operations: [{ op: 'crop', x: 1280, y: 960, width: 1280, height: 960 }],
+    })
+    const row = await variantsOf(id)
+    expect(row.variants.edited).toMatchObject({ width: 1280, height: 960 })
+  })
+
   it('makes the sizes again after the settings change, and removes the files that are no longer a size', async () => {
     const { id } = await stored(await photo(1600, 1200), 'image/jpeg', 'jpg')
     await runMediaJob(deps(), { kind: 'process', mediaId: id })

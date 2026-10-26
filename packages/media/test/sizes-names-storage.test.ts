@@ -13,6 +13,7 @@ import {
   planSizes,
   readableName,
   resizeDimensions,
+  shownFile,
 } from '../src/index.ts'
 
 const SETTINGS = {
@@ -101,5 +102,26 @@ describe('the local storage', () => {
     for (const key of ['../x', '/etc/passwd', 'a/../../x', 'A.txt', 'a//b', '', 'a\\b', '.hidden']) {
       await expect(storage.put(key, new Uint8Array([1])), key).rejects.toBeInstanceOf(InvalidStorageKeyError)
     }
+  })
+})
+
+describe('shownFile', () => {
+  const size = (width: number, height: number) => ({ key: `k-${String(width)}`, width, height, mime: 'image/webp' })
+  const jpeg = { key: 'a.jpg', width: 4000, height: 3000, mime: 'image/jpeg' }
+
+  it('is the edited image, then the -scaled copy, then a web original', () => {
+    const edited = size(600, 900)
+    const scaled = size(2560, 1920)
+    expect(shownFile(jpeg, { sizes: {}, scaled, edited })).toBe(edited)
+    expect(shownFile(jpeg, { sizes: { medium: size(300, 225) }, scaled })).toBe(scaled)
+    expect(shownFile(jpeg, { sizes: { medium: size(300, 225) } })).toBe(jpeg)
+  })
+
+  it('is the largest size for an image a browser does not show, and the original for a file that is not an image', () => {
+    const tiff = { key: 'a.tif', width: 3000, height: 2000, mime: 'image/tiff' }
+    expect(shownFile(tiff, { sizes: { medium: size(300, 200), large: size(1024, 683) } }).key).toBe('k-1024')
+    expect(shownFile(tiff, { sizes: {} })).toBe(tiff)
+    const pdf = { key: 'a.pdf', width: null, height: null, mime: 'application/pdf' }
+    expect(shownFile(pdf, { sizes: {} })).toBe(pdf)
   })
 })

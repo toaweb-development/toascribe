@@ -20,8 +20,9 @@ import {
   extensionOf,
   headerDimensions,
   originalKey,
+  shownFile,
 } from '@toascribe/media'
-import type { MediaStorage } from '@toascribe/media'
+import type { MediaStorage, ShownFile } from '@toascribe/media'
 import { CoreSettings, MediaSettings, MediaVariantsData } from '@toascribe/shared'
 import type {
   ContentMediaRef,
@@ -178,19 +179,9 @@ function intlTimeZone(settings: { timezone_string: string; gmt_offset: number })
 }
 
 /** The image as it is shown: the edited one, the `-scaled` copy, the original when a browser shows it, or the largest size. */
-function shownVariant(row: MediaRow): { key: string; width: number | null; height: number | null; mime: string } {
-  const variants = row.variants
-  if (variants.edited !== undefined) {
-    return variants.edited
-  }
-  if (variants.scaled !== undefined) {
-    return variants.scaled
-  }
-  if (WEB_IMAGE_MIMES.has(row.mime) || !row.mime.startsWith('image/')) {
-    return { key: row.storageKey, width: row.width, height: row.height, mime: row.mime }
-  }
-  const largest = Object.values(variants.sizes).sort((a, b) => b.width - a.width)[0]
-  return largest ?? { key: row.storageKey, width: row.width, height: row.height, mime: row.mime }
+/** The image as it is shown (the one rule of @toascribe/media, which the worker edits too). */
+function shownVariant(row: MediaRow): ShownFile {
+  return shownFile({ key: row.storageKey, width: row.width, height: row.height, mime: row.mime }, row.variants)
 }
 
 /** The size of the image after the edit steps, and whether every step fits (a crop inside it, a scale that does not enlarge). */

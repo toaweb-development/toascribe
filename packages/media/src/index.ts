@@ -3,6 +3,7 @@
 export * from './detect.ts'
 export * from './dimensions.ts'
 export * from './names.ts'
+export * from './shown.ts'
 export * from './sizes.ts'
 export * from './storage.ts'
 export * from './types.ts'

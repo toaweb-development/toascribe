@@ -5,7 +5,7 @@
 // pixel limit of the settings (sharp's limitInputPixels), so a file that got past the api's header check still cannot fill the memory.
 import type { Database } from '@toascribe/db'
 import { schema } from '@toascribe/db'
-import { RESIZABLE_MIMES, createLocalStorage, defaultSizes, derivedKey, planSizes } from '@toascribe/media'
+import { RESIZABLE_MIMES, createLocalStorage, defaultSizes, derivedKey, planSizes, shownFile } from '@toascribe/media'
 import type { MediaStorage, PlannedSize } from '@toascribe/media'
 import { CoreSettings, MEDIA_QUEUE, MediaJob, MediaVariantsData } from '@toascribe/shared'
 import type { MediaEditOperation, MediaVariant } from '@toascribe/shared'
@@ -145,7 +145,13 @@ export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<v
       // The image the sizes are cut from: a new edit, the edit kept from before, or the original.
       let source: Source = { bytes: original, width: oriented.width, height: oriented.height }
       if (job.kind === 'edit') {
-        const shown = before.edited !== undefined ? await storage.read(before.edited.key) : original
+        // The steps are in the pixels of the image as it is shown (the api checked them against it): the edited image, the -scaled
+        // copy or the original, by the rule the api uses.
+        const shownKey = shownFile(
+          { key: row.storageKey, width: oriented.width, height: oriented.height, mime: row.mime },
+          before,
+        ).key
+        const shown = shownKey === row.storageKey ? original : await storage.read(shownKey)
         const edited = await applyEdit(shown, job.operations, settings.image_max_pixels)
         const info = await sharp(edited).metadata()
         const key = derivedKey(row.storageKey, `e${String(now.getTime())}`)
