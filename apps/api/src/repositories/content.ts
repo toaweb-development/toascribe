@@ -111,6 +111,8 @@ export interface ListFilter {
   /** Already trimmed; empty means none. */
   readonly search: string | undefined
   readonly month: string | undefined
+  /** Items that have one of these terms (a category with the ones below it, or one tag). */
+  readonly termIds: readonly string[] | undefined
 }
 
 /**
@@ -141,6 +143,13 @@ function listCondition(context: ListContext): SQL {
   conditions.push(filter.status === 'all' ? ne(content.status, 'trash') : eq(content.status, filter.status))
   if (filter.author !== undefined) {
     conditions.push(isAuthor(filter.author))
+  }
+  if (filter.termIds !== undefined) {
+    const ids = filter.termIds.length === 0 ? [sql`null`] : filter.termIds.map((id) => sql`${id}`)
+    conditions.push(
+      sql`exists (select 1 from content_term where content_term.content_id = ${content.id}
+        and content_term.term_id in (${sql.join(ids, sql`, `)}))`,
+    )
   }
   if (filter.month !== undefined) {
     conditions.push(sql`${localMonth(context.zone)} = ${filter.month}`)

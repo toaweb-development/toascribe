@@ -98,6 +98,7 @@ try {
     databaseUrl: config.DATABASE_URL,
     logger,
     heartbeatFile: config.WORKER_HEARTBEAT_FILE,
+    uploadsDir: config.UPLOADS_DIR,
   })
 } catch (err) {
   // Typically "pg-boss is not installed": the migration step has not run yet. Exit so the

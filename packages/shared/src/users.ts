@@ -36,7 +36,7 @@ export const USERS_SEARCH_MAX_LENGTH = 100
 /**
  * GET /users. Strict: an unknown parameter is a 400. `search` matches username, e-mail, display name and nicename, without regard to
  * case, anywhere in the text; an empty `search` is the same as none. `role` is a role slug or `none`; a slug no role has gives an empty list.
- * Names and sizes follow the API conventions (camelCase `perPage`).
+ * The page size is `per_page`, as in every list of the API and in WordPress' REST API (PLAN «Besluttet»).
  */
 export const UserListQuery = z.strictObject({
   search: z.string().trim().max(USERS_SEARCH_MAX_LENGTH).optional(),
@@ -44,7 +44,7 @@ export const UserListQuery = z.strictObject({
   orderby: UserListOrderBy.default('username'),
   order: SortOrder.default('asc'),
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
-  perPage: z.coerce.number().int().min(1).max(USERS_MAX_PER_PAGE).default(USERS_DEFAULT_PER_PAGE),
+  per_page: z.coerce.number().int().min(1).max(USERS_MAX_PER_PAGE).default(USERS_DEFAULT_PER_PAGE),
 })
 export type UserListQuery = z.infer<typeof UserListQuery>
 

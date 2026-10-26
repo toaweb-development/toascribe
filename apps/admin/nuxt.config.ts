@@ -35,6 +35,8 @@ export default defineNuxtConfig({
         'lucide:info',
         // The shell: the menu (the registry's icons), the user menu, the sidebar's buttons and the menu's own arrow.
         'lucide:gauge',
+        'lucide:image',
+        'lucide:settings',
         'lucide:users',
         'lucide:user',
         'lucide:log-out',

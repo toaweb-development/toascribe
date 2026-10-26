@@ -1,0 +1,35 @@
+{
+  "name": "@toascribe/media",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "The media library's shared parts (M1.2): the allowed file types, type detection from the bytes, image dimensions from the header, storage keys, the size plan and the storage interface with its local-volume driver. Node only; imported by apps/api, apps/worker and cli. Image decoding (sharp) is the worker's.",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@toascribe/shared": "workspace:*",
+    "file-type": "catalog:",
+    "image-size": "catalog:"
+  },
+  "devDependencies": {
+    "@toascribe/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -35,6 +35,8 @@ const Env = z
     // The heartbeat file the container healthcheck reads (see lib/heartbeat.ts). /tmp is writable
     // in a container even with a read-only root filesystem when it is a tmpfs.
     WORKER_HEARTBEAT_FILE: z.string().min(1).default('/tmp/toascribe-worker.heartbeat'),
+    /** The media library's volume (M1.2), shared with the api: the worker reads the originals and writes the sizes. */
+    UPLOADS_DIR: z.string().startsWith('/').max(500).default('/var/lib/toascribe/uploads'),
 
     // The keys: the worker decrypts the SMTP password (a setting) and the one-time tokens in the e-mail jobs. Same variables and
     // meaning as in the api (K-318); the signing key is not needed here.

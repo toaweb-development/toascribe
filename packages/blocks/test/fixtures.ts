@@ -8,8 +8,10 @@ export const text = (value: string, marks?: InlineMark[]): InlineNode[] =>
 export const p = (id: string, value = ''): Block =>
   createBlock('core/paragraph', { content: value === '' ? [] : text(value) }, [], id)
 
-export const img = (id: string, url = 'https://example.com/a.png'): Block =>
-  createBlock('core/image', { url, alt: 'An image' }, [], id)
+/** An image block with a chosen file (a media id) and its alt text. */
+export const MEDIA_ID = '01a15f9a-26a2-73d3-8aad-c6b671836b33'
+export const img = (id: string, mediaId = MEDIA_ID): Block =>
+  createBlock('core/image', { mediaId, alt: 'An image' }, [], id)
 
 export const col = (id: string, ...children: Block[]): Block => createBlock('core/column', {}, children, id)
 

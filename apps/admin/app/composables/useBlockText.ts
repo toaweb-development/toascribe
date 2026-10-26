@@ -25,6 +25,7 @@ export function useBlockText() {
     invalid_attribute: () => t('editorPrototype.issues.invalidAttribute'),
     child_count: () => t('editorPrototype.issues.childCount'),
     too_large: () => t('editorPrototype.issues.tooLarge'),
+    alt_required: () => t('editorPrototype.issues.altRequired'),
   }
 
   const isKnown = (code: string): code is ValidationIssue['code'] => Object.hasOwn(issues, code)

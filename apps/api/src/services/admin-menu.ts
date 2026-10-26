@@ -5,7 +5,7 @@ import { AdminMenuItem } from '@toascribe/shared'
 import type { AdminMenuChild, AdminMenuEntry, AdminMenuItemInput } from '@toascribe/shared'
 
 /**
- * The items of M0.5 and M1.1, with WordPress' positions (wp-admin/menu.php). Only what works is here: «Oppdateringer», the users' «Legg til ny» and
+ * The items of M0.5, M1.1 and M1.2, with WordPress' positions (wp-admin/menu.php). Only what works is here: «Oppdateringer», the users' «Legg til ny» and
  * «Roller» are added by the task that builds them. The icons are Lucide names; the admin lists them in `icon.clientBundle`.
  */
 export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
@@ -29,6 +29,22 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     children: [
       { id: 'posts.all', labelKey: 'menu.postsAll', capability: 'edit_posts', to: '/posts' },
       { id: 'posts.new', labelKey: 'menu.postsNew', capability: 'edit_posts', to: '/posts/new' },
+      // WordPress shows Kategorier and Stikkord to those who may manage terms (`manage_categories`).
+      { id: 'posts.categories', labelKey: 'menu.postsCategories', capability: 'manage_categories', to: '/categories' },
+      { id: 'posts.tags', labelKey: 'menu.postsTags', capability: 'manage_categories', to: '/tags' },
+    ],
+  },
+  {
+    // WordPress' «Media» (position 10): the library and «Legg til ny», for those who may upload (M1.2).
+    id: 'media',
+    labelKey: 'menu.media',
+    icon: 'i-lucide-image',
+    position: 10,
+    capability: 'upload_files',
+    to: '/media',
+    children: [
+      { id: 'media.library', labelKey: 'menu.mediaLibrary', capability: 'upload_files', to: '/media' },
+      { id: 'media.new', labelKey: 'menu.mediaNew', capability: 'upload_files', to: '/media/new' },
     ],
   },
   {
@@ -54,6 +70,19 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     children: [
       { id: 'users.all', labelKey: 'menu.usersAll', capability: 'list_users', to: '/users' },
       { id: 'users.profile', labelKey: 'menu.usersProfile', capability: 'read', to: '/profile' },
+    ],
+  },
+  {
+    // WordPress' «Innstillinger» (position 80). Only «Media» works so far; «Generelt», «Skriving», «Lesing» and the rest come with
+    // the tasks that build them.
+    id: 'settings',
+    labelKey: 'menu.settings',
+    icon: 'i-lucide-settings',
+    position: 80,
+    capability: 'manage_options',
+    to: '/settings/media',
+    children: [
+      { id: 'settings.media', labelKey: 'menu.settingsMedia', capability: 'manage_options', to: '/settings/media' },
     ],
   },
   {

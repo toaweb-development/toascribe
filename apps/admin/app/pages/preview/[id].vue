@@ -50,7 +50,7 @@ const backPath = computed(() =>
             class="flex flex-col gap-4 rounded-md border border-default p-4 sm:p-6"
           >
             <h2 class="text-2xl font-semibold text-highlighted">{{ titleOf($t, data.title) }}</h2>
-            <BlocksDocument v-if="drawable" :blocks="data.blocks" />
+            <BlocksDocument v-if="drawable" :blocks="data.blocks" :media="data.media" />
             <p v-else class="text-muted">{{ $t('content.editor.legacy') }}</p>
           </article>
         </template>

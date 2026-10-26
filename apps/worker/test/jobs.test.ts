@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { CLEANUP_CREDENTIALS, CLEANUP_IP_RETENTION, CLEANUP_JOBS, CLEANUP_SPAM_COMMENTS } from '../src/jobs/cleanup.ts'
 import { CONTENT_JOBS, CONTENT_SCHEDULER } from '../src/jobs/content.ts'
+import { MEDIA_SWEEP } from '../src/jobs/media.ts'
 import { startWorker } from '../src/worker.ts'
 import type { Worker } from '../src/worker.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './helpers.ts'
@@ -38,6 +39,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('queues and schedules (needs TE
       databaseUrl: env.database.appUrl,
       logger: log.logger,
       heartbeatFile: join(dir, 'heartbeat'),
+      uploadsDir: join(dir, 'uploads'),
       keyRing: testKeyRing,
       publicOrigin: 'https://cms.example.test',
       mailDefaults: {},
@@ -71,7 +73,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('queues and schedules (needs TE
       (await observer.getSchedules())
         .map((s) => ({ name: s.name, cron: s.cron, timezone: s.timezone }))
         .sort((a, b) => a.name.localeCompare(b.name))
-    const expected = [...CLEANUP_JOBS, ...CONTENT_JOBS]
+    const expected = [...CLEANUP_JOBS, ...CONTENT_JOBS, { queue: MEDIA_SWEEP, cron: '*/5 * * * *' }]
       .map((job) => ({ name: job.queue, cron: job.cron, timezone: 'UTC' }))
       .sort((a, b) => a.name.localeCompare(b.name))
     const first = await start()

@@ -9,6 +9,7 @@ import type {
   ContentListResponse,
   ContentTypeKey,
   ListScreenOptions,
+  TermItem,
   UpdateContentRequest,
 } from '@toascribe/shared'
 import { ContentBulkEdit, ContentQuickEdit, ContentScreenOptions } from '#components'
@@ -26,6 +27,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuth()
 const contentApi = useContentApi()
+const termsApi = useTermsApi()
 const confirm = useConfirmDialog()
 const overlay = useOverlay()
 const { preferences, update: updatePreferences } = useAdminPreferences()
@@ -67,8 +69,29 @@ const denied = computed(() => !mayEdit.value || forbidden.value)
 const items = computed(() => data.value?.items ?? [])
 const inTrash = computed(() => view.value.status === 'trash')
 const filtered = computed(
-  () => view.value.search !== '' || view.value.month !== '' || view.value.mine || view.value.status !== 'all',
+  () =>
+    view.value.search !== '' ||
+    view.value.month !== '' ||
+    view.value.category !== '' ||
+    view.value.tag !== '' ||
+    view.value.mine ||
+    view.value.status !== 'all',
 )
+
+// The categories, in tree order: for the filter, quick edit and bulk edit. Posts only; read once with the page.
+const { data: categoryTerms } = await useAsyncData(`content:categories:${props.type}`, async (): Promise<TermItem[]> =>
+  props.type === 'post' && mayEdit.value ? await termsApi.all('category').catch(() => []) : [],
+)
+const categories = computed(() => categoryTerms.value ?? [])
+const ALL_CATEGORIES = 'all'
+const category = ref(view.value.category === '' ? ALL_CATEGORIES : view.value.category)
+const categoryItems = computed(() => [
+  { value: ALL_CATEGORIES, label: t('terms.categories.all') },
+  ...categories.value.map((term) => ({
+    value: term.id,
+    label: `${'\u00a0\u00a0\u00a0'.repeat(term.depth)}${term.name}`,
+  })),
+])
 
 function locationFor(changes: Partial<ContentView>): RouteLocationRaw {
   return { path: route.path, query: contentViewQuery(changeContentView(view.value, changes)) }
@@ -93,6 +116,7 @@ const ALL_MONTHS = 'all'
 const month = ref(view.value.month === '' ? ALL_MONTHS : view.value.month)
 const searchText = ref(view.value.search)
 watch(view, (next) => {
+  category.value = next.category === '' ? ALL_CATEGORIES : next.category
   month.value = next.month === '' ? ALL_MONTHS : next.month
   searchText.value = next.search
 })
@@ -102,7 +126,13 @@ const monthItems = computed(() => [
 ])
 
 function applyFilter() {
-  void router.push(locationFor({ month: month.value === ALL_MONTHS ? '' : month.value }))
+  void router.push(
+    locationFor({
+      month: month.value === ALL_MONTHS ? '' : month.value,
+      category: category.value === ALL_CATEGORIES ? '' : category.value,
+      tag: '',
+    }),
+  )
 }
 
 function search() {
@@ -201,6 +231,7 @@ async function quickEdit(item: ContentListItem) {
     item,
     authors: authorList,
     parents,
+    categories: categories.value,
     save: async (request: UpdateContentRequest) => {
       try {
         await contentApi.update(item.id, request)
@@ -284,6 +315,7 @@ async function applyBulk() {
       parents,
       mayPublish,
       mayStick: mayPublish && mayChooseAuthors.value,
+      categories: categories.value,
       save: async (changes: ContentBulkChanges) => {
         await runBulk('edit', ids, changes)
         return failure.value
@@ -320,6 +352,7 @@ const screenDialog = overlay.create(ContentScreenOptions)
 async function openScreenOptions() {
   await screenDialog.open({
     options: screen.value,
+    type: props.type,
     save: async (options: ListScreenOptions) => {
       try {
         await updatePreferences(props.type === 'page' ? { pagesScreen: options } : { postsScreen: options })
@@ -450,6 +483,15 @@ const newPath = computed(() => `/${props.type === 'page' ? 'pages' : 'posts'}/ne
               <form class="flex flex-wrap items-end gap-2" @submit.prevent="applyFilter">
                 <UFormField :label="$t('content.filter.month')" name="month">
                   <USelect id="content-month" v-model="month" :items="monthItems" size="xl" class="w-full sm:w-48" />
+                </UFormField>
+                <UFormField v-if="type === 'post'" :label="$t('content.filter.category')" name="category">
+                  <USelect
+                    id="content-category"
+                    v-model="category"
+                    :items="categoryItems"
+                    size="xl"
+                    class="w-full sm:w-56"
+                  />
                 </UFormField>
                 <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
                   {{ $t('content.filter.apply') }}

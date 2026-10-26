@@ -30,6 +30,12 @@ export function contentQueryString(query: ContentListQueryInput): string {
   if (query.month !== undefined) {
     params.set('month', query.month)
   }
+  if (query.category !== undefined) {
+    params.set('category', query.category)
+  }
+  if (query.tag !== undefined) {
+    params.set('tag', query.tag)
+  }
   if (query.orderby !== undefined) {
     params.set('orderby', query.orderby)
   }

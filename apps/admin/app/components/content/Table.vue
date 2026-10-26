@@ -32,6 +32,8 @@ const { t, locale } = useI18n()
 
 const inTrash = computed(() => props.view.status === 'trash')
 const showAuthor = computed(() => !props.hiddenColumns.includes('author'))
+const showCategories = computed(() => props.type === 'post' && !props.hiddenColumns.includes('categories'))
+const showTags = computed(() => props.type === 'post' && !props.hiddenColumns.includes('tags'))
 const showDate = computed(() => !props.hiddenColumns.includes('date'))
 
 const allSelected = computed(
@@ -60,6 +62,11 @@ const label = (item: ContentListItem) => `${depthPrefix(item.depth)}${titleOf(t,
 const states = (item: ContentListItem) => itemStates(t, item, props.view.status)
 const authorsOf = (item: ContentListItem) => item.authors.map((author) => author.displayName).join(', ')
 const dateOf = (item: ContentListItem) => formatter.value.format(new Date(shownDate(item)))
+
+/** A term in a column links to the list filtered by it (WordPress' edit.php?category_name= / ?tag=). */
+const termLink = (kind: 'category' | 'tag', id: string) =>
+  props.to({ [kind]: id, ...(kind === 'category' ? { tag: '' } : { category: '' }) })
+const termLinkClass = 'text-primary underline-offset-4 hover:underline'
 
 const SORTABLE: { column: ContentSortColumn; label: () => string }[] = [
   { column: 'title', label: () => t('content.columns.title') },
@@ -111,6 +118,12 @@ const dangerClass =
           </th>
           <th v-if="showAuthor" scope="col" class="px-2 py-2 text-start font-semibold text-highlighted">
             {{ $t('content.columns.author') }}
+          </th>
+          <th v-if="showCategories" scope="col" class="px-2 py-2 text-start font-semibold text-highlighted">
+            {{ $t('terms.categories.title') }}
+          </th>
+          <th v-if="showTags" scope="col" class="px-2 py-2 text-start font-semibold text-highlighted">
+            {{ $t('terms.tags.title') }}
           </th>
           <th
             v-if="showDate"
@@ -172,6 +185,20 @@ const dangerClass =
             </span>
           </th>
           <td v-if="showAuthor" class="px-2 py-2 align-top text-default wrap-anywhere">{{ authorsOf(item) }}</td>
+          <td v-if="showCategories" class="px-2 py-2 align-top wrap-anywhere">
+            <template v-for="(term, index) in item.categories" :key="term.id">
+              <span v-if="index > 0">, </span>
+              <NuxtLink :to="termLink('category', term.id)" :class="termLinkClass">{{ term.name }}</NuxtLink>
+            </template>
+            <span v-if="item.categories.length === 0" class="text-toned">—</span>
+          </td>
+          <td v-if="showTags" class="px-2 py-2 align-top wrap-anywhere">
+            <template v-for="(term, index) in item.tags" :key="term.id">
+              <span v-if="index > 0">, </span>
+              <NuxtLink :to="termLink('tag', term.id)" :class="termLinkClass">{{ term.name }}</NuxtLink>
+            </template>
+            <span v-if="item.tags.length === 0" class="text-toned">—</span>
+          </td>
           <td v-if="showDate" class="px-2 py-2 align-top text-default">
             <span class="block text-toned">{{ dateLabel(t, item) }}</span>
             <span class="tabular-nums">{{ dateOf(item) }}</span>
@@ -244,6 +271,20 @@ const dangerClass =
               <span v-for="state in states(item)" :key="state" class="font-normal text-toned"> — {{ state }}</span>
             </p>
             <p v-if="showAuthor" class="text-sm text-default wrap-anywhere">{{ authorsOf(item) }}</p>
+            <p v-if="showCategories && item.categories.length > 0" class="text-sm wrap-anywhere">
+              <span class="text-toned">{{ $t('terms.categories.title') }}: </span>
+              <template v-for="(term, index) in item.categories" :key="term.id">
+                <span v-if="index > 0">, </span>
+                <NuxtLink :to="termLink('category', term.id)" :class="termLinkClass">{{ term.name }}</NuxtLink>
+              </template>
+            </p>
+            <p v-if="showTags && item.tags.length > 0" class="text-sm wrap-anywhere">
+              <span class="text-toned">{{ $t('terms.tags.title') }}: </span>
+              <template v-for="(term, index) in item.tags" :key="term.id">
+                <span v-if="index > 0">, </span>
+                <NuxtLink :to="termLink('tag', term.id)" :class="termLinkClass">{{ term.name }}</NuxtLink>
+              </template>
+            </p>
             <p v-if="showDate" class="text-sm text-toned">{{ dateLabel(t, item) }} {{ dateOf(item) }}</p>
             <ContentRowActions
               :item="item"

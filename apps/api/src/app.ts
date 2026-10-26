@@ -1,9 +1,8 @@
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { dummyPasswordHash } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
+import { STORAGE_KEY, createLocalStorage } from '@toascribe/media'
+import type { MediaStorage } from '@toascribe/media'
 import type { KeyRing } from '@toascribe/shared'
 import type { MiddlewareHandler } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
@@ -18,14 +17,16 @@ import { authContext } from './middleware/auth.ts'
 import { onError, onNotFound } from './middleware/errors.ts'
 import { annotatePolicies, findUnguardedRoutes, policyGuard } from './middleware/policy.ts'
 import { requestLogger } from './middleware/request-logger.ts'
+import type { MediaJobPort } from './ports/media-jobs.ts'
 import type { MailPort } from './ports/mail.ts'
 import type { Pool } from './repositories/health.ts'
 import { createAdminApp } from './routes/admin.ts'
 import { createAuthApp } from './routes/auth.ts'
 import { createContentApp } from './routes/content.ts'
 import { createDashboardApp } from './routes/dashboard.ts'
-import { createEditorPrototypeApp } from './routes/editor-prototype.ts'
+import { createTermsApp } from './routes/terms.ts'
 import { createHealthApp } from './routes/health.ts'
+import { createMediaApp, sendFile } from './routes/media.ts'
 import { createMeApp } from './routes/me.ts'
 import { createNoticesApp } from './routes/notices.ts'
 import { createUsersApp } from './routes/users.ts'
@@ -55,8 +56,14 @@ export interface AppDeps {
   readonly trustedProxy?: string
   /** The clock, for the session lifetimes and the waits after failed logins. Tests set it; the default is the real time. */
   readonly clock?: () => Date
-  /** PROTOTYPE (M0.6): where the editor prototype keeps uploaded images. Default: `<os tmpdir>/toascribe-editor-prototype`. */
-  readonly prototypeUploadDir?: string
+  /** The media library's storage (M1.2): the local volume under UPLOADS_DIR. */
+  readonly storage?: MediaStorage
+  /** UPLOADS_DIR, used when `storage` is not given. */
+  readonly uploadsDir?: string
+  /** Where the media jobs go (the worker makes the sizes). */
+  readonly mediaJobs: MediaJobPort
+  /** UPLOAD_MAX_SIZE_MB: the cap on one upload, above any setting. Default 64. */
+  readonly uploadCapMb?: number
 }
 
 /**
@@ -64,6 +71,14 @@ export interface AppDeps {
  * may be a constant). The proxy limits too; uploads will get their own larger limit on their routes.
  */
 export const BODY_LIMIT_BYTES = 1024 * 1024
+
+/** Room for the multipart framing and the form's other fields around an uploaded file. */
+const MULTIPART_OVERHEAD_BYTES = 1024 * 1024
+
+/** The two routes that take a file (upload and replace) get the upload cap instead of the general limit. */
+export function isUploadRequest(method: string, path: string): boolean {
+  return method === 'POST' && (path === '/api/v1/media' || /^\/api\/v1\/media\/[0-9a-f-]{36}\/replace$/i.test(path))
+}
 
 export const OPENAPI_PATH = '/api/v1/openapi.json'
 
@@ -83,7 +98,9 @@ export function buildApp(deps: AppDeps) {
     logger: deps.logger,
     publicOrigin,
     version: deps.version,
-    prototypeUploadDir: deps.prototypeUploadDir ?? join(tmpdir(), 'toascribe-editor-prototype'),
+    storage: deps.storage ?? createLocalStorage(deps.uploadsDir ?? '/var/lib/toascribe/uploads'),
+    mediaJobs: deps.mediaJobs,
+    uploadCapMb: deps.uploadCapMb ?? 64,
     ...(deps.trustedProxy === undefined ? {} : { trustedProxy: deps.trustedProxy }),
     ...(deps.minimumResponseMs === undefined ? {} : { minimumResponseMs: deps.minimumResponseMs }),
     onInvalidSetting: (key) => {
@@ -126,12 +143,16 @@ export function buildApp(deps: AppDeps) {
       contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
     }),
   )
-  app.use(
-    bodyLimit({
-      maxSize: BODY_LIMIT_BYTES,
-      onError: (c) => c.json(apiError('payload_too_large', 'Request body too large', c.get('requestId')), 413),
-    }),
-  )
+  const generalLimit = bodyLimit({
+    maxSize: BODY_LIMIT_BYTES,
+    onError: (c) => c.json(apiError('payload_too_large', 'Request body too large', c.get('requestId')), 413),
+  })
+  const uploadLimit = bodyLimit({
+    maxSize: (deps.uploadCapMb ?? 64) * 1024 * 1024 + MULTIPART_OVERHEAD_BYTES,
+    onError: (c) =>
+      c.json(apiError('file_too_large', 'The file is larger than the upload limit', c.get('requestId')), 413),
+  })
+  app.use((c, next) => (isUploadRequest(c.req.method, c.req.path) ? uploadLimit(c, next) : generalLimit(c, next)))
 
   // CORS stays off (PLAN.md, «API-versjonering»): the browser calls the api from its own origin only. CSRF is checked per
   // route by the policy guard (middleware/policy.ts), because it depends on the route's policy and not on the path.
@@ -160,14 +181,27 @@ export function buildApp(deps: AppDeps) {
   app.route('/api/v1', createNoticesApp(services))
   app.route('/api/v1', createUsersApp(services))
   app.route('/api/v1', createContentApp(services))
-  // PROTOTYPE (M0.6): the editor prototype's image uploads. Remove with the media library (M1.2).
-  app.route('/api/v1', createEditorPrototypeApp(services))
+  app.route('/api/v1', createTermsApp(services))
+  app.route('/api/v1', createMediaApp(services))
   app.route('/api/v1', createSetupApp(services))
 
   const document = { openapi: '3.1.0', info: { title: 'toascribe API', version: deps.version } } as const
   app.get(OPENAPI_PATH, policyGuard(publicAccess()), (c) =>
     c.json(annotatePolicies(app.getOpenAPI31Document(document))),
   )
+
+  // The public files of the media library (M1.2): /uploads/<key>, as WordPress' /wp-content/uploads/. Served by the api, not as
+  // static files (security §4): the key is checked, a private file is not served here (only through /api/v1/media/{id}/file with
+  // the rights check), and the answer carries its own type, nosniff and, for anything but an image, Content-Disposition: attachment.
+  // The keys are never reused (a replaced or edited file gets a new one), so a public file is cached for a year.
+  app.get('/uploads/*', policyGuard(publicAccess()), async (c) => {
+    const key = c.req.path.slice('/uploads/'.length)
+    const file = STORAGE_KEY.test(key) ? await services.media.openPublic(key) : undefined
+    if (file === undefined) {
+      return onNotFound(c)
+    }
+    return sendFile(c, file, 'public, max-age=31536000, immutable')
+  })
 
   app.notFound(onNotFound)
   app.onError(onError)

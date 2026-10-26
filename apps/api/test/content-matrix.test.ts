@@ -279,6 +279,56 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('content rights matrix (needs T
     expect((await client?.post(`/api/v1/content/${id}/trash`))?.status).toBe(200)
   })
 
+  describe('a role that may work with pages only', () => {
+    // Not a built-in role: the page capabilities of WordPress' editor, without any for posts.
+    const PAGE_CAPABILITIES = [
+      'read',
+      'edit_pages',
+      'edit_others_pages',
+      'edit_published_pages',
+      'edit_private_pages',
+      'publish_pages',
+      'delete_pages',
+      'delete_others_pages',
+      'delete_published_pages',
+      'delete_private_pages',
+      'read_private_pages',
+    ]
+    let pages: TestClient
+
+    beforeAll(async () => {
+      await env.query(`insert into role (slug, name, capabilities) values ('page-keeper', 'Page keeper', $1)`, [
+        PAGE_CAPABILITIES,
+      ])
+      const account = await env.createAccount({ username: 'cm-page-keeper', role: null })
+      await env.query(
+        `insert into account_role (account_id, role_id) select $1, id from role where slug = 'page-keeper'`,
+        [account.id],
+      )
+      pages = env.client()
+      expect((await pages.login('cm-page-keeper', TEST_PASSWORD)).status).toBe(200)
+    })
+
+    it('lists, makes, changes, publishes and trashes pages, and gets no further with posts', async () => {
+      expect((await pages.get('/api/v1/content?type=page')).status).toBe(200)
+      expect((await pages.get('/api/v1/content?type=post')).status).toBe(403)
+      const made = await pages.post('/api/v1/content', { type: 'page', title: 'Bare sider' })
+      expect(made.status).toBe(201)
+      const { id } = (await made.json()) as { id: string }
+      expect((await pages.patch(`/api/v1/content/${id}`, { title: 'Endret' })).status).toBe(200)
+      expect((await pages.post(`/api/v1/content/${id}/publish`)).status).toBe(200)
+      expect((await pages.get('/api/v1/content/authors?type=page')).status).toBe(200)
+      expect((await pages.post(`/api/v1/content/${id}/trash`)).status).toBe(200)
+
+      expect((await pages.post('/api/v1/content', { type: 'post', title: 'Nei' })).status).toBe(403)
+      const post = await fixture('post', 'othersPublished', 'editor')
+      expect((await pages.get(`/api/v1/content/${post}`)).status).toBe(404)
+      expect((await pages.patch(`/api/v1/content/${post}`, { title: 'Nei' })).status).toBe(404)
+      const others = await fixture('page', 'othersPublished', 'editor')
+      expect((await pages.patch(`/api/v1/content/${others}`, { title: 'Ja' })).status).toBe(200)
+    })
+  })
+
   it('answers bulk actions item by item: what the account may not touch is skipped as forbidden or not found', async () => {
     const mine = await fixture('post', 'ownDraft', 'author')
     const theirs = await fixture('post', 'othersPublished', 'author')

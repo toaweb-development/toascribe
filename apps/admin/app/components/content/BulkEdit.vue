@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import type { ContentAuthorRef, ContentBulkChanges, ContentTypeKey, SettableContentStatus } from '@toascribe/shared'
+import { splitTagNames } from '@toascribe/shared'
+import type {
+  ContentAuthorRef,
+  ContentBulkChanges,
+  ContentTypeKey,
+  SettableContentStatus,
+  TermItem,
+} from '@toascribe/shared'
 
 // «Rediger» among the bulk actions (K-035; WordPress' bulk edit): what is chosen is set on every ticked item, «— Ingen endring —»
 // leaves a field alone. Posts: author, comments, status and «Fest øverst»; pages: author, parent, template, comments and status.
@@ -12,6 +19,8 @@ const props = defineProps<{
   parents: readonly { id: string; label: string }[]
   mayPublish: boolean
   mayStick: boolean
+  /** Posts: every category, in tree order. */
+  categories: readonly TermItem[]
   save: (changes: ContentBulkChanges) => Promise<string | undefined>
 }>()
 
@@ -29,6 +38,8 @@ const status = ref(KEEP)
 const sticky = ref(KEEP)
 const parent = ref(KEEP)
 const template = ref(KEEP)
+const addCategories = ref<string[]>([])
+const addTagsText = ref('')
 
 const keep = computed(() => ({ value: KEEP, label: t('content.bulkEdit.keep') }))
 const authorItems = computed(() => [
@@ -74,6 +85,9 @@ function changes(): ContentBulkChanges | undefined {
   if (sticky.value !== KEEP) chosen.sticky = sticky.value === 'sticky'
   if (parent.value !== KEEP) chosen.parentId = parent.value === NO_PARENT ? null : parent.value
   if (template.value !== KEEP) chosen.template = null
+  if (addCategories.value.length > 0) chosen.addCategories = [...addCategories.value]
+  const tags = splitTagNames(addTagsText.value)
+  if (tags.length > 0) chosen.addTags = tags
   return Object.keys(chosen).length === 0 ? undefined : (chosen as ContentBulkChanges)
 }
 
@@ -112,6 +126,16 @@ async function submit() {
         <UFormField :label="$t('content.quickEdit.status')" name="status">
           <USelect v-model="status" :items="statusItems" size="xl" class="w-full" />
         </UFormField>
+        <template v-if="type === 'post'">
+          <ContentCategoryTree
+            v-model="addCategories"
+            :terms="categories"
+            :legend="$t('content.bulkEdit.addCategories')"
+          />
+          <UFormField :label="$t('content.bulkEdit.addTags')" name="tags" :help="$t('terms.tags.separate')">
+            <UTextarea v-model="addTagsText" :rows="3" autoresize class="w-full" />
+          </UFormField>
+        </template>
         <UFormField v-if="type === 'post' && mayStick" :label="$t('content.bulkEdit.stickyField')" name="sticky">
           <USelect v-model="sticky" :items="stickyItems" size="xl" class="w-full" />
         </UFormField>

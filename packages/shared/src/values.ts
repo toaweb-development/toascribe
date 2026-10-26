@@ -63,6 +63,19 @@ export const MEDIA_VISIBILITY = ['public', 'private'] as const
 export const MediaVisibility = z.enum(MEDIA_VISIBILITY)
 export type MediaVisibility = z.infer<typeof MediaVisibility>
 
+/** media.processing: the worker's work on a file (M1.2). `pending` until the sizes are made, `failed` with the reason in processing_error. */
+export const MEDIA_PROCESSING = ['pending', 'ready', 'failed'] as const
+export const MediaProcessing = z.enum(MEDIA_PROCESSING)
+export type MediaProcessing = z.infer<typeof MediaProcessing>
+
+/**
+ * The groups of the media library's type filter and of the upload limits per role (M1.2): WordPress' «Bilder», «Lyd», «Video» and
+ * «Dokumenter», with spreadsheets, archives and text apart. Not a database column; @toascribe/media maps each file type to one.
+ */
+export const MEDIA_GROUPS = ['image', 'audio', 'video', 'document', 'spreadsheet', 'archive', 'text'] as const
+export const MediaGroup = z.enum(MEDIA_GROUPS)
+export type MediaGroup = z.infer<typeof MediaGroup>
+
 /** template.type: a full template or a template part (WordPress wp_template, wp_template_part). */
 export const TEMPLATE_TYPE = ['template', 'template_part'] as const
 export const TemplateType = z.enum(TEMPLATE_TYPE)

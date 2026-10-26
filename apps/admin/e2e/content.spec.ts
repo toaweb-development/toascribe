@@ -53,22 +53,22 @@ test('make a post in the editor and save it as a draft; quick edit and publish i
   await page.goto('/admin/posts')
   await expect(page.getByRole('heading', { level: 1, name: 'Innlegg' })).toBeVisible()
   await expectNoAxeViolations(page, 'the posts list')
-  await page.getByRole('link', { name: 'Legg til nytt innlegg' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Legg til nytt innlegg' })).toBeVisible()
+  await page.getByRole('link', { name: 'Legg til innlegg' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Legg til innlegg' })).toBeVisible()
   await page.getByLabel('Tittel').fill(title)
-  await page.getByRole('button', { name: 'Lagre utkast' }).click()
+  await page.getByRole('button', { name: 'Lagre kladd' }).click()
   await expect(page.getByText('Lagret.').first()).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/posts\/[0-9a-f-]{36}$/)
-  await expect(page.getByText('Status: Utkast').filter({ visible: true })).toBeVisible()
+  await expect(page.getByText('Status: Kladd').filter({ visible: true })).toBeVisible()
   await expectNoAxeViolations(page, 'the editor of a saved draft')
 
   // In the list, as a draft.
   await openList(page, 'posts', word)
-  await expect(page.getByText(`${title} — Utkast`).filter({ visible: true })).toBeVisible()
+  await expect(page.getByText(`${title} — Kladd`).filter({ visible: true })).toBeVisible()
 
   // Quick edit: a new title and Publisert.
-  await page.getByRole('button', { name: `Hurtigredigering «${title}»` }).click()
-  const dialog = page.getByRole('dialog', { name: 'Hurtigredigering' })
+  await page.getByRole('button', { name: `Hurtigrediger «${title}»` }).click()
+  const dialog = page.getByRole('dialog', { name: 'Hurtigrediger' })
   await expect(dialog).toBeVisible()
   await expectNoAxeViolations(page, 'quick edit')
   const published = `${word} Publisert`
@@ -77,8 +77,8 @@ test('make a post in the editor and save it as a draft; quick edit and publish i
   await dialog.getByRole('button', { name: 'Oppdater' }).click()
   await expect(dialog).toBeHidden()
   await expect(page.getByText('Endringene er lagret.').filter({ visible: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: `Hurtigredigering «${published}»` })).toBeVisible()
-  await expect(page.getByText(`${published} — Utkast`).filter({ visible: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: `Hurtigrediger «${published}»` })).toBeVisible()
+  await expect(page.getByText(`${published} — Kladd`).filter({ visible: true })).toHaveCount(0)
 
   // To the trash, and back.
   await page.getByRole('button', { name: `Papirkurv «${published}»` }).click()
@@ -90,11 +90,11 @@ test('make a post in the editor and save it as a draft; quick edit and publish i
     .click()
   await expect(page).toHaveURL(/status=trash/)
   await expectNoAxeViolations(page, 'the trash')
-  await page.getByRole('button', { name: `Gjenopprett «${published}»` }).click()
+  await page.getByRole('button', { name: `Gjenopprett «${published}» fra papirkurven` }).click()
   await expect(page.getByText('1 element gjenopprettet fra papirkurven.').filter({ visible: true })).toBeVisible()
   await openList(page, 'posts', word)
-  await expect(page.getByRole('button', { name: `Hurtigredigering «${published}»` })).toBeVisible()
-  await expect(page.getByText(`${published} — Utkast`).filter({ visible: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: `Hurtigrediger «${published}»` })).toBeVisible()
+  await expect(page.getByText(`${published} — Kladd`).filter({ visible: true })).toHaveCount(0)
 })
 
 test('a bulk action moves the ticked posts to the trash, and the trash is emptied for good', async ({ page }) => {
@@ -125,8 +125,8 @@ test('a bulk action moves the ticked posts to the trash, and the trash is emptie
   await expect(confirm).toBeVisible()
   await confirm.getByRole('button', { name: 'Slett permanent' }).click()
   await expect(page.getByText('1 element slettet permanent.').filter({ visible: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: `Gjenopprett «${second}»` })).toBeVisible()
-  await expect(page.getByRole('button', { name: `Gjenopprett «${first}»` })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: `Gjenopprett «${second}» fra papirkurven` })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Gjenopprett «${first}» fra papirkurven` })).toHaveCount(0)
 })
 
 test('a page under another page shows under it with «— », after a quick edit of its parent', async ({ page }) => {
@@ -138,17 +138,17 @@ test('a page under another page shows under it with «— », after a quick edit
   // The parent in the editor, the child too.
   for (const title of [parent, child]) {
     await page.goto('/admin/pages/new')
-    await expect(page.getByRole('heading', { level: 1, name: 'Legg til ny side' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Legg til side' })).toBeVisible()
     await page.getByLabel('Tittel').fill(title)
-    await page.getByRole('button', { name: 'Lagre utkast' }).click()
+    await page.getByRole('button', { name: 'Lagre kladd' }).click()
     await expect(page).toHaveURL(/\/admin\/pages\/[0-9a-f-]{36}$/)
   }
 
   // «Mine»: only this file's pages, still as a tree (a search would show a flat list).
   await page.goto('/admin/pages?author=mine')
   await expect(page.getByRole('heading', { level: 1, name: 'Sider' })).toBeVisible()
-  await page.getByRole('button', { name: `Hurtigredigering «${child}»` }).click()
-  const dialog = page.getByRole('dialog', { name: 'Hurtigredigering' })
+  await page.getByRole('button', { name: `Hurtigrediger «${child}»` }).click()
+  const dialog = page.getByRole('dialog', { name: 'Hurtigrediger' })
   await choose(page, 'Forelder', parent)
   await dialog.getByRole('button', { name: 'Oppdater' }).click()
   await expect(dialog).toBeHidden()
@@ -169,8 +169,8 @@ test('screen options hide the author column and are kept with the account', asyn
   const user = await createUser('editor', 'screenopts')
   await signIn(page, user)
   await page.goto('/admin/posts')
-  await page.getByRole('button', { name: 'Skjermalternativer' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Skjermalternativer' })
+  await page.getByRole('button', { name: 'Visningsinnstillinger' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Visningsinnstillinger' })
   await expectNoAxeViolations(page, 'screen options')
   await dialog.getByRole('checkbox', { name: 'Forfatter' }).uncheck()
   await dialog.getByLabel('Antall elementer per side').fill('5')
@@ -182,8 +182,8 @@ test('screen options hide the author column and are kept with the account', asyn
     await expect(page.getByRole('columnheader', { name: 'Forfatter' })).toHaveCount(0)
     await expect(page.getByRole('columnheader', { name: /Dato/ })).toBeVisible()
   }
-  await page.getByRole('button', { name: 'Skjermalternativer' }).click()
+  await page.getByRole('button', { name: 'Visningsinnstillinger' }).click()
   await expect(
-    page.getByRole('dialog', { name: 'Skjermalternativer' }).getByLabel('Antall elementer per side'),
+    page.getByRole('dialog', { name: 'Visningsinnstillinger' }).getByLabel('Antall elementer per side'),
   ).toHaveValue('5')
 })

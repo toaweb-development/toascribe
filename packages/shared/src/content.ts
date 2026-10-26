@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { ApiError } from './errors.ts'
+import { MAX_CATEGORIES_PER_ITEM, MAX_TAGS_PER_ITEM, TagName, TermRef } from './terms.ts'
 import { CONTENT_STATUS_BEFORE_TRASH, CommentStatus, ContentStatus, ContentStatusBeforeTrash } from './values.ts'
 
 // The content API (M1.1; PLAN «API-endepunktkart», «Innhold»): posts and pages in `content`, their authors in `content_author`.
@@ -79,6 +80,10 @@ export const ContentListQuery = z.strictObject({
   author: z.uuid().optional(),
   search: z.string().trim().max(CONTENT_SEARCH_MAX_LENGTH).optional(),
   month: ContentMonth.optional(),
+  /** Posts in this category or one below it (WordPress' `cat`). */
+  category: z.uuid().optional(),
+  /** Posts with this tag. */
+  tag: z.uuid().optional(),
   orderby: ContentOrderBy.optional(),
   order: z.enum(['asc', 'desc']).optional(),
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
@@ -134,6 +139,10 @@ const contentFields = {
   createdAt: isoDate,
   modifiedAt: isoDate,
   authors: z.array(ContentAuthorRef),
+  /** Posts only (empty for a page): the categories, by name. */
+  categories: z.array(TermRef),
+  /** Posts only: the tags, in their order. */
+  tags: z.array(TermRef),
   can: ContentPermissions,
 }
 
@@ -178,11 +187,27 @@ export type ContentListResponse = z.infer<typeof ContentListResponse>
  * install hold WordPress' parsed blocks (`blocksFormat: legacy`), which the editor shows but cannot change.
  */
 // `blocks` is not the recursive `Blocks` (z.json()): the OpenAPI generator cannot walk a recursive schema.
+/** A media file a document's blocks use, as the editor and the view need it (the address is worked out from the id, never stored). */
+export const ContentMediaRef = z.object({
+  id: z.uuid(),
+  url: z.string(),
+  width: z.int().nullable(),
+  height: z.int().nullable(),
+  alt: z.string(),
+  mime: z.string(),
+  /** The generated sizes, smallest first: the view's srcset. */
+  sizes: z.array(z.object({ name: z.string(), width: z.int(), height: z.int(), url: z.string() })),
+})
+export type ContentMediaRef = z.infer<typeof ContentMediaRef>
+
 export const ContentItem = z.object({
   ...contentFields,
   excerpt: z.string(),
+  /** The block tree, upgraded to the current block versions (an older stored tree is migrated on read; it is stored on the next save). */
   blocks: z.array(z.record(z.string(), z.unknown())),
   blocksFormat: z.enum(['blocks', 'legacy']),
+  /** The media the blocks use, by id, that the account may see. */
+  media: z.array(ContentMediaRef),
 })
 export type ContentItem = z.infer<typeof ContentItem>
 
@@ -216,6 +241,13 @@ const writableFields = {
     .refine((ids) => new Set(ids).size === ids.length, { message: 'Each author may be named once' }),
   /** The block tree, checked against each block's block.json on the server. */
   blocks: z.array(z.unknown()).max(CONTENT_MAX_TOP_LEVEL_BLOCKS),
+  /** Posts only: category ids. None makes it the default category («Ukategorisert»), as WordPress does. */
+  categories: z
+    .array(z.uuid())
+    .max(MAX_CATEGORIES_PER_ITEM)
+    .refine((ids) => new Set(ids).size === ids.length, { message: 'Each category may be named once' }),
+  /** Posts only: tag names; a name that is not a tag yet becomes one (WordPress' tag box). */
+  tags: z.array(TagName).max(MAX_TAGS_PER_ITEM),
 }
 
 /** POST /content. Everything but `type` may be left out: a new draft by the signed-in account. */
@@ -239,6 +271,8 @@ export const CreateContentRequest = z
     template: true,
     authors: true,
     blocks: true,
+    categories: true,
+    tags: true,
   })
 export type CreateContentRequest = z.infer<typeof CreateContentRequest>
 
@@ -259,6 +293,10 @@ export const ContentBulkChanges = z
     sticky: z.boolean(),
     parentId: z.uuid().nullable(),
     template: ContentTemplate.nullable(),
+    /** Posts: categories added to those each item has (WordPress' bulk edit adds, it does not replace). */
+    addCategories: z.array(z.uuid()).min(1).max(MAX_CATEGORIES_PER_ITEM),
+    /** Posts: tag names added to those each item has. */
+    addTags: z.array(TagName).min(1).max(MAX_TAGS_PER_ITEM),
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one change' })

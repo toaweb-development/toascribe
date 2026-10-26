@@ -74,7 +74,7 @@ export function createUserService(options: {
     async list(auth, query) {
       const filter = { search: query.search, role: query.role }
       const [rows, total, roleCounts, roleRows] = await Promise.all([
-        listAccountPage(db, filter, query.orderby, query.order, query.perPage, (query.page - 1) * query.perPage),
+        listAccountPage(db, filter, query.orderby, query.order, query.per_page, (query.page - 1) * query.per_page),
         countAccounts(db, filter),
         countByRole(db),
         listRoles(db),
@@ -95,7 +95,7 @@ export function createUserService(options: {
       const options: UserRoleOption[] = roleRows
         .map((row) => ({ slug: row.slug, name: row.name, grantable: covers(auth.capabilities, row.capabilities) }))
         .sort(compareRoles)
-      return { users, total, page: query.page, perPage: query.perPage, roleCounts, roles: options }
+      return { users, total, page: query.page, perPage: query.per_page, roleCounts, roles: options }
     },
 
     assignRole(auth, request, ctx) {

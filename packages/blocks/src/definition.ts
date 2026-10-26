@@ -12,14 +12,17 @@ export type BlockName = z.infer<typeof BlockName>
 
 const Json = z.json()
 
-/** A string attribute. `format: 'url'` takes an http(s) address or a path on this site (inline.ts, isSafeMediaUrl). */
+/**
+ * A string attribute. `format: 'url'` takes an http(s) address or a path on this site (inline.ts, isSafeMediaUrl); `format: 'uuid'`
+ * takes an id (a media file's), or empty for none.
+ */
 const StringAttribute = z.strictObject({
   type: z.literal('string'),
   default: z.string(),
   maxLength: z.int().positive(),
   minLength: z.int().nonnegative().optional(),
   enum: z.array(z.string()).min(1).optional(),
-  format: z.literal('url').optional(),
+  format: z.enum(['url', 'uuid']).optional(),
 })
 
 const NumberAttribute = z.strictObject({

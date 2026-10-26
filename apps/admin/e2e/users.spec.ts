@@ -253,7 +253,7 @@ test('pages the list, 20 to a page, with the page in the address', async ({ page
 
   await expect(count(page)).toHaveText('25 elementer')
   await expect(dataRows(page)).toHaveCount(20)
-  const pages = page.getByRole('navigation', { name: 'Sidenummerering' })
+  const pages = page.getByRole('navigation', { name: 'Sideinndeling' })
   await expect(pages.getByRole('link', { name: 'Side 1' })).toHaveAttribute('aria-current', 'page')
   await expect(pages.getByRole('link', { name: 'Forrige' })).toHaveCount(0)
   await expect(pages.getByRole('link', { name: 'Side 3' })).toHaveCount(0)

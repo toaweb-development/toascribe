@@ -27,6 +27,8 @@ const ITEM: ContentListItem = {
   createdAt: '2026-10-19T10:00:00.000Z',
   modifiedAt: '2026-10-21T10:00:00.000Z',
   authors: [],
+  categories: [],
+  tags: [],
   can: { edit: true, delete: true, publish: true, editOthers: true },
   depth: 0,
 }

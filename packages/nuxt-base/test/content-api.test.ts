@@ -25,10 +25,13 @@ const ITEM = {
   createdAt: '2026-10-26T10:00:00.000Z',
   modifiedAt: '2026-10-26T10:00:00.000Z',
   authors: [{ id: ID, username: 'tor', displayName: 'Tor' }],
+  categories: [],
+  tags: [],
   can: { edit: true, delete: true, publish: true, editOthers: true },
   excerpt: '',
   blocks: [],
   blocksFormat: 'blocks',
+  media: [],
 }
 
 describe('the content query string', () => {

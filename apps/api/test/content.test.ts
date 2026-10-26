@@ -315,11 +315,15 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the content API (needs TEST_DA
 
   describe('blocks and search', () => {
     it('stores blocks that pass their block.json, with the defaults, and refuses the rest with the issues', async () => {
+      // A version 1 image (the prototype's, with an address the library does not know) is upgraded on the way in: no image chosen.
       const made = await create(author, {
         title: 'Blokker',
         blocks: [{ id: 'b_img00001', type: 'core/image', version: 1, attrs: { url: '/bilde.png' }, children: [] }],
       })
-      expect(made.blocks[0]).toMatchObject({ attrs: { url: '/bilde.png', alt: '', caption: '' } })
+      expect(made.blocks[0]).toMatchObject({
+        version: 2,
+        attrs: { mediaId: '', alt: '', caption: '', decorative: false },
+      })
       for (const blocks of [
         [{ ...paragraph('b_bad00001', 'x'), type: 'core/html' }],
         [{ ...paragraph('b_bad00002', 'x'), attrs: { content: '<script>alert(1)</script>' } }],

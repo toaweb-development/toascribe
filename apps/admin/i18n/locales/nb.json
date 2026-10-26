@@ -114,7 +114,7 @@
       "title": "Nettstedstittel",
       "titleHelp": "Navnet på nettstedet. Det vises på innloggingssidene og i e-post fra nettstedet.",
       "language": {
-        "label": "Språk for nettstedet",
+        "label": "Nettstedsspråk",
         "help": "Språket bestemmer også teksten i standardinnholdet som lages til slutt.",
         "nb": "Norsk bokmål",
         "en": "English"
@@ -128,7 +128,7 @@
       "adminEmailHelp": "Hit sender nettstedet varsler. Adressen vises ikke for besøkende.",
       "visibility": {
         "legend": "Synlighet for søkemotorer",
-        "label": "Be søkemotorer om ikke å indeksere dette nettstedet",
+        "label": "Be søkemotorer om å ikke indeksere nettstedet",
         "help": "Det er opp til søkemotorene å respektere denne forespørselen."
       }
     },
@@ -235,7 +235,7 @@
     },
     "links": {
       "register": "Registrer",
-      "lost": "Mistet passordet?",
+      "lost": "Mistet passordet ditt?",
       "login": "Logg inn"
     },
     "notice": {
@@ -306,12 +306,12 @@
       "saved": "Jeg har lagret kodene"
     },
     "lost": {
-      "heading": "Mistet passordet?",
+      "heading": "Tapt passord",
       "intro": "Skriv inn brukernavnet eller e-postadressen din. Hvis kontoen finnes, sender vi en lenke for å velge nytt passord.",
-      "submit": "Få lenke for nytt passord"
+      "submit": "Få nytt passord"
     },
     "choose": {
-      "headingReset": "Nytt passord",
+      "headingReset": "Sett nytt passord",
       "headingSet": "Velg passord",
       "introReset": "Velg et nytt passord for kontoen din.",
       "introSet": "Velkommen. Velg et passord for å ta kontoen i bruk.",
@@ -348,7 +348,7 @@
     "strength": {
       "tooShort": "Passordstyrke: for kort",
       "weak": "Passordstyrke: svakt",
-      "fair": "Passordstyrke: middels",
+      "fair": "Passordstyrke: medium",
       "good": "Passordstyrke: sterkt",
       "strong": "Passordstyrke: svært sterkt"
     }
@@ -356,7 +356,7 @@
   "shell": {
     "skipToContent": "Gå til hovedinnholdet",
     "bar": {
-      "visit": "Besøk nettstedet:",
+      "visit": "Vis nettsted",
       "howdy": "Hei, {name}",
       "userMenu": "Brukermenyen din",
       "profile": "Rediger profil"
@@ -384,7 +384,14 @@
     "postsNew": "Legg til nytt",
     "pages": "Sider",
     "pagesAll": "Alle sider",
-    "pagesNew": "Legg til ny"
+    "pagesNew": "Legg til ny",
+    "postsCategories": "Kategorier",
+    "postsTags": "Stikkord",
+    "media": "Media",
+    "mediaLibrary": "Bibliotek",
+    "mediaNew": "Legg til ny",
+    "settings": "Innstillinger",
+    "settingsMedia": "Media"
   },
   "notices": {
     "emailNotVerified": "E-post fra nettstedet er ikke testet. Passordlenker og bekreftelser kommer kanskje ikke fram før en testmelding har gått gjennom. Innstillingene for e-post kommer i en senere versjon.",
@@ -416,7 +423,7 @@
       "intro": "Her er noen lenker som hjelper deg i gang.",
       "profile": "Rediger profilen din",
       "users": "Se alle brukere",
-      "dismiss": "Avvis",
+      "dismiss": "Lukk",
       "dismissFailed": "Velkomstpanelet ble ikke avvist, og det vises fortsatt.",
       "failed": {
         "title": "Velkomstpanelet kunne ikke lastes.",
@@ -425,7 +432,7 @@
       }
     },
     "glance": {
-      "heading": "I korte trekk",
+      "heading": "Oversikt",
       "posts": "{n} innlegg | {n} innlegg",
       "pages": "{n} side | {n} sider",
       "comments": "{n} kommentar | {n} kommentarer",
@@ -465,7 +472,7 @@
       "cancel": "Avbryt"
     },
     "personal": {
-      "title": "Personlige valg",
+      "title": "Personlige innstillinger",
       "scheme": "Fargeskjema for administrasjon",
       "schemeSaved": "Fargeskjemaet «{name}» er lagret.",
       "toolbar": "Verktøylinje",
@@ -483,7 +490,7 @@
       "defaultHint": "Grønn, og lys eller mørk som systemet ditt.",
       "light": "Lys",
       "lightHint": "Grønn, alltid lys.",
-      "midnight": "Midnatt",
+      "midnight": "Mørk",
       "midnightHint": "Indigo, alltid mørk.",
       "ocean": "Hav",
       "oceanHint": "Blå, og lys eller mørk som systemet ditt."
@@ -499,7 +506,7 @@
       "displayAsHelp": "Navnet som vises i «Hei, …» og på innlegg. Valgene er bygd av navnene over."
     },
     "contact": {
-      "title": "Kontaktinformasjon",
+      "title": "Kontaktinfo",
       "email": "E-post",
       "emailHelp": "Hvis du bytter adresse, sender vi en lenke til den nye. Adressen endres ikke før du har åpnet lenken.",
       "website": "Nettsted",
@@ -511,7 +518,7 @@
       "pendingTitle": "Venter på bekreftelse av ny e-post"
     },
     "about": {
-      "title": "Om deg selv",
+      "title": "Om deg",
       "bio": "Biografisk informasjon",
       "bioHelp": "Skriv noen få setninger om deg selv. Teksten kan vises offentlig."
     },
@@ -531,7 +538,7 @@
     "password": {
       "title": "Nytt passord",
       "intro": "Bytter du passord, logges de andre øktene dine ut.",
-      "set": "Sett nytt passord",
+      "set": "Angi nytt passord",
       "new": "Nytt passord",
       "save": "Lagre nytt passord",
       "cancel": "Avbryt",
@@ -574,7 +581,7 @@
     "sessions": {
       "title": "Økter",
       "help": "Hvis du har mistet en enhet eller tror noen andre har tilgang til kontoen din, kan du logge ut overalt ellers. Du blir værende innlogget her.",
-      "onlyThis": "Du er bare logget inn her, i denne nettleseren.",
+      "onlyThis": "Du er bare innlogget herfra.",
       "listLabel": "Aktive økter",
       "deviceBoth": "{browser} på {system}",
       "deviceUnknown": "Ukjent enhet",
@@ -587,7 +594,7 @@
       "endTitle": "Logge ut økten på {device}?",
       "endText": "Den som bruker økten, blir logget ut med én gang.",
       "ended": "Økten på {device} er logget ut.",
-      "endOthers": "Logg ut overalt ellers",
+      "endOthers": "Logg ut alle andre steder",
       "endOthersTitle": "Logge ut overalt ellers?",
       "endOthersText": "{n} annen økt avsluttes. Du blir værende innlogget her. | {n} andre økter avsluttes. Du blir værende innlogget her.",
       "endedOthers": "{n} økt er avsluttet. | {n} økter er avsluttet.",
@@ -674,7 +681,7 @@
       "descending": "sortert synkende"
     },
     "pagination": {
-      "label": "Sidenummerering"
+      "label": "Sideinndeling"
     },
     "empty": {
       "title": "Ingen brukere funnet.",
@@ -697,7 +704,7 @@
     "issue": "{block}: {problem}",
     "unsaved": "Endringer som ikke er lagret",
     "undo": "Angre",
-    "redo": "Gjenta",
+    "redo": "Gjør om",
     "toolbarLabel": "Dokument",
     "canvasLabel": "Innhold",
     "empty": "Dokumentet er tomt.",
@@ -728,14 +735,14 @@
       "slashNone": "Ingen blokker passer."
     },
     "image": {
-      "empty": "Velg et bilde: last opp en fil.",
-      "file": "Bildefil (PNG, JPEG, GIF eller WebP)",
-      "uploading": "Laster opp …",
-      "uploadFailed": "Bildet kunne ikke lastes opp.",
+      "empty": "Velg et bilde fra mediebiblioteket, eller last opp et nytt.",
       "alt": "Alternativ tekst",
-      "altHelp": "Beskriv bildet for dem som ikke ser det. La feltet stå tomt bare hvis bildet er pynt.",
+      "altHelp": "Finn ut hvordan beskrive hensikten med bildet. La stå tom om bildet er rent dekorativt.",
       "caption": "Bildetekst",
-      "replace": "Bytt bilde"
+      "replace": "Erstatt",
+      "library": "Mediebibliotek",
+      "missing": "Bildet finnes ikke lenger i mediebiblioteket, eller du har ikke tilgang til det.",
+      "decorative": "Bildet er rent dekorativt"
     },
     "columns": {
       "add": "Legg til kolonne",
@@ -753,7 +760,8 @@
       "unknownAttribute": "Blokken har et felt den ikke skal ha.",
       "invalidAttribute": "Et felt i blokken har en verdi som ikke er tillatt.",
       "childCount": "Blokken har for få eller for mange kolonner.",
-      "tooLarge": "Dokumentet er for stort."
+      "tooLarge": "Dokumentet er for stort.",
+      "altRequired": "Bildet mangler alternativ tekst. Beskriv bildet, eller merk det som dekorativt."
     },
     "previewPage": {
       "invalid": "Utkastet har blokker som ikke kan vises."
@@ -768,8 +776,8 @@
   "content": {
     "posts": {
       "title": "Innlegg",
-      "add": "Legg til nytt innlegg",
-      "addTitle": "Legg til nytt innlegg",
+      "add": "Legg til innlegg",
+      "addTitle": "Legg til innlegg",
       "edit": "Rediger innlegg",
       "search": "Søk i innlegg",
       "caption": "Innleggsliste",
@@ -780,8 +788,8 @@
     },
     "pages": {
       "title": "Sider",
-      "add": "Legg til ny side",
-      "addTitle": "Legg til ny side",
+      "add": "Legg til side",
+      "addTitle": "Legg til side",
       "edit": "Rediger side",
       "search": "Søk i sider",
       "caption": "Sideliste",
@@ -796,25 +804,25 @@
     },
     "views": {
       "all": "Alle",
-      "mine": "Mine",
+      "mine": "Min",
       "publish": "Publisert",
-      "draft": "Utkast",
-      "pending": "Venter",
+      "draft": "Kladd",
+      "pending": "Venter på gjennomgang",
       "future": "Planlagt",
       "private": "Privat",
       "trash": "Papirkurv",
       "item": "{name} ({n})"
     },
     "status": {
-      "draft": "Utkast",
+      "draft": "Kladd",
       "pending": "Venter på gjennomgang",
       "future": "Planlagt",
       "publish": "Publisert",
       "private": "Privat"
     },
     "states": {
-      "draft": "Utkast",
-      "pending": "Venter",
+      "draft": "Kladd",
+      "pending": "Avventer",
       "future": "Planlagt",
       "private": "Privat",
       "password": "Passordbeskyttet",
@@ -835,7 +843,7 @@
     "searchSummary": "Søkeresultater for: {query}",
     "searchClear": "Tøm søket",
     "showAll": "Vis alle",
-    "pagination": "Sidenummerering",
+    "pagination": "Sideinndeling",
     "actionFailed": "Handlingen ble ikke utført.",
     "failed": {
       "title": "Listen kunne ikke lastes.",
@@ -846,7 +854,8 @@
     "filter": {
       "month": "Filtrer etter dato",
       "allMonths": "Alle datoer",
-      "apply": "Filtrer"
+      "apply": "Filtrer",
+      "category": "Filtrer etter kategori"
     },
     "table": {
       "selectAll": "Velg alle på siden",
@@ -860,20 +869,20 @@
       "label": "Handlinger for «{title}»",
       "edit": "Rediger",
       "editNamed": "Rediger «{title}»",
-      "quickEdit": "Hurtigredigering",
-      "quickEditNamed": "Hurtigredigering «{title}»",
+      "quickEdit": "Hurtigrediger",
+      "quickEditNamed": "Hurtigrediger «{title}»",
       "trash": "Papirkurv",
       "trashNamed": "Papirkurv «{title}»",
       "preview": "Forhåndsvis",
       "previewNamed": "Forhåndsvis «{title}»",
       "restore": "Gjenopprett",
-      "restoreNamed": "Gjenopprett «{title}»",
+      "restoreNamed": "Gjenopprett «{title}» fra papirkurven",
       "remove": "Slett permanent",
       "removeNamed": "Slett permanent «{title}»"
     },
     "bulk": {
       "label": "Massehandlinger",
-      "choose": "Velg handling…",
+      "choose": "Velg massehandling",
       "edit": "Rediger",
       "trash": "Flytt til papirkurven",
       "restore": "Gjenopprett",
@@ -906,9 +915,9 @@
       "text": "Alt i papirkurven som du har rett til å slette, slettes for godt og kan ikke gjenopprettes."
     },
     "quickEdit": {
-      "title": "Hurtigredigering",
+      "title": "Hurtigrediger",
       "titleField": "Tittel",
-      "slug": "Slug",
+      "slug": "Identifikator",
       "date": "Dato",
       "dateHelp": "Tom dato publiserer med tidspunktet du lagrer.",
       "password": "Passord",
@@ -930,20 +939,22 @@
       "failed": "Endringene ble ikke lagret."
     },
     "bulkEdit": {
-      "title": "Masseredigering",
+      "title": "Masserediger",
       "description": "Endringene gjelder {n} element. | Endringene gjelder {n} elementer.",
       "keep": "— Ingen endring —",
       "comments": "Kommentarer",
-      "commentsOpen": "Tillatt",
-      "commentsClosed": "Ikke tillatt",
+      "commentsOpen": "Tillat",
+      "commentsClosed": "Ikke tillat",
       "stickyField": "Fest øverst",
       "sticky": "Fest øverst",
       "notSticky": "Ikke fest øverst",
-      "failed": "Endringene ble ikke lagret."
+      "failed": "Endringene ble ikke lagret.",
+      "addCategories": "Legg til kategorier",
+      "addTags": "Legg til stikkord"
     },
     "screenOptions": {
-      "open": "Skjermalternativer",
-      "title": "Skjermalternativer",
+      "open": "Visningsinnstillinger",
+      "title": "Visningsinnstillinger",
       "columns": "Kolonner",
       "perPage": "Antall elementer per side",
       "perPageInvalid": "Skriv et tall fra 1 til 100.",
@@ -953,7 +964,7 @@
     "editor": {
       "title": "Tittel",
       "titlePlaceholder": "Legg til tittel",
-      "saveDraft": "Lagre utkast",
+      "saveDraft": "Lagre kladd",
       "update": "Oppdater",
       "publish": "Publiser",
       "saved": "Lagret.",
@@ -981,6 +992,246 @@
       "trashed": "Elementet ligger i papirkurven. Gjenopprett det før du endrer det.",
       "notTrashed": "Elementet ligger ikke i papirkurven.",
       "notFound": "Elementet finnes ikke, eller du har ikke tilgang til det."
+    }
+  },
+  "terms": {
+    "categories": {
+      "title": "Kategorier",
+      "add": "Legg til ny kategori",
+      "edit": "Rediger kategori",
+      "search": "Søk i kategorier",
+      "caption": "Kategoriliste",
+      "none": "Fant ingen kategorier.",
+      "empty": "Det finnes ingen kategorier ennå.",
+      "all": "Alle kategorier",
+      "added": "Kategori lagt til.",
+      "updated": "Kategori oppdatert.",
+      "deleted": "Kategori slettet.",
+      "confirmTitle": "Slette kategorien?",
+      "denied": "Du har ikke tilgang til kategoriene"
+    },
+    "tags": {
+      "title": "Stikkord",
+      "add": "Legg til stikkord",
+      "edit": "Rediger stikkord",
+      "search": "Søk i stikkord",
+      "caption": "Stikkordliste",
+      "none": "Fant ingen stikkord.",
+      "added": "Stikkord lagt til.",
+      "updated": "Stikkord oppdatert.",
+      "deleted": "Stikkord slettet.",
+      "confirmTitle": "Slette stikkordet?",
+      "denied": "Du har ikke tilgang til stikkordene",
+      "separate": "Skill stikkord med komma"
+    },
+    "name": "Navn",
+    "slug": "Identifikator",
+    "parent": "Overordnet kategori",
+    "description": "Beskrivelse",
+    "noParent": "Ingen",
+    "countLabel": "{n} innlegg | {n} innlegg",
+    "delete": "Slett",
+    "deleteNamed": "Slett «{name}»",
+    "editNamed": "Rediger «{name}»",
+    "nameRequired": "Skriv et navn.",
+    "bulkDeleted": "{n} slettet. | {n} slettet.",
+    "help": {
+      "name": "Navnet er hvordan det vises på nettstedet ditt.",
+      "slug": "Identifikatoren er den nettadressevennlige versjonen av navnet. Den er vanligvis i små bokstaver og inneholder bare bokstaver, tall og bindestreker.",
+      "parent": "Tilordne en overordnet term for å lage et hierarki. Termen «Jazz», for eksempel, vil være overordnet «Bebop» og «Storband».",
+      "description": "Beskrivelsen er som standard ikke fremtredende, men noen temaer kan vise den."
+    },
+    "confirm": {
+      "category": "«{name}» slettes. Innleggene i den får den overordnede kategorien, eller «Ukategorisert» hvis de ikke har noen annen.",
+      "tag": "«{name}» slettes og fjernes fra innleggene som har det.",
+      "many": "Termen slettes. | De {n} termene slettes."
+    },
+    "errors": {
+      "exists": "En term med dette navnet finnes allerede her.",
+      "invalidParent": "Den overordnede kategorien kan ikke brukes: velg en annen kategori, ikke denne eller en under den.",
+      "defaultTerm": "Standardkategorien kan gis nytt navn, men ikke slettes.",
+      "notFound": "Termen finnes ikke lenger."
+    }
+  },
+  "media": {
+    "denied": "Du har ikke tillatelse til å laste opp filer.",
+    "groups": {
+      "image": "Bilder",
+      "audio": "Lyd",
+      "video": "Video",
+      "document": "Dokumenter",
+      "spreadsheet": "Regneark",
+      "archive": "Arkiver",
+      "text": "Tekst"
+    },
+    "processing": {
+      "pending": "Bildestørrelsene lages …",
+      "failed": "Bildestørrelsene kunne ikke lages."
+    },
+    "errors": {
+      "fileTooLarge": "Filen er større enn maksimal filstørrelse for opplasting.",
+      "unsupportedType": "Beklager, du har ikke tillatelse til å laste opp denne filtypen.",
+      "typeMismatch": "Innholdet i filen stemmer ikke med filnavnet.",
+      "emptyFile": "Filen er tom.",
+      "unreadableImage": "Bildet kan ikke leses.",
+      "imageTooLarge": "Bildet har flere piksler enn nettstedet tillater.",
+      "invalidFolder": "Mappen finnes ikke, eller en mappe kan ikke legges i seg selv.",
+      "folderExists": "Det finnes allerede en mappe med dette navnet her.",
+      "fetchFailed": "Filen kunne ikke hentes fra nettadressen.",
+      "notEditable": "Bare bilder kan redigeres.",
+      "busy": "Bildet behandles fortsatt. Prøv igjen om litt.",
+      "invalidEdit": "Utsnittet må ligge inne i bildet, og et bilde kan bare skaleres ned.",
+      "aboveUploadCap": "Grensen kan ikke være høyere enn den største filstørrelsen serveren tar imot.",
+      "aborted": "Opplastingen ble avbrutt."
+    },
+    "filters": {
+      "label": "Filtrer media",
+      "type": "Filtrer etter type",
+      "allTypes": "Alle mediefiler",
+      "date": "Filtrer etter dato"
+    },
+    "library": {
+      "title": "Mediebibliotek",
+      "addNew": "Legg til mediefil",
+      "view": "Visning",
+      "grid": "Rutenettvisning",
+      "list": "Listevisning",
+      "search": "Søk i media",
+      "loadFailed": "Mediebiblioteket kunne ikke lastes.",
+      "count": "{n} element | {n} element | {n} elementer",
+      "empty": "Ingen mediefiler funnet.",
+      "items": "Mediefiler"
+    },
+    "folders": {
+      "title": "Mapper",
+      "manage": "Mapper",
+      "folder": "Mappe",
+      "all": "Alle mapper",
+      "none": "Ingen mappe",
+      "top": "Ingen (øverst)",
+      "name": "Navn",
+      "parent": "Overordnet mappe",
+      "add": "Legg til mappe",
+      "empty": "Ingen mapper ennå.",
+      "delete": "Slett",
+      "deleteTitle": "Slette mappen?",
+      "deleteConfirm": "Mappen «{name}» og mappene i den slettes. Filene i dem flyttes øverst i biblioteket; ingen filer slettes.",
+      "editNamed": "Rediger «{name}»",
+      "deleteNamed": "Slett «{name}»"
+    },
+    "upload": {
+      "drop": "Slipp filer for å laste opp",
+      "or": "eller",
+      "choose": "Velg filer",
+      "maxSize": "Maksimal filstørrelse for opplasting: {size}.",
+      "types": "Tillatte filtyper: {types}.",
+      "queue": "Opplastinger",
+      "cancel": "Avbryt",
+      "done": "Lastet opp",
+      "progress": "Opplasting av {name}",
+      "fromUrl": "Sett inn fra nettadresse",
+      "fromUrlHelp": "Filen hentes til mediebiblioteket. Adresser på interne nettverk hentes ikke.",
+      "fetch": "Hent",
+      "addressInvalid": "Skriv en adresse som begynner med https:// eller http://."
+    },
+    "details": {
+      "title": "Vedleggsdetaljer",
+      "uploadedOn": "Dato for opplasting:",
+      "uploadedBy": "Lastet opp av:",
+      "fileName": "Filnavn:",
+      "fileType": "Filtype:",
+      "fileSize": "Filstørrelse:",
+      "dimensions": "Bredde og høyde:",
+      "pixels": "{width} × {height} piksler",
+      "alt": "Alternativ tekst",
+      "altHelp": "Finn ut hvordan beskrive hensikten med bildet. La stå tom om bildet er rent dekorativt.",
+      "fileTitle": "Tittel",
+      "caption": "Bildetekst",
+      "description": "Beskrivelse",
+      "visibility": "Synlighet",
+      "visibilityHelp": "En privat fil vises bare for den som lastet den opp og for redaktører, og får ingen offentlig adresse.",
+      "public": "Offentlig",
+      "private": "Privat",
+      "fileUrl": "Nettadresse til fil",
+      "copyUrl": "Kopier URL til utklippstavlen",
+      "copied": "Kopiert!",
+      "copyFailed": "Adressen kunne ikke kopieres. Merk den og kopier den selv.",
+      "usedBy": "Brukes på",
+      "unused": "Filen brukes ikke i noe innhold.",
+      "inTrash": "Papirkurv",
+      "editImage": "Rediger bilde",
+      "replace": "Erstatt",
+      "regenerate": "Lag bildestørrelser på nytt",
+      "regenerating": "Bildestørrelsene lages på nytt.",
+      "replaced": "Filen er erstattet. Alt som bruker den, viser den nye filen.",
+      "edited": "Bildet lagres. Bildestørrelsene lages på nytt.",
+      "delete": "Slett permanent",
+      "deleteTitle": "Slette filen permanent?",
+      "deleteConfirm": "Du er i ferd med å slette denne filen permanent fra nettstedet. Handlingen kan ikke angres.",
+      "deleteUsed": "Filen brukes på {list}. Slettes den, mangler bildet der. Handlingen kan ikke angres. | Filen brukes på {list}. Slettes den, mangler bildet der. Handlingen kan ikke angres. | Filen brukes på {n} steder: {list}. Slettes den, mangler bildet der. Handlingen kan ikke angres.",
+      "save": "Lagre",
+      "saved": "Endringene er lagret.",
+      "close": "Lukk"
+    },
+    "edit": {
+      "title": "Rediger bilde",
+      "preview": "Forhåndsvisning av «{title}»",
+      "turnAndFlip": "Roter og speilvend",
+      "rotateLeft": "Roter 90° mot venstre",
+      "rotateRight": "Roter 90° mot høyre",
+      "flipVertical": "Speilvend vertikalt",
+      "flipHorizontal": "Speilvend horisontalt",
+      "crop": "Klipp",
+      "cropX": "Fra venstre",
+      "cropY": "Fra toppen",
+      "cropClear": "Fjern utsnittet",
+      "dragHelp": "Dra over bildet for å velge utsnittet, eller skriv tallene.",
+      "scale": "Skaler bilde",
+      "scaleHelp": "Ny bredde i piksler, mindre enn {width}. Høyden følger med.",
+      "result": "Resultat: {width} × {height} piksler",
+      "originalKept": "Originalfilen beholdes som den ble lastet opp.",
+      "reset": "Tilbakestill",
+      "save": "Lagre",
+      "failed": "Bildet kunne ikke lagres."
+    },
+    "new": {
+      "title": "Last opp ny mediefil",
+      "uploaded": "Lastet opp",
+      "editNamed": "Rediger «{name}»"
+    },
+    "picker": {
+      "title": "Velg eller last opp medier",
+      "choose": "Velg",
+      "chosen": "Valgt: {name}"
+    },
+    "settings": {
+      "title": "Mediainnstillinger",
+      "denied": "Du har ikke tillatelse til å endre innstillingene.",
+      "loadFailed": "Innstillingene kunne ikke lastes.",
+      "sizes": "Bildestørrelser",
+      "sizesHelp": "Største mål i piksler for bildestørrelsene som lages når et bilde lastes opp.",
+      "thumbnail": "Miniatyrbildestørrelse",
+      "medium": "Medium størrelse",
+      "large": "Stor størrelse",
+      "width": "Bredde",
+      "height": "Høyde",
+      "thumbnailCrop": "Klipp miniatyrbilde til eksakte dimensjoner (miniatyrbilder er vanligvis proporsjonale)",
+      "regenerate": "Lag bildestørrelser på nytt",
+      "regenerateTitle": "Lage bildestørrelsene på nytt?",
+      "regenerateConfirm": "Alle bilder i mediebiblioteket får nye bildestørrelser etter innstillingene som er lagret. Det skjer i bakgrunnen og kan ta tid.",
+      "regenerateQueued": "Ingen bilder å lage på nytt. | {n} bilde får nye bildestørrelser. | {n} bilder får nye bildestørrelser.",
+      "sizesChanged": "Nye størrelser gjelder bilder som lastes opp fra nå av. Lag bildestørrelser på nytt for bildene som alt er lastet opp.",
+      "uploads": "Opplasting av filer",
+      "yearMonth": "Mine opplastinger skal organiseres i måneds- og årsbaserte mapper",
+      "maxSize": "Maksimal filstørrelse for opplasting (MB)",
+      "maxSizeHelp": "Høyst {cap} MB, grensen serveren er satt opp med (TOASCRIBE_UPLOAD_MAX_SIZE_MB).",
+      "maxPixels": "Største bilde (megapiksler)",
+      "maxPixelsHelp": "Et bilde med flere piksler avvises før det åpnes, så det ikke kan fylle minnet.",
+      "types": "Filtyper per rolle",
+      "typesHelp": "Hvilke filtyper hver rolle kan laste opp. SVG, HTML og programmer kan aldri lastes opp.",
+      "save": "Lagre endringer",
+      "saved": "Innstillingene er lagret.",
+      "saveFailed": "Innstillingene kunne ikke lagres."
     }
   }
 }

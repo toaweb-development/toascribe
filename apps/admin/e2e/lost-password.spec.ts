@@ -13,13 +13,13 @@ test('lost password through the mail: link, new password, login', async ({ page 
 
   // From the login screen's own link.
   await page.goto('/admin/login')
-  await page.getByRole('link', { name: 'Mistet passordet?' }).click()
+  await page.getByRole('link', { name: 'Mistet passordet ditt?' }).click()
   await expect(page).toHaveURL(/action=lostpassword/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Mistet passordet?' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Tapt passord' })).toBeVisible()
   await expectNoAxeViolations(page, 'lost password')
 
   await page.getByLabel('Brukernavn eller e-postadresse').fill(user.email)
-  await page.getByRole('button', { name: 'Få lenke for nytt passord' }).click()
+  await page.getByRole('button', { name: 'Få nytt passord' }).click()
   await expect(page).toHaveURL(/\/admin\/login\?checkemail=confirm$/)
   const notice = page.getByRole('status').filter({ hasText: 'Sjekk e-posten din.' })
   await expect(notice).toBeVisible()
@@ -29,7 +29,7 @@ test('lost password through the mail: link, new password, login', async ({ page 
   await page.goto(link)
 
   // The token is read from the fragment and taken out of the address bar at once.
-  await expect(page.getByRole('heading', { level: 1, name: 'Nytt passord' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Sett nytt passord' })).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/login\?action=resetpass$/)
   expect(await page.evaluate(() => window.location.hash)).toBe('')
 
@@ -68,7 +68,7 @@ test('the link works once', async ({ page, allowFailedRequests }) => {
   const user = await createUser('editor', 'once')
   await page.goto('/admin/login?action=lostpassword')
   await page.getByLabel('Brukernavn eller e-postadresse').fill(user.username)
-  await page.getByRole('button', { name: 'Få lenke for nytt passord' }).click()
+  await page.getByRole('button', { name: 'Få nytt passord' }).click()
   const link = linkIn(await waitForMail(user.email, /passord/i), 'resetpass')
 
   await page.goto(link)
@@ -100,7 +100,7 @@ test('gives the same answer for an account that does not exist, and sends no mai
   const nobody = uniqueName('nobody')
   await page.goto('/admin/login?action=lostpassword')
   await page.getByLabel('Brukernavn eller e-postadresse').fill(`${nobody}@example.test`)
-  await page.getByRole('button', { name: 'Få lenke for nytt passord' }).click()
+  await page.getByRole('button', { name: 'Få nytt passord' }).click()
   await expect(page).toHaveURL(/\/admin\/login\?checkemail=confirm$/)
   await expect(page.getByRole('status').filter({ hasText: 'Sjekk e-posten din.' })).toBeVisible()
   await page.waitForTimeout(3000)
@@ -112,7 +112,7 @@ test('the old password stops working once the new one is set', async ({ page, al
   const user = await createUser('editor', 'oldpw')
   await page.goto('/admin/login?action=lostpassword')
   await page.getByLabel('Brukernavn eller e-postadresse').fill(user.username)
-  await page.getByRole('button', { name: 'Få lenke for nytt passord' }).click()
+  await page.getByRole('button', { name: 'Få nytt passord' }).click()
   await page.goto(linkIn(await waitForMail(user.email, /passord/i), 'resetpass'))
   await page.getByLabel('Nytt passord').fill(NEW_PASSWORD)
   await page.getByRole('button', { name: 'Lagre passord' }).click()

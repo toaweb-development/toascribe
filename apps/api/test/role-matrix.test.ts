@@ -316,20 +316,143 @@ const CASES: readonly MatrixCase[] = [
     path: `/api/v1/content/${NO_SUCH_CONTENT}/${action}`,
     expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 403 },
   })),
-  // PROTOTYPE (M0.6): the editor's image uploads. `upload_files` (not the contributor or the subscriber) for an upload, sent as
-  // JSON here, so a role that may upload gets the validator's 415 (not multipart).
+  // Taxonomies and terms (M1.2): every role that edits content reads them; only manage_categories (administrator, editor) changes
+  // them. A term nobody has answers 404 to those who get through.
   {
-    route: 'POST /api/v1/prototype/editor/uploads',
-    method: 'POST',
-    path: '/api/v1/prototype/editor/uploads',
-    json: {},
-    expected: { ...ok, administrator: 415, editor: 415, author: 415, contributor: 403, subscriber: 403 },
+    route: 'GET /api/v1/taxonomies',
+    method: 'GET',
+    path: '/api/v1/taxonomies',
+    expected: { ...ok, subscriber: 403 },
   },
   {
-    route: 'GET /api/v1/prototype/editor/uploads/:name',
+    route: 'GET /api/v1/taxonomies/:tax/terms',
     method: 'GET',
-    path: '/api/v1/prototype/editor/uploads/0198a3c2-0000-7000-8000-0000000000dd.png',
+    path: '/api/v1/taxonomies/category/terms',
+    expected: { ...ok, subscriber: 403 },
+  },
+  {
+    route: 'GET /api/v1/taxonomies/:tax/terms/:id',
+    method: 'GET',
+    path: `/api/v1/taxonomies/post_tag/terms/${NO_SUCH_CONTENT}`,
     expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 403 },
+  },
+  {
+    route: 'POST /api/v1/taxonomies/:tax/terms',
+    method: 'POST',
+    path: '/api/v1/taxonomies/post_tag/terms',
+    body: (actor) => ({ name: `Matrise ${actor}` }),
+    expected: { ...ok, administrator: 201, editor: 201, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'POST /api/v1/taxonomies/:tax/terms/bulk',
+    method: 'POST',
+    path: '/api/v1/taxonomies/post_tag/terms/bulk',
+    json: { action: 'delete', ids: [NO_SUCH_CONTENT] },
+    expected: { ...ok, author: 403, contributor: 403, subscriber: 403 },
+  },
+  ...(['PATCH', 'DELETE'] as const).map((method) => ({
+    route: `${method} /api/v1/taxonomies/:tax/terms/:id`,
+    method,
+    path: `/api/v1/taxonomies/post_tag/terms/${NO_SUCH_CONTENT}`,
+    ...(method === 'PATCH' ? { json: { name: 'x' } } : {}),
+    expected: { ...ok, administrator: 404, editor: 404, author: 403, contributor: 403, subscriber: 403 },
+  })),
+  // The media library (M1.2): upload_files (administrator, editor, author) at the door. A file nobody has answers 404 to those who
+  // get through; a JSON body on the multipart routes is refused by the validator with 415 (not multipart) for them.
+  {
+    route: 'GET /api/v1/media',
+    method: 'GET',
+    path: '/api/v1/media',
+    expected: { ...ok, contributor: 403, subscriber: 403 },
+  },
+  ...(['POST /api/v1/media', `POST /api/v1/media/:id/replace`] as const).map((route) => ({
+    route,
+    method: 'POST',
+    path: route === 'POST /api/v1/media' ? '/api/v1/media' : `/api/v1/media/${NO_SUCH_CONTENT}/replace`,
+    json: {},
+    expected: { ...ok, administrator: 415, editor: 415, author: 415, contributor: 403, subscriber: 403 },
+  })),
+  {
+    // A private address: the SSRF-safe client refuses it before it connects (400 fetch_failed).
+    route: 'POST /api/v1/media/from-url',
+    method: 'POST',
+    path: '/api/v1/media/from-url',
+    json: { url: 'http://127.0.0.1/x.png' },
+    expected: { ...ok, administrator: 400, editor: 400, author: 400, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'POST /api/v1/media/regenerate',
+    method: 'POST',
+    path: '/api/v1/media/regenerate',
+    json: { ids: [NO_SUCH_CONTENT] },
+    expected: { ...ok, administrator: 202, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  ...(
+    [
+      ['GET /api/v1/media/:id', 'GET', ''],
+      ['GET /api/v1/media/:id/file', 'GET', '/file'],
+      ['PATCH /api/v1/media/:id', 'PATCH', ''],
+      ['DELETE /api/v1/media/:id', 'DELETE', ''],
+      ['POST /api/v1/media/:id/edit', 'POST', '/edit'],
+    ] as const
+  ).map(([route, method, suffix]) => ({
+    route,
+    method,
+    path: `/api/v1/media/${NO_SUCH_CONTENT}${suffix}`,
+    ...(method === 'PATCH'
+      ? { json: { title: 'x' } }
+      : suffix === '/edit'
+        ? { json: { operations: [{ op: 'rotate', degrees: 90 }] } }
+        : {}),
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 403, subscriber: 403 },
+  })),
+  {
+    route: 'GET /api/v1/media-folders',
+    method: 'GET',
+    path: '/api/v1/media-folders',
+    expected: { ...ok, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'POST /api/v1/media-folders',
+    method: 'POST',
+    path: '/api/v1/media-folders',
+    body: (actor) => ({ name: `Mappe ${actor}` }),
+    expected: { ...ok, administrator: 201, editor: 201, author: 201, contributor: 403, subscriber: 403 },
+  },
+  ...(['PATCH', 'DELETE'] as const).map((method) => ({
+    route: `${method} /api/v1/media-folders/:id`,
+    method,
+    path: `/api/v1/media-folders/${NO_SUCH_CONTENT}`,
+    ...(method === 'PATCH' ? { json: { name: 'x' } } : {}),
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 403, subscriber: 403 },
+  })),
+  {
+    route: 'GET /api/v1/settings/media',
+    method: 'GET',
+    path: '/api/v1/settings/media',
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'PATCH /api/v1/settings/media',
+    method: 'PATCH',
+    path: '/api/v1/settings/media',
+    json: { thumbnail_crop: true },
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    // A public file anyone may fetch; none with this key exists.
+    route: 'GET /uploads/*',
+    method: 'GET',
+    path: '/uploads/2026/10/none-00000000.png',
+    expected: {
+      ...ok,
+      anonymous: 404,
+      administrator: 404,
+      editor: 404,
+      author: 404,
+      contributor: 404,
+      subscriber: 404,
+    },
   },
   // The setup wizard (M0.4): no role opens the token-gated routes, an administrator included. Only the setup token does, and
   // the matrix sends none. After the install they would all be 404 (setup.test.ts).

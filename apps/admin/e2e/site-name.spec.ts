@@ -55,8 +55,8 @@ test('the login, register, lost-password and logout screens show it, and the lin
 
   // A client-side move between the screens keeps the name without asking again.
   await page.goto('/admin/login')
-  await page.getByRole('link', { name: 'Mistet passordet?' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Mistet passordet?' })).toBeVisible()
+  await page.getByRole('link', { name: 'Mistet passordet ditt?' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Tapt passord' })).toBeVisible()
   await expect(page.getByRole('link', { name: SHOWN, exact: true })).toBeVisible()
 
   await signIn(page, user)

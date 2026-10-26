@@ -12,7 +12,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { hashPassword } from '@toascribe/auth'
-import { documentText, validateDocument } from '@toascribe/blocks'
+import { documentMediaRefs, documentText, legacyImageUrls, migrateDocument, validateDocument } from '@toascribe/blocks'
 import type { Block } from '@toascribe/blocks'
 import { deleteContentPermanently, legacyBlocksText, uniqueContentSlug } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
@@ -89,7 +89,20 @@ import type {
 import type { Executor } from '../repositories/executor.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import { readSettings } from '../repositories/settings.ts'
+import {
+  ensureTags,
+  existingTermIds,
+  findTaxonomy,
+  itemTermIds,
+  lockTaxonomy,
+  replaceItemTerms,
+  termWithDescendants,
+  termsOfContent,
+} from '../repositories/terms.ts'
+import type { ContentTermRow } from '../repositories/terms.ts'
 import type { Auditor, RequestContext } from './support.ts'
+import type { MediaService } from './media.ts'
+import { replaceMediaRefs } from '../repositories/media.ts'
 
 export interface ContentService {
   list: (auth: SessionAuth, query: ContentListQuery) => Promise<ContentListResponse>
@@ -111,6 +124,7 @@ export interface ContentService {
 const SETTINGS = CoreSettings.pick({
   locale: true,
   default_comment_status: true,
+  default_category: true,
   timezone_string: true,
   gmt_offset: true,
 })
@@ -142,7 +156,14 @@ function iso(date: Date | null): string | null {
   return date === null ? null : date.toISOString()
 }
 
-function baseFields(row: ContentRow, authors: readonly AuthorRow[], actor: Actor) {
+const termRef = (entry: ContentTermRow) => ({ id: entry.id, name: entry.name, slug: entry.slug })
+
+function baseFields(
+  row: ContentRow,
+  authors: readonly AuthorRow[],
+  actor: Actor,
+  terms: { categories: readonly ContentTermRow[]; tags: readonly ContentTermRow[] } | undefined,
+) {
   return {
     id: row.id,
     shortId: row.shortId,
@@ -164,28 +185,16 @@ function baseFields(row: ContentRow, authors: readonly AuthorRow[], actor: Actor
     createdAt: row.createdAt.toISOString(),
     modifiedAt: row.modifiedAt.toISOString(),
     authors: authors.map((author) => ({ id: author.id, username: author.username, displayName: author.displayName })),
+    categories: (terms?.categories ?? []).map(termRef),
+    tags: (terms?.tags ?? []).map(termRef),
     can: permissionsFor(actor, accessOf(row, authors)),
   }
-}
-
-/** True when the stored tree is in toascribe's block format (an empty tree is). */
-function isBlockFormat(blocks: Blocks): boolean {
-  return validateDocument(blocks).ok
 }
 
 /** The words of a stored tree: toascribe blocks through their block.json, WordPress' parsed blocks through their HTML. */
 function storedBlocksText(blocks: Blocks): string {
   const checked = validateDocument(blocks)
   return checked.ok ? documentText(checked.blocks) : legacyBlocksText(blocks)
-}
-
-/** Checks a block tree against the block.json of every block; the stored form is what the validator returns. */
-function checkBlocks(blocks: readonly unknown[]): { stored: Blocks; text: string } {
-  const result = validateDocument(blocks)
-  if (!result.ok) {
-    throw new InvalidBlocksError(result.issues.map((issue) => ({ ...issue, path: [...issue.path] })))
-  }
-  return { stored: toJson(result.blocks), text: documentText(result.blocks) }
 }
 
 function toJson(blocks: readonly Block[]): Blocks {
@@ -326,9 +335,28 @@ export function createContentService(options: {
   readonly db: Database
   readonly clock: () => Date
   readonly audit: Auditor
+  /** The media library: the addresses of old image blocks, and the files a document uses. */
+  readonly media: Pick<MediaService, 'contentRefs' | 'idsForUrls'>
   readonly onInvalidSetting?: (key: string) => void
 }): ContentService {
-  const { db, clock, audit } = options
+  const { db, clock, audit, media } = options
+
+  /** A stored or sent tree with every block upgraded to its current version (core/image: an address becomes a media id). */
+  async function migrated(blocks: unknown): Promise<unknown> {
+    const urls = legacyImageUrls(blocks)
+    const ids = urls.length === 0 ? new Map<string, string>() : await media.idsForUrls(urls)
+    return migrateDocument(blocks, { mediaIdForUrl: (url) => ids.get(url) }).blocks
+  }
+
+  /** Checks a sent tree after upgrading it; the stored form, its text and the media it uses. */
+  async function checkSent(blocks: readonly unknown[]) {
+    const upgraded = await migrated(blocks)
+    const result = validateDocument(upgraded)
+    if (!result.ok) {
+      throw new InvalidBlocksError(result.issues.map((issue) => ({ ...issue, path: [...issue.path] })))
+    }
+    return { stored: toJson(result.blocks), text: documentText(result.blocks), refs: documentMediaRefs(result.blocks) }
+  }
 
   const settingsOf = (executor: Executor) => readSettings(executor, SETTINGS, options.onInvalidSetting)
 
@@ -338,11 +366,22 @@ export function createContentService(options: {
     if (row === undefined || !canRead(actor, accessOf(row, authors))) {
       throw new NotFoundError()
     }
+    const terms = (await termsOfContent(executor, [id])).get(id)
+    const blocks = await migrated(row.blocks)
+    const checked = validateDocument(blocks)
+    const refs = checked.ok ? documentMediaRefs(checked.blocks) : []
     return {
-      ...baseFields(row, authors, actor),
+      ...baseFields(row, authors, actor, terms),
       excerpt: row.excerpt,
-      blocks: row.blocks,
-      blocksFormat: isBlockFormat(row.blocks) ? 'blocks' : 'legacy',
+      blocks: checked.ok ? toJson(checked.blocks) : row.blocks,
+      blocksFormat: checked.ok ? 'blocks' : 'legacy',
+      media:
+        refs.length === 0
+          ? []
+          : await media.contentRefs(
+              actor,
+              refs.map((ref) => ref.mediaId),
+            ),
     }
   }
 
@@ -408,6 +447,83 @@ export function createContentService(options: {
     }
   }
 
+  /** What a save asks of an item's terms: the full lists (create, change) or additions (bulk edit). */
+  interface TermRequest {
+    readonly categories?: readonly string[] | undefined
+    readonly tags?: readonly string[] | undefined
+    readonly addCategories?: readonly string[] | undefined
+    readonly addTags?: readonly string[] | undefined
+  }
+
+  const hasTerms = (request: TermRequest) =>
+    request.categories !== undefined ||
+    request.tags !== undefined ||
+    request.addCategories !== undefined ||
+    request.addTags !== undefined
+
+  /**
+   * Sets the categories and tags of a post as the request asks, inside the caller's transaction. A post left without a category
+   * gets the default one («Ukategorisert»), as WordPress does; new tag names become tags. Returns whether anything changed. Pages
+   * have no terms: asking for them is a 400.
+   */
+  async function applyTerms(
+    tx: Executor,
+    item: { readonly id: string; readonly type: ContentTypeKey },
+    request: TermRequest,
+    isNew: boolean,
+    now: Date,
+  ): Promise<boolean> {
+    if (item.type !== 'post') {
+      if (hasTerms(request)) {
+        throw new AppError(400, 'terms_not_supported', 'Only posts have categories and tags')
+      }
+      return false
+    }
+    let changed = false
+    const categories = await findTaxonomy(tx, 'category')
+    if (
+      categories !== undefined &&
+      (isNew || request.categories !== undefined || request.addCategories !== undefined)
+    ) {
+      const wanted = [...(request.categories ?? []), ...(request.addCategories ?? [])]
+      const known = await existingTermIds(tx, categories.id, wanted)
+      if (wanted.some((id) => !known.has(id))) {
+        throw new AppError(400, 'invalid_term', 'A category does not exist')
+      }
+      const current = isNew ? [] : await itemTermIds(tx, item.id, categories.id)
+      let next =
+        request.categories !== undefined
+          ? [...request.categories]
+          : [...current, ...(request.addCategories ?? []).filter((id) => !current.includes(id))]
+      if (next.length === 0) {
+        const { default_category: fallback } = await settingsOf(tx)
+        next = fallback === null ? [] : [fallback]
+      }
+      if (!sameList(next, current)) {
+        await replaceItemTerms(tx, item.id, categories.id, next, now)
+        changed = true
+      }
+    }
+    const tags = await findTaxonomy(tx, 'post_tag')
+    if (tags !== undefined && (request.tags !== undefined || request.addTags !== undefined)) {
+      await lockTaxonomy(tx, tags.id)
+      const ids = await ensureTags(
+        tx,
+        tags.id,
+        [...(request.tags ?? []), ...(request.addTags ?? [])],
+        (name) => sanitizeTitle(name, 'tag'),
+        now,
+      )
+      const current = await itemTermIds(tx, item.id, tags.id)
+      const next = request.tags !== undefined ? ids : [...current, ...ids.filter((id) => !current.includes(id))]
+      if (!sameList(next, current)) {
+        await replaceItemTerms(tx, item.id, tags.id, next, now)
+        changed = true
+      }
+    }
+    return changed
+  }
+
   function requirePublish(actor: Actor, type: ContentTypeKey): void {
     if (!canPublishType(actor, type)) {
       throw new AppError(403, 'cannot_publish', 'You may not publish, schedule or make this private')
@@ -444,7 +560,7 @@ export function createContentService(options: {
       toDate(request.unpublishAt) ?? null,
       now,
     )
-    const blocks = request.blocks === undefined ? { stored: [], text: '' } : checkBlocks(request.blocks)
+    const blocks = request.blocks === undefined ? { stored: [], text: '', refs: [] } : await checkSent(request.blocks)
     const passwordHash =
       request.password === undefined || request.password === null ? null : await hashPassword(request.password)
     const settings = await settingsOf(db)
@@ -483,6 +599,8 @@ export function createContentService(options: {
         await updateContent(tx, inserted.id, { slug: fromId }, now)
       }
       await replaceAuthors(tx, inserted.id, authors, now)
+      await replaceMediaRefs(tx, inserted.id, blocks.refs, now)
+      await applyTerms(tx, { id: inserted.id, type }, request, true, now)
       await audit(tx, ctx, {
         actor: { id: actor.id, username: auth.account.username },
         action: 'content.created',
@@ -506,6 +624,7 @@ export function createContentService(options: {
     request: UpdateContentRequest,
     passwordHash: string | null | undefined,
     ctx: RequestContext,
+    additions: { readonly addCategories?: readonly string[]; readonly addTags?: readonly string[] } = {},
   ): Promise<Outcome> {
     const actor = actorOf(auth)
     const { row, authors, access } = await lockItem(tx, actor, id)
@@ -576,7 +695,7 @@ export function createContentService(options: {
 
     const title = request.title ?? row.title
     const excerpt = request.excerpt ?? row.excerpt
-    const blocks = request.blocks === undefined ? undefined : checkBlocks(request.blocks)
+    const blocks = request.blocks === undefined ? undefined : await checkSent(request.blocks)
 
     // The slug: one that was sent; or, while the item is a draft or pending, a new one from a changed title when the old one was
     // made from the title; otherwise the old one. It is made unique again when it or the parent changes.
@@ -619,7 +738,27 @@ export function createContentService(options: {
       changes.blocks = blocks.stored
     }
 
+    const termsChanged = await applyTerms(
+      tx,
+      { id: row.id, type },
+      { categories: request.categories, tags: request.tags, ...additions },
+      false,
+      now,
+    )
     if (Object.keys(changes).length === 0 && !authorsChanged) {
+      if (termsChanged) {
+        // Only the terms changed: the item still counts as changed now.
+        await updateContent(tx, row.id, {}, now)
+        await audit(tx, ctx, {
+          actor: { id: actor.id, username: auth.account.username },
+          action: 'content.updated',
+          objectType: type,
+          objectId: row.id,
+          oldValue: { status: row.status },
+          newValue: { status: row.status, fields: ['terms'] },
+        })
+        return 'changed'
+      }
       return 'unchanged'
     }
     const searchChanged = changes.title !== undefined || changes.excerpt !== undefined || changes.blocks !== undefined
@@ -632,10 +771,17 @@ export function createContentService(options: {
         }
       : undefined
     await updateContent(tx, row.id, changes, now, search)
+    if (changes.blocks !== undefined && blocks !== undefined) {
+      await replaceMediaRefs(tx, row.id, blocks.refs, now)
+    }
     if (authorsChanged) {
       await replaceAuthors(tx, row.id, nextAuthors, now)
     }
-    const fields = [...Object.keys(changes), ...(authorsChanged ? ['authors'] : [])].sort()
+    const fields = [
+      ...Object.keys(changes),
+      ...(authorsChanged ? ['authors'] : []),
+      ...(termsChanged ? ['terms'] : []),
+    ].sort()
     await audit(tx, ctx, {
       actor: { id: actor.id, username: auth.account.username },
       action: 'content.updated',
@@ -735,7 +881,18 @@ export function createContentService(options: {
       }
       const context: ListContext = {
         visibility,
-        filter: { status: query.status, author: query.author, search: query.search, month: query.month },
+        filter: {
+          status: query.status,
+          author: query.author,
+          search: query.search,
+          month: query.month,
+          termIds:
+            query.category !== undefined
+              ? await termWithDescendants(db, query.category)
+              : query.tag !== undefined
+                ? [query.tag]
+                : undefined,
+        },
         zone: timeZoneOf(settings),
         searchConfig: textSearchConfig(settings.locale),
       }
@@ -765,16 +922,20 @@ export function createContentService(options: {
           countContent(db, context),
         ])
       }
-      const [counts, months, authors] = await Promise.all([
+      const [counts, months, authors, terms] = await Promise.all([
         countByStatus(db, visibility),
         listMonths(db, visibility, context.zone, query.status === 'trash'),
         authorsOf(
           db,
           rows.map((row) => row.id),
         ),
+        termsOfContent(
+          db,
+          rows.map((row) => row.id),
+        ),
       ])
       const items: ContentListItem[] = rows.map((row) => ({
-        ...baseFields(row, authors.get(row.id) ?? [], actor),
+        ...baseFields(row, authors.get(row.id) ?? [], actor, terms.get(row.id)),
         depth: depths.get(row.id) ?? 0,
       }))
       return {
@@ -867,7 +1028,15 @@ export function createContentService(options: {
             ...(changes.parentId === undefined ? {} : { parentId: changes.parentId }),
             ...(changes.template === undefined ? {} : { template: changes.template }),
           }
-          act = (tx, id) => updateIn(tx, auth, id, update, undefined, ctx)
+          const additions = {
+            ...(changes.addCategories === undefined ? {} : { addCategories: changes.addCategories }),
+            ...(changes.addTags === undefined ? {} : { addTags: changes.addTags }),
+          }
+          act = async (tx, id) => {
+            // An addition of terms is skipped quietly for a page, which has none (WordPress' bulk edit leaves pages' terms alone).
+            const target = await findContent(tx, id)
+            return updateIn(tx, auth, id, update, undefined, ctx, target?.type === 'post' ? additions : {})
+          }
           break
         }
         case 'empty_trash': {

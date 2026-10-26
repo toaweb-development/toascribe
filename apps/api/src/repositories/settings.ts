@@ -1,7 +1,8 @@
-// Reads of the `setting` table (typescript §8). A key is validated against the schema it is read with and falls back to the
+// Reads and writes of the `setting` table (typescript §8). A key is validated against the schema it is read with and falls back to the
 // default when the row is missing or holds something the schema refuses, so a bad value can never loosen a security limit.
-import { schema } from '@toascribe/db'
+import { schema, writeSetting } from '@toascribe/db'
 import { CORE_SETTINGS } from '@toascribe/shared'
+import type { CoreSettingKey, JsonValue } from '@toascribe/shared'
 import { inArray } from 'drizzle-orm'
 import type { z } from 'zod'
 
@@ -40,4 +41,16 @@ export async function readSettings<S extends z.ZodObject<Record<string, z.ZodTyp
     }
   }
   return picked.parse(merged)
+}
+
+/** Writes these settings (each checked against CoreSettings by `writeSetting`). Run it in the caller's transaction. */
+export async function writeSettings(
+  db: Executor,
+  values: Readonly<Partial<Record<CoreSettingKey, JsonValue | undefined>>>,
+): Promise<void> {
+  for (const [key, value] of Object.entries(values) as [CoreSettingKey, JsonValue | undefined][]) {
+    if (value !== undefined) {
+      await writeSetting(db, key, value)
+    }
+  }
 }

@@ -61,6 +61,8 @@ services:
     environment:
       # The one address or network whose X-Forwarded-* headers Caddy believes. Empty: nobody (see the Caddyfile).
       TOASCRIBE_TRUSTED_PROXY: ${TOASCRIBE_TRUSTED_PROXY:-}
+      # The largest upload in megabytes (the whole form), for the two routes that take a file; the api has the same cap.
+      TOASCRIBE_UPLOAD_MAX_SIZE_MB: ${TOASCRIBE_UPLOAD_MAX_SIZE_MB:-64}
     read_only: true
     tmpfs:
       - /data
@@ -175,10 +177,15 @@ services:
       TOASCRIBE_SIGNING_KEY: ${TOASCRIBE_SIGNING_KEY:-}
       # Only so the api can warn when this is empty and every request comes from one private address (README, «Behind a reverse proxy»).
       TOASCRIBE_TRUSTED_PROXY: ${TOASCRIBE_TRUSTED_PROXY:-}
+      # The media library (M1.2): the volume below, and the cap on one upload (the setting upload_max_size_mb stays under it).
+      UPLOADS_DIR: /var/lib/toascribe/uploads
+      UPLOAD_MAX_SIZE_MB: ${TOASCRIBE_UPLOAD_MAX_SIZE_MB:-64}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - uploads:/var/lib/toascribe/uploads
     networks:
       - internal
       - db
@@ -217,9 +224,13 @@ services:
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       WORKER_HEARTBEAT_FILE: /tmp/toascribe-worker.heartbeat
+      # The media library (M1.2): the worker reads the originals and writes the sizes.
+      UPLOADS_DIR: /var/lib/toascribe/uploads
     read_only: true
     tmpfs:
       - /tmp # the heartbeat file the healthcheck reads
+    volumes:
+      - uploads:/var/lib/toascribe/uploads
     # pg-boss waits up to 30 s for running jobs; the worker allows 40 s (apps/worker). Docker must not kill it sooner.
     stop_grace_period: 45s
     networks:
@@ -237,7 +248,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          # sharp decodes an image of up to image_max_pixels (100 MP by default: about 300 MB of pixels) in the worker.
+          memory: 1G
 
   # Runs the migrations as the owner role, then exits. It is the only service that gets MIGRATION_DATABASE_URL.
   # It takes an advisory lock, so two of them never migrate at once (packages/db).
@@ -395,3 +407,5 @@ networks:
 
 volumes:
   postgres_data: {}
+  # The media library's files (originals and sizes), shared by the api and the worker. Back it up with the database.
+  uploads: {}

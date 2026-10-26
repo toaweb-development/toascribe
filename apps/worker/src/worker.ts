@@ -26,6 +26,8 @@ export interface WorkerOptions {
   readonly transport?: TransportFactory
   /** Tests only: how often the queues are polled, in seconds (default 2 for mail and 30 for the clean-up). */
   readonly pollingSeconds?: number
+  /** UPLOADS_DIR: the media library's volume. */
+  readonly uploadsDir: string
   /** Tests only: the clock of the clean-up jobs. */
   readonly now?: () => Date
 }
@@ -71,6 +73,12 @@ export async function startWorker(options: WorkerOptions): Promise<Worker> {
         },
         cleanup: { db: options.db, logger, ...(options.now === undefined ? {} : { now: options.now }) },
         content: { db: options.db, logger, ...(options.now === undefined ? {} : { now: options.now }) },
+        media: {
+          db: options.db,
+          logger,
+          uploadsDir: options.uploadsDir,
+          ...(options.now === undefined ? {} : { now: options.now }),
+        },
         ...(options.pollingSeconds === undefined ? {} : { pollingSeconds: options.pollingSeconds }),
       },
       logger,

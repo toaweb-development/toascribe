@@ -99,14 +99,14 @@ describe('the request to the API', () => {
   })
 
   it('leaves search and role out when there are none and always sends the page size', () => {
-    expect(toUserListQuery(DEFAULT_USERS_VIEW)).toEqual({ orderby: 'username', order: 'asc', page: 1, perPage: 20 })
+    expect(toUserListQuery(DEFAULT_USERS_VIEW)).toEqual({ orderby: 'username', order: 'asc', page: 1, per_page: 20 })
     expect(toUserListQuery(view({ role: 'author', search: 'x' }), 50)).toEqual({
       search: 'x',
       role: 'author',
       orderby: 'username',
       order: 'asc',
       page: 1,
-      perPage: 50,
+      per_page: 50,
     })
   })
 })

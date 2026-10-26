@@ -22,7 +22,7 @@ export function usersQueryString(query: UserListQuery): string {
   params.set('orderby', query.orderby)
   params.set('order', query.order)
   params.set('page', String(query.page))
-  params.set('perPage', String(query.perPage))
+  params.set('per_page', String(query.per_page))
   return params.toString()
 }
 

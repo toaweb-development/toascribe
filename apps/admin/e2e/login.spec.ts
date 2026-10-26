@@ -111,7 +111,7 @@ test('«Husk meg» gives a cookie that lasts', async ({ page, context }) => {
 test('the WordPress addresses lead to the screens', async ({ page }) => {
   await page.goto('/wp-login.php?action=lostpassword')
   await expect(page).toHaveURL(/\/admin\/login\?action=lostpassword$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Mistet passordet?' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Tapt passord' })).toBeVisible()
   await page.goto('/wp-login.php?action=logout')
   // Without a session there is nothing to ask about: the login screen says so.
   await expect(page).toHaveURL(/\/admin\/login\?loggedout=true$/)

@@ -58,7 +58,9 @@ COPY --from=prod-deps /app/cli/node_modules ./cli/node_modules
 COPY --from=prod-deps /app/packages/auth/node_modules ./packages/auth/node_modules
 COPY --from=prod-deps /app/packages/blocks/node_modules ./packages/blocks/node_modules
 COPY --from=prod-deps /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=prod-deps /app/packages/http/node_modules ./packages/http/node_modules
 COPY --from=prod-deps /app/packages/install/node_modules ./packages/install/node_modules
+COPY --from=prod-deps /app/packages/media/node_modules ./packages/media/node_modules
 COPY --from=prod-deps /app/packages/shared/node_modules ./packages/shared/node_modules
 
 # Compiled code and package.json (the version is read from apps/api and cli at run time).
@@ -73,15 +75,23 @@ COPY --from=build /app/packages/blocks/dist ./packages/blocks/dist
 COPY --from=build /app/packages/db/package.json ./packages/db/package.json
 COPY --from=build /app/packages/db/dist ./packages/db/dist
 COPY --from=build /app/packages/db/migrations ./packages/db/migrations
+COPY --from=build /app/packages/http/package.json ./packages/http/package.json
+COPY --from=build /app/packages/http/dist ./packages/http/dist
 COPY --from=build /app/packages/install/package.json ./packages/install/package.json
 COPY --from=build /app/packages/install/dist ./packages/install/dist
+COPY --from=build /app/packages/media/package.json ./packages/media/package.json
+COPY --from=build /app/packages/media/dist ./packages/media/dist
 COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/cli/package.json ./cli/package.json
 COPY --from=build /app/cli/dist ./cli/dist
 
 # `toa` on PATH. The file is already executable after `pnpm build`.
-RUN ln -s /app/cli/dist/index.js /usr/local/bin/toa
+# The media library's volume (M1.2): made here and owned by the app user, so a new named volume starts with that owner.
+RUN ln -s /app/cli/dist/index.js /usr/local/bin/toa \
+ && mkdir -p /var/lib/toascribe/uploads \
+ && chown 10001:10001 /var/lib/toascribe/uploads \
+ && chmod 750 /var/lib/toascribe/uploads
 
 USER 10001:10001
 EXPOSE 3001

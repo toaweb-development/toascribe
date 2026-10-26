@@ -1,4 +1,5 @@
 import { expect, test } from './helpers/fixtures.ts'
+import { PNG } from './helpers/images.ts'
 import { signIn } from './helpers/screens.ts'
 import { createUser } from './helpers/stack.ts'
 import { EXPECTED_STYLE_SRC_ATTR, LISTED_STYLE_ATTRIBUTES, styleAttributesIn } from './helpers/styles.ts'
@@ -129,6 +130,13 @@ test('every inline style the server draws is on the list, and the list holds not
   await signIn(page, user)
   const origin = new URL(page.url()).origin
   const session = (await (await page.request.get('/api/v1/auth/session')).json()) as { csrfToken: string }
+  // An image in the library, for the editor's image block, the library and its details.
+  const uploaded = await page.request.post('/api/v1/media', {
+    headers: { 'X-CSRF-Token': session.csrfToken, origin },
+    multipart: { file: { name: 'csp.png', mimeType: 'image/png', buffer: PNG } },
+  })
+  expect(uploaded.ok(), await uploaded.text()).toBe(true)
+  const { id: mediaId } = (await uploaded.json()) as { id: string }
   const draft = await page.request.post('/api/v1/content', {
     headers: { 'X-CSRF-Token': session.csrfToken, origin },
     data: {
@@ -159,8 +167,8 @@ test('every inline style the server draws is on the list, and the list holds not
         {
           id: 'b_cspimage',
           type: 'core/image',
-          version: 1,
-          attrs: { url: '/admin/no-such-image.png', alt: 'a' },
+          version: 2,
+          attrs: { mediaId, alt: 'a' },
           children: [],
         },
       ],
@@ -194,6 +202,12 @@ test('every inline style the server draws is on the list, and the list holds not
       `/admin/posts/${id}`,
       '/admin/pages/new',
       `/admin/preview/${id}`,
+      // Taxonomies and media (M1.2).
+      '/admin/categories',
+      '/admin/tags',
+      '/admin/media',
+      '/admin/media/new',
+      '/admin/settings/media',
     ]) {
       const answer = await page.request.get(path)
       expect(answer.status(), path).toBe(200)

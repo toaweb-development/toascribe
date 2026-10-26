@@ -1,6 +1,6 @@
 // The media library (K-110 to K-126). Media is its own table, not a content type as in WordPress.
 import { sql } from 'drizzle-orm'
-import { MEDIA_VISIBILITY } from '@toascribe/shared'
+import { MEDIA_PROCESSING, MEDIA_VISIBILITY } from '@toascribe/shared'
 import type { FocalPoint, MediaVariants } from '@toascribe/shared'
 import {
   bigint,
@@ -67,11 +67,17 @@ export const media = pgTable(
     variants: jsonb('variants').$type<MediaVariants>().notNull().default({}),
     /** Key of the original in the storage driver (local disk or S3), e.g. 2026/10/photo.jpg. */
     storageKey: text('storage_key').notNull(),
+    /** The name the file had when it was uploaded (shown in the details; the stored key is made from it). */
+    fileName: text('file_name').notNull().default(''),
+    /** The worker's work on the file (M1.2): `pending` until the sizes are made, `failed` with the reason in processing_error. */
+    processing: text('processing').notNull().default('ready'),
+    processingError: text('processing_error'),
     ...timestamps(),
   },
   (t): PgTableExtraConfigValue[] => [
     unique('uq_media_storage_key').on(t.storageKey),
     check('ck_media_visibility', oneOf(t.visibility, MEDIA_VISIBILITY)),
+    check('ck_media_processing', oneOf(t.processing, MEDIA_PROCESSING)),
     check('ck_media_sha256', sql`${t.sha256} ~ '^[0-9a-f]{64}$'`),
     check('ck_media_size', sql`${t.size} >= 0`),
     check(
@@ -91,6 +97,8 @@ export const media = pgTable(
       'set null',
     ),
     // Folder view, «uploaded by me», «uploaded to this item», and the three SET NULL actions.
+    // /uploads/<key> of a size (`<original without ext>-300x200.webp`) finds its file by the original key's prefix.
+    index('idx_media_storage_key_prefix').on(t.storageKey.op('text_pattern_ops')),
     index('idx_media_folder_id')
       .on(t.folderId)
       .where(sql`${t.folderId} is not null`),
