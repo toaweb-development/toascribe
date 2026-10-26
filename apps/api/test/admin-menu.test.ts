@@ -26,27 +26,31 @@ const shape = (role: BuiltInRole) =>
     .map((item) => ({ id: item.id, to: item.to, children: item.children.map((child) => child.id) }))
 
 describe('the core menu', () => {
-  it('shows an administrator Kontrollpanel, Innlegg, Sider and Brukere, and not the top-level Profil', () => {
+  it('shows an administrator Kontrollpanel, Innlegg, Media, Sider, Brukere and Innstillinger, and not the top-level Profil', () => {
     expect(shape('administrator')).toEqual([
       { id: 'dashboard', to: '/', children: ['dashboard.home'] },
       { id: 'posts', to: '/posts', children: ['posts.all', 'posts.new', 'posts.categories', 'posts.tags'] },
+      { id: 'media', to: '/media', children: ['media.library', 'media.new'] },
       { id: 'pages', to: '/pages', children: ['pages.all', 'pages.new'] },
       { id: 'users', to: '/users', children: ['users.all', 'users.profile'] },
+      { id: 'settings', to: '/settings/media', children: ['settings.media'] },
     ])
   })
 
-  it('shows an editor Innlegg (with Kategorier and Stikkord) and Sider; an author and a contributor Innlegg only', () => {
+  it('shows an editor Innlegg (with Kategorier and Stikkord), Media and Sider; an author Innlegg and Media; a contributor Innlegg', () => {
     const dashboard = { id: 'dashboard', to: '/', children: ['dashboard.home'] }
     const profile = { id: 'profile', to: '/profile', children: [] }
     expect(shape('editor')).toEqual([
       dashboard,
       { id: 'posts', to: '/posts', children: ['posts.all', 'posts.new', 'posts.categories', 'posts.tags'] },
+      { id: 'media', to: '/media', children: ['media.library', 'media.new'] },
       { id: 'pages', to: '/pages', children: ['pages.all', 'pages.new'] },
       profile,
     ])
     expect(shape('author')).toEqual([
       dashboard,
       { id: 'posts', to: '/posts', children: ['posts.all', 'posts.new'] },
+      { id: 'media', to: '/media', children: ['media.library', 'media.new'] },
       profile,
     ])
     expect(shape('contributor')).toEqual([
@@ -94,6 +98,8 @@ describe('the core menu', () => {
     const byId = new Map(CORE_MENU_ITEMS.map((item) => [item.id, item]))
     expect(byId.get('dashboard')).toMatchObject({ position: 2, icon: 'i-lucide-gauge' })
     expect(byId.get('posts')).toMatchObject({ position: 5, icon: 'i-lucide-pin', capability: 'edit_posts' })
+    expect(byId.get('media')).toMatchObject({ position: 10, icon: 'i-lucide-image', capability: 'upload_files' })
+    expect(byId.get('settings')).toMatchObject({ position: 80, icon: 'i-lucide-settings', capability: 'manage_options' })
     expect(byId.get('pages')).toMatchObject({ position: 20, icon: 'i-lucide-file-text', capability: 'edit_pages' })
     expect(byId.get('users')).toMatchObject({ position: 70, icon: 'i-lucide-users' })
     expect(byId.get('profile')).toMatchObject({ position: 70, icon: 'i-lucide-user', unlessCapability: 'list_users' })
@@ -103,10 +109,13 @@ describe('the core menu', () => {
       'posts.new',
       'posts.categories',
       'posts.tags',
+      'media.library',
+      'media.new',
       'pages.all',
       'pages.new',
       'users.all',
       'users.profile',
+      'settings.media',
     ])
   })
 })
@@ -222,8 +231,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('GET /api/v1/admin/menu (needs 
 
   it('gives an administrator the Brukere menu', async () => {
     const items = await menuAs('administrator')
-    expect(items.map((entry) => entry.id)).toEqual(['dashboard', 'posts', 'pages', 'users'])
-    expect(items[3]).toEqual({
+    expect(items.map((entry) => entry.id)).toEqual(['dashboard', 'posts', 'media', 'pages', 'users', 'settings'])
+    expect(items[4]).toEqual({
       id: 'users',
       labelKey: 'menu.users',
       icon: 'i-lucide-users',
@@ -237,7 +246,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('GET /api/v1/admin/menu (needs 
   })
 
   it('gives an editor and a subscriber Profil on its own, with no capability rules in the answer', async () => {
-    expect((await menuAs('editor')).map((entry) => entry.id)).toEqual(['dashboard', 'posts', 'pages', 'profile'])
+    expect((await menuAs('editor')).map((entry) => entry.id)).toEqual(['dashboard', 'posts', 'media', 'pages', 'profile'])
     const items = await menuAs('subscriber')
     expect(items.map((entry) => entry.id)).toEqual(['dashboard', 'profile'])
     expect(JSON.stringify(items)).not.toMatch(/capability|unless/i)
@@ -254,6 +263,6 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('GET /api/v1/admin/menu (needs 
       [account.id],
     )
     const after = AdminMenuResponse.parse(await (await client.get('/api/v1/admin/menu')).json())
-    expect(after.items.map((entry) => entry.id)).toEqual(['dashboard', 'posts', 'pages', 'users'])
+    expect(after.items.map((entry) => entry.id)).toEqual(['dashboard', 'posts', 'media', 'pages', 'users', 'settings'])
   })
 })
