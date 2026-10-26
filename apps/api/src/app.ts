@@ -22,6 +22,7 @@ import type { MailPort } from './ports/mail.ts'
 import type { Pool } from './repositories/health.ts'
 import { createAdminApp } from './routes/admin.ts'
 import { createAuthApp } from './routes/auth.ts'
+import { createContentApp } from './routes/content.ts'
 import { createDashboardApp } from './routes/dashboard.ts'
 import { createEditorPrototypeApp } from './routes/editor-prototype.ts'
 import { createHealthApp } from './routes/health.ts'
@@ -158,7 +159,8 @@ export function buildApp(deps: AppDeps) {
   app.route('/api/v1', createDashboardApp(services))
   app.route('/api/v1', createNoticesApp(services))
   app.route('/api/v1', createUsersApp(services))
-  // PROTOTYPE (M0.6): the editor prototype. Remove with M1.1/M1.2.
+  app.route('/api/v1', createContentApp(services))
+  // PROTOTYPE (M0.6): the editor prototype's image uploads. Remove with the media library (M1.2).
   app.route('/api/v1', createEditorPrototypeApp(services))
   app.route('/api/v1', createSetupApp(services))
 

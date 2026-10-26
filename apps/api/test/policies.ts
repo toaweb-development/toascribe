@@ -38,9 +38,18 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   // The users table and role assignment (M0.5): `list_users` and `promote_users`, both the administrator's.
   'GET /api/v1/users': 'capability:list_users',
   'PUT /api/v1/users/roles': 'capability:promote_users',
-  // PROTOTYPE (M0.6): the editor prototype's draft and images. Replaced by the content API (M1.1) and the media library (M1.2).
-  'GET /api/v1/prototype/editor/document': 'capability:edit_posts',
-  'PUT /api/v1/prototype/editor/document': 'capability:edit_posts',
+  // The content API (M1.1): `edit_posts` at the door; the type's own capabilities and the item's are checked by the service.
+  'GET /api/v1/content': 'capability:edit_posts',
+  'POST /api/v1/content': 'capability:edit_posts',
+  'POST /api/v1/content/bulk': 'capability:edit_posts',
+  'GET /api/v1/content/authors': 'capability:edit_posts',
+  'GET /api/v1/content/:id': 'capability:edit_posts',
+  'PATCH /api/v1/content/:id': 'capability:edit_posts',
+  'DELETE /api/v1/content/:id': 'capability:edit_posts',
+  'POST /api/v1/content/:id/publish': 'capability:edit_posts',
+  'POST /api/v1/content/:id/trash': 'capability:edit_posts',
+  'POST /api/v1/content/:id/restore': 'capability:edit_posts',
+  // PROTOTYPE (M0.6): the editor's image uploads, until the media library (M1.2).
   'POST /api/v1/prototype/editor/uploads': 'capability:upload_files',
   'GET /api/v1/prototype/editor/uploads/:name': 'capability:edit_posts',
   // The setup wizard (M0.4): open only until the site is installed, and then only with the one-time setup token.

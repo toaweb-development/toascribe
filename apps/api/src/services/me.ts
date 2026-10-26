@@ -2,6 +2,7 @@
 // changes through the confirmation link (K-012) and the password through reset or its own route.
 import type { Database } from '@toascribe/db'
 import { DEFAULT_PREFERENCES, EMPTY_PROFILE, Preferences, ProfileFields } from '@toascribe/shared'
+import type { ListScreenOptions } from '@toascribe/shared'
 import type {
   DisplayNameChoice,
   MeResponse,
@@ -142,7 +143,7 @@ export function createMeService(options: { readonly db: Database; readonly clock
 
     async updatePreferences(auth, changes) {
       // Only the keys that were sent: a parsed partial may carry `undefined` for the others.
-      const sent: Record<string, boolean | string> = {}
+      const sent: Record<string, boolean | string | ListScreenOptions> = {}
       if (changes.adminColorScheme !== undefined) {
         sent['adminColorScheme'] = changes.adminColorScheme
       }
@@ -151,6 +152,12 @@ export function createMeService(options: { readonly db: Database; readonly clock
       }
       if (changes.dismissedWelcome !== undefined) {
         sent['dismissedWelcome'] = changes.dismissedWelcome
+      }
+      if (changes.postsScreen !== undefined) {
+        sent['postsScreen'] = changes.postsScreen
+      }
+      if (changes.pagesScreen !== undefined) {
+        sent['pagesScreen'] = changes.pagesScreen
       }
       const stored = await mergePreferences(db, auth.account.id, sent, clock())
       return readPreferences(stored)

@@ -1,23 +1,12 @@
-// The editor prototype (M0.6, PROTOTYPE): saves and reads the signed-in account's own draft, and keeps uploaded images in a
-// temporary folder. The content API (M1.1) and the media library (M1.2) replace all of it.
-//
-// The blocks are checked against each block's block.json before anything is stored (PLAN, «Regler for blokker» 1), with the same
-// validator the editor runs. Rich text is data with an allow-list of marks and link schemes (@toascribe/blocks, inline.ts), so
-// there is no HTML to sanitise: what passes the check cannot hold markup.
+// The editor prototype's image uploads (M0.6, PROTOTYPE): kept in a temporary folder of the api until the media library of M1.2
+// replaces them. The prototype's per-account draft is gone since M1.1: the editor saves through the content API.
 import { randomUUID } from 'node:crypto'
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { validateDocument } from '@toascribe/blocks'
-import type { Database } from '@toascribe/db'
-import { CoreSettings, PROTOTYPE_UPLOAD_NAME } from '@toascribe/shared'
-import type { Blocks, PrototypeDocument } from '@toascribe/shared'
+import { PROTOTYPE_UPLOAD_NAME } from '@toascribe/shared'
 
-import type { SessionAuth } from '../lib/auth-context.ts'
-import { BadRequestError, InvalidBlocksError, NotFoundError } from '../lib/errors.ts'
-import { findPrototypeDraft, savePrototypeDraft } from '../repositories/editor-prototype.ts'
-import { inTransaction } from '../repositories/executor.ts'
-import { readSettings } from '../repositories/settings.ts'
+import { BadRequestError, NotFoundError } from '../lib/errors.ts'
 
 /** The image types an upload may be, found from its first bytes (never from its name or the type the browser sent). No SVG: it can hold script. */
 const IMAGE_SIGNATURES = [
@@ -64,26 +53,15 @@ export const PROTOTYPE_MAX_UPLOADS = 50
 export const PROTOTYPE_UPLOAD_PATH = '/api/v1/prototype/editor/uploads/'
 
 export interface EditorPrototypeService {
-  getDocument(auth: SessionAuth): Promise<PrototypeDocument>
-  saveDocument(auth: SessionAuth, blocks: readonly unknown[]): Promise<PrototypeDocument>
   saveUpload(file: File): Promise<{ url: string }>
   readUpload(name: string): Promise<{ bytes: Uint8Array; type: string }>
 }
 
 export function createEditorPrototypeService(options: {
-  readonly db: Database
-  readonly clock: () => Date
   /** The temporary folder for uploads (default: `<os tmpdir>/toascribe-editor-prototype`). */
   readonly uploadDir: string
-  readonly onInvalidSetting?: (key: string) => void
 }): EditorPrototypeService {
-  const { db, clock, uploadDir } = options
-
-  const toDocument = (row: { id: string; blocks: Blocks; modifiedAt: Date }): PrototypeDocument => ({
-    id: row.id,
-    blocks: row.blocks,
-    updatedAt: row.modifiedAt.toISOString(),
-  })
+  const { uploadDir } = options
 
   async function pruneUploads(): Promise<void> {
     const names = (await readdir(uploadDir)).filter((name) => PROTOTYPE_UPLOAD_NAME.test(name))
@@ -100,25 +78,6 @@ export function createEditorPrototypeService(options: {
   }
 
   return {
-    async getDocument(auth) {
-      const row = await findPrototypeDraft(db, auth.account.id)
-      return row === undefined ? { id: null, blocks: [], updatedAt: null } : toDocument(row)
-    },
-
-    async saveDocument(auth, blocks) {
-      const result = validateDocument(blocks)
-      if (!result.ok) {
-        throw new InvalidBlocksError(result.issues.map((issue) => ({ ...issue, path: [...issue.path] })))
-      }
-      // Stored as the validator returns it: the defaults filled in, nothing it did not check. The block tree is plain JSON objects.
-      const stored: Blocks = JSON.parse(JSON.stringify(result.blocks)) as Blocks
-      const { locale } = await readSettings(db, CoreSettings.pick({ locale: true }), options.onInvalidSetting)
-      const row = await inTransaction(db, (tx) =>
-        savePrototypeDraft(tx, { accountId: auth.account.id, locale, blocks: stored, at: clock() }),
-      )
-      return toDocument(row)
-    },
-
     async saveUpload(file) {
       const bytes = new Uint8Array(await file.arrayBuffer())
       const kind = sniffImage(bytes)

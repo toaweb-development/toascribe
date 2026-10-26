@@ -14,6 +14,7 @@ noticeIfSkipped('role-matrix')
 
 const SOMEONE_ELSES_SESSION = '0198a3c2-0000-7000-8000-000000000000'
 const NO_SUCH_FACTOR = '0198a3c2-0000-7000-8000-000000000001'
+const NO_SUCH_CONTENT = '0198a3c2-0000-7000-8000-0000000000ee'
 /** Looks like a token and is none: the one-time-link routes answer 400 `invalid_token`. */
 const NOT_A_TOKEN = 'A'.repeat(43)
 
@@ -271,21 +272,52 @@ const CASES: readonly MatrixCase[] = [
     json: { userIds: ['0198a3c2-0000-7000-8000-0000000000cc'], role: 'subscriber' },
     expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
   },
-  // PROTOTYPE (M0.6): the editor prototype. `edit_posts` (not the subscriber) for the draft; `upload_files` (not the contributor
-  // either) for an upload. The upload is sent as JSON here, so a role that may upload gets the validator's 415 (not multipart).
+  // The content API (M1.1): `edit_posts` at the door, so the subscriber is turned away by the guard; every other role gets through
+  // to the service. Here an item nobody has, so the item routes answer 404; content-matrix.test.ts has the full matrix of roles
+  // against own and others' posts and pages, published and not.
   {
-    route: 'GET /api/v1/prototype/editor/document',
+    route: 'GET /api/v1/content',
     method: 'GET',
-    path: '/api/v1/prototype/editor/document',
+    path: '/api/v1/content?type=post',
     expected: { ...ok, subscriber: 403 },
   },
   {
-    route: 'PUT /api/v1/prototype/editor/document',
-    method: 'PUT',
-    path: '/api/v1/prototype/editor/document',
-    json: { blocks: [] },
+    route: 'POST /api/v1/content',
+    method: 'POST',
+    path: '/api/v1/content',
+    json: { type: 'post', title: 'Matrise' },
+    expected: { ...ok, administrator: 201, editor: 201, author: 201, contributor: 201, subscriber: 403 },
+  },
+  {
+    // Choosing authors needs edit_others_posts: the author and the contributor are turned away by the service.
+    route: 'GET /api/v1/content/authors',
+    method: 'GET',
+    path: '/api/v1/content/authors?type=post',
+    ownRefusal: true,
+    expected: { ...ok, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'POST /api/v1/content/bulk',
+    method: 'POST',
+    path: '/api/v1/content/bulk',
+    json: { action: 'trash', ids: [NO_SUCH_CONTENT] },
     expected: { ...ok, subscriber: 403 },
   },
+  ...(['GET', 'PATCH', 'DELETE'] as const).map((method) => ({
+    route: `${method} /api/v1/content/:id`,
+    method,
+    path: `/api/v1/content/${NO_SUCH_CONTENT}`,
+    ...(method === 'PATCH' ? { json: { title: 'x' } } : {}),
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 403 },
+  })),
+  ...(['publish', 'trash', 'restore'] as const).map((action) => ({
+    route: `POST /api/v1/content/:id/${action}`,
+    method: 'POST',
+    path: `/api/v1/content/${NO_SUCH_CONTENT}/${action}`,
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 403 },
+  })),
+  // PROTOTYPE (M0.6): the editor's image uploads. `upload_files` (not the contributor or the subscriber) for an upload, sent as
+  // JSON here, so a role that may upload gets the validator's 415 (not multipart).
   {
     route: 'POST /api/v1/prototype/editor/uploads',
     method: 'POST',

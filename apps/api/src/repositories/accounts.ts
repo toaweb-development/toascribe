@@ -108,7 +108,7 @@ export async function updateProfile(
 export async function mergePreferences(
   db: Executor,
   accountId: string,
-  changes: Readonly<Record<string, boolean | string>>,
+  changes: Readonly<Record<string, unknown>>,
   now: Date,
 ): Promise<Record<string, unknown> | undefined> {
   const rows = await db

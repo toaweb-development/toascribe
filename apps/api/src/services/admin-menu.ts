@@ -5,7 +5,7 @@ import { AdminMenuItem } from '@toascribe/shared'
 import type { AdminMenuChild, AdminMenuEntry, AdminMenuItemInput } from '@toascribe/shared'
 
 /**
- * The items of M0.5, with WordPress' positions (wp-admin/menu.php). Only what works is here: «Oppdateringer», «Legg til ny» and
+ * The items of M0.5 and M1.1, with WordPress' positions (wp-admin/menu.php). Only what works is here: «Oppdateringer», the users' «Legg til ny» and
  * «Roller» are added by the task that builds them. The icons are Lucide names; the admin lists them in `icon.clientBundle`.
  */
 export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
@@ -17,6 +17,32 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     capability: 'read',
     to: '/',
     children: [{ id: 'dashboard.home', labelKey: 'menu.dashboardHome', capability: 'read', to: '/' }],
+  },
+  {
+    // WordPress' «Innlegg» (menu.php position 5; the dashicon is a pin).
+    id: 'posts',
+    labelKey: 'menu.posts',
+    icon: 'i-lucide-pin',
+    position: 5,
+    capability: 'edit_posts',
+    to: '/posts',
+    children: [
+      { id: 'posts.all', labelKey: 'menu.postsAll', capability: 'edit_posts', to: '/posts' },
+      { id: 'posts.new', labelKey: 'menu.postsNew', capability: 'edit_posts', to: '/posts/new' },
+    ],
+  },
+  {
+    // WordPress' «Sider» (position 20).
+    id: 'pages',
+    labelKey: 'menu.pages',
+    icon: 'i-lucide-file-text',
+    position: 20,
+    capability: 'edit_pages',
+    to: '/pages',
+    children: [
+      { id: 'pages.all', labelKey: 'menu.pagesAll', capability: 'edit_pages', to: '/pages' },
+      { id: 'pages.new', labelKey: 'menu.pagesNew', capability: 'edit_pages', to: '/pages/new' },
+    ],
   },
   {
     id: 'users',

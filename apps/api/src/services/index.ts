@@ -12,6 +12,8 @@ import { createCoreAdminMenu } from './admin-menu.ts'
 import type { AdminMenuRegistry } from './admin-menu.ts'
 import { createAuthService } from './auth.ts'
 import type { AuthService } from './auth.ts'
+import { createContentService } from './content.ts'
+import type { ContentService } from './content.ts'
 import { createDashboardService } from './dashboard.ts'
 import { createEditorPrototypeService } from './editor-prototype.ts'
 import type { EditorPrototypeService } from './editor-prototype.ts'
@@ -78,7 +80,9 @@ export interface Services {
   readonly notices: NoticeService
   /** The users table and role assignment. */
   readonly users: UserService
-  /** PROTOTYPE (M0.6): the editor prototype's draft and image uploads. Replaced in M1.1 and M1.2. */
+  /** Posts and pages: the lists, the editor's saves, the status changes and the bulk actions (M1.1). */
+  readonly content: ContentService
+  /** PROTOTYPE (M0.6): the editor prototype's image uploads, until the media library of M1.2. */
   readonly editorPrototype: EditorPrototypeService
   /** Second factor: enrolment, recovery codes, the second step of a login (K-023). */
   readonly mfa: MfaService
@@ -124,6 +128,12 @@ export function createServices(deps: ServiceDeps): Services {
   const proxy = createProxyCheck({ trustedProxy: deps.trustedProxy ?? '', logger: deps.logger, clock })
   const adminMenu = createCoreAdminMenu()
   const installMail = installMailOf(deps.mail)
+  const content = createContentService({
+    db,
+    clock,
+    audit,
+    ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+  })
   const install = createInstallService({
     db,
     keyRing: deps.keyRing,
@@ -143,7 +153,7 @@ export function createServices(deps: ServiceDeps): Services {
     me: createMeService({ db, clock }),
     system: createSystemService({ db, clock, mail: deps.mail }),
     adminMenu,
-    dashboard: createDashboardService({ db, version: deps.version }),
+    dashboard: createDashboardService({ db, version: deps.version, content }),
     notices: createNoticeService({
       db,
       clock,
@@ -152,12 +162,8 @@ export function createServices(deps: ServiceDeps): Services {
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     users: createUserService({ db, clock, audit }),
-    editorPrototype: createEditorPrototypeService({
-      db,
-      clock,
-      uploadDir: deps.prototypeUploadDir,
-      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
-    }),
+    content,
+    editorPrototype: createEditorPrototypeService({ uploadDir: deps.prototypeUploadDir }),
     mfa: createMfaService({
       db,
       clock,

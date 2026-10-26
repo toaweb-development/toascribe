@@ -2,7 +2,7 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { InvalidBlocksResponse, PrototypeDocument, PrototypeUploadResponse } from '@toascribe/shared'
+import { PrototypeUploadResponse } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { PROTOTYPE_MAX_UPLOADS, sniffImage } from '../src/services/editor-prototype.ts'
@@ -13,40 +13,9 @@ import type { AuthTestApp, TestClient } from './harness.ts'
 
 noticeIfSkipped('editor-prototype')
 
-const DOCUMENT = '/api/v1/prototype/editor/document'
 const UPLOADS = '/api/v1/prototype/editor/uploads'
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52])
-
-const paragraph = (id: string, content: unknown = [{ type: 'text', text: 'Hei', marks: [{ type: 'bold' }] }]) => ({
-  id,
-  type: 'core/paragraph',
-  version: 1,
-  attrs: { content },
-  children: [],
-})
-
-const VALID = [
-  paragraph('b_p0000001'),
-  {
-    id: 'b_cols0001',
-    type: 'core/columns',
-    version: 1,
-    attrs: {},
-    children: [
-      {
-        id: 'b_col00001',
-        type: 'core/column',
-        version: 1,
-        attrs: {},
-        children: [
-          { id: 'b_img00001', type: 'core/image', version: 1, attrs: { url: '/api/v1/x.png', alt: 'A' }, children: [] },
-        ],
-      },
-      { id: 'b_col00002', type: 'core/column', version: 1, attrs: {}, children: [paragraph('b_p0000002')] },
-    ],
-  },
-]
 
 describe('sniffImage', () => {
   it('finds the type from the bytes, and refuses SVG and HTML', () => {
@@ -59,7 +28,7 @@ describe('sniffImage', () => {
   })
 })
 
-describe.skipIf(TEST_DATABASE_URL === undefined)('the editor prototype endpoints (needs TEST_DATABASE_URL)', () => {
+describe.skipIf(TEST_DATABASE_URL === undefined)('the editor prototype uploads (needs TEST_DATABASE_URL)', () => {
   let env: AuthTestApp
   let uploadDir: string
 
@@ -96,79 +65,6 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the editor prototype endpoints
       },
     })
   }
-
-  it('has no blocks before the first save, then stores and returns them as the own draft of the account', async () => {
-    const { client, id } = await signedIn('proto-author', 'author')
-    expect(PrototypeDocument.parse(await (await client.get(DOCUMENT)).json())).toEqual({
-      id: null,
-      blocks: [],
-      updatedAt: null,
-    })
-
-    const saved = await client.put(DOCUMENT, { blocks: VALID })
-    expect(saved.status).toBe(200)
-    const document = PrototypeDocument.parse(await saved.json())
-    expect(document.id).not.toBeNull()
-    // The image's missing caption is stored with its default.
-    expect(document.blocks[1]).toMatchObject({
-      children: [{ children: [{ attrs: { url: '/api/v1/x.png', alt: 'A', caption: '' } }] }, {}],
-    })
-
-    const [row] = await env.query<{ type: string; status: string; account_id: string }>(
-      `select c.type, c.status, a.account_id from content c join content_author a on a.content_id = c.id where c.id = $1`,
-      [document.id],
-    )
-    expect(row).toEqual({ type: 'post', status: 'draft', account_id: id })
-
-    const again = await client.put(DOCUMENT, { blocks: [paragraph('b_p0000003')] })
-    expect(PrototypeDocument.parse(await again.json()).id).toBe(document.id)
-    expect(PrototypeDocument.parse(await (await client.get(DOCUMENT)).json()).blocks).toEqual([paragraph('b_p0000003')])
-  })
-
-  it("never shows one account's draft to another (the owner is part of the lookup)", async () => {
-    const a = await signedIn('proto-a', 'editor')
-    const b = await signedIn('proto-b', 'editor')
-    await a.client.put(DOCUMENT, { blocks: [paragraph('b_onlya001')] })
-    expect(PrototypeDocument.parse(await (await b.client.get(DOCUMENT)).json()).blocks).toEqual([])
-    await b.client.put(DOCUMENT, { blocks: [paragraph('b_onlyb001')] })
-    expect(PrototypeDocument.parse(await (await a.client.get(DOCUMENT)).json()).blocks).toEqual([
-      paragraph('b_onlya001'),
-    ])
-  })
-
-  it.each([
-    [
-      'a script link',
-      [
-        paragraph('b_bad00001', [
-          { type: 'text', text: 'x', marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }] },
-        ]),
-      ],
-    ],
-    ['HTML as content', [paragraph('b_bad00002', '<img src=x onerror=alert(1)>')]],
-    ['an HTML node', [paragraph('b_bad00003', [{ type: 'html', html: '<script>alert(1)</script>' }])]],
-    ['an unknown block', [{ ...paragraph('b_bad00004'), type: 'core/html' }]],
-    [
-      'a data: image',
-      [{ id: 'b_bad00005', type: 'core/image', version: 1, attrs: { url: 'data:image/svg+xml,<svg/>' }, children: [] }],
-    ],
-    ['a column at the top', [{ id: 'b_bad00006', type: 'core/column', version: 1, attrs: {}, children: [] }]],
-  ])('refuses %s with 400 invalid_blocks and stores nothing', async (_name, blocks) => {
-    const { client } = await signedIn(`proto-bad-${String(Math.random()).slice(2, 8)}`, 'author')
-    const res = await client.put(DOCUMENT, { blocks })
-    expect(res.status).toBe(400)
-    const body = InvalidBlocksResponse.parse(await res.json())
-    expect(body.error.code).toBe('invalid_blocks')
-    expect(body.issues.length).toBeGreaterThan(0)
-    expect(PrototypeDocument.parse(await (await client.get(DOCUMENT)).json()).id).toBeNull()
-  })
-
-  it('refuses an extra key in the body, a missing CSRF token and another origin', async () => {
-    const { client } = await signedIn('proto-csrf', 'author')
-    expect((await client.put(DOCUMENT, { blocks: [], title: 'x' })).status).toBe(400)
-    expect((await client.put(DOCUMENT, { blocks: [] }, { csrf: 'none' })).status).toBe(403)
-    expect((await client.put(DOCUMENT, { blocks: [] }, { origin: 'https://evil.example' })).status).toBe(400)
-  })
 
   it('keeps an uploaded image under a random name and serves it with its type and nosniff', async () => {
     const { client } = await signedIn('proto-upload', 'author')

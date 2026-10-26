@@ -168,6 +168,8 @@ export const ContentListResponse = z.object({
   counts: ContentCounts,
   /** The months that have items of this type the account can see, newest first: the date filter's choices. */
   months: z.array(ContentMonth),
+  /** The site's time zone, as `Intl.DateTimeFormat` takes it (`Europe/Oslo`, or an offset such as `+01:00`): dates are shown in it. */
+  timeZone: z.string(),
 })
 export type ContentListResponse = z.infer<typeof ContentListResponse>
 
@@ -302,6 +304,13 @@ export const ContentBulkResponse = z.object({
   skipped: z.array(z.object({ id: z.uuid(), reason: ContentBulkSkipReason })),
 })
 export type ContentBulkResponse = z.infer<typeof ContentBulkResponse>
+
+/** GET /content/authors: who can be an author of the type (WordPress' author dropdown). */
+export const ContentAuthorsQuery = z.strictObject({ type: ContentTypeKey })
+export type ContentAuthorsQuery = z.infer<typeof ContentAuthorsQuery>
+
+export const ContentAuthorsResponse = z.object({ authors: z.array(ContentAuthorRef) })
+export type ContentAuthorsResponse = z.infer<typeof ContentAuthorsResponse>
 
 /** The short link of an item (K-065): a path on the site. */
 export function shortLinkOf(shortId: number): string {

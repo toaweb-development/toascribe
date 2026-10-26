@@ -20,6 +20,8 @@ describe('readPreferences', () => {
       adminColorScheme: 'default',
       showToolbarOnSite: true,
       dismissedWelcome: false,
+      postsScreen: { hiddenColumns: [], perPage: 20 },
+      pagesScreen: { hiddenColumns: [], perPage: 20 },
     })
   })
 
@@ -31,7 +33,7 @@ describe('readPreferences', () => {
         dismissedWelcome: 'yes',
         screenOptions: { x: 1 },
       }),
-    ).toEqual({ adminColorScheme: 'default', showToolbarOnSite: false, dismissedWelcome: false })
+    ).toEqual({ ...DEFAULT_PREFERENCES, showToolbarOnSite: false })
     expect(readPreferences({ adminColorScheme: 'midnight' }).adminColorScheme).toBe('midnight')
   })
 })
@@ -75,6 +77,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('preferences (needs TEST_DATABA
 
     const second = await client.patch('/api/v1/me/preferences', { dismissedWelcome: true, showToolbarOnSite: false })
     expect(Preferences.parse(await second.json())).toEqual({
+      ...DEFAULT_PREFERENCES,
       adminColorScheme: 'ocean',
       showToolbarOnSite: false,
       dismissedWelcome: true,
@@ -86,10 +89,26 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('preferences (needs TEST_DATABA
       dismissedWelcome: true,
     })
     expect(MeResponse.parse(await (await client.get('/api/v1/me')).json()).preferences).toEqual({
+      ...DEFAULT_PREFERENCES,
       adminColorScheme: 'ocean',
       showToolbarOnSite: false,
       dismissedWelcome: true,
     })
+  })
+
+  it('stores the screen options of a list (K-037) and refuses a column or a size it does not know', async () => {
+    const { client } = await signedIn()
+    const res = await client.patch('/api/v1/me/preferences', {
+      postsScreen: { hiddenColumns: ['author'], perPage: 50 },
+    })
+    expect(res.status).toBe(200)
+    expect(Preferences.parse(await res.json()).postsScreen).toEqual({ hiddenColumns: ['author'], perPage: 50 })
+    expect(
+      (await client.patch('/api/v1/me/preferences', { pagesScreen: { hiddenColumns: ['tags'], perPage: 20 } })).status,
+    ).toBe(400)
+    expect(
+      (await client.patch('/api/v1/me/preferences', { pagesScreen: { hiddenColumns: [], perPage: 101 } })).status,
+    ).toBe(400)
   })
 
   it('keeps keys a later version added, and reads a stored bad value as the default', async () => {
@@ -100,7 +119,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('preferences (needs TEST_DATABA
     ])
     const res = await client.patch('/api/v1/me/preferences', { dismissedWelcome: true })
     expect(Preferences.parse(await res.json())).toEqual({
-      adminColorScheme: 'default',
+      ...DEFAULT_PREFERENCES,
       showToolbarOnSite: false,
       dismissedWelcome: true,
     })

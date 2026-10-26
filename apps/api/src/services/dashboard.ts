@@ -6,20 +6,26 @@ import type { Database } from '@toascribe/db'
 import type { GlanceResponse } from '@toascribe/shared'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
-import { countComments, countPublished } from '../repositories/dashboard.ts'
+import { countComments } from '../repositories/dashboard.ts'
+import type { ContentService } from './content.ts'
 
 export interface DashboardService {
   glance: (auth: SessionAuth) => Promise<GlanceResponse>
 }
 
-export function createDashboardService(options: { readonly db: Database; readonly version: string }): DashboardService {
-  const { db, version } = options
+export function createDashboardService(options: {
+  readonly db: Database
+  readonly version: string
+  /** The post and page counts are the content API's own (the «Publisert» view of each list). */
+  readonly content: Pick<ContentService, 'counts'>
+}): DashboardService {
+  const { db, version, content } = options
   return {
     async glance(auth) {
       const can = (capability: string) => auth.capabilities.has(capability)
       const [posts, pages, approved, pending] = await Promise.all([
-        can('edit_posts') ? countPublished(db, 'post') : undefined,
-        can('edit_pages') ? countPublished(db, 'page') : undefined,
+        content.counts(auth, 'post').then((counts) => counts?.publish),
+        content.counts(auth, 'page').then((counts) => counts?.publish),
         can('moderate_comments') ? countComments(db, 'approved') : undefined,
         can('moderate_comments') ? countComments(db, 'pending') : undefined,
       ])
