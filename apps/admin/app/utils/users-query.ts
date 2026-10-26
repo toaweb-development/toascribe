@@ -86,7 +86,7 @@ export function toUserListQuery(view: UsersView, perPage: number = USERS_DEFAULT
     orderby: view.orderby,
     order: view.order,
     page: view.page,
-    perPage,
+    per_page: perPage,
   }
 }
 

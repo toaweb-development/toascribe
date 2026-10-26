@@ -27,6 +27,16 @@ export interface CapabilityPolicy {
 }
 
 /**
+ * A signed-in account that holds at least one of the capabilities. For routes that serve several content types, where the type
+ * (and so the capability that counts) is only known from the request or the item: the door lets in anyone who holds one, and the
+ * service checks the right one (the content routes: `edit_posts` for posts, `edit_pages` for pages).
+ */
+export interface AnyCapabilityPolicy {
+  readonly kind: 'any-capability'
+  readonly capabilities: readonly (Capability | (string & {}))[]
+}
+
+/**
  * The setup wizard's routes (M0.4). Nobody is signed in yet, so the caller proves itself with the one-time setup token in
  * the `X-Setup-Token` header, and the routes exist only while the site is not installed: afterwards they answer 404, as if
  * they had never been there. The guard (middleware/policy.ts) does both.
@@ -35,7 +45,7 @@ export interface SetupTokenPolicy {
   readonly kind: 'setup-token'
 }
 
-export type Policy = PublicPolicy | AuthenticatedPolicy | CapabilityPolicy | SetupTokenPolicy
+export type Policy = PublicPolicy | AuthenticatedPolicy | CapabilityPolicy | AnyCapabilityPolicy | SetupTokenPolicy
 
 /** What a state-changing request may carry as a body. JSON is the default; a route that takes files says `multipart`. */
 export type BodyType = 'json' | 'multipart'
@@ -52,6 +62,13 @@ export function requireCapability(capability: CapabilityPolicy['capability']): C
   return { kind: 'capability', capability }
 }
 
+export function requireAnyCapability(...capabilities: AnyCapabilityPolicy['capabilities']): AnyCapabilityPolicy {
+  if (capabilities.length === 0) {
+    throw new Error('requireAnyCapability needs at least one capability')
+  }
+  return { kind: 'any-capability', capabilities }
+}
+
 export function setupToken(): SetupTokenPolicy {
   return { kind: 'setup-token' }
 }
@@ -64,6 +81,8 @@ export function describePolicy(policy: Policy): string {
       return policy.allowPendingMfa === true ? 'authenticated (also half-signed-in)' : 'authenticated'
     case 'capability':
       return `capability:${policy.capability}`
+    case 'any-capability':
+      return `capability:${policy.capabilities.join('|')}`
     case 'setup-token':
       return 'setup-token'
     default:

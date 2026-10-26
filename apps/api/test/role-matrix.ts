@@ -42,9 +42,10 @@ export function mustBeRefusedFor(policy: string, actor: Actor): 'ok-or-other' | 
     return 401
   }
   if (policy.startsWith('capability:')) {
-    const capability = policy.slice('capability:'.length)
+    // `capability:a|b` lets in a holder of either.
+    const wanted = policy.slice('capability:'.length).split('|')
     const role = DEFAULT_ROLES.find((r) => r.slug === actor)
-    return role?.capabilities.some((held) => held === capability) === true ? 'ok-or-other' : 403
+    return role?.capabilities.some((held) => wanted.includes(held)) === true ? 'ok-or-other' : 403
   }
   return 'ok-or-other'
 }

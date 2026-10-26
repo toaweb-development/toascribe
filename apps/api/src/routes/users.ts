@@ -69,7 +69,10 @@ export function createUsersApp(services: Services): OpenAPIHono<AppEnv> {
   return new OpenAPIHono<AppEnv>()
     .openapi(listUsersRoute, async (c) => {
       const auth = await requireSession(c)
-      return c.json(await services.users.list(auth, c.req.valid('query')), 200)
+      const result = await services.users.list(auth, c.req.valid('query'))
+      c.header('X-Total-Count', String(result.total))
+      c.header('X-Total-Pages', String(Math.ceil(result.total / result.perPage)))
+      return c.json(result, 200)
     })
     .openapi(assignRoleRoute, async (c) => {
       const auth = await requireSession(c)

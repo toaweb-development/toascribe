@@ -16,13 +16,14 @@ import {
 
 import { getClientIp } from '../lib/client-ip.ts'
 import type { AppEnv } from '../lib/env.ts'
-import { requireCapability } from '../lib/policy.ts'
+import { requireAnyCapability } from '../lib/policy.ts'
 import { requireSession } from '../middleware/auth.ts'
 import { defineRoute } from '../middleware/policy.ts'
 import type { Services } from '../services/index.ts'
 
-// The content API (M1.1). Every route needs `edit_posts` at the door, as WordPress' admin needs it to reach edit.php; the service
-// then checks the type's own capabilities (`edit_pages` for a page) and the item's (`edit_post`, `delete_post`, publishing).
+// The content API (M1.1). The door lets in an account that can edit posts or pages (`edit_posts` or `edit_pages`); the service then
+// checks the capabilities of the type in question (`edit_pages` for a page) and of the item (`edit_post`, `delete_post`, publishing),
+// so a role that may edit pages only works with pages.
 
 const errorResponse = (description: string) => ({
   content: { 'application/json': { schema: ApiError } },
@@ -32,7 +33,7 @@ const errorResponse = (description: string) => ({
 const TAG = 'content'
 const STATE_CHANGING_NOTE =
   'Needs the X-CSRF-Token header of the session, a same-origin request and an application/json body (if there is one).'
-const POLICY = requireCapability('edit_posts')
+const POLICY = requireAnyCapability('edit_posts', 'edit_pages')
 
 const itemResponse = (description: string) => ({
   content: { 'application/json': { schema: ContentItem } },

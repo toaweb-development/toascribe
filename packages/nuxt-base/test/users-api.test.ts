@@ -25,18 +25,18 @@ const LIST = {
   roles: [{ slug: 'editor', name: 'Editor', grantable: true }],
 }
 
-const BASE = { orderby: 'username', order: 'asc', page: 1, perPage: 20 } as const
+const BASE = { orderby: 'username', order: 'asc', page: 1, per_page: 20 } as const
 
 describe('the users query string', () => {
   it('always sends the sort and the page, and leaves out an empty search and role', () => {
-    expect(usersQueryString({ ...BASE })).toBe('orderby=username&order=asc&page=1&perPage=20')
-    expect(usersQueryString({ ...BASE, search: '   ', role: '' })).toBe('orderby=username&order=asc&page=1&perPage=20')
+    expect(usersQueryString({ ...BASE })).toBe('orderby=username&order=asc&page=1&per_page=20')
+    expect(usersQueryString({ ...BASE, search: '   ', role: '' })).toBe('orderby=username&order=asc&page=1&per_page=20')
   })
 
   it('puts search and role first and encodes them', () => {
     expect(
       usersQueryString({ ...BASE, search: ' a&b %_ ', role: 'none', orderby: 'email', order: 'desc', page: 3 }),
-    ).toBe('search=a%26b+%25_&role=none&orderby=email&order=desc&page=3&perPage=20')
+    ).toBe('search=a%26b+%25_&role=none&orderby=email&order=desc&page=3&per_page=20')
   })
 })
 
@@ -46,7 +46,7 @@ describe('the users API layer', () => {
     const answer = await createUsersApi(api).list({ ...BASE, role: 'editor' })
     expect(answer.users[0]?.username).toBe('alice')
     expect(answer.roleCounts.roles).toEqual({ editor: 1 })
-    expect(api).toHaveBeenCalledWith('/v1/users?role=editor&orderby=username&order=asc&page=1&perPage=20')
+    expect(api).toHaveBeenCalledWith('/v1/users?role=editor&orderby=username&order=asc&page=1&per_page=20')
   })
 
   it('refuses a list that is not the shared shape', async () => {

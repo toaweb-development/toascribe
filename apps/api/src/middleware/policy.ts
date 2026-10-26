@@ -116,6 +116,12 @@ export function policyGuard(policy: Policy, bodyType: BodyType = 'json'): Middle
     if (policy.kind === 'capability' && !auth.capabilities.has(policy.capability)) {
       throw new ForbiddenError()
     }
+    if (
+      policy.kind === 'any-capability' &&
+      !policy.capabilities.some((capability) => auth.capabilities.has(capability))
+    ) {
+      throw new ForbiddenError()
+    }
     await next()
   }
   POLICY_OF.set(guard, policy)
@@ -185,7 +191,7 @@ export function listRoutePolicies(app: RouteLister): Map<string, string> {
   return policies
 }
 
-const POLICY_KINDS = ['public', 'authenticated', 'capability', 'setup-token'] as const
+const POLICY_KINDS = ['public', 'authenticated', 'capability', 'any-capability', 'setup-token'] as const
 
 /**
  * `defineRoute` leaves `policy` and `bodyType` on the route config, and the OpenAPI generator copies unknown keys into the
@@ -211,12 +217,15 @@ export function annotatePolicies<T extends object>(document: T): T {
       if (typeof policy === 'object' && policy !== null) {
         const kind: unknown = Reflect.get(policy, 'kind')
         const capability: unknown = Reflect.get(policy, 'capability')
+        const capabilities: unknown = Reflect.get(policy, 'capabilities')
         if (typeof kind === 'string' && POLICY_KINDS.some((known) => known === kind)) {
-          Reflect.set(
-            operation,
-            'x-policy',
-            kind === 'capability' && typeof capability === 'string' ? `capability:${capability}` : kind,
-          )
+          let text: string = kind
+          if (kind === 'capability' && typeof capability === 'string') {
+            text = `capability:${capability}`
+          } else if (kind === 'any-capability' && Array.isArray(capabilities)) {
+            text = `capability:${capabilities.filter((entry) => typeof entry === 'string').join('|')}`
+          }
+          Reflect.set(operation, 'x-policy', text)
         }
       }
       Reflect.deleteProperty(operation, 'policy')

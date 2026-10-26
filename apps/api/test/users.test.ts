@@ -98,7 +98,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users (needs TEST_DATABASE_URL
   describe('GET /api/v1/users', () => {
     it('gives an administrator the table, with nothing secret in it', async () => {
       const { client } = await signedIn('lister', ['administrator'])
-      const res = await client.get('/api/v1/users?perPage=100')
+      const res = await client.get('/api/v1/users?per_page=100')
       expect(res.status).toBe(200)
       expect(res.headers.get('cache-control')).toBe('no-store')
       const body = UserListResponse.parse(await res.json())
@@ -174,20 +174,20 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users (needs TEST_DATABASE_URL
 
     it('treats an empty search as none', async () => {
       const { client } = await signedIn('emptysearch', ['administrator'])
-      const all = await list(client, '?perPage=100')
-      expect((await list(client, '?search=&perPage=100')).total).toBe(all.total)
-      expect((await list(client, '?search=%20%20&perPage=100')).total).toBe(all.total)
+      const all = await list(client, '?per_page=100')
+      expect((await list(client, '?search=&per_page=100')).total).toBe(all.total)
+      expect((await list(client, '?search=%20%20&per_page=100')).total).toBe(all.total)
     })
 
     it('filters by role, and `none` gives the accounts without one', async () => {
       const { client } = await signedIn('filterer', ['administrator'])
       const editor = await env.createAccount({ username: 'filter-editor', role: 'editor' })
       const norole = await env.createAccount({ username: 'filter-norole', role: null })
-      const editors = await list(client, '?role=editor&perPage=100')
+      const editors = await list(client, '?role=editor&per_page=100')
       expect(editors.users.map((user) => user.id)).toContain(editor.id)
       expect(editors.users.every((user) => user.roles.includes('editor'))).toBe(true)
       expect(editors.total).toBe(editors.users.length)
-      const none = await list(client, '?role=none&perPage=100')
+      const none = await list(client, '?role=none&per_page=100')
       expect(none.users.map((user) => user.id)).toContain(norole.id)
       expect(none.users.every((user) => user.roles.length === 0)).toBe(true)
       const unknown = await list(client, '?role=no-such-role')
@@ -205,7 +205,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users (needs TEST_DATABASE_URL
          where username in ('ord-b', 'ORD-a', 'ord-c')`,
       )
       const usernames = async (query: string) =>
-        (await list(client, `?search=ord&${query}&perPage=100`)).users
+        (await list(client, `?search=ord&${query}&per_page=100`)).users
           .map((user) => user.username)
           .filter((name) => name.toLowerCase().startsWith('ord-'))
       expect(await usernames('orderby=username')).toEqual(['ORD-a', 'ord-b', 'ord-c'])
@@ -216,17 +216,21 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users (needs TEST_DATABASE_URL
       expect(await usernames('orderby=registered&order=desc')).toEqual(['ORD-a', 'ord-c', 'ord-b'])
     })
 
-    it('pages: total counts every match, page and perPage are echoed, a page past the end is empty', async () => {
+    it('pages: total counts every match, page and the page size are echoed, with X-Total-Count and X-Total-Pages, a page past the end is empty', async () => {
       const { client } = await signedIn('pager', ['administrator'])
       for (let i = 0; i < 5; i += 1) {
         await env.createAccount({ username: `pg-${String(i)}` })
       }
-      const first = await list(client, '?search=pg-&perPage=2&page=1')
+      const first = await list(client, '?search=pg-&per_page=2&page=1')
       expect(first).toMatchObject({ total: 5, page: 1, perPage: 2 })
       expect(first.users.map((user) => user.username)).toEqual(['pg-0', 'pg-1'])
-      const third = await list(client, '?search=pg-&perPage=2&page=3')
+      const third = await list(client, '?search=pg-&per_page=2&page=3')
       expect(third.users.map((user) => user.username)).toEqual(['pg-4'])
-      const past = await list(client, '?search=pg-&perPage=2&page=9')
+      const headers = await client.get('/api/v1/users?search=pg-&per_page=2&page=1')
+      expect([headers.headers.get('x-total-count'), headers.headers.get('x-total-pages')]).toEqual(['5', '3'])
+      // The old name is refused: every list of the API says per_page.
+      expect((await client.get('/api/v1/users?perPage=2')).status).toBe(400)
+      const past = await list(client, '?search=pg-&per_page=2&page=9')
       expect(past.users).toEqual([])
       expect(past.total).toBe(5)
       const defaults = await list(client, '?search=pg-')
@@ -236,8 +240,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users (needs TEST_DATABASE_URL
     it('answers 400 to an unknown parameter, order, or a size out of range', async () => {
       const { client } = await signedIn('badquery', ['administrator'])
       for (const query of [
-        '?perPage=101',
-        '?perPage=0',
+        '?per_page=101',
+        '?per_page=0',
         '?page=0',
         '?page=abc',
         '?orderby=password',
@@ -255,7 +259,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users (needs TEST_DATABASE_URL
       const { client } = await signedIn('viewer', ['administrator'])
       await env.createAccount({ username: 'view-norole', role: null })
       await env.createAccount({ username: 'view-multi', role: ['editor', 'author'] })
-      const everything = await list(client, '?perPage=100')
+      const everything = await list(client, '?per_page=100')
       const counts = everything.roleCounts
       expect(counts.all).toBe(everything.total)
       expect(counts.none).toBeGreaterThanOrEqual(1)
@@ -273,7 +277,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users (needs TEST_DATABASE_URL
       for (const { slug } of unheld) {
         expect(counts.roles[slug]).toBeUndefined()
       }
-      const narrowed = await list(client, '?search=view-multi&role=editor&page=2&perPage=1')
+      const narrowed = await list(client, '?search=view-multi&role=editor&page=2&per_page=1')
       expect(narrowed.roleCounts).toEqual(counts)
       expect(narrowed.total).toBe(1)
     })
