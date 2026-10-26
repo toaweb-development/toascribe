@@ -7,10 +7,42 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 Posts and pages (M1.1): the content API and the lists «Alle innlegg» and «Alle sider». One migration (`0007_content_api`): three
-indexes for the scheduler and the trash, and the removal of the editor prototype's per-account drafts. No new setting or
-environment variable.
+indexes for the scheduler and the trash, and the removal of the editor prototype's per-account drafts.
+
+Categories, tags and the media library (M1.2). One migration (`0008_media_library`): the file name, the processing state and an
+index for the lookup of a size's file. New settings: `upload_max_size_mb` (64), `image_max_pixels` (100 million) and
+`upload_groups_by_role`. New environment variable `TOASCRIBE_UPLOAD_MAX_SIZE_MB` (64): the largest upload the proxy and the api
+take; the setting cannot go above it. The api and the worker share a new volume, `uploads`. New dependencies: `sharp` (in the
+worker only), `file-type` and `image-size`.
 
 ### Added
+
+- Categories and tags (M1.2): «Innlegg → Kategorier» and «Innlegg → Stikkord» (`manage_categories`), with the form on the left
+  and the list on the right, search, Rediger, Hurtigrediger, Slett and bulk delete; categories have a parent. «Ukategorisert» is
+  the default category: it can be renamed, not deleted. Deleting a category moves its posts to the parent category, or to
+  «Ukategorisert» when they have no other. Slugs are made as WordPress makes them, also for Norwegian letters.
+- The terms API under `/api/v1/taxonomies` and `/api/v1/taxonomies/{taxonomy}/terms`, and categories and tags in the content API.
+  The post list has the columns «Kategorier» and «Stikkord» as filter links and a category filter; quick edit has the category
+  tree and the tags as text; bulk «Rediger» can add categories and tags.
+- The media library (M1.2): «Media → Bibliotek» as a grid or a list, filtered by type, month and folder, with search and folders;
+  «Vedleggsdetaljer» with the alternative text, title, caption, description, visibility, folder, «Kopier URL til
+  utklippstavlen» and «Brukes på»; Erstatt (a new file under the same id), Rediger bilde (turn, mirror, crop, scale; the original
+  is kept), Lag bildestørrelser på nytt and Slett permanent with a warning that names where the file is used.
+- «Media → Legg til ny» and the library's uploader: drag and drop or choose files, each with its progress, the largest size and
+  the allowed types shown; «Sett inn fra nettadresse» fetches a file into the library and refuses private addresses.
+- The image sizes of WordPress, made by the worker as WebP: thumbnail (150 × 150, cropped), medium (300), medium_large (768),
+  large (1024), 1536 and 2048, and a `-scaled` copy of an image over 2560 pixels; the original is kept. `toa media regenerate`
+  makes them again.
+- «Innstillinger → Media»: the three image sizes and the thumbnail crop, the year and month folders, the upload limit, the pixel
+  limit and which types each role may upload.
+- The media API under `/api/v1/media` and `/api/v1/media-folders`, and `/api/v1/settings/media`. An upload's type is read from
+  its bytes and must agree with its name; SVG, HTML, scripts and programs are never accepted. Files are served with `nosniff`,
+  and a file that is not an image as a download. A private file has no public address: it is served by the api to its uploader
+  and to those who may read private posts.
+- The image block stores the file's id from the library, with the alternative text (required unless the image is marked
+  decorative) and the caption, and is drawn with `srcset` and `sizes` from the file's sizes. Image blocks with an address from
+  before are upgraded to the file's id when the file is in the library.
+- The users list takes `per_page` and answers with `X-Total-Count` and `X-Total-Pages`.
 
 - The content API under `/api/v1/content`: list posts or pages (views, author, search, month, sort, pages, `X-Total-Count` and
   `X-Total-Pages`), make, read, change and delete them, publish, move to the trash and restore, bulk actions, and the list of
@@ -35,11 +67,14 @@ environment variable.
 ### Changed
 
 - «I korte trekk» on the dashboard counts published posts and pages with the content API, and links to the lists.
+- Content routes check the right of the type: a role with only `edit_pages` can work with pages (M1.2).
+- Words of the admin now follow WordPress' Norwegian translation (nb_NO), among them «Kladd», «Hurtigrediger»,
+  «Visningsinnstillinger», «Identifikator», «Masserediger», «Gjør om» and «Vis nettsted».
 
 ### Removed
 
 - The editor prototype's own page, its preview and its per-account draft endpoints; the editor now saves real posts and pages.
-  The prototype's image upload stays until the media library (M1.2).
+  The prototype's image upload is gone too (M1.2): images come from the media library.
 - Images from another address in the editor: they will be brought into the media library first (M1.2). The admin no longer lets
   images in from other hosts on any page.
 
