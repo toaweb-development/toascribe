@@ -1,6 +1,6 @@
 // Registers the worker's queues, handlers and schedules. Only the worker does this (typescript §11, AGENTS.md): the api only
 // queues mail, and never supervises or schedules.
-import { EMAIL_JOB_OPTIONS, EMAIL_QUEUE } from '@toascribe/shared'
+import { EMAIL_JOB_OPTIONS, EMAIL_QUEUE, MEDIA_QUEUE } from '@toascribe/shared'
 import type { PgBoss } from 'pg-boss'
 import type { Logger } from 'pino'
 
@@ -9,6 +9,8 @@ import type { CleanupDeps } from './cleanup.ts'
 import { CONTENT_JOBS, CONTENT_SCHEDULER, SCHEDULER_QUEUE_OPTIONS } from './content.ts'
 import type { ContentJobDeps } from './content.ts'
 import { emailHandler } from './email.ts'
+import { MEDIA_QUEUE_OPTIONS, MEDIA_SWEEP, runMediaJob, sweepPending } from './media.ts'
+import type { MediaJobDeps } from './media.ts'
 import type { EmailJobDeps } from './email.ts'
 
 export interface JobsOptions {
@@ -16,6 +18,8 @@ export interface JobsOptions {
   readonly cleanup: CleanupDeps
   /** The content scheduler and the trash purge (M1.1). */
   readonly content: ContentJobDeps
+  /** The media jobs (M1.2): sizes, edits and regeneration with sharp. */
+  readonly media: MediaJobDeps
   /** How often a worker looks for a new job, in seconds, on every queue. Default: 2 for mail (pg-boss's own), 30 for the clean-up. Tests set it low. */
   readonly pollingSeconds?: number
 }
@@ -56,10 +60,33 @@ export async function registerJobs(boss: PgBoss, options: JobsOptions, logger: L
     })
     await boss.schedule(job.queue, job.cron, null, { tz: SCHEDULE_TIMEZONE })
   }
+  // Media: two images at a time (each decode holds up to the pixel limit in memory), and every five minutes a sweep that queues the
+  // images whose job was lost between the upload and the queue.
+  await boss.createQueue(MEDIA_QUEUE, MEDIA_QUEUE_OPTIONS)
+  await boss.work(
+    MEDIA_QUEUE,
+    { batchSize: 1, localConcurrency: 2, pollingIntervalSeconds: options.pollingSeconds ?? 2 },
+    async ([job]) => {
+      if (job !== undefined) {
+        await runMediaJob(options.media, job.data)
+      }
+    },
+  )
+  await boss.createQueue(MEDIA_SWEEP, CLEANUP_QUEUE_OPTIONS)
+  await boss.work(MEDIA_SWEEP, { batchSize: 1, pollingIntervalSeconds: options.pollingSeconds ?? 30 }, async () => {
+    await sweepPending(options.media, boss)
+  })
+  await boss.schedule(MEDIA_SWEEP, '*/5 * * * *', null, { tz: SCHEDULE_TIMEZONE })
   logger.info(
     {
-      queues: [EMAIL_QUEUE, ...CLEANUP_JOBS.map((job) => job.queue), ...CONTENT_JOBS.map((job) => job.queue)],
-      schedules: CLEANUP_JOBS.length + CONTENT_JOBS.length,
+      queues: [
+        EMAIL_QUEUE,
+        ...CLEANUP_JOBS.map((job) => job.queue),
+        ...CONTENT_JOBS.map((job) => job.queue),
+        MEDIA_QUEUE,
+        MEDIA_SWEEP,
+      ],
+      schedules: CLEANUP_JOBS.length + CONTENT_JOBS.length + 1,
     },
     'jobs registered',
   )

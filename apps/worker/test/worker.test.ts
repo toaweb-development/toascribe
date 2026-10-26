@@ -114,7 +114,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
     const { logger } = lines()
     // "not installed" is pg-boss's migrate:false check; with migrate:true the app role would try DDL instead.
     await expect(
-      startWorker({ pool, db, databaseUrl: database.appUrl, logger, heartbeatFile, ...MAIL }),
+      startWorker({ pool, db, databaseUrl: database.appUrl, logger, heartbeatFile, uploadsDir: tmpdir(), ...MAIL }),
     ).rejects.toThrow('pg-boss is not installed')
     expect(await isHeartbeatFresh(heartbeatFile)).toBe(false)
     await pool.end()
@@ -145,7 +145,15 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
 
     const { db, pool } = createDb({ connectionString: database.appUrl })
     const { logger, collected } = lines()
-    const worker = await startWorker({ pool, db, databaseUrl: database.appUrl, logger, heartbeatFile, ...MAIL })
+    const worker = await startWorker({
+      pool,
+      db,
+      databaseUrl: database.appUrl,
+      logger,
+      heartbeatFile,
+      uploadsDir: tmpdir(),
+      ...MAIL,
+    })
 
     expect(collected.some((line) => line['msg'] === 'worker ready')).toBe(true)
     expect(collected.some((line) => line['msg'] === 'jobs registered')).toBe(true)

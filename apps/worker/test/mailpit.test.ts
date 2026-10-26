@@ -59,6 +59,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
         databaseUrl: env.database.appUrl,
         logger: log.logger,
         heartbeatFile: join(dir, 'heartbeat'),
+        uploadsDir: join(dir, 'uploads'),
         keyRing: testKeyRing,
         publicOrigin: ORIGIN,
         mailDefaults: {},
