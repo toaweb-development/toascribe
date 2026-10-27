@@ -26,7 +26,10 @@ describe("the editor's choices from the active theme", () => {
   })
 
   it("offers the theme's templates for the type, and keeps one it no longer offers", () => {
-    expect(templateItemsFor(THEME, 'page', null, DEFAULT)).toEqual([DEFAULT, { value: 'full-width', label: 'Full bredde' }])
+    expect(templateItemsFor(THEME, 'page', null, DEFAULT)).toEqual([
+      DEFAULT,
+      { value: 'full-width', label: 'Full bredde' },
+    ])
     expect(templateItemsFor(THEME, 'post', 'old', DEFAULT)).toEqual([
       DEFAULT,
       { value: 'wide-post', label: 'Bredt innlegg' },
