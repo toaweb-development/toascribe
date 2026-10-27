@@ -16,6 +16,12 @@ export function menuLabel({ t, te }: Translator, key: string): string {
       return t('menu.dashboard')
     case 'menu.dashboardHome':
       return t('menu.dashboardHome')
+    case 'menu.dashboardUpdates':
+      return t('menu.dashboardUpdates')
+    case 'menu.tools':
+      return t('menu.tools')
+    case 'menu.toolsSiteHealth':
+      return t('menu.toolsSiteHealth')
     case 'menu.posts':
       return t('menu.posts')
     case 'menu.postsAll':

@@ -1702,5 +1702,113 @@
       "preview": "Forhåndsvisning",
       "previewFrame": "Forhåndsvisning av nettstedet med endringene som ikke er publisert"
     }
+  },
+  "updates": {
+    "title": "Oppdateringer",
+    "loadFailed": "Oppdateringene kunne ikke lastes.",
+    "current": "Du kjører toascribe {version}",
+    "checkedAt": "Sist sjekket {time}.",
+    "never": "Det er ikke sett etter nye versjoner ennå. Arbeideren sjekker én gang i døgnet, eller kjør «toa check-update» på verten.",
+    "failed": "Siste sjekk etter nye versjoner feilet. Arbeideren prøver igjen i morgen.",
+    "available": "toascribe {version} er tilgjengelig.",
+    "newest": "Du har den nyeste versjonen.",
+    "changelog": "Se hva som er nytt i {version}",
+    "howTitle": "Slik oppdaterer du",
+    "how": "Administrasjonen kan ikke oppdatere containerne selv. Kjør dette i mappen med compose.yaml på serveren:",
+    "command": "docker compose pull\ndocker compose up -d",
+    "backupNote": "Før databasen endres, tar toascribe en sikkerhetskopi og slår på vedlikeholdsmodus til endringene er ferdige.",
+    "checkTitle": "Se etter nye versjoner",
+    "checkLabel": "Se etter nye versjoner én gang i døgnet",
+    "checkHelp": "Arbeideren henter listen over publiserte versjoner fra ghcr.io. Ingenting om nettstedet sendes med.",
+    "offByServer": "Sjekken er slått av på serveren (TOASCRIBE_UPDATE_CHECK=off)."
+  },
+  "siteHealth": {
+    "title": "Nettstedshelse",
+    "info": "Info",
+    "loadFailed": "Informasjonen kunne ikke lastes.",
+    "intro": "Fakta om installasjonen, til feilsøking. Kopien til utklippstavlen skjuler e-postadresser, adresser, stier og alt som ligner en nøkkel, så du kan lime den inn i en henvendelse om hjelp.",
+    "copy": "Kopier til utklippstavlen",
+    "copied": "Informasjonen er kopiert.",
+    "copyFailed": "Kunne ikke kopiere. Merk teksten og kopier den selv.",
+    "none": "–",
+    "yes": "Ja",
+    "no": "Nei",
+    "groups": {
+      "toascribe": "toascribe",
+      "server": "Server",
+      "database": "Database",
+      "cache": "Mellomlager",
+      "worker": "Arbeider",
+      "site": "Nettsted",
+      "media": "Media",
+      "backup": "Sikkerhetskopi",
+      "updates": "Oppdateringer"
+    },
+    "fields": {
+      "error": "Status",
+      "toascribe": {
+        "version": "Versjon",
+        "migration": "Siste migrering",
+        "environment": "Miljø"
+      },
+      "server": {
+        "node": "Node.js",
+        "os": "Operativsystem",
+        "memoryTotal": "Minne totalt",
+        "memoryFree": "Ledig minne",
+        "apiMemory": "Minne brukt av API-et"
+      },
+      "database": {
+        "version": "PostgreSQL",
+        "size": "Størrelse"
+      },
+      "cache": {
+        "backend": "Lager",
+        "answers": "Svarer"
+      },
+      "worker": {
+        "status": "Status",
+        "lastSeen": "Sist sett",
+        "queues": "Køer",
+        "queued": "Jobber i kø",
+        "active": "Jobber som kjører",
+        "failed": "Feilede jobber"
+      },
+      "site": {
+        "theme": "Tema",
+        "language": "Språk",
+        "timezone": "Tidssone",
+        "permalinks": "Permalenker",
+        "public": "Synlig for søkemotorer"
+      },
+      "media": {
+        "files": "Filer",
+        "size": "Lagring brukt (originaler)",
+        "uploadMax": "Største opplasting"
+      },
+      "backup": {
+        "last": "Siste sikkerhetskopi",
+        "ok": "Vellykket",
+        "file": "Fil",
+        "size": "Størrelse",
+        "scheduled": "Daglig sikkerhetskopi"
+      },
+      "updates": {
+        "enabled": "Ser etter nye versjoner",
+        "lastCheck": "Sist sjekket",
+        "latest": "Nyeste versjon funnet",
+        "available": "Ny versjon tilgjengelig"
+      }
+    },
+    "values": {
+      "production": "Produksjon",
+      "development": "Utvikling",
+      "test": "Test",
+      "memory": "Minne (hver prosess for seg)",
+      "valkey": "Valkey",
+      "running": "Kjører",
+      "notRunning": "Svarer ikke",
+      "unavailable": "Kunne ikke leses"
+    }
   }
 }
