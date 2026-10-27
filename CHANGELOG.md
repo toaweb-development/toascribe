@@ -9,10 +9,11 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 Posts and pages (M1.1): the content API and the lists «Alle innlegg» and «Alle sider». One migration (`0007_content_api`): three
 indexes for the scheduler and the trash, and the removal of the editor prototype's per-account drafts.
 
-Categories, tags and the media library (M1.2). One migration (`0008_media_library`): the file name, the processing state and an
-index for the lookup of a size's file. New settings: `upload_max_size_mb` (64), `image_max_pixels` (100 million) and
-`upload_groups_by_role`. New environment variable `TOASCRIBE_UPLOAD_MAX_SIZE_MB` (64): the largest upload the proxy and the api
-take; the setting cannot go above it. The api and the worker share a new volume, `uploads`. New dependencies: `sharp` (in the
+Categories, tags and the media library (M1.2). Two migrations: `0008_media_library` (the file name, the processing state and an
+index for the lookup of a size's file) and `0009_media_processing_attempts` (the worker's tries per file). New settings:
+`upload_max_size_mb` (64), `image_max_pixels` (100 million) and `upload_groups_by_role`. New environment variable
+`TOASCRIBE_UPLOAD_MAX_SIZE_MB` (64): the largest upload request in MiB, in the proxy and the api alike (a file can be 64 KiB
+less, the rest of the form); the setting cannot go above it. The api and the worker share a new volume, `uploads`. New dependencies: `sharp` (in the
 worker only), `file-type` and `image-size`.
 
 ### Added
@@ -26,18 +27,22 @@ worker only), `file-type` and `image-size`.
   tree and the tags as text; bulk «Rediger» can add categories and tags.
 - The media library (M1.2): «Media → Bibliotek» as a grid or a list, filtered by type, month and folder, with search and folders;
   «Vedleggsdetaljer» with the alternative text, title, caption, description, visibility, folder, «Kopier URL til
-  utklippstavlen» and «Brukes på»; Erstatt (a new file under the same id), Rediger bilde (turn, mirror, crop, scale; the original
-  is kept), Lag bildestørrelser på nytt and Slett permanent with a warning that names where the file is used.
+  utklippstavlen» and «Brukes på» (the posts and pages you may read by name, the rest as «og N andre»); Erstatt (a new file under
+  the same id, once the worker is done with it), Rediger bilde (turn, mirror, crop, scale; the original is kept), Lag
+  bildestørrelser på nytt and Slett permanent with a warning that names where the file is used. Everyone who may upload can make
+  folders and put files in them; renaming, moving and deleting a folder needs `edit_others_posts`.
 - «Media → Legg til ny» and the library's uploader: drag and drop or choose files, each with its progress, the largest size and
   the allowed types shown; «Sett inn fra nettadresse» fetches a file into the library and refuses private addresses.
 - The image sizes of WordPress, made by the worker as WebP: thumbnail (150 × 150, cropped), medium (300), medium_large (768),
   large (1024), 1536 and 2048, and a `-scaled` copy of an image over 2560 pixels; the original is kept. `toa media regenerate`
-  makes them again.
+  makes them again. Every run gives them new file names, so a cached copy of an old size is never shown for a new one. An image
+  the worker cannot handle is tried three times, then marked «Feilet» in the library with the reason; «Lag bildestørrelser på
+  nytt» tries again.
 - «Innstillinger → Media»: the three image sizes and the thumbnail crop, the year and month folders, the upload limit, the pixel
   limit and which types each role may upload.
 - The media API under `/api/v1/media` and `/api/v1/media-folders`, and `/api/v1/settings/media`. An upload's type is read from
-  its bytes and must agree with its name; SVG, HTML, scripts and programs are never accepted. Files are served with `nosniff`,
-  and a file that is not an image as a download. A private file has no public address: it is served by the api to its uploader
+  its bytes and must agree with its name; SVG, HTML, scripts and programs are never accepted. Files are served with `nosniff`
+  and a sandbox Content-Security-Policy, and a file that is not an image as a download. A private file has no public address: it is served by the api to its uploader
   and to those who may read private posts.
 - The image block stores the file's id from the library, with the alternative text (required unless the image is marked
   decorative) and the caption, and is drawn with `srcset` and `sizes` from the file's sizes. Image blocks with an address from
