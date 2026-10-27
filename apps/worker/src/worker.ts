@@ -1,6 +1,7 @@
 import { checkConnection, PGBOSS_APP_OPTIONS } from '@toascribe/db'
 import type { Database, Db } from '@toascribe/db'
 import type { KeyRing } from '@toascribe/shared'
+import type { UpdateSource } from '@toascribe/updates'
 import { PgBoss } from 'pg-boss'
 import type { Logger } from 'pino'
 
@@ -32,6 +33,8 @@ export interface WorkerOptions {
   readonly backupsDir: string
   readonly configFile: string
   readonly version: string
+  /** The update check (M1.7): off when TOASCRIBE_UPDATE_CHECK=off; the source is ghcr.io unless a test gives its own. */
+  readonly updateCheck: { readonly serverAllows: boolean; readonly source?: UpdateSource }
   /** Tests only: the clock of the clean-up jobs. */
   readonly now?: () => Date
 }
@@ -84,6 +87,14 @@ export async function startWorker(options: WorkerOptions): Promise<Worker> {
           configFile: options.configFile,
           version: options.version,
           logger,
+          ...(options.now === undefined ? {} : { now: options.now }),
+        },
+        updates: {
+          db: options.db,
+          logger,
+          version: options.version,
+          serverAllows: options.updateCheck.serverAllows,
+          ...(options.updateCheck.source === undefined ? {} : { source: options.updateCheck.source }),
           ...(options.now === undefined ? {} : { now: options.now }),
         },
         media: {

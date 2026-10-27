@@ -123,6 +123,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
         uploadsDir: tmpdir(),
         backupsDir: tmpdir(),
         configFile: '/nonexistent/toascribe.toml',
+        updateCheck: { serverAllows: false },
         version: '0.0.0',
         ...MAIL,
       }),
@@ -165,6 +166,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
       uploadsDir: tmpdir(),
       backupsDir: tmpdir(),
       configFile: '/nonexistent/toascribe.toml',
+      updateCheck: { serverAllows: false },
       version: '0.0.0',
       ...MAIL,
     })

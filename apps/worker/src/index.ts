@@ -111,6 +111,7 @@ try {
     backupsDir: config.BACKUPS_DIR,
     configFile: config.TOASCRIBE_CONFIG_FILE,
     version: readVersion(),
+    updateCheck: { serverAllows: config.TOASCRIBE_UPDATE_CHECK !== 'off' },
   })
 } catch (err) {
   // Typically "pg-boss is not installed": the migration step has not run yet. Exit so the

@@ -40,6 +40,8 @@ const Env = z
     /** The backups volume and toascribe.toml (M1.7): the daily backup, when its [backup] section turns it on. */
     BACKUPS_DIR: z.string().startsWith('/').max(500).default('/var/lib/toascribe/backups'),
     TOASCRIBE_CONFIG_FILE: z.string().startsWith('/').max(500).default('/etc/toascribe/toascribe.toml'),
+    /** `off` stops the daily update check (M1.7, K-290); anything else, or nothing, leaves it to the `update_check` setting. */
+    TOASCRIBE_UPDATE_CHECK: optional(z.enum(['on', 'off'])),
 
     // The keys: the worker decrypts the SMTP password (a setting) and the one-time tokens in the e-mail jobs. Same variables and
     // meaning as in the api (K-318); the signing key is not needed here.

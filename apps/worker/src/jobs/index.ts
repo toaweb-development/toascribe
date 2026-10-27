@@ -14,6 +14,14 @@ import type { MediaJobDeps } from './media.ts'
 import type { EmailJobDeps } from './email.ts'
 import { BACKUP_CRON, BACKUP_DAILY, BACKUP_QUEUE_OPTIONS, dailyBackupOn, runDailyBackup } from './backup.ts'
 import type { BackupJobDeps } from './backup.ts'
+import {
+  UPDATE_CHECK,
+  UPDATE_CHECK_CRON,
+  UPDATE_QUEUE_OPTIONS,
+  runDailyUpdateCheck,
+  updateCheckDue,
+} from './updates.ts'
+import type { UpdateJobDeps } from './updates.ts'
 
 export interface JobsOptions {
   readonly email: EmailJobDeps
@@ -24,6 +32,8 @@ export interface JobsOptions {
   readonly media: MediaJobDeps
   /** The daily backup (M1.7), when toascribe.toml turns it on. */
   readonly backup: BackupJobDeps
+  /** The daily update check (M1.7, K-290). */
+  readonly updates: UpdateJobDeps
   /** How often a worker looks for a new job, in seconds, on every queue. Default: 2 for mail (pg-boss's own), 30 for the clean-up. Tests set it low. */
   readonly pollingSeconds?: number
 }
@@ -89,6 +99,19 @@ export async function registerJobs(boss: PgBoss, options: JobsOptions, logger: L
   })
   if (dailyBackupOn(options.backup)) await boss.schedule(BACKUP_DAILY, BACKUP_CRON, null, { tz: SCHEDULE_TIMEZONE })
   else await boss.unschedule(BACKUP_DAILY)
+  // The update check: scheduled unless the server turned it off, and run at once when the last one is a day old.
+  await boss.createQueue(UPDATE_CHECK, UPDATE_QUEUE_OPTIONS)
+  await boss.work(UPDATE_CHECK, { batchSize: 1, pollingIntervalSeconds: options.pollingSeconds ?? 60 }, async () => {
+    await runDailyUpdateCheck(options.updates)
+  })
+  if (options.updates.serverAllows) {
+    await boss.schedule(UPDATE_CHECK, UPDATE_CHECK_CRON, null, { tz: SCHEDULE_TIMEZONE })
+    if (await updateCheckDue(options.updates.db, options.updates.now?.() ?? new Date())) {
+      await boss.send(UPDATE_CHECK, null, { singletonKey: UPDATE_CHECK })
+    }
+  } else {
+    await boss.unschedule(UPDATE_CHECK)
+  }
   logger.info(
     {
       queues: [
@@ -98,6 +121,7 @@ export async function registerJobs(boss: PgBoss, options: JobsOptions, logger: L
         MEDIA_QUEUE,
         MEDIA_SWEEP,
         BACKUP_DAILY,
+        UPDATE_CHECK,
       ],
       schedules: CLEANUP_JOBS.length + CONTENT_JOBS.length + 1,
     },

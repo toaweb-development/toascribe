@@ -22,6 +22,7 @@
     "@toascribe/install": "workspace:*",
     "@toascribe/media": "workspace:*",
     "@toascribe/shared": "workspace:*",
+    "@toascribe/updates": "workspace:*",
     "drizzle-orm": "catalog:",
     "nodemailer": "catalog:",
     "pg-boss": "catalog:",

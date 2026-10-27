@@ -604,6 +604,9 @@ importers:
       '@toascribe/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@toascribe/updates':
+        specifier: workspace:*
+        version: link:../../packages/updates
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)

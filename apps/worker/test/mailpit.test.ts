@@ -62,6 +62,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
         uploadsDir: join(dir, 'uploads'),
         backupsDir: join(dir, 'backups'),
         configFile: '/nonexistent/toascribe.toml',
+        updateCheck: { serverAllows: false },
         version: '0.0.0',
         keyRing: testKeyRing,
         publicOrigin: ORIGIN,

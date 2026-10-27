@@ -42,6 +42,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('queues and schedules (needs TE
       uploadsDir: join(dir, 'uploads'),
       backupsDir: join(dir, 'backups'),
       configFile: '/nonexistent/toascribe.toml',
+      updateCheck: { serverAllows: false },
       version: '0.0.0',
       keyRing: testKeyRing,
       publicOrigin: 'https://cms.example.test',
