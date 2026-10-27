@@ -148,6 +148,36 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect([res.status, await code(res)]).toEqual([status, reason])
     })
 
+    it('counts the cap in MiB, for the whole request as the proxy does, and leaves room for the form', async () => {
+      // This app's cap is 2 MiB: a file may be 2 MiB less 64 KiB, the room for the multipart framing and the other fields.
+      const limit = 2 * 1024 * 1024 - 64 * 1024
+      const list = MediaListResponse.parse(await (await author.get('/api/v1/media?per_page=1')).json())
+      expect(list.upload.maxBytes).toBe(limit)
+      const fits = new Uint8Array(limit)
+      fits.set(f.PDF)
+      expect((await multipart(author, '/api/v1/media', { bytes: fits, name: 'akkurat.pdf' })).status).toBe(201)
+      const over = new Uint8Array(limit + 1)
+      over.set(f.PDF)
+      const refused = await multipart(author, '/api/v1/media', { bytes: over, name: 'for-stor.pdf' })
+      expect([refused.status, await code(refused)]).toEqual([413, 'file_too_large'])
+      // A request above 2 MiB is refused by the body limit before the file is read, exactly where Caddy's 2MiB refuses it.
+      const body = (size: number) =>
+        env.app.request('/api/v1/media', {
+          method: 'POST',
+          body: new Uint8Array(size),
+          headers: {
+            origin: TEST_ORIGIN,
+            'content-type': 'multipart/form-data; boundary=x',
+            'content-length': String(size),
+            ...(author.cookie === undefined ? {} : { cookie: author.cookie }),
+            ...(author.csrfToken === undefined ? {} : { 'x-csrf-token': author.csrfToken }),
+          },
+        })
+      const tooBig = await body(2 * 1024 * 1024 + 1)
+      expect([tooBig.status, await code(tooBig)]).toEqual([413, 'file_too_large'])
+      expect((await body(2 * 1024 * 1024)).status).not.toBe(413)
+    })
+
     it('refuses a file above the upload limit, from the setting as well as from the cap', async () => {
       const big = new Uint8Array(1.5 * 1024 * 1024)
       big.set(f.PDF)

@@ -376,9 +376,11 @@ describe('docker/proxy/Caddyfile', () => {
     expect(withHeader).toHaveLength(proxies.length)
   })
 
-  it('limits the body of the two upload routes to TOASCRIBE_UPLOAD_MAX_SIZE_MB, and sends /uploads to the api (M1.2)', () => {
+  it('limits the body of the two upload routes to TOASCRIBE_UPLOAD_MAX_SIZE_MB MiB, and sends /uploads to the api (M1.2)', () => {
     expect(caddyfile).toMatch(/path_regexp \^\/api\/v1\/media\(\/\[0-9a-fA-F-\]\{36\}\/replace\)\?\$/)
-    expect(caddyfile).toMatch(/max_size \{\$TOASCRIBE_UPLOAD_MAX_SIZE_MB:64\}MB/)
+    // MiB, the api's unit (apps/api/src/lib/upload-limit.ts): Caddy reads `MB` as 1000 × 1000 bytes.
+    expect(caddyfile).toMatch(/max_size \{\$TOASCRIBE_UPLOAD_MAX_SIZE_MB:64\}MiB$/m)
+    expect(caddyfile).not.toMatch(/max_size .*\}MB$/m)
     expect(caddyfile).toMatch(/handle \/uploads\/\* \{\n\s*reverse_proxy api:3001 \{/)
   })
 

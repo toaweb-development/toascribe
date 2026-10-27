@@ -1,5 +1,6 @@
 // The media library (M1.2; K-110 to K-125). Uploads are checked here, stored, and handed to the worker, which makes the sizes:
-// - size: at most `upload_max_size_mb` (and never above UPLOAD_MAX_SIZE_MB from .env, which the proxy enforces too);
+// - size: at most `upload_max_size_mb` MiB, and within UPLOAD_MAX_SIZE_MB MiB for the whole request, which the proxy enforces too
+//   (lib/upload-limit.ts);
 // - type: from the bytes, and it must agree with the extension (@toascribe/media detectType); SVG, HTML, scripts and programs are
 //   not on the list; a role may be limited to some groups (`upload_groups_by_role`);
 // - an image's pixels are read from its header and checked against `image_max_pixels` before anything decodes it;
@@ -47,6 +48,7 @@ import type { Logger } from 'pino'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
 import { AppError, ForbiddenError, NotFoundError } from '../lib/errors.ts'
+import { uploadFileLimit } from '../lib/upload-limit.ts'
 import type { MediaJobPort } from '../ports/media-jobs.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import type { Executor } from '../repositories/executor.ts'
@@ -75,8 +77,6 @@ import type { MediaFilter, MediaRow } from '../repositories/media.ts'
 import { readSettings, writeSettings } from '../repositories/settings.ts'
 import { flattenTree } from './content.ts'
 import type { Auditor, RequestContext } from './support.ts'
-
-const MB = 1024 * 1024
 
 const SETTINGS = CoreSettings.pick({
   upload_max_size_mb: true,
@@ -312,7 +312,7 @@ export function createMediaService(options: {
   }
 
   function maxBytes(settings: { upload_max_size_mb: number }): number {
-    return Math.min(settings.upload_max_size_mb, options.uploadCapMb) * MB
+    return uploadFileLimit(settings.upload_max_size_mb, options.uploadCapMb)
   }
 
   /** The checks every upload passes (also a replacement and a fetch from a URL). Throws AppError; returns what to store. */

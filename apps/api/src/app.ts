@@ -13,6 +13,7 @@ import type { Logger } from 'pino'
 import { apiError } from './lib/api-error.ts'
 import type { AppEnv } from './lib/env.ts'
 import { publicAccess } from './lib/policy.ts'
+import { uploadRequestLimit } from './lib/upload-limit.ts'
 import { authContext } from './middleware/auth.ts'
 import { onError, onNotFound } from './middleware/errors.ts'
 import { annotatePolicies, findUnguardedRoutes, policyGuard } from './middleware/policy.ts'
@@ -71,9 +72,6 @@ export interface AppDeps {
  * may be a constant). The proxy limits too; uploads will get their own larger limit on their routes.
  */
 export const BODY_LIMIT_BYTES = 1024 * 1024
-
-/** Room for the multipart framing and the form's other fields around an uploaded file. */
-const MULTIPART_OVERHEAD_BYTES = 1024 * 1024
 
 /** The two routes that take a file (upload and replace) get the upload cap instead of the general limit. */
 export function isUploadRequest(method: string, path: string): boolean {
@@ -170,7 +168,7 @@ export function buildApp(deps: AppDeps) {
     onError: (c) => c.json(apiError('payload_too_large', 'Request body too large', c.get('requestId')), 413),
   })
   const uploadLimit = bodyLimit({
-    maxSize: (deps.uploadCapMb ?? 64) * 1024 * 1024 + MULTIPART_OVERHEAD_BYTES,
+    maxSize: uploadRequestLimit(deps.uploadCapMb ?? 64),
     onError: (c) =>
       c.json(apiError('file_too_large', 'The file is larger than the upload limit', c.get('requestId')), 413),
   })

@@ -46,6 +46,8 @@ make_env() {
     echo "SMTP_PORT=1025"
     echo "SMTP_SECURE=none"
     echo "MAIL_FROM_ADDRESS=toascribe@example.test"
+    # A small upload cap, so media.spec can send a file right at the limit through Caddy and the api (both count MiB).
+    echo "TOASCRIBE_UPLOAD_MAX_SIZE_MB=2"
     if [ -n "${edge_subnet}" ]; then
       echo "TOASCRIBE_EDGE_SUBNET=${edge_subnet}"
     fi
