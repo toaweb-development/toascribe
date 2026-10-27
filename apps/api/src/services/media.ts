@@ -55,7 +55,7 @@ import type {
 import type { Logger } from 'pino'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
-import { canRead as canReadContent } from '../lib/content-access.ts'
+import { canEdit as canEditContent, canRead as canReadContent } from '../lib/content-access.ts'
 import { AppError, ForbiddenError, NotFoundError } from '../lib/errors.ts'
 import { uploadFileLimit } from '../lib/upload-limit.ts'
 import type { MediaJobPort } from '../ports/media-jobs.ts'
@@ -369,6 +369,29 @@ export function createMediaService(options: {
     return { detection, width, height, settings }
   }
 
+  /**
+   * The content an upload is attached to (WordPress' post_parent): it must exist and the uploader must be allowed to edit it, as
+   * WordPress' media_handle_upload asks for edit_post. One answer for both, so it does not tell whether someone else's item exists.
+   */
+  async function checkAttachTo(executor: Executor, auth: SessionAuth, contentId: string): Promise<void> {
+    const row = await findContent(executor, contentId)
+    const authors = row === undefined ? [] : ((await authorsOf(executor, [row.id])).get(row.id) ?? [])
+    const allowed =
+      row !== undefined &&
+      canEditContent(
+        { id: auth.account.id, capabilities: auth.capabilities },
+        {
+          type: row.type,
+          status: row.status,
+          statusBeforeTrash: row.statusBeforeTrash,
+          authorIds: authors.map((author) => author.id),
+        },
+      )
+    if (!allowed) {
+      throw new AppError(400, 'invalid_attached_to', 'The file cannot be attached to this content')
+    }
+  }
+
   async function checkFolder(executor: Executor, folderId: string | null | undefined): Promise<string | null> {
     if (folderId === undefined || folderId === null) {
       return null
@@ -408,9 +431,7 @@ export function createMediaService(options: {
       id = await inTransaction(db, async (tx) => {
         const folderId = await checkFolder(tx, input.folderId)
         if (input.attachedTo !== undefined && input.attachedTo !== null) {
-          if ((await findContent(tx, input.attachedTo)) === undefined) {
-            throw new AppError(400, 'invalid_attached_to', 'The content to attach the file to does not exist')
-          }
+          await checkAttachTo(tx, auth, input.attachedTo)
         }
         const created = await insertMedia(
           tx,

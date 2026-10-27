@@ -307,7 +307,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       ).toBe(200)
     })
 
-    it('refuses to attach an upload to content that does not exist (400, not 500)', async () => {
+    it('attaches an upload only to content the uploader may edit (400 otherwise, never 500)', async () => {
       const res = await multipart(
         author,
         '/api/v1/media',
@@ -320,6 +320,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       )
       const attached = await upload(author, f.PNG, 'vedlagt.png', { attachedTo: post.id })
       expect(attached.attachedTo).toBe(post.id)
+      // Someone else's draft: the same answer as for one that does not exist (WordPress asks for edit_post on the parent).
+      const notHers = await multipart(
+        other,
+        '/api/v1/media',
+        { bytes: f.PNG, name: 'fremmed.png' },
+        { attachedTo: post.id },
+      )
+      expect([notHers.status, await code(notHers)]).toEqual([400, 'invalid_attached_to'])
+      // An editor may edit it, so may attach to it.
+      expect((await upload(editor, f.PNG, 'redaktor.png', { attachedTo: post.id })).attachedTo).toBe(post.id)
     })
 
     it('serves only the current generated files: an address a new run replaced answers 404', async () => {
