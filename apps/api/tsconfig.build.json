@@ -4,7 +4,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    // dist/cli.d.ts: the cli imports `@toascribe/api/cli`.
+    "declaration": true
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]

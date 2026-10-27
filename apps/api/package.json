@@ -4,6 +4,13 @@
   "private": true,
   "type": "module",
   "description": "The toascribe API: Hono on Node. Owns all data and business logic.",
+  "exports": {
+    "./cli": {
+      "source": "./src/cli.ts",
+      "types": "./dist/cli.d.ts",
+      "default": "./dist/cli.js"
+    }
+  },
   "files": [
     "dist"
   ],

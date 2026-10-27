@@ -59,6 +59,14 @@ function lineContent(text: string): InlineNode[] {
   return nodes
 }
 
+/** Plain text as paragraphs, one or more (`toa post create --content`, M1.7): none for empty text. */
+export function textToParagraphs(text: string): Block[] {
+  const many = textToBlocks(text)
+  if (many !== undefined) return many
+  const one = text.replace(/\r\n?/g, '\n').replace(/^\n+|\n+$/g, '')
+  return one.trim() === '' ? [] : [createParagraph(lineContent(one))]
+}
+
 /**
  * Plain text as paragraphs, as Gutenberg reads it: an empty line starts a new paragraph, a single line break stays a line break.
  * Undefined for text of one paragraph (the text block takes it as it is).

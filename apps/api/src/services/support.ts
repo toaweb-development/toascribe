@@ -67,12 +67,16 @@ export function cacheTagsOf(input: Pick<AuditInput, 'objectType' | 'objectId'>):
 }
 
 /** Writes the audit entry, and in the same transaction the cache tags the change clears on the site. */
-export function createAuditor(clock: () => Date): Auditor {
+/**
+ * The auditor of the api, or of `toa` (M1.7, K-263): from the CLI the actor is «cli» (a system actor) and the account whose rights
+ * the command used (`--user`) is kept as the entry's account, with `source: 'cli'`.
+ */
+export function createAuditor(clock: () => Date, source: 'api' | 'cli' = 'api'): Auditor {
   return async (db, ctx, input) => {
     const at = clock()
     await insertAuditEntry(db, {
-      actorType: input.actor === null ? 'system' : 'account',
-      actor: input.actor?.username ?? 'anonymous',
+      actorType: input.actor === null || source === 'cli' ? 'system' : 'account',
+      actor: source === 'cli' ? 'cli' : (input.actor?.username ?? 'anonymous'),
       accountId: input.accountId === undefined ? (input.actor?.id ?? null) : input.accountId,
       action: input.action,
       objectType: input.objectType,
@@ -80,7 +84,7 @@ export function createAuditor(clock: () => Date): Auditor {
       ...(input.oldValue === undefined ? {} : { oldValue: input.oldValue }),
       ...(input.newValue === undefined ? {} : { newValue: input.newValue }),
       ...(input.reason === undefined ? {} : { reason: input.reason }),
-      source: 'api',
+      source,
       ...(ctx.requestId === undefined ? {} : { correlationId: ctx.requestId }),
       ip: shownIp(ctx.ip),
       at,

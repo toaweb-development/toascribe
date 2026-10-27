@@ -93,6 +93,8 @@ export interface ServiceDeps {
   readonly previewLimit: PreviewLimit
   /** The site's active theme (menu locations, «Tilpass»). */
   readonly activeTheme: ActiveThemeSource
+  /** Who the audit log names: the api (the signed-in account) or `toa` («cli», M1.7). Default `api`. */
+  readonly auditSource?: 'api' | 'cli'
   /** NODE_ENV, shown in Nettstedshelse. */
   readonly environment?: string
   /** TOASCRIBE_UPDATE_CHECK is not `off` (default: allowed). The api never asks a registry; the worker and the CLI do. */
@@ -169,7 +171,7 @@ export function createServices(deps: ServiceDeps): Services {
   const { db, clock } = deps
   const limiter = createRateLimiter(db, clock, deps.signingKey, deps.onInvalidSetting)
   const sessions = createSessionService({ db, clock, signingKey: deps.signingKey })
-  const audit = createAuditor(clock)
+  const audit = createAuditor(clock, deps.auditSource ?? 'api')
   const mail = createSafeMail(deps.mail, deps.logger)
   const minimumResponseMs = deps.minimumResponseMs ?? ACCOUNT_FLOW_MINIMUM_MS
   const totp = createTotpChecker({ clock, keyRing: deps.keyRing, logger: deps.logger })
