@@ -17,6 +17,7 @@ import {
   locate,
   mergeWithPrevious,
   moveBlock,
+  endList,
   indentListItem,
   insertBlocks,
   outdentListItem,
@@ -63,6 +64,8 @@ export interface EditorModel {
     cursor: EditorSelection,
   ): EditorSelection | undefined
   merge(id: string, cursor: EditorSelection): EditorSelection | undefined
+  /** Enter in the empty last item of a list: out of the list, into a new paragraph after it. */
+  endList(itemId: string, cursor: EditorSelection): EditorSelection | undefined
   /** Tab / Shift+Tab in a list item. */
   indent(id: string, cursor: EditorSelection): EditorSelection | undefined
   outdent(id: string, cursor: EditorSelection): EditorSelection | undefined
@@ -181,6 +184,10 @@ export function createEditorModel(initial: BlockDocument, options: HistoryOption
       return result === undefined
         ? undefined
         : commit(result.document, cursor, { blockId: result.targetId, offset: result.offset })
+    },
+    endList(itemId, cursor) {
+      const result = endList(history.present, itemId)
+      return result === undefined ? undefined : commit(result.document, cursor, { blockId: result.newId, offset: 0 })
     },
     indent(id, cursor) {
       return commit(indentListItem(history.present, id), cursor, cursor)
