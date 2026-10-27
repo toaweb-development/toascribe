@@ -7,7 +7,7 @@
 //   3. The uploads are replaced by the archive's, the migrations run (an older backup is brought up to this build), the site's
 //      cache is emptied (`*`), and maintenance mode is off again, also when something failed.
 import { randomBytes } from 'node:crypto'
-import { cp, mkdir, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { createDb, readMaintenanceMode, readMigrationJournal, runMigrations, setMaintenanceMode } from '@toascribe/db'
@@ -17,6 +17,8 @@ import { BackupError, readBackup } from './archive.ts'
 import type { ReadOptions } from './archive.ts'
 import { DATABASE_PATH, SECRETS_PATH, UPLOADS_PREFIX, compareVersions } from './manifest.ts'
 import type { Manifest } from './manifest.ts'
+import { statusReason } from './status.ts'
+import { sweepWorkFolders } from './sweep.ts'
 import { capture, pgEnvironment, run } from './tools.ts'
 
 /** The role the app connects as (docker/postgres/init.sql): it gets its rights back after a restore. */
@@ -98,36 +100,37 @@ export interface RestoreOptions extends ReadOptions {
 
 export interface CheckedBackup {
   readonly manifest: Manifest
-  /** The folder the archive was unpacked into (in the backups volume); removed by restoreBackup or discardChecked. */
-  readonly folder: string
+  /** The archive that was checked; restoreBackup reads (and checks) it again as it unpacks it. */
+  readonly file: string
 }
 
-/** Step 1: reads and checks the archive into a fresh folder, and refuses one this build cannot take. Changes nothing. */
+/**
+ * Step 1: reads the archive whole and checks every file against the manifest without writing any of it anywhere (nothing of an
+ * encrypted backup is on disk in plain text before the restore is confirmed), and refuses one this build cannot take.
+ */
 export async function checkBackup(file: string, options: RestoreOptions): Promise<CheckedBackup> {
-  const folder = join(options.backupsDir, `.restore-${randomBytes(6).toString('hex')}`)
-  await mkdir(folder, { recursive: false, mode: 0o700 })
-  try {
-    const manifest = await readBackup(file, { ...options, write: folder })
-    if (compareVersions(manifest.toascribe, options.version) > 0) {
-      throw new BackupError(
-        `The backup is from toascribe ${manifest.toascribe}, newer than this one (${options.version}). Update toascribe first.`,
-      )
-    }
-    const journal = readMigrationJournal()
-    if (!journal.some((entry) => entry.when === manifest.migration.when) && manifest.migration.when !== 0) {
-      throw new BackupError(
-        `The backup's database has a migration this build does not know (${manifest.migration.tag}).`,
-      )
-    }
-    return { manifest, folder }
-  } catch (error) {
-    await rm(folder, { recursive: true, force: true })
-    throw error
+  await sweepWorkFolders(options.backupsDir, options.now())
+  const manifest = await readBackup(file, options)
+  if (compareVersions(manifest.toascribe, options.version) > 0) {
+    throw new BackupError(
+      `The backup is from toascribe ${manifest.toascribe}, newer than this one (${options.version}). Update toascribe first.`,
+    )
   }
+  const journal = readMigrationJournal()
+  if (!journal.some((entry) => entry.when === manifest.migration.when) && manifest.migration.when !== 0) {
+    throw new BackupError(`The backup's database has a migration this build does not know (${manifest.migration.tag}).`)
+  }
+  return { manifest, file }
 }
 
-export async function discardChecked(checked: CheckedBackup): Promise<void> {
-  await rm(checked.folder, { recursive: true, force: true })
+/** A dump turned into SQL by pg_restore 17.6/18 or newer starts with `\restrict <key>`, which stops psql meta-commands in it. */
+export function startsRestricted(sqlText: string): boolean {
+  for (const line of sqlText.split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed === '' || trimmed.startsWith('--')) continue
+    return /^\\restrict [A-Za-z0-9]+$/.test(trimmed)
+  }
+  return false
 }
 
 /** Turns maintenance mode on or off in the database, when it has the setting table yet (an empty database has not). */
@@ -135,7 +138,8 @@ async function maintenance(ownerUrl: string, enabled: boolean, now: Date, logger
   const { db, pool } = createDb({ connectionString: ownerUrl, max: 1, applicationName: 'toascribe-restore' })
   try {
     await db.transaction(async (tx) => {
-      await setMaintenanceMode(tx, { enabled, message: '', retryAfter: 600 }, now)
+      // Only on or off: a mode that was on before keeps its message and wait.
+      await setMaintenanceMode(tx, { enabled }, now)
     })
   } catch (error) {
     logger.warn({ err: error, enabled }, 'maintenance mode could not be set (no settings table yet)')
@@ -152,10 +156,16 @@ export interface RestoredBackup {
 
 /** Steps 2 and 3 for a checked backup. Maintenance mode is off at the end, also after a failure. */
 export async function restoreBackup(checked: CheckedBackup, options: RestoreOptions): Promise<RestoredBackup> {
-  const { folder, manifest } = checked
   const env = pgEnvironment(options.ownerUrl)
   let wasOn = false
+  const folder = join(options.backupsDir, `.restore-${randomBytes(6).toString('hex')}`)
   try {
+    // Unpacked only now, after the confirmation, and checked again as it is (the file may have changed since the check).
+    await mkdir(folder, { recursive: false, mode: 0o700 })
+    const manifest = await readBackup(checked.file, { ...options, write: folder })
+    if (manifest.createdAt !== checked.manifest.createdAt)
+      throw new BackupError('The backup changed after it was checked.')
+
     const { db, pool } = createDb({ connectionString: options.ownerUrl, max: 1, applicationName: 'toascribe-restore' })
     try {
       wasOn = (await readMaintenanceMode(db)).enabled
@@ -188,9 +198,31 @@ export async function restoreBackup(checked: CheckedBackup, options: RestoreOpti
       ['--no-owner', '--no-privileges', `--use-list=${list}`, `--file=${restore}`, join(folder, DATABASE_PATH)],
       env,
     )
+    // Anyone who could write the backups volume could have put SQL of their own in the dump (the sha256s only prove it is whole):
+    // the statements run as the owner, but without the `\restrict` line pg_restore writes, psql would run its meta-commands too.
+    if (!startsRestricted(await readFile(restore, 'utf8'))) {
+      throw new BackupError('pg_restore did not write \\restrict into the SQL (pg_restore 17.6 or newer is needed).')
+    }
+    // Terse errors without context: a failed COPY would otherwise quote a row (an e-mail address, a hash) into the log.
     await run(
       'psql',
-      ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '--single-transaction', '-f', drop, '-f', restore, '-f', grant],
+      [
+        '-X',
+        '-q',
+        '-v',
+        'ON_ERROR_STOP=1',
+        '-v',
+        'VERBOSITY=terse',
+        '-v',
+        'SHOW_CONTEXT=never',
+        '--single-transaction',
+        '-f',
+        drop,
+        '-f',
+        restore,
+        '-f',
+        grant,
+      ],
       env,
     )
     options.logger.info({ toascribe: manifest.toascribe, migration: manifest.migration.tag }, 'database restored')
@@ -199,16 +231,22 @@ export async function restoreBackup(checked: CheckedBackup, options: RestoreOpti
 
     // The uploads: the archive's in place of what is there.
     const staged = join(folder, UPLOADS_PREFIX.replace(/\/$/, ''))
-    await mkdir(options.uploadsDir, { recursive: true })
-    for (const name of await readdir(options.uploadsDir)) {
-      await rm(join(options.uploadsDir, name), { recursive: true, force: true })
-    }
     try {
-      for (const name of await readdir(staged)) {
+      await mkdir(options.uploadsDir, { recursive: true })
+      for (const name of await readdir(options.uploadsDir)) {
+        await rm(join(options.uploadsDir, name), { recursive: true, force: true })
+      }
+      const names = await readdir(staged).catch((error: unknown) => {
+        if (typeof error === 'object' && error !== null && Reflect.get(error, 'code') === 'ENOENT') return []
+        throw error
+      })
+      for (const name of names) {
         await cp(join(staged, name), join(options.uploadsDir, name), { recursive: true, errorOnExist: true })
       }
     } catch (error) {
-      if (typeof error !== 'object' || error === null || Reflect.get(error, 'code') !== 'ENOENT') throw error
+      throw new BackupError(
+        `The database is restored, but the uploads could not be copied (${statusReason(error)}). Free space and run the restore again.`,
+      )
     }
 
     // An older backup is brought up to this build.

@@ -10,7 +10,6 @@ import {
   BackupError,
   ToolError,
   checkBackup,
-  discardChecked,
   findBackup,
   listBackups,
   pruneBackups,
@@ -294,10 +293,9 @@ async function backupRestore(args: readonly string[], options: CommandOptions): 
     now: () => new Date(),
     ...(typeof flags['identity'] === 'string' ? { identity: resolve(flags['identity']) } : {}),
   }
-  let checked: Awaited<ReturnType<typeof checkBackup>> | undefined
   try {
     const path = await resolveFile(config.BACKUPS_DIR, file)
-    checked = await checkBackup(path, restoreOptions)
+    const checked = await checkBackup(path, restoreOptions)
     const { manifest } = checked
     const summary = `toascribe ${manifest.toascribe}, migration ${manifest.migration.tag}, ${String(manifest.files.length)} files, made ${manifest.createdAt}`
     if (flags['dry-run'] === true) {
@@ -318,7 +316,6 @@ async function backupRestore(args: readonly string[], options: CommandOptions): 
       if (answer.trim() !== 'gjenopprett') return refusal('Nothing was changed.')
     }
     const restored = await restoreBackup(checked, restoreOptions)
-    checked = undefined
     await audit(config.MIGRATION_DATABASE_URL, 'backup.restored', {
       file: path.split('/').pop() ?? '',
       toascribe: manifest.toascribe,
@@ -331,8 +328,6 @@ async function backupRestore(args: readonly string[], options: CommandOptions): 
     return { code: 0, stdout: `Restored: ${summary}.\n${secrets}`, stderr: '' }
   } catch (err) {
     return failed(err, logger, 'backup restore')
-  } finally {
-    if (checked !== undefined) await discardChecked(checked)
   }
 }
 
@@ -340,6 +335,16 @@ async function backupRestore(args: readonly string[], options: CommandOptions): 
  * `toa db migrate [--no-backup]` and `toa core update`: the migrations this build has, with a backup first when they change
  * something in a site that has data (K-293), and maintenance mode while they run. A failed backup stops it before anything changes.
  */
+/** 3F000 (no schema drizzle) or 42P01 (no journal table): the database has never been migrated. */
+function isMissingJournal(error: unknown): boolean {
+  for (let current: unknown = error, depth = 0; current instanceof Error && depth < 5; depth += 1) {
+    const code: unknown = Reflect.get(current, 'code')
+    if (code === '3F000' || code === '42P01') return true
+    current = current.cause
+  }
+  return false
+}
+
 export async function dbMigrate(
   args: readonly string[],
   options: CommandOptions = {},
@@ -360,7 +365,13 @@ export async function dbMigrate(
   const { db, pool } = createDb({ connectionString: ownerUrl, max: 1, applicationName: 'toascribe-cli' })
   let status: { upToDate: boolean; applied: number }
   try {
-    status = await getMigrationStatus(db).catch(() => ({ upToDate: false, applied: 0 }))
+    // Only a database without the journal yet (a first start) counts as empty; any other error stops here, before anything runs.
+    status = await getMigrationStatus(db).catch((error: unknown) => {
+      if (isMissingJournal(error)) return { upToDate: false, applied: 0 }
+      throw error
+    })
+  } catch (err) {
+    return failed(err, logger, `${command} (reading the migration status)`)
   } finally {
     await pool.end()
   }

@@ -5,6 +5,11 @@ import { pruneBackups, readBackupConfig, takeBackup } from '@toascribe/backup'
 import type { Logger } from 'pino'
 
 export const BACKUP_DAILY = 'backup.daily'
+/**
+ * One try, and hours to finish: a retry of a failed backup would fail the same way, and a backup that outlives its expiry would be
+ * started again while the first pg_dump still runs.
+ */
+export const BACKUP_QUEUE_OPTIONS = { retryLimit: 0, expireInSeconds: 6 * 60 * 60 } as const
 /** 03:30 UTC, after the night's clean-up and trash purge. */
 export const BACKUP_CRON = '30 3 * * *'
 

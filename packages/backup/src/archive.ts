@@ -24,6 +24,7 @@ import {
   archiveName,
   isArchivePath,
 } from './manifest.ts'
+import { sweepWorkFolders } from './sweep.ts'
 import { tarStream } from './tar-write.ts'
 import type { TarFile } from './tar-write.ts'
 import { pgEnvironment, run, start } from './tools.ts'
@@ -105,6 +106,7 @@ export async function createBackup(options: CreateOptions): Promise<CreatedBacku
     )
   }
   await mkdir(options.backupsDir, { recursive: true, mode: 0o700 })
+  await sweepWorkFolders(options.backupsDir, options.now)
   const work = join(options.backupsDir, `.tmp-${randomBytes(6).toString('hex')}`)
   await mkdir(work, { mode: 0o700 })
   try {
@@ -125,9 +127,9 @@ export async function createBackup(options: CreateOptions): Promise<CreatedBacku
     )
     const parts: TarFile[] = [{ name: DATABASE_PATH, source: dump, size: (await stat(dump)).size }]
     if (options.secrets !== undefined) {
-      const secrets = join(work, SECRETS_PATH)
-      await writeFile(secrets, `${JSON.stringify(options.secrets, null, 2)}\n`, { mode: 0o600 })
-      parts.push({ name: SECRETS_PATH, source: secrets, size: (await stat(secrets)).size })
+      // From memory straight into the encrypted stream: the keys are never written to disk in plain text.
+      const secrets = Buffer.from(`${JSON.stringify(options.secrets, null, 2)}\n`, 'utf8')
+      parts.push({ name: SECRETS_PATH, source: secrets, size: secrets.length })
     }
     const uploads = await uploadFiles(options.uploadsDir)
     for (const file of uploads.files) parts.push({ ...file, size: (await stat(file.source)).size })
@@ -139,7 +141,14 @@ export async function createBackup(options: CreateOptions): Promise<CreatedBacku
       createdAt: options.now.toISOString(),
       secrets: options.secrets !== undefined,
       files: await Promise.all(
-        parts.map(async (part) => ({ path: part.name, size: part.size, sha256: await sha256Of(part.source) })),
+        parts.map(async (part) => ({
+          path: part.name,
+          size: part.size,
+          sha256:
+            typeof part.source === 'string'
+              ? await sha256Of(part.source)
+              : createHash('sha256').update(part.source).digest('hex'),
+        })),
       ),
     }
     const manifestFile = join(work, MANIFEST_PATH)
@@ -214,6 +223,7 @@ export async function readBackup(
 ): Promise<Manifest> {
   const { stream, done } = plainTar(file, options)
   let manifest: Manifest | undefined
+  let listing = new Map<string, Manifest['files'][number]>()
   const seen = new Set<string>()
   const problems: string[] = []
   // One entry at a time, in the archive's order (the manifest first): the parser waits for each entry to be read before the next.
@@ -231,7 +241,9 @@ export async function readBackup(
     const path = entry.path
     if (entry.type !== 'File' && entry.type !== 'OldFile') {
       entry.resume()
-      throw new BackupError(`the archive holds a ${entry.type} (${path.slice(0, 200)}); a backup holds files only`)
+      throw new BackupError(
+        `the archive holds a ${entry.type} (${JSON.stringify(path.slice(0, 200))}); a backup holds files only`,
+      )
     }
     if (manifest === undefined) {
       if (path !== MANIFEST_PATH || entry.size > MAX_MANIFEST_BYTES) {
@@ -240,20 +252,29 @@ export async function readBackup(
       }
       const chunks: Buffer[] = []
       for await (const chunk of entry) chunks.push(chunk)
-      const parsed = Manifest.safeParse(JSON.parse(Buffer.concat(chunks).toString('utf8')))
+      let json: unknown
+      try {
+        json = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+      } catch {
+        throw new BackupError('manifest.json is not a toascribe manifest')
+      }
+      const parsed = Manifest.safeParse(json)
       if (!parsed.success) throw new BackupError('manifest.json is not a toascribe manifest')
       manifest = parsed.data
+      listing = new Map(parsed.data.files.map((file) => [file.path, file]))
       return
     }
-    const listed = manifest.files.find((entryInManifest) => entryInManifest.path === path)
+    const listed = listing.get(path)
     if (!isArchivePath(path) || listed === undefined || seen.has(path)) {
       entry.resume()
-      throw new BackupError(`the archive holds ${path.slice(0, 200)}, which its manifest does not list (or lists once)`)
+      throw new BackupError(
+        `the archive holds ${JSON.stringify(path.slice(0, 200))}, which its manifest does not list (or lists once)`,
+      )
     }
     seen.add(path)
     if (entry.size !== listed.size) {
       entry.resume()
-      throw new BackupError(`${path} has the wrong size`)
+      throw new BackupError(`${JSON.stringify(path)} has the wrong size`)
     }
     const hash = createHash('sha256')
     const sinks: Writable[] = [hash]
@@ -279,7 +300,8 @@ export async function readBackup(
           }),
       ),
     )
-    if (hash.digest('hex') !== listed.sha256) throw new BackupError(`${path} does not match its sha256 in the manifest`)
+    if (hash.digest('hex') !== listed.sha256)
+      throw new BackupError(`${JSON.stringify(path)} does not match its sha256 in the manifest`)
   }
 
   const parser = new Parser({

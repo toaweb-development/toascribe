@@ -227,6 +227,11 @@ These are choices Tor has not made yet. Say which one you hit if your work touch
 - **Links in blocks take more than `https:`.** `security` §4 asks for user URLs to be `https:` (or `http:`). A link in rich text and a
   button's address (`format: "href"`, `isSafeHref`) also take `mailto:`, a path on the site (`/…`) and a fragment (`#…`), as a
   WordPress link does; `javascript:`, `data:` and another host by `//` are refused.
+- **A backup's sha256s prove it is whole, not who made it (M1.7).** The api and the worker write the `backups` volume (`toa backup
+  create` and the daily backup), so code running in either could plant an archive with a manifest of its own; a restore of it runs its
+  SQL as `toascribe_owner` (NOSUPERUSER, NOCREATEROLE: DDL in this database, not the host). The restore refuses SQL without the
+  `\restrict` line pg_restore 17.6+ writes, so psql meta-commands in a dump do not run. Signing backups, or making them only in a
+  service the internet does not reach, is Tor's call.
 - **Audit exceptions.** `pnpm audit --prod` reports two High advisories without a patched version
   (GHSA-86w9-cpqp-85rv node-forge, GHSA-vfj7-8cjw-p6xm braces), both from nitropack and absent from every runtime image.
   They are listed in `pnpm-workspace.yaml` with a review date; `scripts/audit.sh` (the release's audit) fails after it.

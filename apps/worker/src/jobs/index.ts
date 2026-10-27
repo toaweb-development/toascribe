@@ -12,7 +12,7 @@ import { emailHandler } from './email.ts'
 import { MEDIA_QUEUE_OPTIONS, MEDIA_SWEEP, runMediaJob, sweepPending } from './media.ts'
 import type { MediaJobDeps } from './media.ts'
 import type { EmailJobDeps } from './email.ts'
-import { BACKUP_CRON, BACKUP_DAILY, dailyBackupOn, runDailyBackup } from './backup.ts'
+import { BACKUP_CRON, BACKUP_DAILY, BACKUP_QUEUE_OPTIONS, dailyBackupOn, runDailyBackup } from './backup.ts'
 import type { BackupJobDeps } from './backup.ts'
 
 export interface JobsOptions {
@@ -82,7 +82,8 @@ export async function registerJobs(boss: PgBoss, options: JobsOptions, logger: L
   })
   await boss.schedule(MEDIA_SWEEP, '*/5 * * * *', null, { tz: SCHEDULE_TIMEZONE })
   // The daily backup: scheduled when toascribe.toml says so, and the schedule removed when it does not (read at each start).
-  await boss.createQueue(BACKUP_DAILY, CLEANUP_QUEUE_OPTIONS)
+  await boss.createQueue(BACKUP_DAILY, BACKUP_QUEUE_OPTIONS)
+  await boss.updateQueue(BACKUP_DAILY, BACKUP_QUEUE_OPTIONS) // a queue made before the options changed takes them too
   await boss.work(BACKUP_DAILY, { batchSize: 1, pollingIntervalSeconds: options.pollingSeconds ?? 60 }, async () => {
     await runDailyBackup(options.backup)
   })

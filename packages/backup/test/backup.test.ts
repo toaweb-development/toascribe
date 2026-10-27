@@ -4,7 +4,7 @@
 // encrypted; prune keeping the newest; and maintenance mode off again after a restore that failed.
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
@@ -20,13 +20,13 @@ import {
   checkBackup,
   compareVersions,
   createBackup,
-  discardChecked,
   isArchivePath,
   listBackups,
   pruneBackups,
   readBackup,
   readBackupConfig,
   restoreBackup,
+  startsRestricted,
 } from '../src/index.ts'
 import { tarStream } from '../src/tar-write.ts'
 import { start } from '../src/tools.ts'
@@ -288,18 +288,40 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('a backup against a database (n
   })
 
   it('turns maintenance mode off again after a restore that failed', async () => {
-    const [backup] = await listBackups(backups)
-    if (backup === undefined) throw new Error('no backup')
-    const checked = await checkBackup(backup.file, restoreOptions())
-    // The dump is broken after the check: pg_restore fails in the middle of the restore.
-    await writeFile(join(checked.folder, 'database.dump'), 'broken')
+    // A whole archive whose dump pg_restore cannot read: the check passes, the restore fails in the middle.
+    const broken = await craft(root, 'broken-dump.tar.zst', [{ name: 'database.dump', content: 'broken' }])
+    const checked = await checkBackup(broken, restoreOptions())
     await expect(restoreBackup(checked, restoreOptions())).rejects.toThrow(/pg_restore/)
     const mode = (await owner(`select value from setting where key = 'maintenance_mode'`))[0] as {
       value: { enabled: boolean }
     }
     expect(mode.value.enabled).toBe(false)
     expect(await blogname()).toBe('Fjellbloggen')
-    await discardChecked(checked)
+    expect((await readdir(backups)).filter((name) => name.startsWith('.'))).toEqual([])
+  })
+
+  it('checks without writing anything, and sweeps work folders a killed run left', async () => {
+    const [backup] = await listBackups(backups)
+    if (backup === undefined) throw new Error('no backup')
+    const stale = join(backups, '.restore-0123456789ab')
+    const fresh = join(backups, '.tmp-ba9876543210')
+    await mkdir(stale)
+    await mkdir(fresh)
+    await writeFile(join(stale, 'database.dump'), 'plain')
+    const old = new Date(Date.now() - 7 * 60 * 60 * 1000)
+    await utimes(stale, old, old)
+    const before = (await readdir(backups)).length
+    await checkBackup(backup.file, restoreOptions())
+    expect(await readdir(backups)).toHaveLength(before - 1)
+    await expect(stat(stale)).rejects.toThrow()
+    await stat(fresh) // younger than six hours: a run in progress may own it
+    await rm(fresh, { recursive: true })
+  })
+
+  it('refuses SQL without the \\restrict line pg_restore writes', () => {
+    expect(startsRestricted('--\n-- PostgreSQL database dump\n--\n\n\\restrict abcDEF123\n\nSET x = 1;\n')).toBe(true)
+    expect(startsRestricted('--\n-- dump\n\nSET x = 1;\n\\restrict abc\n')).toBe(false)
+    expect(startsRestricted('\\! touch /tmp/x\n')).toBe(false)
   })
 })
 

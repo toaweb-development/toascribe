@@ -7,8 +7,8 @@ import { Readable } from 'node:stream'
 export interface TarFile {
   /** The name in the archive (checked by the caller: isArchivePath). */
   readonly name: string
-  /** Where its bytes are read from. */
-  readonly source: string
+  /** Where its bytes are read from: a file, or the bytes themselves (the keys, which never touch the disk in plain text). */
+  readonly source: string | Buffer
   readonly size: number
 }
 
@@ -59,7 +59,8 @@ async function* blocks(files: readonly TarFile[], mtime: number): AsyncGenerator
     }
     yield header(file.name, file.size, '0', mtime)
     let written = 0
-    for await (const chunk of createReadStream(file.source)) {
+    const chunks = typeof file.source === 'string' ? createReadStream(file.source) : [file.source]
+    for await (const chunk of chunks) {
       const buffer = chunk as Buffer
       written += buffer.length
       if (written > file.size) throw new Error(`${file.name} grew while it was archived`)
