@@ -1,0 +1,37 @@
+{
+  "name": "@toascribe/updates",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "The update check (M1.7, K-290): the newest release from the public image tags (ghcr.io), behind a small source interface. Node only; the worker and the CLI use it.",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@toascribe/db": "workspace:*",
+    "@toascribe/http": "workspace:*",
+    "@toascribe/shared": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@toascribe/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

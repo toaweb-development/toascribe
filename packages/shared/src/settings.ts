@@ -99,6 +99,19 @@ export const LastBackupStatus = z.object({
 })
 export type LastBackupStatus = z.infer<typeof LastBackupStatus>
 
+/**
+ * The last update check (M1.7, K-290): when, the version that ran it, the newest release found (null: none found), and, when the
+ * check failed, a short reason without addresses. The worker and `toa check-update` write it; «Oppdateringer» and Nettstedshelse read it.
+ */
+export const UpdateStatus = z.object({
+  checkedAt: z.iso.datetime(),
+  current: z.string().max(50),
+  latest: z.string().max(50).nullable(),
+  ok: z.boolean(),
+  error: z.string().max(300).nullable(),
+})
+export type UpdateStatus = z.infer<typeof UpdateStatus>
+
 /** Maintenance mode as stored (K-288): on or off, the message for visitors, how long to wait (seconds), and since when. */
 export const MaintenanceMode = z.object({
   enabled: z.boolean(),
@@ -165,6 +178,13 @@ export const CoreSettings = z.object({
   maintenance_mode: MaintenanceMode,
   /** The last backup made (M1.7): the CLI and the worker write it; Nettstedshelse shows it. */
   backup_status: LastBackupStatus.nullable(),
+  /**
+   * Look for a new release once a day (M1.7, K-290): a plain GET of the public image tags, nothing about the site sent. Also off when
+   * the server sets TOASCRIBE_UPDATE_CHECK=off.
+   */
+  update_check: z.boolean(),
+  /** The last update check (M1.7): the worker and `toa check-update` write it. */
+  update_status: UpdateStatus.nullable(),
 
   // Settings → Discussion
   default_comment_status: z.enum(COMMENT_STATUS),
@@ -346,6 +366,8 @@ export const CORE_SETTINGS: CoreSettings = {
 
   maintenance_mode: { enabled: false, message: '', retryAfter: 600, since: null },
   backup_status: null,
+  update_check: true, // Tor (M1.7): on, and it can be turned off
+  update_status: null,
 
   // Discussion
   default_comment_status: 'open', // Tor and WordPress
