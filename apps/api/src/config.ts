@@ -34,11 +34,7 @@ const Env = z
     /** Where the api reaches the site on the internal network, to ask which theme is active (services/active-theme.ts). Its origin only. */
     SITE_URL_INTERNAL: z.url({ protocol: /^https?$/ }).default('http://site:3000'),
     /** Valkey (the `valkey` profile, the server the site's cache uses): limits shared by every api process. Empty: each counts alone. */
-    CACHE_VALKEY_URL: z
-      .string()
-      .trim()
-      .default('')
-      .refine((value) => value === '' || /^rediss?:\/\//.test(value), { message: 'a redis:// or rediss:// address' }),
+    CACHE_VALKEY_URL: z.union([z.literal(''), z.url({ protocol: /^rediss?$/ })]).default(''),
   })
   .superRefine((env, ctx) => {
     const versions = [

@@ -12,14 +12,11 @@ function sharedStore(): CounterStore & { expiries: Map<string, number> } {
   const expiries = new Map<string, number>()
   return {
     expiries,
-    incr: (key) => {
+    incrWithExpiry: (key, ms) => {
       const next = (counts.get(key) ?? 0) + 1
       counts.set(key, next)
-      return Promise.resolve(next)
-    },
-    pexpire: (key, ms) => {
       expiries.set(key, ms)
-      return Promise.resolve(1)
+      return Promise.resolve(next)
     },
   }
 }
@@ -39,14 +36,24 @@ describe('the preview limit', () => {
 
   it('counts in the process while Valkey does not answer', async () => {
     const errors: unknown[] = []
-    const broken: CounterStore = {
-      incr: () => Promise.reject(new Error('ECONNREFUSED')),
-      pexpire: () => Promise.reject(new Error('ECONNREFUSED')),
-    }
+    const broken: CounterStore = { incrWithExpiry: () => Promise.reject(new Error('ECONNREFUSED')) }
     const limit = sharedPreviewLimit(broken, (error) => errors.push(error))
     for (let i = 0; i < PREVIEWS_PER_MINUTE; i += 1) await limit.count('a', 1000)
     await expect(limit.count('a', 1000)).rejects.toBeInstanceOf(TooManyRequestsError)
-    expect(errors.length).toBeGreaterThan(0)
+    // Told once while it stays down, not once a preview.
+    expect(errors).toHaveLength(1)
+  })
+
+  it('falls back to memory with a real client and a Valkey that is not there', async () => {
+    const errors: unknown[] = []
+    const limit = createPreviewLimit('redis://127.0.0.1:1', (error) => errors.push(error))
+    try {
+      for (let i = 0; i < PREVIEWS_PER_MINUTE; i += 1) await limit.count('a', 9000)
+      await expect(limit.count('a', 9000)).rejects.toBeInstanceOf(TooManyRequestsError)
+      expect(errors).toHaveLength(1)
+    } finally {
+      await limit.close()
+    }
   })
 
   it('counts in memory without a Valkey address', async () => {
