@@ -3,6 +3,7 @@
 import buttonJson from './button/block.json' with { type: 'json' }
 import buttonsJson from './buttons/block.json' with { type: 'json' }
 import codeJson from './code/block.json' with { type: 'json' }
+import embedJson from './embed/block.json' with { type: 'json' }
 import columnJson from './column/block.json' with { type: 'json' }
 import columnsJson from './columns/block.json' with { type: 'json' }
 import galleryJson from './gallery/block.json' with { type: 'json' }
@@ -46,6 +47,7 @@ export const NEXTPAGE = 'core/nextpage'
 export const HTML = 'core/html'
 export const QUERY = 'core/query'
 export const GLOBAL_SET = 'core/global-set'
+export const EMBED = 'core/embed'
 
 /** Parsed when the module loads: a block.json that does not fit the definition schema stops the api and the editor at once. */
 export const CORE_BLOCKS: readonly BlockDefinition[] = [
@@ -71,6 +73,7 @@ export const CORE_BLOCKS: readonly BlockDefinition[] = [
   htmlJson,
   queryJson,
   globalSetJson,
+  embedJson,
 ].map((json) => BlockDefinition.parse(json))
 
 const BY_NAME = new Map(CORE_BLOCKS.map((definition) => [definition.name, definition]))

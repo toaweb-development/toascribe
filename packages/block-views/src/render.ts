@@ -29,6 +29,7 @@ import {
   PARAGRAPH,
   QUERY,
   GLOBAL_SET,
+  EMBED,
   PREFORMATTED,
   QUOTE,
   SEPARATOR,
@@ -36,6 +37,7 @@ import {
   TABLE,
   isSafeHref,
 } from '@toascribe/blocks'
+import { EMBED_PROVIDER_NAMES, EmbedProvider, isSafeEmbedLink } from '@toascribe/shared'
 import type { ContentMediaRef } from '@toascribe/shared'
 
 /** What a view needs beyond the block: the media its images use, by id. */
@@ -119,6 +121,37 @@ function imageElement(image: ContentMediaRef, block: Block, sizes: string): VNod
     loading: 'lazy',
     decoding: 'async',
   })
+}
+
+/**
+ * «Innbygging» (K-225) as a card: the thumbnail (stored in the media library), the title, the service's name and a link to the
+ * content. No player and no script: the core view is what a feed and the admin show. The site draws the player behind
+ * «Klikk for å laste» with its own view (site-core), which checks the player's address before it draws it.
+ */
+function embedView(block: Block, context: ViewContext): VNode | null {
+  const url = text(block, 'url')
+  if (!isSafeEmbedLink(url)) return null
+  const provider = EmbedProvider.safeParse(text(block, 'provider'))
+  const title = text(block, 'title') || url
+  const thumbnail = context.media.get(text(block, 'thumbnailId'))
+  const caption = text(block, 'caption')
+  return h('figure', { class: ['block-embed', provider.success ? `is-provider-${provider.data}` : null] }, [
+    h('a', { class: 'block-embed-link', href: url, rel: 'noopener', target: '_blank' }, [
+      thumbnail === undefined
+        ? null
+        : h('img', {
+            src: thumbnail.url,
+            width: thumbnail.width ?? undefined,
+            height: thumbnail.height ?? undefined,
+            alt: '',
+            loading: 'lazy',
+            decoding: 'async',
+          }),
+      h('span', { class: 'block-embed-title' }, title),
+      provider.success ? h('span', { class: 'block-embed-provider' }, EMBED_PROVIDER_NAMES[provider.data]) : null,
+    ]),
+    caption === '' ? null : h('figcaption', null, caption),
+  ])
 }
 
 /** An image: a figure with the picture and its caption, or nothing while no file is chosen (or the file is gone). */
@@ -277,6 +310,8 @@ export function renderBlock(block: Block, context: ViewContext): VNode | null {
       // «Les mer» marks where an archive's excerpt ends and a page break where a page ends (K-107, K-227): the site uses them when
       // it lists or pages a post (M1.4). In the whole post they show nothing.
       return null
+    case EMBED:
+      return embedView(block, context)
     case GLOBAL_SET:
       // A global set (K-106) is read when the page is shown: the site draws it with its view (site-core). Without it, nothing.
       return null

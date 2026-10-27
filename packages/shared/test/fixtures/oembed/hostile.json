@@ -1,0 +1,49 @@
+{
+  "cases": [
+    {
+      "provider": "youtube",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "html": "<iframe src=\"https://evil.example/embed/dQw4w9WgXcQ\"></iframe><script>alert(1)</script>"
+    },
+    {
+      "provider": "youtube",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "html": "<iframe src=\"javascript:alert(1)\"></iframe>"
+    },
+    {
+      "provider": "vimeo",
+      "url": "https://vimeo.com/76979871",
+      "html": "<iframe src=\"https://player.vimeo.com.evil.example/video/1\"></iframe>"
+    },
+    {
+      "provider": "vimeo",
+      "url": "https://vimeo.com/76979871",
+      "html": "<iframe src=\"https://user:pw@player.vimeo.com/video/1\"></iframe>"
+    },
+    {
+      "provider": "spotify",
+      "url": "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT",
+      "html": "<img src=x onerror=alert(1)>"
+    },
+    {
+      "provider": "tiktok",
+      "url": "https://www.tiktok.com/@a/video/1",
+      "html": "<iframe src=\"http://www.tiktok.com/player/v1/1\"></iframe>"
+    },
+    {
+      "provider": "bluesky",
+      "url": "https://bsky.app/profile/a/post/b",
+      "html": "<blockquote data-bluesky-uri=\"at://did:plc:x/../../evil\"></blockquote>"
+    },
+    {
+      "provider": "mastodon",
+      "url": "https://mastodon.social/@Gargron/109310283456108235",
+      "html": "<blockquote data-embed-url=\"https://evil.example/@Gargron/1/embed\"></blockquote>"
+    },
+    {
+      "provider": "soundcloud",
+      "url": "https://soundcloud.com/forss/flickermood",
+      "html": "<iframe src=\"https://w.soundcloud.com:8443/player/?url=x\"></iframe>"
+    }
+  ]
+}

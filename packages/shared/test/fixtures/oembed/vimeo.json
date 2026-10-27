@@ -1,0 +1,17 @@
+{
+  "url": "https://vimeo.com/76979871",
+  "answer": {
+    "type": "video",
+    "version": "1.0",
+    "provider_name": "Vimeo",
+    "provider_url": "https://vimeo.com/",
+    "title": "The New Vimeo Player (You Know, For Videos)",
+    "author_name": "Vimeo",
+    "html": "<iframe src=\"https://player.vimeo.com/video/76979871?app_id=122963\" width=\"640\" height=\"360\" frameborder=\"0\" allow=\"autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media\" title=\"The New Vimeo Player\"></iframe>",
+    "width": 640,
+    "height": 360,
+    "thumbnail_url": "https://i.vimeocdn.com/video/452001751-8216e0570c96c2f5b8e7c1d9d7b5d2c0d2f0a8b0_295x166",
+    "video_id": 76979871
+  },
+  "frame": "https://player.vimeo.com/video/76979871"
+}

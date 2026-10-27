@@ -1,0 +1,17 @@
+{
+  "url": "https://mastodon.social/@Gargron/109310283456108235",
+  "answer": {
+    "type": "rich",
+    "version": "1.0",
+    "title": "New status by Gargron",
+    "author_name": "Eugen Rochko",
+    "author_url": "https://mastodon.social/@Gargron",
+    "provider_name": "mastodon.social",
+    "provider_url": "https://mastodon.social/",
+    "cache_age": 86400,
+    "html": "<blockquote class=\"mastodon-embed\" data-embed-url=\"https://mastodon.social/@Gargron/109310283456108235/embed\" style=\"background: #FCF8FF;\"><a href=\"https://mastodon.social/@Gargron/109310283456108235\">Post by @Gargron@mastodon.social</a></blockquote><script data-allowed-prefixes=\"https://mastodon.social/\" async src=\"https://mastodon.social/embed.js\"></script>",
+    "width": 400,
+    "height": null
+  },
+  "frame": "https://mastodon.social/@Gargron/109310283456108235/embed"
+}

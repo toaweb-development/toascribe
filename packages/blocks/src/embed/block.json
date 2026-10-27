@@ -1,0 +1,39 @@
+{
+  "name": "core/embed",
+  "version": 1,
+  "title": "Embed",
+  "description": "Add a video, a song or a post from another service (YouTube, Vimeo, Spotify, SoundCloud, TikTok, Bluesky, Mastodon). The server reads it when the post is saved; an address from another service is shown as a link.",
+  "category": "embed",
+  "icon": "i-lucide-square-play",
+  "keywords": [
+    "embed",
+    "video",
+    "oembed",
+    "youtube",
+    "vimeo",
+    "spotify",
+    "soundcloud",
+    "tiktok",
+    "bluesky",
+    "mastodon"
+  ],
+  "attributes": {
+    "url": { "type": "string", "default": "", "maxLength": 2000, "format": "href" },
+    "provider": {
+      "type": "string",
+      "default": "",
+      "maxLength": 20,
+      "enum": ["", "youtube", "vimeo", "spotify", "soundcloud", "tiktok", "bluesky", "mastodon"]
+    },
+    "title": { "type": "string", "default": "", "maxLength": 500 },
+    "authorName": { "type": "string", "default": "", "maxLength": 500 },
+    "frameSrc": { "type": "string", "default": "", "maxLength": 2000, "format": "url" },
+    "width": { "type": "integer", "default": 0, "minimum": 0, "maximum": 4000 },
+    "height": { "type": "integer", "default": 0, "minimum": 0, "maximum": 4000 },
+    "thumbnailId": { "type": "string", "default": "", "maxLength": 36, "format": "uuid" },
+    "caption": { "type": "string", "default": "", "maxLength": 2000 }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

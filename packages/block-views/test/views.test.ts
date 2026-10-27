@@ -137,6 +137,17 @@ const CASES: [string, Block, RegExp][] = [
   // The site draws it with the items it reads (site-core's view, M1.4); here, without data, it shows nothing.
   ['query', createBlock('core/query'), /^$/],
   ['global set', createBlock('core/global-set', { slug: 'kontakt' }), /^$/],
+  // «Innbygging» as a card in the core view (a feed, the admin): a link to the content, never a player or a script.
+  [
+    'embed',
+    createBlock('core/embed', {
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      provider: 'youtube',
+      title: 'Never Gonna Give You Up',
+      frameSrc: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    }),
+    /^<figure class="block-embed is-provider-youtube"><a class="block-embed-link" href="https:\/\/www\.youtube\.com\/watch\?v=dQw4w9WgXcQ" rel="noopener" target="_blank"><span class="block-embed-title">Never Gonna Give You Up<\/span><span class="block-embed-provider">YouTube<\/span><\/a><\/figure>$/,
+  ],
   [
     'html',
     createBlock('core/html', { content: '<p class="egen">Rå</p>' }),

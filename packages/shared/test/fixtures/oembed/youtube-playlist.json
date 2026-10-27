@@ -1,0 +1,17 @@
+{
+  "url": "https://www.youtube.com/playlist?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI",
+  "answer": {
+    "title": "Popular Music Videos",
+    "author_name": "Music",
+    "author_url": "/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ",
+    "type": "video",
+    "height": 113,
+    "width": 200,
+    "version": "1.0",
+    "provider_name": "YouTube",
+    "provider_url": "https://www.youtube.com/",
+    "thumbnail_url": "https://i.ytimg.com/vi/kJQP7kiw5Fk/hqdefault.jpg",
+    "html": "<iframe width=\"200\" height=\"113\" src=\"https://www.youtube.com/embed/videoseries?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI\" frameborder=\"0\" allowfullscreen title=\"Popular Music Videos\"></iframe>"
+  },
+  "frame": "https://www.youtube-nocookie.com/embed/videoseries?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI"
+}
