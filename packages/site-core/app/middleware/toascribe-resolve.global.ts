@@ -36,6 +36,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
   maintenance.value = false
   if (settings.value.maintenance.enabled && !(await mayManageSite())) {
     maintenance.value = true
+    // The maintenance page stands alone, without the theme's layout (set here, before the layout is drawn, so the server's HTML has
+    // it too): no menus, sets or search come with it (nothing of the site's content), and nothing on it needs the api, which may
+    // be away during a restore. It holds for this navigation only.
+    setPageLayout(false)
     if (event !== undefined) {
       setResponseStatus(event, 503)
       // The renderer writes its own headers: server/plugins/maintenance.ts adds Retry-After to the rendered response.

@@ -13,12 +13,6 @@ const coreMaintenance = resolveComponent('ScribeMaintenance') as Component
 const view = computed(() =>
   maintenance.value ? maintenanceView(templates, coreMaintenance) : pickTemplate(names.value, templates),
 )
-// The maintenance page stands alone, without the theme's layout: no menus, sets or search come with it (nothing of the site's
-// content), and nothing on it needs the api, which may be away during a restore.
-// (A layout set for a route lasts for that route only: the next page has the theme's layout again.)
-watchEffect(() => {
-  if (maintenance.value) setPageLayout(false)
-})
 </script>
 
 <template>

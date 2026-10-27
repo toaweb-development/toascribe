@@ -47,6 +47,9 @@ test('visitors get the maintenance page with 503, the administrator the site', a
     expect(home.headers()['retry-after']).toBe('120')
     const html = await home.text()
     expect(html).toContain(message)
+    // The page stands alone: no theme header, menus or footer set, one <main>.
+    expect(html).not.toContain('theme-header')
+    expect(html.match(/<main\b/g) ?? []).toHaveLength(1)
     // Nothing of the site's content is in the page or its payload (the address was never asked for).
     expect(html).not.toContain(secret)
     for (const path of ['/feed/', '/sitemap.xml', '/robots.txt']) {
