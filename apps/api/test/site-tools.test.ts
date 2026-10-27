@@ -125,15 +125,20 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('updates and site health (needs
 })
 
 describe.skipIf(TEST_DATABASE_URL === undefined)('TOASCRIBE_UPDATE_CHECK=off (needs TEST_DATABASE_URL)', () => {
+  let other: AuthTestApp
+
+  // In beforeAll: starting an app (a new database) takes longer than one test may.
+  beforeAll(async () => {
+    other = await startAuthApp({ serverAllowsUpdateCheck: false })
+  })
+  afterAll(async () => {
+    await other.close()
+  })
+
   it('says the server has turned the check off', async () => {
-    const other = await startAuthApp({ serverAllowsUpdateCheck: false })
-    try {
-      const account = await other.createAccount({ username: 'helse-server', role: 'administrator' })
-      const client = other.client()
-      expect((await client.login(account.username, 'correct horse battery staple')).status).toBe(200)
-      expect(UpdatesResponse.parse(await (await client.get('/api/v1/updates')).json()).disabledByServer).toBe(true)
-    } finally {
-      await other.close()
-    }
+    const account = await other.createAccount({ username: 'helse-server', role: 'administrator' })
+    const client = other.client()
+    expect((await client.login(account.username, 'correct horse battery staple')).status).toBe(200)
+    expect(UpdatesResponse.parse(await (await client.get('/api/v1/updates')).json()).disabledByServer).toBe(true)
   })
 })
