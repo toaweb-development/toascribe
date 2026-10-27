@@ -3,7 +3,14 @@
 import { describe, expect, it } from 'vitest'
 
 import type { WordPressBlock } from '../src/index.ts'
-import { decodeEntities, fromWordPress, inlineFromHtml, isWordPressTree } from '../src/index.ts'
+import {
+  createBlock,
+  decodeEntities,
+  fromWordPress,
+  inlineFromHtml,
+  isWordPressTree,
+  validateDocument,
+} from '../src/index.ts'
 
 const wp = (blockName: string, innerHTML: string, attrs = {}, innerBlocks: WordPressBlock[] = []): WordPressBlock => ({
   blockName,
@@ -36,6 +43,53 @@ describe('inline HTML as rich text', () => {
 
   it('decodes named and numeric entities, and leaves an unknown one as it is', () => {
     expect(decodeEntities('&laquo;Husk meg&raquo; &#8211; &#x2014; &ukjent;')).toBe('«Husk meg» – — &ukjent;')
+  })
+})
+
+describe('what a damaged or hostile post cannot do', () => {
+  it('takes linear time on a long run of spaces in an open tag', () => {
+    const started = performance.now()
+    inlineFromHtml(`x<a${' '.repeat(20_000)}y`)
+    expect(performance.now() - started).toBeLessThan(500)
+  })
+
+  it('never makes a lone surrogate from a numeric entity, and the schema refuses one', () => {
+    expect(decodeEntities('&#xD800;&#55296;&#0;&#x110000;')).toBe('\ufffd\ufffd\ufffd\ufffd')
+    expect(fromWordPress([wp('core/paragraph', '<p>a&#xDC00;b</p>')])?.[0]?.attrs['content']).toEqual([
+      { type: 'text', text: 'a\ufffdb' },
+    ])
+    expect(
+      validateDocument([{ ...createBlock('core/paragraph'), attrs: { content: [{ type: 'text', text: '\ud800' }] } }])
+        .ok,
+    ).toBe(false)
+  })
+
+  it('marks a run once when the same mark is nested, and keeps the innermost link', () => {
+    expect(inlineFromHtml('<strong><b>fet</b></strong> <a href="/a"><a href="/b">lenke</a></a>')).toEqual([
+      { type: 'text', text: 'fet', marks: [{ type: 'bold' }] },
+      { type: 'text', text: ' ' },
+      { type: 'text', text: 'lenke', marks: [{ type: 'link', attrs: { href: '/b' } }] },
+    ])
+  })
+
+  it('drops comments and what a script or a style holds', () => {
+    expect(inlineFromHtml('a<!-- skjult -->b<script>alert(1)</script>c<style>p{}</style>d')).toEqual([
+      { type: 'text', text: 'abcd' },
+    ])
+  })
+
+  it('converts nothing for a node of the wrong shape, or a list item with two nested lists', () => {
+    const broken = [
+      { blockName: 'core/quote', attrs: {}, innerHTML: '<blockquote></blockquote>', innerBlocks: [{ blockName: 'x' }] },
+    ]
+    expect(fromWordPress(broken as never)).toBeUndefined()
+    const twoLists = wp('core/list', '<ul></ul>', {}, [
+      wp('core/list-item', '<li>a</li>', {}, [
+        wp('core/list', '<ul></ul>', {}, [wp('core/list-item', '<li>b</li>')]),
+        wp('core/list', '<ul></ul>', {}, [wp('core/list-item', '<li>c</li>')]),
+      ]),
+    ])
+    expect(fromWordPress([twoLists])).toBeUndefined()
   })
 })
 

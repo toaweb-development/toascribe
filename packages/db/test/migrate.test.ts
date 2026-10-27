@@ -108,6 +108,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('migration runner (needs TEST_D
       )[0]?.id ?? ''
     const known = await insert('wp-format', wordpress)
     const kept = await insert('wp-unknown', unknown)
+    // A damaged node deep in the tree: kept, and the run goes on.
+    const damaged = await insert('wp-damaged', [
+      {
+        blockName: 'core/quote',
+        attrs: {},
+        innerHTML: '<blockquote></blockquote>',
+        innerContent: [],
+        innerBlocks: [{ x: 1 }],
+      },
+    ])
     await runMigrations({ connectionString: database.ownerUrl, logger })
     const stored = async (id: string) =>
       (await queryAs<{ blocks: unknown }>(database.ownerUrl, 'select blocks from content where id = $1', [id]))[0]
@@ -116,6 +126,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('migration runner (needs TEST_D
     expect(validateDocument(converted).ok).toBe(true)
     expect(JSON.stringify(converted)).toContain('core/paragraph')
     expect(await stored(kept)).toEqual(unknown)
+    expect(JSON.stringify(await stored(damaged))).toContain('blockName')
   })
 
   it('leaves every pgboss, drizzle and public object owned by the owner role', async () => {

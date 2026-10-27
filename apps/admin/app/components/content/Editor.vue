@@ -164,6 +164,8 @@ function describe(
 
 /** A save that found the session gone: it runs again once the person has signed in in the dialog (K-010). */
 let pendingSave: MainAction | 'draft' | undefined
+/** How many saves found the session gone: a preview tells by this whether its own save did. */
+let sessionLost = 0
 const inline = useInlineLogin()
 inline.hold()
 const loginDialog = overlay.create(ContentLoginModal)
@@ -172,6 +174,9 @@ watch(inline.needed, async (needed) => {
   const before = accountId.value
   const back = (await loginDialog.open()) as boolean | undefined
   inline.needed.value = false
+  // Whatever happens next, a preview that waited for this login has been answered (or given up on with «Senere»).
+  const forPreview = previewWaits
+  previewWaits = false
   if (back !== true) return
   const now = auth.session.value.status === 'authenticated' ? auth.session.value.account.id : ''
   const again = pendingSave
@@ -190,11 +195,10 @@ watch(inline.needed, async (needed) => {
     return
   }
   toast.add({
-    title: previewWaits ? t('editor.login.previewAgain') : t('editor.login.done'),
+    title: forPreview ? t('editor.login.previewAgain') : t('editor.login.done'),
     color: 'success',
     icon: 'i-lucide-circle-check',
   })
-  previewWaits = false
   if (again !== undefined) await save(again)
 })
 // The dialog is not closed by the overlay when the editor goes; close it here.
@@ -241,6 +245,7 @@ async function save(kind: MainAction | 'draft'): Promise<boolean> {
   } catch (caught) {
     if (caught instanceof ApiRequestError && caught.status === 401) {
       pendingSave = kind
+      sessionLost += 1
       failure.value = t('editor.login.saveWaits')
       return false
     }
@@ -271,16 +276,19 @@ async function preview(): Promise<void> {
   // The window is opened in the click itself, before anything is awaited: a window opened after an await is blocked as a pop-up.
   const target = window.open('about:blank', '_blank')
   // With the session gone the preview would show the login screen in that tab: close it, and sign in again here first.
+  // Only an answer that nobody is signed in opens the dialog; a network error goes on, and the save or the preview reports it.
   const session = await auth.refresh().catch(() => undefined)
-  if (session?.status !== 'authenticated') {
+  if (session?.status === 'anonymous') {
     target?.close()
     previewWaits = true
     inline.needed.value = true
     return
   }
   if (item.value === null || dirty.value) {
+    const lostBefore = sessionLost
     if (!maySaveDraft(item.value) || !(await save('draft'))) {
-      if (pendingSave !== undefined) {
+      // This save found the session gone: the dialog is open in the editor.
+      if (sessionLost !== lostBefore) {
         target?.close()
         return
       }

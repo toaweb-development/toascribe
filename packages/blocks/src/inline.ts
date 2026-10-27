@@ -62,8 +62,12 @@ export type InlineMarkType = InlineMark['type']
 
 export const InlineText = z.strictObject({
   type: z.literal('text'),
-  // ProseMirror never writes an empty text node, so neither may the stored content.
-  text: z.string().min(1),
+  // ProseMirror never writes an empty text node, so neither may the stored content. A lone surrogate is refused: PostgreSQL's jsonb
+  // refuses it, and the request would end in a 500 instead of a 400.
+  text: z
+    .string()
+    .min(1)
+    .refine((value) => value.isWellFormed(), { message: 'Not well-formed text' }),
   marks: z.array(InlineMark).max(4).optional(),
 })
 export type InlineText = z.infer<typeof InlineText>

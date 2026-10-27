@@ -17,14 +17,22 @@ export async function convertWordPressContent(
   let converted = 0
   let kept = 0
   for (const row of rows) {
-    const blocks = isWordPressTree(row.blocks) ? fromWordPress(row.blocks) : undefined
-    if (blocks === undefined) {
+    // One row never stops the run (the api and the worker start after it): whatever goes wrong, the row is kept as it is and
+    // logged by id only (an error message could quote its text).
+    try {
+      const blocks = isWordPressTree(row.blocks) ? fromWordPress(row.blocks) : undefined
+      if (blocks === undefined) {
+        kept += 1
+        logger.warn({ contentId: row.id }, 'content in WordPress block form could not be converted; left as it is')
+        continue
+      }
+      // Each update commits on its own (the run holds no transaction here), so a refused one changes nothing else.
+      await client.query('update content set blocks = $2::jsonb where id = $1', [row.id, JSON.stringify(blocks)])
+      converted += 1
+    } catch {
       kept += 1
-      logger.warn({ contentId: row.id }, 'content in WordPress block form could not be converted; left as it is')
-      continue
+      logger.warn({ contentId: row.id }, 'content in WordPress block form could not be stored converted; left as it is')
     }
-    await client.query('update content set blocks = $2::jsonb where id = $1', [row.id, JSON.stringify(blocks)])
-    converted += 1
   }
   return { converted, kept }
 }

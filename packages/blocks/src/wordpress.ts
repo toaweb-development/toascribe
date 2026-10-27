@@ -36,22 +36,24 @@ const ENTITIES: Readonly<Record<string, string>> = {
   ldquo: '“',
 }
 
+/** A numeric character reference as HTML reads it: 0, a surrogate and anything past U+10FFFF are U+FFFD (never a lone surrogate). */
+function codePoint(code: number): string {
+  return Number.isFinite(code) && code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff)
+    ? String.fromCodePoint(code)
+    : '\ufffd'
+}
+
 /** Decodes the entities of HTML text: named ones from the list, and numeric ones. */
 export function decodeEntities(text: string): string {
-  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (whole, name: string) => {
-    if (name.startsWith('#x') || name.startsWith('#X')) {
-      const code = Number.parseInt(name.slice(2), 16)
-      return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole
-    }
-    if (name.startsWith('#')) {
-      const code = Number.parseInt(name.slice(1), 10)
-      return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole
-    }
+  return text.replace(/&(#x[0-9a-f]{1,8}|#[0-9]{1,10}|[a-z]{1,32});/gi, (whole, name: string) => {
+    if (name.startsWith('#x') || name.startsWith('#X')) return codePoint(Number.parseInt(name.slice(2), 16))
+    if (name.startsWith('#')) return codePoint(Number.parseInt(name.slice(1), 10))
     return ENTITIES[name.toLowerCase()] ?? whole
   })
 }
 
-const TAG = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)\s*(\/?)>/g
+// One way to match a tag, so the time is linear in the HTML (`\s[^>]*` cannot compete with another quantifier for the same spaces).
+const TAG = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)(\s[^>]*)?>/g
 
 function attribute(attrs: string, name: string): string | undefined {
   const match = new RegExp(`\\s${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(attrs)
@@ -63,14 +65,21 @@ function attribute(attrs: string, name: string): string | undefined {
  * Inline HTML as rich text: `<strong>`/`<b>` bold, `<em>`/`<i>` italic, `<code>` code, `<a href>` a link when its address is allowed,
  * `<br>` a hard break. Other tags are dropped and their text kept; whitespace is kept as it is (a paragraph's HTML has none to spare).
  */
-export function inlineFromHtml(html: string): InlineNode[] {
+export function inlineFromHtml(source: string): InlineNode[] {
+  // Comments, and what a script or a style holds, are not text of the paragraph.
+  const html = source.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
   const nodes: unknown[] = []
   const marks: { tag: string; mark?: InlineMark }[] = []
   let offset = 0
   const pushText = (raw: string) => {
     const text = decodeEntities(raw)
     if (text === '') return
-    const active = marks.map((entry) => entry.mark).filter((mark) => mark !== undefined)
+    // One mark per type (`<strong><b>` is bold once; the innermost link wins), as the schema allows.
+    const byType = new Map<string, InlineMark>()
+    for (const entry of [...marks].reverse()) {
+      if (entry.mark !== undefined && !byType.has(entry.mark.type)) byType.set(entry.mark.type, entry.mark)
+    }
+    const active = [...byType.values()]
     nodes.push(active.length > 0 ? { type: 'text', text, marks: active } : { type: 'text', text })
   }
   for (const match of html.matchAll(TAG)) {
@@ -114,6 +123,22 @@ function innerOf(html: string, tag: string): string {
   return match?.[1] ?? html.trim()
 }
 
+/** A node of the shape parse_blocks() writes, at every level (a stored tree may be damaged). */
+function wellFormed(block: unknown): block is WordPressBlock {
+  if (typeof block !== 'object' || block === null) return false
+  const name: unknown = Reflect.get(block, 'blockName')
+  const attrs: unknown = Reflect.get(block, 'attrs')
+  const inner: unknown = Reflect.get(block, 'innerBlocks')
+  return (
+    (name === null || typeof name === 'string') &&
+    typeof Reflect.get(block, 'innerHTML') === 'string' &&
+    typeof attrs === 'object' &&
+    attrs !== null &&
+    Array.isArray(inner) &&
+    (inner as unknown[]).every(wellFormed)
+  )
+}
+
 function convert(block: WordPressBlock): Block | undefined {
   const name = block.blockName
   const html = block.innerHTML
@@ -139,7 +164,8 @@ function convert(block: WordPressBlock): Block | undefined {
     }
     case 'core/list-item': {
       const nested = convertAll(block.innerBlocks)
-      if (nested === undefined) return undefined
+      // A list item takes one nested list; more would be half converted.
+      if (nested === undefined || nested.length > 1) return undefined
       // The item's own text is its HTML before a nested list.
       const own = innerOf(html, 'li').replace(/<(ul|ol)[\s\S]*$/i, '')
       return createBlock('core/list-item', { content: inlineFromHtml(own) }, nested.slice(0, 1))
@@ -195,6 +221,7 @@ export function isWordPressTree(input: unknown): input is WordPressBlock[] {
  * result does not pass (a text over its length, an image without a file).
  */
 export function fromWordPress(input: readonly WordPressBlock[]): Block[] | undefined {
+  if (!input.every(wellFormed)) return undefined
   const blocks = convertAll(input)
   if (blocks === undefined) return undefined
   const checked = validateDocument(blocks)

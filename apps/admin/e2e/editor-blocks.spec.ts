@@ -371,7 +371,9 @@ test('the session runs out while editing: a login dialog, and nothing written is
   await dialog.getByLabel('Passord', { exact: true }).fill(PASSWORD)
   await dialog.getByRole('button', { name: 'Logg inn' }).click()
   await expect(dialog).toBeHidden()
-  // The save that found the session gone goes on by itself.
+  // The save that found the session gone goes on by itself (and the dismissed preview is not asked for again).
+  await expect(page.getByText('Du er logget inn igjen.').first()).toBeVisible()
+  await expect(page.getByText('Velg «Forhåndsvis» en gang til.')).toHaveCount(0)
   await expect(page.getByText('Lagret.').first()).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/posts\/[0-9a-f-]{36}$/)
   const id = page.url().split('/').pop() ?? ''

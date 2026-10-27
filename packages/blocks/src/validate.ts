@@ -68,6 +68,7 @@ export function attributeValidator(schema: AttributeSchema): z.ZodType {
       const isHref = schema.format === 'href'
       const isUuid = schema.format === 'uuid'
       validator = base
+        .refine((value) => value.isWellFormed(), { message: 'Not well-formed text' })
         .refine((value) => allowed === undefined || allowed.includes(value), {
           message: 'Not one of the allowed values',
         })
