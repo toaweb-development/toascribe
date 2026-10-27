@@ -29,6 +29,7 @@ import {
   ContentStatusBeforeTrash,
   ContentTypeKey,
   CoreSettings,
+  MediaFailure,
   MediaSettings,
   MediaVariantsData,
 } from '@toascribe/shared'
@@ -296,7 +297,9 @@ export function createMediaService(options: {
       uploadedBy: row.uploadedBy === null ? null : { id: row.uploadedBy, displayName: names.get(row.uploadedBy) ?? '' },
       attachedTo: row.attachedTo,
       processing: row.processing,
-      processingError: row.processing === 'failed' ? row.processingError : null,
+      // A code (MEDIA_FAILURES); anything else stored there (an older message) is shown as unknown, never sent.
+      processingError:
+        row.processing === 'failed' ? (MediaFailure.safeParse(row.processingError).data ?? 'unknown') : null,
       url: urlOf(row, shown.key, 'shown'),
       originalUrl: urlOf(row, row.storageKey, 'original'),
       sizes: Object.entries(row.variants.sizes)

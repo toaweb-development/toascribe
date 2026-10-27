@@ -1068,7 +1068,14 @@
       "pending": "Bildestørrelsene lages …",
       "failed": "Bildestørrelsene kunne ikke lages.",
       "failedShort": "Feilet",
-      "reason": "Feilmelding: {reason}",
+      "reason": "Årsak: {reason}",
+      "reasons": {
+        "tooManyPixels": "bildet har flere piksler enn nettstedet tillater.",
+        "unreadable": "bildet kan ikke leses; filen kan være skadet.",
+        "missingFile": "filen finnes ikke lenger på serveren.",
+        "workerStopped": "behandlingen stoppet hver gang, trolig fordi bildet krever for mye minne.",
+        "unknown": "en ukjent feil. Se loggen til arbeideren (worker)."
+      },
       "retry": "Bildet er prøvd tre ganger. «Lag bildestørrelser på nytt» prøver igjen."
     },
     "errors": {

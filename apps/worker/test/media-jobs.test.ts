@@ -10,7 +10,7 @@ import { MediaVariantsData } from '@toascribe/shared'
 import sharp from 'sharp'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import { GAVE_UP, runMediaJob, sweepPending } from '../src/jobs/media.ts'
+import { GAVE_UP, failureOf, runMediaJob, sweepPending } from '../src/jobs/media.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './helpers.ts'
 import { memoryLogger, startJobDb } from './harness.ts'
 import type { JobDb } from './harness.ts'
@@ -222,10 +222,21 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('media jobs (needs TEST_DATABAS
     await runMediaJob(deps(), { kind: 'process', mediaId: id })
     const row = await stateOf(id)
     expect(row).toMatchObject({ processing: 'failed', processing_attempts: 3 })
-    expect(row?.processing_error).toMatch(/pixel/i)
+    expect(row?.processing_error).toBe('too_many_pixels')
     // A job that still comes (an old one, a retry) does not run it again.
     await runMediaJob(deps(), { kind: 'process', mediaId: id })
     expect(await stateOf(id)).toMatchObject({ processing: 'failed', processing_attempts: 4 })
+  })
+
+  it('stores a code for a failure, never the message (which can name a path on the server)', async () => {
+    const { id, key } = await stored(await photo(100, 100), 'image/jpeg', 'jpg')
+    await rm(join(uploads, key))
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await runMediaJob(deps(), { kind: 'process', mediaId: id }).catch(() => undefined)
+    }
+    expect(await stateOf(id)).toMatchObject({ processing: 'failed', processing_error: 'missing_file' })
+    expect(failureOf(new Error('Input file contains unsupported image format'))).toBe('unreadable_image')
+    expect(failureOf(new Error('something else at /var/lib/toascribe/uploads/x.jpg'))).toBe('unknown')
   })
 
   it('counts a run that never finished (the worker died), and gives up after three', async () => {

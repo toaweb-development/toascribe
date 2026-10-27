@@ -17,6 +17,7 @@ import {
 } from '@toascribe/media'
 import type { MediaStorage, PlannedSize } from '@toascribe/media'
 import { CoreSettings, MEDIA_MAX_ATTEMPTS, MEDIA_QUEUE, MediaJob, MediaVariantsData } from '@toascribe/shared'
+import type { MediaFailure } from '@toascribe/shared'
 import type { MediaEditOperation, MediaVariant } from '@toascribe/shared'
 import { and, eq, sql } from 'drizzle-orm'
 import type { PgBoss } from 'pg-boss'
@@ -123,7 +124,19 @@ function allKeys(variants: MediaVariantsData): string[] {
 }
 
 /** The reason a file gets when its runs ran out without one of them saying why (the worker stopped during each). */
-export const GAVE_UP = `The worker stopped while it processed the image (${String(MEDIA_MAX_ATTEMPTS)} tries)`
+export const GAVE_UP: MediaFailure = 'worker_stopped'
+
+/** The code of a failure (stored and shown); the message stays in the log, since it may name a path on the server. */
+export function failureOf(err: unknown): MediaFailure {
+  const message = err instanceof Error ? err.message : String(err)
+  const code = typeof err === 'object' && err !== null && 'code' in err ? String(err.code) : ''
+  if (/pixel limit/i.test(message)) return 'too_many_pixels'
+  if (code === 'ENOENT') return 'missing_file'
+  if (/unsupported image format|corrupt|premature end|bad seek|vips|input (buffer|file)/i.test(message)) {
+    return 'unreadable_image'
+  }
+  return 'unknown'
+}
 
 async function markFailed(db: Database, mediaId: string, reason: string, now: Date): Promise<void> {
   await db
@@ -261,13 +274,13 @@ export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<v
       last ? 'media job failed; no tries left' : 'media job failed; it will be tried again',
     )
     if (last) {
-      await markFailed(deps.db, job.mediaId, summary.message, now)
+      await markFailed(deps.db, job.mediaId, failureOf(err), now)
       return
     }
     // Tries left: still pending (the reason is kept for the last one), and pg-boss runs the job again.
     await deps.db
       .update(media)
-      .set({ processingError: summary.message.slice(0, 500), modifiedAt: now })
+      .set({ processingError: failureOf(err), modifiedAt: now })
       .where(eq(media.id, job.mediaId))
     throw err
   }

@@ -352,6 +352,23 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect(listed.sizes.map((entry) => entry.url)).toEqual([`/uploads/${next.key}`])
     })
 
+    it('sends why the worker failed as a code, never a stored message', async () => {
+      const item = await upload(author, f.PNG, 'feil.png')
+      const read = async () =>
+        MediaItem.parse(await (await author.get(`/api/v1/media/${item.id}`)).json()).processingError
+      await env.query(`update media set processing = 'failed', processing_error = 'too_many_pixels' where id = $1`, [
+        item.id,
+      ])
+      expect(await read()).toBe('too_many_pixels')
+      await env.query(
+        `update media set processing = 'failed', processing_error = 'ENOENT: /var/lib/toascribe/uploads/x.png' where id = $1`,
+        [item.id],
+      )
+      expect(await read()).toBe('unknown')
+      await env.query(`update media set processing = 'ready' where id = $1`, [item.id])
+      expect(await read()).toBeNull()
+    })
+
     it('queues an edit with its steps, and refuses a crop outside the image or an enlargement', async () => {
       const item = await upload(author, f.PNG, 'rediger.png')
       await env.query(`update media set processing = 'ready' where id = $1`, [item.id])

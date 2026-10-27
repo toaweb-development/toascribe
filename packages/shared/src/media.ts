@@ -61,6 +61,20 @@ export const MediaSizeRef = z.object({
 })
 export type MediaSizeRef = z.infer<typeof MediaSizeRef>
 
+/**
+ * Why the worker could not make the sizes (media.processing_error): a code, never the library's own message, which may name a path
+ * on the server (security §5). The admin shows a sentence for each; the message itself is in the worker's log.
+ */
+export const MEDIA_FAILURES = [
+  'too_many_pixels',
+  'unreadable_image',
+  'missing_file',
+  'worker_stopped',
+  'unknown',
+] as const
+export const MediaFailure = z.enum(MEDIA_FAILURES)
+export type MediaFailure = z.infer<typeof MediaFailure>
+
 export const MediaItem = z.object({
   id: z.uuid(),
   title: z.string(),
@@ -80,8 +94,8 @@ export const MediaItem = z.object({
   uploadedBy: z.object({ id: z.uuid(), displayName: z.string() }).nullable(),
   attachedTo: z.uuid().nullable(),
   processing: MediaProcessing,
-  /** Why the worker could not make the sizes, when `processing` is `failed` (its own words, in English); null otherwise. */
-  processingError: z.string().nullable(),
+  /** Why the worker could not make the sizes, when `processing` is `failed`, as a code; null otherwise. */
+  processingError: MediaFailure.nullable(),
   /** The address of the file as it is shown: the edited or `-scaled` image, or the original. Public files under /uploads/, private ones through the api. */
   url: z.string(),
   /** The original as uploaded. */

@@ -291,7 +291,7 @@ const facts = computed(() => {
           </p>
           <template v-if="item.processing === 'failed'">
             <p v-if="item.processingError" class="text-sm text-toned wrap-anywhere">
-              {{ $t('media.processing.reason', { reason: item.processingError }) }}
+              {{ $t('media.processing.reason', { reason: failureText($t, item.processingError) }) }}
             </p>
             <p v-if="isImage && mayManage" class="text-sm text-toned">{{ $t('media.processing.retry') }}</p>
           </template>

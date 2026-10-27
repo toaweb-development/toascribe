@@ -319,7 +319,7 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
               · {{ processingLabel($t, item.processing) }}</template
             >
             <template v-if="item.processing === 'failed' && item.processingError">
-              {{ $t('media.processing.reason', { reason: item.processingError }) }}</template
+              {{ $t('media.processing.reason', { reason: failureText($t, item.processingError) }) }}</template
             >
           </p>
         </div>
