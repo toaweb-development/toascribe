@@ -32,6 +32,11 @@ export const tsvector = customType<{ data: string; driverData: string }>({
   dataType: () => 'tsvector',
 })
 
+/** A full transaction id (PostgreSQL 13+), as its decimal text: what `pg_current_xact_id()` gives. */
+export const xid8 = customType<{ data: string; driverData: string }>({
+  dataType: () => 'xid8',
+})
+
 /** Internet address (IPv4 or IPv6), as text in TypeScript. */
 export const inet = customType<{ data: string; driverData: string }>({
   dataType: () => 'inet',

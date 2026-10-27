@@ -19,7 +19,7 @@ import { bigint, boolean, check, foreignKey, index, jsonb, pgTable, text, unique
 import type { PgTableExtraConfigValue } from 'drizzle-orm/pg-core'
 
 import { account } from './accounts.ts'
-import { createdAt, id, inet, oneOf, timestamps, timestamptz } from './columns.ts'
+import { createdAt, id, inet, oneOf, timestamps, timestamptz, xid8 } from './columns.ts'
 
 /** An installed theme or plugin (K-145 to K-174; WordPress active_plugins and theme_mods). */
 export const extensionState = pgTable(
@@ -232,5 +232,33 @@ export const adminNotice = pgTable(
     check('ck_admin_notice_level', oneOf(t.level, ADMIN_NOTICE_LEVEL)),
     check('ck_admin_notice_key', sql`${t.key} ~ '^[a-z0-9_.-]+$'`),
     check('ck_admin_notice_message_key', sql`${t.messageKey} <> ''`),
+  ],
+)
+
+/**
+ * Cache invalidation (M1.4, PLAN «Cache og invalidering»): an append-only log of the cache tags a change touched (`content:<id>`,
+ * `list:<type>`, `term:<id>`, `media:<id>`, `*` for everything). The site asks for the tags changed since its last look and drops the
+ * cached data that carries them. The worker removes rows older than a day; a site that has not looked for that long drops everything.
+ *
+ * The site's place in the log is a transaction id, not a time: `xid` is the id of the transaction that wrote the row, and the api
+ * hands the site the oldest transaction still running (`pg_snapshot_xmin`) as its next place. A change that commits after the site
+ * looked therefore comes in the next look, however long its transaction ran; a time would miss it.
+ */
+export const cacheInvalidation = pgTable(
+  'cache_invalidation',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    tag: text('tag').notNull(),
+    changedAt: timestamptz('changed_at')
+      .notNull()
+      .default(sql`now()`),
+    xid: xid8('xid')
+      .notNull()
+      .default(sql`pg_current_xact_id()`),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    index('idx_cache_invalidation_changed_at').on(t.changedAt),
+    index('idx_cache_invalidation_xid').on(t.xid),
+    check('ck_cache_invalidation_tag', sql`${t.tag} ~ '^(\\*|[a-z_]+(:[A-Za-z0-9_-]+)?)$'`),
   ],
 )

@@ -101,6 +101,8 @@ const ADDED_TABLES = [
   'site_secret',
   // M0.4, Tor: «lagres et varsel som kontrollpanelet viser i M0.5».
   'admin_notice',
+  // M1.4, PLAN «Cache og invalidering» (tags cleared on change): the log the site reads to drop its cached data by tag.
+  'cache_invalidation',
 ]
 
 const TABLES = [...PLAN_TABLES, ...ADDED_TABLES].sort()

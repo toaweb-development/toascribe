@@ -71,6 +71,13 @@
       "when": 1793079832975,
       "tag": "0009_media_processing_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793092762701,
+      "tag": "0010_cache_invalidation",
+      "breakpoints": true
     }
   ]
 }

@@ -46,7 +46,15 @@ export type MfaCredentialType = z.infer<typeof MfaCredentialType>
  * login_attempt.action: the rate-limited flows (K-026, K-313). `setup` counts the guesses at the one-time setup token
  * (M0.4), per address, so they cannot use up the allowance of real logins.
  */
-export const LOGIN_ATTEMPT_ACTION = ['login', 'mfa', 'register', 'password_lost', 'comment', 'setup'] as const
+export const LOGIN_ATTEMPT_ACTION = [
+  'login',
+  'mfa',
+  'register',
+  'password_lost',
+  'comment',
+  'setup',
+  'post_password',
+] as const
 export const LoginAttemptAction = z.enum(LOGIN_ATTEMPT_ACTION)
 export type LoginAttemptAction = z.infer<typeof LoginAttemptAction>
 

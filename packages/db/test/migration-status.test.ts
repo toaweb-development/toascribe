@@ -41,7 +41,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('migration status (needs TEST_D
       expected: journal.length,
       latest: journal.at(-1)?.tag,
     })
-    expect(status.latest).toBe('0009_media_processing_attempts')
+    expect(status.latest).toBe('0010_cache_invalidation')
   })
 
   it('says a database that lacks the newest migration is not up to date', async () => {
