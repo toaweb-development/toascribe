@@ -1,4 +1,5 @@
 import {
+  CustomizeResponse,
   GlobalSetChoicesResponse,
   GlobalSetDetail,
   GlobalSetListResponse,
@@ -6,13 +7,13 @@ import {
   MenuListResponse,
   MenuLocationsResponse,
 } from '@toascribe/shared'
-import type { CreateGlobalSetRequest, MenuItem, MenuLocations } from '@toascribe/shared'
+import type { CreateGlobalSetRequest, MenuItem, MenuLocations, UpdateCustomizeRequest } from '@toascribe/shared'
 
 import type { ApiCall } from './client.ts'
 
 const V1 = '/v1'
 
-/** «Utseende → Menyer» and «Utseende → Globale sett» (M1.5), `edit_theme_options`. Every answer is parsed with the shared schema. */
+/** «Utseende → Tilpass», «Utseende → Menyer» and «Utseende → Globale sett» (M1.5), `edit_theme_options`. Every answer is parsed with the shared schema. */
 export function createAppearanceApi(api: ApiCall) {
   const menu = (id: string) => `${V1}/menus/${encodeURIComponent(id)}`
   const set = (id: string) => `${V1}/global-sets/${encodeURIComponent(id)}`
@@ -57,6 +58,11 @@ export function createAppearanceApi(api: ApiCall) {
     deleteGlobalSet: async (id: string) => {
       await api(set(id), { method: 'DELETE' })
     },
+    /** What «Tilpass» shows for the theme, and whether the account may change «Ekstra CSS» (edit_css). */
+    customize: async (theme: string) =>
+      CustomizeResponse.parse(await api(`${V1}/customize?${new URLSearchParams({ theme }).toString()}`)),
+    saveCustomize: async (request: UpdateCustomizeRequest) =>
+      CustomizeResponse.parse(await api(`${V1}/customize`, { method: 'PATCH', body: request })),
   }
 }
 

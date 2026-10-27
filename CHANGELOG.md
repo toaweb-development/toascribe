@@ -20,6 +20,10 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- «Utseende → Tilpass» (K-150, K-151), as WordPress' Customizer: the site's title, tagline, logo and icon, the active theme's
+  colours and fonts (each theme keeps its own), the front page and «Ekstra CSS», with a preview of the site beside the panel that
+  shows the choices before they are published. «Ekstra CSS» is for administrators only, and CSS that could break out of the page's
+  style element is refused. The site can now be framed by its own address (the admin's preview), by no other.
 - «Utseende → Menyer» (K-132), as WordPress' menu screen: pages, posts, categories, tags and links of one's own, three levels
   and more, with drag and drop, buttons or the keyboard, and «Administrer plasseringer» for the theme's locations. An item follows
   its content when the title or address changes, and leaves when the content is deleted for good; content that is not published

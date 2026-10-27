@@ -400,6 +400,7 @@
     "settingsPrivacy": "Personvern",
     "settingsPermalinks": "Permalenker",
     "appearance": "Utseende",
+    "appearanceCustomize": "Tilpass",
     "appearanceMenus": "Menyer",
     "appearanceGlobalSets": "Globale sett"
   },
@@ -1640,6 +1641,30 @@
       "saved": "Settet er lagret.",
       "saveFailed": "Settet ble ikke lagret",
       "deleteThemeConfirm": "Settet «{name}» slettes. Temaet bruker det, så det lages på nytt, tomt, neste gang denne siden åpnes."
+    },
+    "customize": {
+      "title": "Tilpass",
+      "publish": "Publiser",
+      "published": "Endringene er publisert.",
+      "failed": "Det gikk ikke",
+      "loading": "Henter temaet og valgene …",
+      "identity": "Nettstedets identitet",
+      "siteTitle": "Nettstedstittel",
+      "tagline": "Slagord",
+      "logo": "Logo",
+      "chooseLogo": "Velg logo",
+      "icon": "Nettstedsikon",
+      "iconHelp": "Vises i nettleserfanen. Et kvadratisk bilde på minst 512 × 512 piksler blir best.",
+      "chooseIcon": "Velg ikon",
+      "colors": "Farger",
+      "reset": "Tilbakestill",
+      "resetNamed": "Tilbakestill «{name}» til temaets farge",
+      "fonts": "Skrifttyper",
+      "frontHelp": "Forsiden vises i forhåndsvisningen når den er publisert.",
+      "css": "Ekstra CSS",
+      "cssHelp": "CSS som legges til etter temaets egen. Tegnet < er ikke tillatt.",
+      "preview": "Forhåndsvisning",
+      "previewFrame": "Forhåndsvisning av nettstedet med endringene som ikke er publisert"
     }
   }
 }

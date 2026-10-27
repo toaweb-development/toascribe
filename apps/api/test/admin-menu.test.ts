@@ -32,7 +32,11 @@ describe('the core menu', () => {
       { id: 'posts', to: '/posts', children: ['posts.all', 'posts.new', 'posts.categories', 'posts.tags'] },
       { id: 'media', to: '/media', children: ['media.library', 'media.new'] },
       { id: 'pages', to: '/pages', children: ['pages.all', 'pages.new'] },
-      { id: 'appearance', to: '/appearance/menus', children: ['appearance.menus', 'appearance.global-sets'] },
+      {
+        id: 'appearance',
+        to: '/appearance/customize',
+        children: ['appearance.customize', 'appearance.menus', 'appearance.global-sets'],
+      },
       { id: 'users', to: '/users', children: ['users.all', 'users.profile'] },
       {
         id: 'settings',
@@ -131,6 +135,7 @@ describe('the core menu', () => {
       'pages.new',
       'users.all',
       'users.profile',
+      'appearance.customize',
       'appearance.menus',
       'appearance.global-sets',
       'settings.general',
