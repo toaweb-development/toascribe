@@ -20,6 +20,12 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- «Innstillinger → Permalenker» with WordPress' structures (Enkel, Dag og navn, Måned og navn, Numerisk, Innleggsnavn and
+  Egendefinert with %year%, %monthnum%, %day%, %hour%, %minute%, %second%, %post_id%, %postname%, %category% and %author%) and the
+  category and tag bases (K-197, K-221). «Innleggsnavn» is the default; a site that still has the installer's day and name gets it
+  (migration `0012_permalink_default`). Category addresses have their parents in them, as in WordPress.
+- Old addresses keep working (K-207): a changed slug, parent page, structure or base answers 301 to the address now, without
+  chains or loops.
 - «Innstillinger → Generelt», «Skriving», «Lesing» and «Personvern», with WordPress' fields (K-191, K-193, K-194, K-198). A new
   administrator address is used only after the link sent to it is opened by someone signed in as an administrator (K-192). «Be
   søkemotorer om ikke å indeksere» adds `noindex` to every page of the site. The privacy page is linked in the default theme's
