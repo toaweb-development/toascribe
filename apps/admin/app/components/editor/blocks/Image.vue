@@ -7,7 +7,7 @@ import { MediaPicker } from '#components'
 // as the file's own, from the library, and can be changed here for this place. The address and the sizes come from the library
 // (useMediaRefs), so a replaced or edited file shows at once everywhere. Every change goes to the editor's model; typing in one field
 // of one image is one step of the history.
-const props = defineProps<{ block: Block; selected: boolean }>()
+const props = defineProps<{ block: Block; parentType: string | null; selected: boolean }>()
 
 const editor = useBlockEditorContext()
 const mediaRefs = useMediaRefs()

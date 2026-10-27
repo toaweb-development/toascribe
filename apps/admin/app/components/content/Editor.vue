@@ -1,35 +1,45 @@
 <script setup lang="ts">
 import type { BlockDocument } from '@toascribe/blocks'
-import { flatten, validateDocument } from '@toascribe/blocks'
+import { flatten, locate, validateDocument } from '@toascribe/blocks'
 import { InvalidBlocksResponse } from '@toascribe/shared'
-import type { ContentItem, ContentTypeKey } from '@toascribe/shared'
+import type { ContentAuthorRef, ContentItem, ContentTypeKey, TermItem } from '@toascribe/shared'
 
-// «Legg til nytt» and «Rediger» (M1.1): the block editor of the M0.6 prototype on a real post or page, with a title field, saving
-// through the content API. A new item is made on the first save (a draft) and the address becomes its own. The real editor, with the
-// sidebar, comes in M1.3. Items from the install hold WordPress' parsed blocks until the data migration of M1.3: their title can be
-// changed here, their blocks cannot.
+import { ContentLoginModal, ContentShortcutsModal } from '#components'
+import type { EditorForm, FormRights, MainAction } from '~/utils/editor-form'
+
+// «Legg til nytt» and «Rediger» (M1.3, PLAN «Redigeringsskjermen», WordPress' block editor): the top bar (the inserter, undo and redo,
+// «Lagre utkast», «Forhåndsvis», «Publiser» / «Planlegg» / «Oppdater» or, for a contributor, «Send til gjennomgang», the sidebar and
+// «Hurtigtaster»), the title, the block canvas, and the sidebar with the «Innlegg»/«Side» tab and the «Blokk» tab. A new item is made on
+// the first save (a draft) and the address becomes its own. When the session runs out, a login dialog opens over the editor and the
+// save that found it goes on afterwards (K-010); leaving with unsaved changes asks first. Autosave and revisions are phase 2.
 const props = defineProps<{ type: ContentTypeKey; id?: string }>()
 
 const { t } = useI18n()
 const router = useRouter()
 const auth = useAuth()
 const contentApi = useContentApi()
+const termsApi = useTermsApi()
 const toast = useToast()
+const overlay = useOverlay()
+const confirm = useConfirmDialog()
 const { title: blockTitle, issue } = useBlockText()
 
 const words = computed(() => typeText(t, props.type))
-const capability = props.type === 'page' ? 'edit_pages' : 'edit_posts'
-const mayEdit = computed(
-  () => auth.session.value.status === 'authenticated' && auth.session.value.account.capabilities.includes(capability),
+const capabilities = computed<ReadonlySet<string>>(
+  () => new Set(auth.session.value.status === 'authenticated' ? auth.session.value.account.capabilities : []),
 )
+const plural = props.type === 'page' ? 'pages' : 'posts'
+const mayEdit = computed(() => capabilities.value.has(`edit_${plural}`))
 if (import.meta.server && !mayEdit.value) {
   const event = useRequestEvent()
   if (event) setResponseStatus(event, 403)
 }
+const accountId = computed(() => (auth.session.value.status === 'authenticated' ? auth.session.value.account.id : ''))
 
 const editor = useBlockEditor()
 provideBlockEditor(editor)
-// The files the image blocks use: from the api with the item, and the ones picked in the library while editing.
+watch(capabilities, (caps) => editor.setScope({ capabilities: caps, contentType: props.type }), { immediate: true })
+// The files the image blocks, the featured image and the sharing image use: from the api with the item, and the ones picked meanwhile.
 const mediaRefs = provideMediaRefs()
 function keepMedia(loaded: ContentItem): void {
   for (const entry of loaded.media) mediaRefs.value.set(entry.id, entry)
@@ -40,19 +50,25 @@ const { data, status, error, refresh } = await useAsyncData(
   async (): Promise<ContentItem | null> =>
     mayEdit.value && props.id !== undefined ? await contentApi.get(props.id) : null,
 )
+// Posts: every category, for the sidebar (read once with the page).
+const { data: categoryTerms } = await useAsyncData(
+  `content:editor:categories:${props.type}`,
+  async (): Promise<TermItem[]> =>
+    props.type === 'post' && mayEdit.value ? await termsApi.all('category').catch(() => []) : [],
+)
 
-const title = ref('')
-const savedTitle = ref('')
 const legacy = ref(false)
 const item = ref<ContentItem | null>(null)
+const form = ref<EditorForm>(formOf(null, accountId.value))
+const savedForm = ref(JSON.stringify(form.value))
 watch(
   data,
   (loaded) => {
     if (loaded == null) return
     item.value = loaded
     keepMedia(loaded)
-    title.value = loaded.title
-    savedTitle.value = loaded.title
+    form.value = formOf(loaded, accountId.value)
+    savedForm.value = JSON.stringify(form.value)
     const checked = validateDocument(loaded.blocks)
     legacy.value = loaded.blocksFormat === 'legacy' || !checked.ok
     editor.load(checked.ok ? checked.blocks : [])
@@ -64,12 +80,52 @@ const notFound = computed(
   () => props.id !== undefined && error.value instanceof ApiRequestError && error.value.status === 404,
 )
 const readOnly = computed(() => item.value !== null && (!item.value.can.edit || item.value.status === 'trash'))
-const dirty = computed(() => title.value !== savedTitle.value || (!legacy.value && editor.dirty.value))
+const rights = computed<FormRights>(() =>
+  item.value === null
+    ? {
+        publish: capabilities.value.has(`publish_${plural}`),
+        editOthers: capabilities.value.has(`edit_others_${plural}`),
+      }
+    : { publish: item.value.can.publish, editOthers: item.value.can.editOthers },
+)
+const dirty = computed(() => JSON.stringify(form.value) !== savedForm.value || (!legacy.value && editor.dirty.value))
 useUnsavedGuard(() => dirty.value)
 
+// --- Authors and parents for the sidebar, read when it first needs them -------------------------------------------------------
+const authors = ref<ContentAuthorRef[]>([])
+const parents = ref<{ id: string; label: string }[]>([])
+onMounted(async () => {
+  if (rights.value.editOthers) {
+    authors.value = (await contentApi.authors(props.type).catch(() => ({ authors: [] }))).authors
+  }
+  if (props.type === 'page') {
+    const tree = await contentApi.list({ type: 'page', per_page: 100 }).catch(() => undefined)
+    const below = new Set<string>(props.id === undefined ? [] : [props.id])
+    for (const entry of tree?.items ?? []) if (entry.parentId !== null && below.has(entry.parentId)) below.add(entry.id)
+    parents.value = (tree?.items ?? [])
+      .filter((entry) => !below.has(entry.id))
+      .map((entry) => ({ id: entry.id, label: `${depthPrefix(entry.depth)}${titleOf(t, entry.title)}` }))
+  }
+})
+
+// --- Saving --------------------------------------------------------------------------------------------------------------------
 const saving = ref(false)
 const issues = ref<{ key: string; text: string }[]>([])
 const failure = ref<string>()
+const now = ref(new Date())
+const action = computed<MainAction>(() => mainAction(item.value, form.value, rights.value.publish, now.value))
+const actionLabel = computed(() => {
+  switch (action.value) {
+    case 'schedule':
+      return t('editor.actions.schedule')
+    case 'update':
+      return t('content.editor.update')
+    case 'submit':
+      return t('editor.actions.submit')
+    default:
+      return t('content.editor.publish')
+  }
+})
 
 function describe(
   found: { readonly path: readonly (string | number)[]; readonly code: string },
@@ -96,15 +152,33 @@ function describe(
   }
 }
 
-/** Saves the title and (unless the blocks are WordPress' parsed ones) the blocks; `publish` publishes afterwards. */
-async function save(publish = false): Promise<void> {
-  if (saving.value || readOnly.value) return
+/** A save that found the session gone: it runs again once the person has signed in in the dialog (K-010). */
+let pendingSave: MainAction | 'draft' | undefined
+const inline = useInlineLogin()
+inline.hold()
+const loginDialog = overlay.create(ContentLoginModal)
+watch(inline.needed, async (needed) => {
+  if (!needed) return
+  const signedIn = (await loginDialog.open()) as boolean | undefined
+  inline.needed.value = false
+  if (signedIn === true) {
+    toast.add({ title: t('editor.login.done'), color: 'success', icon: 'i-lucide-circle-check' })
+    const again = pendingSave
+    pendingSave = undefined
+    if (again !== undefined) await save(again)
+  }
+})
+
+/** Saves the form and (unless the blocks are WordPress' parsed ones) the blocks, with the status the button says. */
+async function save(kind: MainAction | 'draft'): Promise<boolean> {
+  if (saving.value || readOnly.value) return false
+  now.value = new Date()
   const document = editor.document.value
   if (!legacy.value) {
     const checked = validateDocument(JSON.parse(JSON.stringify(document)))
     if (!checked.ok) {
       issues.value = checked.issues.map((found) => describe(found, document))
-      return
+      return false
     }
   }
   saving.value = true
@@ -112,28 +186,33 @@ async function save(publish = false): Promise<void> {
   failure.value = undefined
   try {
     const blocks = legacy.value ? undefined : (JSON.parse(JSON.stringify(document)) as unknown[])
-    let saved =
+    const request = requestOf(form.value, {
+      type: props.type,
+      item: item.value,
+      action: kind,
+      rights: rights.value,
+      ...(blocks === undefined ? {} : { blocks }),
+    })
+    const saved =
       item.value === null
-        ? await contentApi.create({ type: props.type, title: title.value, ...(blocks === undefined ? {} : { blocks }) })
-        : await contentApi.update(item.value.id, { title: title.value, ...(blocks === undefined ? {} : { blocks }) })
-    // Kept at once: if the publish below fails, the next save changes this item instead of making a second one.
+        ? await contentApi.create({ type: props.type, ...request })
+        : await contentApi.update(item.value.id, request)
     item.value = saved
     keepMedia(saved)
-    if (publish) {
-      saved = await contentApi.publish(saved.id)
-      item.value = saved
-    }
-    savedTitle.value = saved.title
+    form.value = { ...formOf(saved, accountId.value), password: '' }
+    savedForm.value = JSON.stringify(form.value)
     if (!legacy.value) editor.markSaved(document)
-    toast.add({
-      title: publish ? t('content.editor.published') : t('content.editor.saved'),
-      color: 'success',
-      icon: 'i-lucide-circle-check',
-    })
+    toast.add({ title: savedMessage(kind, saved.status), color: 'success', icon: 'i-lucide-circle-check' })
     if (props.id === undefined) {
-      await router.replace(`/${props.type === 'page' ? 'pages' : 'posts'}/${saved.id}`)
+      await router.replace(`/${plural}/${saved.id}`)
     }
+    return true
   } catch (caught) {
+    if (caught instanceof ApiRequestError && caught.status === 401) {
+      pendingSave = kind
+      failure.value = t('editor.login.saveWaits')
+      return false
+    }
     const refused = caught instanceof ApiRequestError ? InvalidBlocksResponse.safeParse(caught.data) : undefined
     if (refused?.success === true) {
       issues.value = refused.data.issues.map((found) => describe(found, document))
@@ -141,29 +220,81 @@ async function save(publish = false): Promise<void> {
       failure.value =
         contentErrorText(t, caught instanceof ApiRequestError ? caught.code : undefined) ?? describeApiError(caught, t)
     }
+    return false
   } finally {
     saving.value = false
   }
 }
 
-function onKeydown(event: KeyboardEvent): void {
-  if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 's') {
-    event.preventDefault()
-    void save()
+function savedMessage(kind: MainAction | 'draft', saved: string): string {
+  if (kind === 'submit') return t('editor.saved.submitted')
+  if (saved === 'future') return t('editor.saved.scheduled')
+  if (kind === 'draft') return t('content.editor.saved')
+  return t('content.editor.published')
+}
+
+async function preview(): Promise<void> {
+  if (item.value === null || dirty.value) {
+    if (!maySaveDraft(item.value) || !(await save('draft'))) {
+      if (item.value !== null && dirty.value) toast.add({ title: t('editor.previewSaveFirst'), color: 'warning' })
+      if (item.value === null) return
+    }
+  }
+  if (item.value !== null) window.open(`${baseURL}/preview/${item.value.id}`, '_blank')
+}
+
+async function trash(): Promise<void> {
+  if (item.value === null) return
+  const ok = await confirm.ask({
+    title: t('editor.document.trash'),
+    description: t('editor.trashConfirm'),
+    confirmLabel: t('editor.document.trash'),
+    cancelLabel: t('content.quickEdit.cancel'),
+    color: 'error',
+  })
+  if (!ok) return
+  try {
+    await contentApi.trash(item.value.id)
+    savedForm.value = JSON.stringify(form.value)
+    editor.markSaved(editor.document.value)
+    await router.push(`/${plural}`)
+  } catch (caught) {
+    failure.value = describeApiError(caught, t)
   }
 }
 
-const mayPublish = computed(() =>
-  item.value === null
-    ? auth.session.value.status === 'authenticated' &&
-      auth.session.value.account.capabilities.includes(props.type === 'page' ? 'publish_pages' : 'publish_posts')
-    : item.value.can.publish && !['publish', 'future', 'private'].includes(item.value.status),
-)
+// --- The top bar, the sidebar and the keys ------------------------------------------------------------------------------------
+const sidebarOpen = ref(true)
+const tab = ref<'document' | 'block'>('document')
+watch(editor.selectedId, (id) => {
+  if (id !== null && sidebarOpen.value) tab.value = 'block'
+})
+const tabs = computed(() => [
+  { label: words.value.singular, value: 'document' },
+  { label: t('editor.blockTab'), value: 'block' },
+])
+const shortcutsDialog = overlay.create(ContentShortcutsModal)
+const baseURL = useRuntimeConfig().app.baseURL.replace(/\/$/, '')
+
+/** Where the top bar's «+» puts a block: after the selected top-level block, or at the end. */
+const topPlace = computed(() => {
+  const id = editor.selectedId.value
+  const located = id === null ? undefined : locate(editor.document.value, id)
+  return located?.parentId === null
+    ? { parentId: null, index: located.index + 1 }
+    : { parentId: null, index: editor.document.value.length }
+})
+
+function onKeydown(event: KeyboardEvent): void {
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 's') {
+    event.preventDefault()
+    void save(maySaveDraft(item.value) ? 'draft' : 'update')
+  }
+}
+
 const heading = computed(() => (props.id === undefined ? words.value.addTitle : words.value.edit))
 const blockCount = computed(() => flatten(editor.document.value).length)
-const statusText = computed(() =>
-  item.value === null || item.value.status === 'trash' ? '' : statusLabel(t, item.value.status),
-)
+const path = computed(() => (item.value === null ? '/' : item.value.shortLink))
 </script>
 
 <template>
@@ -173,7 +304,7 @@ const statusText = computed(() =>
     </template>
 
     <template #body>
-      <div class="mx-auto flex w-full max-w-3xl flex-col gap-4" @keydown="onKeydown">
+      <div class="flex w-full flex-col gap-4" @keydown="onKeydown">
         <UAlert v-if="!mayEdit" color="error" variant="subtle" icon="i-lucide-triangle-alert" :title="words.denied" />
         <UAlert
           v-else-if="notFound"
@@ -191,18 +322,17 @@ const statusText = computed(() =>
           :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
         />
         <template v-else>
-          <UAlert
-            v-if="readOnly"
-            color="warning"
-            variant="subtle"
-            icon="i-lucide-lock"
-            :title="item?.status === 'trash' ? $t('content.errors.trashed') : $t('content.editor.readOnly')"
-          />
           <div
             role="toolbar"
             :aria-label="$t('editorPrototype.toolbarLabel')"
             class="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-default bg-default py-2"
           >
+            <EditorInserter
+              v-if="!legacy && !readOnly"
+              :place="topPlace"
+              :parent-type="null"
+              :label="$t('editor.addBlock')"
+            />
             <UButton
               icon="i-lucide-undo-2"
               color="neutral"
@@ -221,91 +351,132 @@ const statusText = computed(() =>
               :disabled="!editor.canRedo.value || legacy"
               @click="editor.redo()"
             />
+            <span class="flex-1" />
             <UButton
-              v-if="item"
-              :to="`/preview/${item.id}`"
+              v-if="maySaveDraft(item)"
+              color="neutral"
+              variant="ghost"
+              :label="$t('content.editor.saveDraft')"
+              :loading="saving"
+              :disabled="readOnly"
+              aria-keyshortcuts="Control+S"
+              @click="save('draft')"
+            />
+            <UButton
               icon="i-lucide-eye"
               color="neutral"
               variant="outline"
               :label="$t('content.actions.preview')"
+              :disabled="saving"
+              @click="preview"
             />
-            <span v-if="statusText !== ''" class="text-sm text-toned">{{
-              $t('content.editor.status', { status: statusText })
-            }}</span>
-            <span class="flex-1" />
             <UButton
-              icon="i-lucide-save"
+              v-if="!readOnly"
+              :icon="action === 'schedule' ? 'i-lucide-calendar-clock' : 'i-lucide-send'"
+              :label="actionLabel"
+              :loading="saving"
+              :aria-keyshortcuts="maySaveDraft(item) ? undefined : 'Control+S'"
+              @click="save(action)"
+            />
+            <UButton
+              icon="i-lucide-panel-right"
               color="neutral"
-              variant="outline"
-              :label="
-                item && item.status !== 'draft' && item.status !== 'pending'
-                  ? $t('content.editor.update')
-                  : $t('content.editor.saveDraft')
-              "
-              :loading="saving"
-              :disabled="readOnly"
-              aria-keyshortcuts="Control+S"
-              @click="save()"
+              :variant="sidebarOpen ? 'soft' : 'ghost'"
+              :aria-label="$t('editor.sidebar')"
+              :aria-pressed="sidebarOpen"
+              aria-controls="editor-sidebar"
+              @click="sidebarOpen = !sidebarOpen"
             />
             <UButton
-              v-if="mayPublish && !readOnly"
-              icon="i-lucide-send"
-              :label="$t('content.editor.publish')"
-              :loading="saving"
-              @click="save(true)"
+              icon="i-lucide-keyboard"
+              color="neutral"
+              variant="ghost"
+              :aria-label="$t('editor.shortcuts.title')"
+              @click="shortcutsDialog.open()"
             />
           </div>
 
-          <UFormField :label="$t('content.editor.title')" name="title">
-            <UInput
-              v-model="title"
-              size="xl"
-              class="w-full"
-              autocomplete="off"
-              :disabled="readOnly"
-              :placeholder="$t('content.editor.titlePlaceholder')"
-            />
-          </UFormField>
-          <p v-if="item" class="text-sm text-toned">
-            {{ $t('content.editor.shortLink') }} <code>{{ item.shortLink }}</code>
-          </p>
-          <p v-if="dirty" class="text-xs text-warning" role="status">{{ $t('editorPrototype.unsaved') }}</p>
-          <UAlert
-            v-if="failure"
-            color="error"
-            variant="subtle"
-            role="alert"
-            icon="i-lucide-triangle-alert"
-            :title="$t('content.editor.saveFailed')"
-            :description="failure"
-          />
-          <UAlert
-            v-if="issues.length > 0"
-            color="error"
-            variant="subtle"
-            icon="i-lucide-triangle-alert"
-            :title="$t('editorPrototype.invalid')"
-          >
-            <template #description>
-              <ul class="list-disc pl-4">
-                <li v-for="found in issues" :key="found.key">{{ found.text }}</li>
-              </ul>
-            </template>
-          </UAlert>
-          <UAlert
-            v-if="legacy"
-            color="info"
-            variant="subtle"
-            icon="i-lucide-info"
-            :title="$t('content.editor.legacy')"
-          />
-          <template v-else-if="!readOnly">
-            <p class="text-xs text-muted">{{ $t('editorPrototype.shortcuts') }}</p>
-            <EditorCanvas :data-block-count="blockCount" />
-          </template>
-          <article v-else class="rounded-md border border-default p-4 sm:p-6">
-            <BlocksDocument :blocks="item?.blocks ?? []" />
-          </article>
+          <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
+            <div class="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4">
+              <UAlert
+                v-if="readOnly"
+                color="warning"
+                variant="subtle"
+                icon="i-lucide-lock"
+                :title="item?.status === 'trash' ? $t('content.errors.trashed') : $t('content.editor.readOnly')"
+              />
+              <UFormField :label="$t('content.editor.title')" name="title">
+                <UInput
+                  v-model="form.title"
+                  size="xl"
+                  class="w-full"
+                  autocomplete="off"
+                  :disabled="readOnly"
+                  :placeholder="$t('content.editor.titlePlaceholder')"
+                />
+              </UFormField>
+              <p v-if="item" class="text-sm text-toned">
+                {{ $t('content.editor.shortLink') }} <code>{{ item.shortLink }}</code>
+              </p>
+              <p v-if="dirty" class="text-xs text-warning" role="status">{{ $t('editorPrototype.unsaved') }}</p>
+              <UAlert
+                v-if="failure"
+                color="error"
+                variant="subtle"
+                role="alert"
+                icon="i-lucide-triangle-alert"
+                :title="$t('content.editor.saveFailed')"
+                :description="failure"
+              />
+              <UAlert
+                v-if="issues.length > 0"
+                color="error"
+                variant="subtle"
+                icon="i-lucide-triangle-alert"
+                :title="$t('editorPrototype.invalid')"
+              >
+                <template #description>
+                  <ul class="list-disc pl-4">
+                    <li v-for="found in issues" :key="found.key">{{ found.text }}</li>
+                  </ul>
+                </template>
+              </UAlert>
+              <UAlert
+                v-if="legacy"
+                color="info"
+                variant="subtle"
+                icon="i-lucide-info"
+                :title="$t('content.editor.legacy')"
+              />
+              <EditorCanvas v-else-if="!readOnly" :data-block-count="blockCount" />
+              <article v-else class="rounded-md border border-default p-4 sm:p-6">
+                <BlocksDocument :blocks="item?.blocks ?? []" />
+              </article>
+            </div>
+
+            <aside
+              v-if="sidebarOpen"
+              id="editor-sidebar"
+              :aria-label="$t('editor.sidebar')"
+              class="flex w-full shrink-0 flex-col gap-4 rounded-md border border-default p-4 lg:sticky lg:top-16 lg:max-h-[calc(100vh-6rem)] lg:w-80 lg:overflow-y-auto"
+            >
+              <UTabs v-model="tab" :items="tabs" :content="false" class="w-full" />
+              <ContentDocumentPanel
+                v-if="tab === 'document'"
+                v-model="form"
+                :type="type"
+                :item="item"
+                :rights="rights"
+                :authors="authors"
+                :parents="parents"
+                :categories="categoryTerms ?? []"
+                :path="path"
+                :read-only="readOnly"
+                @trash="trash"
+              />
+              <EditorBlockSettings v-else />
+            </aside>
+          </div>
         </template>
       </div>
     </template>

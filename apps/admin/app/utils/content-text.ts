@@ -11,6 +11,7 @@ export function typeText(t: MessageT, type: ContentTypeKey) {
   return type === 'page'
     ? {
         title: t('content.pages.title'),
+        singular: t('content.pages.singular'),
         add: t('content.pages.add'),
         addTitle: t('content.pages.addTitle'),
         edit: t('content.pages.edit'),
@@ -23,6 +24,7 @@ export function typeText(t: MessageT, type: ContentTypeKey) {
       }
     : {
         title: t('content.posts.title'),
+        singular: t('content.posts.singular'),
         add: t('content.posts.add'),
         addTitle: t('content.posts.addTitle'),
         edit: t('content.posts.edit'),

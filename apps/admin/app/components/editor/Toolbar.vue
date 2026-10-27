@@ -19,7 +19,7 @@ const parentType = computed(() => locate(editor.document.value, props.block.id)?
 // As in the inserter: once a block is chosen, the menu does not give the focus back to its button; the new block has it.
 let chosen = false
 const insertItems = computed<DropdownMenuItem[]>(() =>
-  editorInsertableBlocks(parentType.value).map((definition) => ({
+  editorInsertableBlocks(parentType.value, editor.scope.value).map((definition) => ({
     label: title(definition.name),
     icon: definition.icon,
     onSelect: () => {

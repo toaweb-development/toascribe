@@ -42,7 +42,7 @@ describe('no raw HTML in the Nuxt code', () => {
   it('finds the sources, the block views and the editor among them', () => {
     expect(sources.some((file) => file.endsWith('packages/block-views/src/render.ts'))).toBe(true)
     expect(sources.some((file) => file.endsWith('components/blocks/Document.vue'))).toBe(true)
-    expect(sources.some((file) => file.endsWith('components/editor/Paragraph.vue'))).toBe(true)
+    expect(sources.some((file) => file.endsWith('components/editor/RichText.vue'))).toBe(true)
   })
 
   it.each(sources.map((file) => [file.replace(fileURLToPath(ROOT), ''), file]))(
