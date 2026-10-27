@@ -87,11 +87,13 @@ export function createPreviewLimit(valkeyUrl: string | undefined, onError: (erro
       // INCR and PEXPIRE in one transaction: a key never stays without an expiry (Valkey evicts only keys that have one).
       const replies = await client.multi().incr(key).pexpire(key, milliseconds).exec()
       const [incr] = replies ?? []
-      if (incr === undefined || incr[0] !== null || typeof incr[1] !== 'number') throw new Error('no count from valkey')
-      return incr[1]
+      const count = incr?.[0] === null ? incr[1] : undefined
+      if (typeof count !== 'number') throw new Error('no count from valkey')
+      return count
     },
   }
-  return sharedPreviewLimit(store, onError, async () => {
+  return sharedPreviewLimit(store, onError, () => {
     client.disconnect()
+    return Promise.resolve()
   })
 }
