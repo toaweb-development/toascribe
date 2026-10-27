@@ -73,6 +73,8 @@ export interface EditorModel {
   removeMany(ids: readonly string[], before: EditorSelection): EditorSelection | undefined
   /** Several blocks in at a place in one step (a paste); the cursor goes to the last one. */
   insertMany(place: Place, blocks: readonly Block[], before: EditorSelection): EditorSelection | undefined
+  /** A paste over a selection of several blocks: they go, and `blocks` take the place of the first, in one step (as Gutenberg). */
+  replaceMany(ids: readonly string[], blocks: readonly Block[], before: EditorSelection): EditorSelection | undefined
   /** Turns a text block into another (paragraph ↔ heading), keeping its text, in one step. */
   transform(
     id: string,
@@ -214,6 +216,17 @@ export function createEditorModel(initial: BlockDocument, options: HistoryOption
             blockId: lastLeaf(last).id,
             offset: Number.MAX_SAFE_INTEGER,
           })
+    },
+    replaceMany(ids, blocks, before) {
+      const first = ids[0] === undefined ? undefined : locate(history.present, ids[0])
+      const last = blocks.at(-1)
+      if (first === undefined || last === undefined) return undefined
+      const removed = removeBlocks(history.present, ids)
+      const next =
+        removed === undefined
+          ? undefined
+          : insertBlocks(removed, { parentId: first.parentId, index: first.index }, blocks)
+      return commit(next, before, { blockId: lastLeaf(last).id, offset: Number.MAX_SAFE_INTEGER })
     },
     transform(id, type, attrs, before) {
       const located = locate(history.present, id)

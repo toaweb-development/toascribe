@@ -146,6 +146,15 @@ describe('the model: paste, cut and the end of a list, one step each', () => {
     expect(outline(model.document)).toMatch(/^b_cols\(/)
   })
 
+  it('a paste over a selection of several blocks takes their place, in one step', () => {
+    const model = createEditorModel([p('b_aaaa', 'a'), p('b_bbbb', 'b'), p('b_cccc', 'c')])
+    const pasted = parseClipboardBlocks(serializeBlocks([p('b_new1', 'ny')]), null) ?? []
+    model.replaceMany(['b_aaaa', 'b_bbbb'], pasted, { blockId: 'b_bbbb' })
+    expect(model.document.map((block) => block.attrs['content'])).toEqual([text('ny'), text('c')])
+    model.undo()
+    expect(outline(model.document)).toBe('b_aaaa b_bbbb b_cccc')
+  })
+
   it('Enter in the empty last item ends the list with a paragraph after it', () => {
     const list = createBlock('core/list', {}, [item('b_itm1', 'En'), item('b_itm2')], 'b_lst1')
     const ended = endList([list, p('b_after')], 'b_itm2')

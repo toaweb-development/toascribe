@@ -189,7 +189,12 @@ watch(inline.needed, async (needed) => {
     }
     return
   }
-  toast.add({ title: t('editor.login.done'), color: 'success', icon: 'i-lucide-circle-check' })
+  toast.add({
+    title: previewWaits ? t('editor.login.previewAgain') : t('editor.login.done'),
+    color: 'success',
+    icon: 'i-lucide-circle-check',
+  })
+  previewWaits = false
   if (again !== undefined) await save(again)
 })
 // The dialog is not closed by the overlay when the editor goes; close it here.
@@ -259,11 +264,26 @@ function savedMessage(kind: MainAction | 'draft', saved: string): string {
   return t('content.editor.published')
 }
 
+/** «Forhåndsvis» found the session gone: after the login dialog, the person is asked to press it again (a new tab needs a click). */
+let previewWaits = false
+
 async function preview(): Promise<void> {
-  // The window is opened in the click itself, before the save: a window opened after an await is blocked as a pop-up.
+  // The window is opened in the click itself, before anything is awaited: a window opened after an await is blocked as a pop-up.
   const target = window.open('about:blank', '_blank')
+  // With the session gone the preview would show the login screen in that tab: close it, and sign in again here first.
+  const session = await auth.refresh().catch(() => undefined)
+  if (session?.status !== 'authenticated') {
+    target?.close()
+    previewWaits = true
+    inline.needed.value = true
+    return
+  }
   if (item.value === null || dirty.value) {
     if (!maySaveDraft(item.value) || !(await save('draft'))) {
+      if (pendingSave !== undefined) {
+        target?.close()
+        return
+      }
       if (item.value !== null && dirty.value) toast.add({ title: t('editor.previewSaveFirst'), color: 'warning' })
       if (item.value === null) {
         target?.close()

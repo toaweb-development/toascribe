@@ -1,6 +1,7 @@
 // seedDefaultContent(): what WordPress' wp_install_defaults() writes, in the site's language. The install runs it once,
 // inside its transaction; see docs/DATAMODEL.md «Default content».
 import { textSearchConfig } from '@toascribe/shared'
+import type { Blocks } from '@toascribe/shared'
 import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm'
 
 import type { DbExecutor } from '../executor.ts'
@@ -9,8 +10,10 @@ import { contentAuthor, content } from '../schema/content.ts'
 import { comment } from '../schema/site.ts'
 import { contentTerm, taxonomy, term } from '../schema/taxonomy.ts'
 import { insertBuiltInTaxonomies } from '../seed.ts'
-import { blocksText, parseBlockMarkup } from './blocks.ts'
-import type { ParsedBlock } from './blocks.ts'
+import { documentText, fromWordPress } from '@toascribe/blocks'
+import type { Block } from '@toascribe/blocks'
+
+import { parseBlockMarkup } from './blocks.ts'
 import { firstCommentText, firstPostMarkup, privacyPolicyMarkup, samplePageMarkup } from './markup.ts'
 import { DEFAULT_COMMENT_AUTHOR_EMAIL, defaultContentStrings } from './strings.ts'
 
@@ -133,7 +136,12 @@ export async function seedDefaultContent<TSchema extends Record<string, unknown>
       status: 'publish' | 'draft'
       commentStatus: 'open' | 'closed'
     }): Promise<string> => {
-      const blocks: ParsedBlock[] = parseBlockMarkup(item.markup)
+      // WordPress' markup, read as parse_blocks() reads it and turned into toascribe's blocks (M1.4): the editor can change them.
+      const converted: Block[] | undefined = fromWordPress(parseBlockMarkup(item.markup))
+      if (converted === undefined) {
+        throw new Error(`the default content «${item.slug}» does not convert to blocks`)
+      }
+      const blocks = JSON.parse(JSON.stringify(converted)) as Blocks
       const [row] = await tx
         .insert(content)
         .values({
@@ -147,7 +155,7 @@ export async function seedDefaultContent<TSchema extends Record<string, unknown>
           blocks,
           // The content service's formula (DATAMODEL «Full-text search»); the excerpt is empty.
           search: sql`setweight(to_tsvector(${config}::regconfig, ${item.title}), 'A')
-                      || setweight(to_tsvector(${config}::regconfig, ${blocksText(blocks)}), 'C')`,
+                      || setweight(to_tsvector(${config}::regconfig, ${documentText(converted)}), 'C')`,
         })
         .returning({ id: content.id })
       if (row === undefined) {

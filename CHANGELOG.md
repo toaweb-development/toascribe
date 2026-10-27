@@ -20,6 +20,11 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- The default content («Hei, verden!», the sample page and the privacy policy) is made in toascribe's block format, and content
+  stored in WordPress' block form is converted by the migration step, so the editor can change it; only a WordPress block type
+  toascribe does not know keeps an item read-only.
+- A paste over a selection of several blocks takes their place. «Forhåndsvis» with a session that has run out opens the login
+  dialog in the editor instead of a tab with the login screen.
 - The block editor of M1.3 (K-075, K-081): an edit component for every basic block, the inserter with search and categories (and
   «/» in an empty paragraph), and the block toolbar. A text is shown as the site draws it until it gets the focus, so a long
   document opens fast, and a block keeps its state when it moves into or out of a column. Several blocks can be selected

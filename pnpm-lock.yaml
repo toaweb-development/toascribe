@@ -765,6 +765,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@toascribe/blocks':
+        specifier: workspace:*
+        version: link:../blocks
       '@toascribe/shared':
         specifier: workspace:*
         version: link:../shared

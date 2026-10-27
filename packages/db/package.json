@@ -24,6 +24,7 @@
     "migrate": "node dist/migrate.js"
   },
   "dependencies": {
+    "@toascribe/blocks": "workspace:*",
     "@toascribe/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "pg": "catalog:",

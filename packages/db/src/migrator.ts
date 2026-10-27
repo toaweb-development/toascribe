@@ -9,6 +9,7 @@ import pg from 'pg'
 import type { Logger } from 'pino'
 
 import { PGBOSS_SCHEMA } from './pgboss.ts'
+import { convertWordPressContent } from './convert-content.ts'
 import { seedCore } from './seed.ts'
 
 /**
@@ -31,8 +32,9 @@ export interface RunMigrationsOptions {
 }
 
 /**
- * Applies the Drizzle SQL migrations, installs or upgrades the pg-boss schema and seeds the built-in roles and
- * default settings (seedCore), as the owner role, under the migration lock. Safe to run again: every step skips what
+ * Applies the Drizzle SQL migrations, installs or upgrades the pg-boss schema, seeds the built-in roles and default settings
+ * (seedCore) and converts content stored in WordPress' block form (convertWordPressContent), as the owner role, under the
+ * migration lock. Safe to run again: every step skips what
  * is already there, and the seed never overwrites a row.
  */
 export async function runMigrations(options: RunMigrationsOptions): Promise<void> {
@@ -55,6 +57,9 @@ export async function runMigrations(options: RunMigrationsOptions): Promise<void
 
       const seeded = await seedCore(db)
       logger.info(seeded, 'core roles and settings seeded')
+
+      const formats = await convertWordPressContent(client, logger)
+      logger.info(formats, 'content in WordPress block form converted to blocks')
     } finally {
       await client.query('select pg_advisory_unlock($1::bigint)', [MIGRATION_LOCK_KEY])
     }

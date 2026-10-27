@@ -428,6 +428,14 @@ export function useBlockEditor(initial: BlockDocument = []): BlockEditor {
       if (blocks === undefined || target === undefined) {
         return false
       }
+      // Over a selection of several blocks the paste takes their place (as Gutenberg), when their parent takes what is pasted.
+      const selected = multi.value
+      const first = selected[0] === undefined ? undefined : locate(model.document, selected[0])
+      if (first !== undefined && blocks.every((block) => canContain(first.parentType, block.type))) {
+        const after = model.replaceMany(selected, blocks, selection)
+        refresh(after)
+        return after !== undefined
+      }
       return editor.insertBlocks(target.place, blocks)
     },
     undo() {

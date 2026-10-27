@@ -8,6 +8,11 @@ import pg from 'pg'
 import { pino } from 'pino'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { validateDocument } from '@toascribe/blocks'
+
+import { parseBlockMarkup } from '../src/default-content/blocks.ts'
+import { firstPostMarkup } from '../src/default-content/markup.ts'
+import { DEFAULT_CONTENT_STRINGS } from '../src/default-content/strings.ts'
 import { MIGRATIONS_FOLDER, MIGRATION_LOCK_KEY, runMigrations } from '../src/migrator.ts'
 import { TEST_DATABASE_URL, createTestDatabase, noticeIfSkipped, queryAs } from './helpers.ts'
 import type { TestDatabase } from './helpers.ts'
@@ -85,6 +90,32 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('migration runner (needs TEST_D
     expect(second.output).toContain('already at version')
     expect(second.code).toBe(0)
     expect(await pgBossVersion(database.ownerUrl)).toBe(version)
+  })
+
+  it('converts content stored in WordPress block form to blocks, and leaves a tree it cannot convert as it is', async () => {
+    const wordpress = parseBlockMarkup(firstPostMarkup(DEFAULT_CONTENT_STRINGS.nb))
+    const unknown = [
+      { blockName: 'core/cover', attrs: {}, innerBlocks: [], innerHTML: '<div></div>', innerContent: [] },
+    ]
+    const insert = async (slug: string, blocks: unknown) =>
+      (
+        await queryAs<{ id: string }>(
+          database.ownerUrl,
+          `insert into content (type, locale, slug, title, status, comment_status, blocks)
+           values ('post', 'nb', $1, $1, 'publish', 'open', $2::jsonb) returning id`,
+          [slug, JSON.stringify(blocks)],
+        )
+      )[0]?.id ?? ''
+    const known = await insert('wp-format', wordpress)
+    const kept = await insert('wp-unknown', unknown)
+    await runMigrations({ connectionString: database.ownerUrl, logger })
+    const stored = async (id: string) =>
+      (await queryAs<{ blocks: unknown }>(database.ownerUrl, 'select blocks from content where id = $1', [id]))[0]
+        ?.blocks
+    const converted = await stored(known)
+    expect(validateDocument(converted).ok).toBe(true)
+    expect(JSON.stringify(converted)).toContain('core/paragraph')
+    expect(await stored(kept)).toEqual(unknown)
   })
 
   it('leaves every pgboss, drizzle and public object owned by the owner role', async () => {
