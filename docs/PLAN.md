@@ -595,7 +595,7 @@ blocks/bildegalleri/
 - Nettsted: tittel, logo, slagord, navigasjon, brødsmuler, søk, innloggings-/utloggingslenke
 - Innhold: innleggstittel, innleggsinnhold, utdrag, dato, forfatter, fremhevet bilde, kategorier og stikkord, kommentarer, paginering
 - Dynamisk: Query Loop, siste innlegg, arkiver, kategoriliste
-- Rekkefølge: M1.3 leverer avsnitt, overskrift, liste, sitat, bilde, knapper, kolonner, gruppe, skillelinje, mellomrom, kode, forhåndsformatert, tabell, egendefinert HTML og galleri. Innbygging kommer med oEmbed i M1.6; resten av lista og «Les mer», sideskift og fotnoter kommer i fase 2.
+- Rekkefølge: M1.3 leverer avsnitt, overskrift, liste, sitat, bilde, knapper, kolonner, gruppe, skillelinje, mellomrom, kode, forhåndsformatert, tabell, egendefinert HTML, galleri, «Les mer» og sideskift. Innbygging kommer med oEmbed i M1.6; resten av lista, klassisk blokk og fotnoter kommer i fase 2.
 
 **Mønstre og gjenbruk**
 

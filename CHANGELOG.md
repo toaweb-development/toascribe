@@ -1,8 +1,10 @@
 # Changelog
 
-All notable changes to this project are documented here.
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) ·
-Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
+All notable changes to this project are documented here, newest first. Versioning:
+[SemVer](https://semver.org/spec/v2.0.0.html). From the next release on, each release is one heading `## X.Y.Z — YYYY-MM-DD`
+(a long dash, an ISO date) with plain bullets under it, written for the people who run toascribe (VERSIONING_STANDARD_2026 §2);
+`scripts/release.sh` refuses to release without it. The notes collect under `## [Unreleased]` until then. The sections below
+that heading keep the format they were written in (Keep a Changelog).
 
 ## [Unreleased]
 
