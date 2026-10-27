@@ -221,6 +221,8 @@ test('a post scheduled five minutes ahead is published by the worker', async ({ 
   await expect(page.getByRole('button', { name: 'Planlegg' })).toBeVisible()
   await page.getByRole('button', { name: 'Planlegg' }).click()
   await expect(page.getByText('Planlagt.').first()).toBeVisible()
+  // The new post gets its own address after the save; read the id from it once it is there.
+  await expect(page).toHaveURL(/\/admin\/posts\/[0-9a-f-]{36}$/)
   const id = page.url().split('/').pop() ?? ''
   const statusOf = async () =>
     ((await (await page.request.get(`/api/v1/content/${id}`)).json()) as { status: string }).status
