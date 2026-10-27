@@ -299,7 +299,15 @@ async function preview(): Promise<void> {
       }
     }
   }
-  if (item.value !== null && target !== null) target.location.href = `${baseURL}/preview/${item.value.id}`
+  if (item.value === null || target === null) return
+  // A signed link to the item on the site, drawn by the active theme (K-071): it works for 30 minutes and ends with this session.
+  try {
+    const link = await contentApi.previewLink(item.value.id)
+    target.location.href = link.path
+  } catch {
+    target.close()
+    toast.add({ title: t('editor.previewFailed'), color: 'error' })
+  }
 }
 
 async function trash(): Promise<void> {
@@ -333,7 +341,6 @@ const tabs = computed(() => [
   { label: t('editor.blockTab'), value: 'block' },
 ])
 const shortcutsDialog = overlay.create(ContentShortcutsModal)
-const baseURL = useRuntimeConfig().app.baseURL.replace(/\/$/, '')
 
 /** Where the top bar's «+» puts a block: after the selected top-level block, or at the end. */
 const topPlace = computed(() => {

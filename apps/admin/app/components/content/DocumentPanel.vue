@@ -55,10 +55,13 @@ const parent = computed({
     form.value.parentId = value === NO_PARENT ? null : value
   },
 })
-const templateItems = computed(() => [
-  { value: DEFAULT_TEMPLATE, label: t('content.quickEdit.defaultTemplate') },
-  ...(props.item?.template == null ? [] : [{ value: props.item.template, label: props.item.template }]),
-])
+const activeTheme = useActiveTheme()
+const templateItems = computed(() =>
+  templateItemsFor(activeTheme.value, props.type, form.value.template ?? null, {
+    value: DEFAULT_TEMPLATE,
+    label: t('content.quickEdit.defaultTemplate'),
+  }),
+)
 const template = computed({
   get: () => form.value.template ?? DEFAULT_TEMPLATE,
   set: (value: string) => {

@@ -20,6 +20,13 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- The site shows its content (M1.4): every address goes through WordPress' template hierarchy to the active theme's template,
+  chosen in the new `toascribe.toml` (`[site] theme`). A theme is a folder with `theme.json` (`themeApi: 1`); the build stops
+  with a list of what is wrong when it does not pass. A child theme extends its parent and overrides only its own files, one
+  block's look included (`blocks/<name>/View.vue`). The default theme has the front page, posts with their pages and «Les mer»,
+  pages with «Full bredde», archives, search and 404, and passes WCAG 2.2 AA. The custom HTML block runs as written on the site
+  (see SECURITY.md). Signed-in people see a toolbar with «Rediger». «Forhåndsvis» in the editor opens the item on the site
+  through a signed link. The editor offers the heading levels and page templates the theme names.
 - The public reading API of the site (M1.4): `/api/v1/public/resolve` tells what an address is after WordPress' template
   hierarchy (front page, posts page, posts with their pages after a page break, pages by their whole path, category, tag,
   author and date archives, search, `?p=` as a redirect, 404), `/public/query` lists published posts or pages by filter,

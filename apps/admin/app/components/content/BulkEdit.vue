@@ -69,9 +69,13 @@ const parentItems = computed(() => [
   { value: NO_PARENT, label: t('content.quickEdit.noParent') },
   ...props.parents.map((entry) => ({ value: entry.id, label: entry.label })),
 ])
+const activeTheme = useActiveTheme()
 const templateItems = computed(() => [
   keep.value,
-  { value: DEFAULT_TEMPLATE, label: t('content.quickEdit.defaultTemplate') },
+  ...templateItemsFor(activeTheme.value, props.type, null, {
+    value: DEFAULT_TEMPLATE,
+    label: t('content.quickEdit.defaultTemplate'),
+  }),
 ])
 
 const saving = ref(false)

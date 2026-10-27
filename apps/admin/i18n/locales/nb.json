@@ -1273,6 +1273,7 @@
     "sidebar": "Innstillinger",
     "unknownBlock": "Blokken «{name}» kan ikke redigeres her.",
     "previewSaveFirst": "Forhåndsvisningen viser den lagrede versjonen. Oppdater for å se endringene.",
+    "previewFailed": "Fikk ikke laget forhåndsvisningen. Prøv igjen.",
     "trashConfirm": "Innholdet flyttes til papirkurven. Du kan gjenopprette det derfra.",
     "actions": {
       "schedule": "Planlegg",

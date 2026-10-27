@@ -16,22 +16,23 @@ This file and the README come first where they are more specific.
 
 ## Layout and scope
 
-| Path                           | Package                               | Notes                                                                        |
-| ------------------------------ | ------------------------------------- | ---------------------------------------------------------------------------- |
-| `apps/api`                     | `@toascribe/api`                      | Hono. Routes -> services -> repositories. No logic in routes.                |
-| `apps/worker`                  | `@toascribe/worker`                   | pg-boss. Same image as the api.                                              |
-| `apps/site`, `apps/admin`      | `@toascribe/site`, `@toascribe/admin` | Nuxt 4. The admin has `baseURL: '/admin'`.                                   |
-| `packages/db`                  | `@toascribe/db`                       | Drizzle client, migrations, the migration runner, `PGBOSS_APP_OPTIONS`.      |
-| `packages/shared`              | `@toascribe/shared`                   | Zod schemas and types. Every API shape is defined here once.                 |
-| `packages/install`             | `@toascribe/install`                  | Install service (setup token, steps, install). The api and the cli call it.  |
-| `packages/auth`                | `@toascribe/auth`                     | Password hashing (argon2id, WordPress hash import) and one-time tokens.      |
-| `packages/http`                | `@toascribe/http`                     | `safeFetch`: an HTTP client that refuses private addresses (SSRF).           |
-| `packages/nuxt-base`           | `@toascribe/nuxt-base`                | The Nuxt layer both apps share: Nuxt UI, i18n, API layer and plugin, config. |
-| `packages/sdk`, `ui`, `blocks` | `@toascribe/*`                        | Placeholders until phase 1.                                                  |
-| `themes/default`               | `@toascribe/theme-default`            | A Nuxt layer that extends `nuxt-base`, linted by its own config.             |
-| `cli`                          | `@toascribe/cli`                      | The `toa` bin. Runs in the api container.                                    |
-| `docker/`                      |                                       | Dockerfiles, `compose.yaml`, `.env.example`, `proxy/Caddyfile`, `postgres/`. |
-| `scripts/`                     |                                       | Release and gate scripts: `release-check.sh`, tag check, notes, image copy.  |
+| Path                           | Package                               | Notes                                                                         |
+| ------------------------------ | ------------------------------------- | ----------------------------------------------------------------------------- |
+| `apps/api`                     | `@toascribe/api`                      | Hono. Routes -> services -> repositories. No logic in routes.                 |
+| `apps/worker`                  | `@toascribe/worker`                   | pg-boss. Same image as the api.                                               |
+| `apps/site`, `apps/admin`      | `@toascribe/site`, `@toascribe/admin` | Nuxt 4. The admin has `baseURL: '/admin'`.                                    |
+| `packages/db`                  | `@toascribe/db`                       | Drizzle client, migrations, the migration runner, `PGBOSS_APP_OPTIONS`.       |
+| `packages/shared`              | `@toascribe/shared`                   | Zod schemas and types. Every API shape is defined here once.                  |
+| `packages/install`             | `@toascribe/install`                  | Install service (setup token, steps, install). The api and the cli call it.   |
+| `packages/auth`                | `@toascribe/auth`                     | Password hashing (argon2id, WordPress hash import) and one-time tokens.       |
+| `packages/http`                | `@toascribe/http`                     | `safeFetch`: an HTTP client that refuses private addresses (SSRF).            |
+| `packages/nuxt-base`           | `@toascribe/nuxt-base`                | The Nuxt layer both apps share: Nuxt UI, i18n, API layer and plugin, config.  |
+| `packages/sdk`, `ui`, `blocks` | `@toascribe/*`                        | Placeholders until phase 1.                                                   |
+| `packages/site-core`           | `@toascribe/site-core`                | The site's core layer: theme SDK, Scribe components, catch-all, theme module. |
+| `themes/default`               | `@toascribe/theme-default`            | The default theme: a layer on `site-core` (`theme.json`, `app/templates/`).   |
+| `cli`                          | `@toascribe/cli`                      | The `toa` bin. Runs in the api container.                                     |
+| `docker/`                      |                                       | Dockerfiles, `compose.yaml`, `.env.example`, `proxy/Caddyfile`, `postgres/`.  |
+| `scripts/`                     |                                       | Release and gate scripts: `release-check.sh`, tag check, notes, image copy.   |
 
 Stay inside the package you were asked to change. A change that needs another package's code, or a root file, is a
 separate step: say so.
