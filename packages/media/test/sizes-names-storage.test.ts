@@ -10,6 +10,7 @@ import {
   defaultSizes,
   GENERATED_SUFFIX,
   derivedKey,
+  movedKeys,
   originalKey,
   planSizes,
   readableName,
@@ -76,6 +77,15 @@ describe('storage keys', () => {
     expect(originalKey('../../etc/passwd', 'txt', at, false, 'abcdef01')).toBe('passwd-abcdef01.txt')
     expect(readableName('§§§.png')).toBe('file')
     expect(derivedKey('2026/10/bilde-abcdef01.jpg', '300x200')).toBe('2026/10/bilde-abcdef01-300x200.webp')
+  })
+
+  it('moves an original and its generated files to new keys, each keeping its suffix', () => {
+    const move = movedKeys('2026/10/bilde-abcdef01.jpg', '12345678')
+    expect(move('2026/10/bilde-abcdef01.jpg')).toBe('2026/10/bilde-12345678.jpg')
+    expect(move('2026/10/bilde-abcdef01-0a1b2c3d-300x200.webp')).toBe('2026/10/bilde-12345678-0a1b2c3d-300x200.webp')
+    expect(move('2026/10/bilde-abcdef01-e1761480000000.webp')).toBe('2026/10/bilde-12345678-e1761480000000.webp')
+    expect(movedKeys('bilde.jpg', '12345678')('bilde.jpg')).toBe('bilde-12345678.jpg')
+    expect(() => move('2026/10/annet-abcdef01-0a1b2c3d-300x200.webp')).toThrow()
   })
 
   it('gives every run of the sizes a new address, which the suffix pattern knows', () => {

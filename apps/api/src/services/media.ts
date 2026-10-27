@@ -20,6 +20,7 @@ import {
   detectType,
   extensionOf,
   headerDimensions,
+  movedKeys,
   originalKey,
   shownFile,
 } from '@toascribe/media'
@@ -411,6 +412,36 @@ export function createMediaService(options: {
     }
   }
 
+  /**
+   * Copies an original and its generated files to new keys (review L-c: `/uploads/` is cached `public, immutable`, so a file that
+   * goes private must leave its public address) and returns the row's new keys. Each copy is recorded in `moved` as it is made.
+   */
+  async function moveFiles(
+    row: MediaRow,
+    moved: { from: string; to: string }[],
+  ): Promise<{ storageKey: string; variants: MediaVariantsData }> {
+    const move = movedKeys(row.storageKey)
+    const copy = async (from: string): Promise<string> => {
+      const to = move(from)
+      await storage.put(to, await storage.read(from))
+      moved.push({ from, to })
+      return to
+    }
+    const sizes: MediaVariantsData['sizes'] = {}
+    for (const [name, size] of Object.entries(row.variants.sizes)) {
+      sizes[name] = { ...size, key: await copy(size.key) }
+    }
+    const { scaled, edited } = row.variants
+    return {
+      storageKey: await copy(row.storageKey),
+      variants: {
+        sizes,
+        ...(scaled === undefined ? {} : { scaled: { ...scaled, key: await copy(scaled.key) } }),
+        ...(edited === undefined ? {} : { edited: { ...edited, key: await copy(edited.key) } }),
+      },
+    }
+  }
+
   async function removeFiles(keys: readonly string[]): Promise<void> {
     for (const key of keys) {
       await storage.remove(key).catch((err: unknown) => {
@@ -608,36 +639,48 @@ export function createMediaService(options: {
 
     async update(auth, id, request, ctx) {
       requireUpload(auth)
-      await inTransaction(db, async (tx) => {
-        const row = await findMedia(tx, id, { forUpdate: true })
-        if (row === undefined || !canRead(auth, row)) {
-          throw new NotFoundError()
-        }
-        if (!canEdit(auth, row)) {
-          throw new ForbiddenError()
-        }
-        const folderId = request.folderId === undefined ? undefined : await checkFolder(tx, request.folderId)
-        await updateMedia(
-          tx,
-          id,
-          {
-            ...(request.title === undefined ? {} : { title: request.title }),
-            ...(request.alt === undefined ? {} : { alt: request.alt }),
-            ...(request.caption === undefined ? {} : { caption: request.caption }),
-            ...(request.description === undefined ? {} : { description: request.description }),
-            ...(request.visibility === undefined ? {} : { visibility: request.visibility }),
-            ...(folderId === undefined ? {} : { folderId }),
-          },
-          clock(),
-        )
-        await audit(tx, ctx, {
-          actor: { id: auth.account.id, username: auth.account.username },
-          action: 'media.updated',
-          objectType: 'media',
-          objectId: id,
-          newValue: { fields: Object.keys(request).sort() },
+      // A file made private moves to new keys: the copies are written in the transaction (the row is locked, so the worker
+      // cannot write sizes beside the old key meanwhile), the old files are removed after it, the new ones if it fails.
+      const moved: { from: string; to: string }[] = []
+      try {
+        await inTransaction(db, async (tx) => {
+          const row = await findMedia(tx, id, { forUpdate: true })
+          if (row === undefined || !canRead(auth, row)) {
+            throw new NotFoundError()
+          }
+          if (!canEdit(auth, row)) {
+            throw new ForbiddenError()
+          }
+          const folderId = request.folderId === undefined ? undefined : await checkFolder(tx, request.folderId)
+          const rekeyed =
+            request.visibility === 'private' && row.visibility === 'public' ? await moveFiles(row, moved) : {}
+          await updateMedia(
+            tx,
+            id,
+            {
+              ...rekeyed,
+              ...(request.title === undefined ? {} : { title: request.title }),
+              ...(request.alt === undefined ? {} : { alt: request.alt }),
+              ...(request.caption === undefined ? {} : { caption: request.caption }),
+              ...(request.description === undefined ? {} : { description: request.description }),
+              ...(request.visibility === undefined ? {} : { visibility: request.visibility }),
+              ...(folderId === undefined ? {} : { folderId }),
+            },
+            clock(),
+          )
+          await audit(tx, ctx, {
+            actor: { id: auth.account.id, username: auth.account.username },
+            action: 'media.updated',
+            objectType: 'media',
+            objectId: id,
+            newValue: { fields: Object.keys(request).sort() },
+          })
         })
-      })
+      } catch (err) {
+        await removeFiles(moved.map((file) => file.to))
+        throw err
+      }
+      await removeFiles(moved.map((file) => file.from))
       return itemOf(auth, id)
     },
 

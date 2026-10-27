@@ -247,6 +247,50 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect((await editor.patch(`/api/v1/media/${item.id}`, { title: 'Redigert' })).status).toBe(200)
     })
 
+    it('moves a file that goes private to new keys, so a public address any cache holds answers 404', async () => {
+      const item = await upload(author, f.PNG, 'blir-privat.png')
+      const base = item.originalUrl.slice('/uploads/'.length).replace(/\.png$/, '')
+      const thumb = {
+        key: `${base}-0a0a0a0a-150x150.webp`,
+        width: 150,
+        height: 150,
+        size: f.WEBP.length,
+        mime: 'image/webp',
+      }
+      await createLocalStorage(env.uploadsDir).put(thumb.key, f.WEBP)
+      await env.query(`update media set variants = $2::jsonb, processing = 'ready' where id = $1`, [
+        item.id,
+        JSON.stringify({ sizes: { thumbnail: thumb } }),
+      ])
+      for (const path of [item.originalUrl, `/uploads/${thumb.key}`]) {
+        expect((await env.client().get(path)).status, path).toBe(200)
+      }
+      expect((await author.patch(`/api/v1/media/${item.id}`, { visibility: 'private' })).status).toBe(200)
+      const [row] = await env.query<{ storage_key: string; variants: { sizes: { thumbnail: { key: string } } } }>(
+        'select storage_key, variants from media where id = $1',
+        [item.id],
+      )
+      const newKeys = [row?.storage_key ?? '', row?.variants.sizes.thumbnail.key ?? '']
+      expect(newKeys[0]).not.toBe(item.originalUrl.slice('/uploads/'.length))
+      expect(newKeys[1]).toMatch(/-0a0a0a0a-150x150\.webp$/)
+      // The old public addresses are gone, and so are the old files; the new keys are not public either.
+      const storage = createLocalStorage(env.uploadsDir)
+      for (const path of [item.originalUrl, `/uploads/${thumb.key}`, ...newKeys.map((key) => `/uploads/${key}`)]) {
+        expect((await env.client().get(path)).status, path).toBe(404)
+      }
+      expect(await storage.stat(thumb.key)).toBeUndefined()
+      expect(await storage.stat(item.originalUrl.slice('/uploads/'.length))).toBeUndefined()
+      // Through the api the uploader still has both.
+      expect((await author.get(`/api/v1/media/${item.id}/file?size=original`)).status).toBe(200)
+      expect((await author.get(`/api/v1/media/${item.id}/file?size=thumbnail`)).status).toBe(200)
+      // Made public again, it is served at its new address.
+      const pub = MediaItem.parse(
+        await (await author.patch(`/api/v1/media/${item.id}`, { visibility: 'public' })).json(),
+      )
+      expect(pub.originalUrl).toBe(`/uploads/${row?.storage_key ?? ''}`)
+      expect((await env.client().get(pub.originalUrl)).status).toBe(200)
+    })
+
     it('serves a private file only through the api, to its uploader and to read_private_posts', async () => {
       const item = await upload(author, f.PDF, 'hemmelig.pdf')
       const original = item.originalUrl

@@ -55,5 +55,21 @@ export function versionedKey(original: string, version: string, name: string): s
   return derivedKey(original, `${version}-${name}`)
 }
 
+/**
+ * New keys for an original and every file generated beside it (review L-c): a file that goes from public to private moves, so the
+ * address a shared cache may hold for a year answers 404. The original's random part is replaced (or one is added), and each
+ * generated key keeps its suffix (`-<version>-<size>.webp`, `-e<ms>.webp`) after the new base.
+ */
+export function movedKeys(original: string, random = randomPart()): (key: string) => string {
+  const extension = /\.[^./]*$/.exec(original)?.[0] ?? ''
+  const oldBase = original.slice(0, original.length - extension.length)
+  const newBase = /-[0-9a-f]{8}$/.test(oldBase) ? `${oldBase.slice(0, -8)}${random}` : `${oldBase}-${random}`
+  return (key) => {
+    if (key === original) return `${newBase}${extension}`
+    if (!key.startsWith(`${oldBase}-`)) throw new Error('not a file of this original')
+    return `${newBase}${key.slice(oldBase.length)}`
+  }
+}
+
 /** The end of a generated key: `-<version>-<WxH|scaled>.webp`, or an edited image's `-e<milliseconds>.webp`. */
 export const GENERATED_SUFFIX = /-(?:[0-9a-f]{8}-(?:\d+x\d+|scaled)|e\d{13})\.webp$/
