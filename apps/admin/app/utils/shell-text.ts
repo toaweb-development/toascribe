@@ -52,6 +52,8 @@ export function menuLabel({ t, te }: Translator, key: string): string {
       return t('menu.appearance')
     case 'menu.appearanceMenus':
       return t('menu.appearanceMenus')
+    case 'menu.appearanceCustomize':
+      return t('menu.appearanceCustomize')
     case 'menu.appearanceGlobalSets':
       return t('menu.appearanceGlobalSets')
     case 'menu.settingsGeneral':
