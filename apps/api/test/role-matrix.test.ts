@@ -424,7 +424,8 @@ const CASES: readonly MatrixCase[] = [
     method,
     path: `/api/v1/media-folders/${NO_SUCH_CONTENT}`,
     ...(method === 'PATCH' ? { json: { name: 'x' } } : {}),
-    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 403, subscriber: 403 },
+    // Renaming, moving and deleting a folder needs edit_others_posts (review M5 of M1.2): an author may only make one.
+    expected: { ...ok, administrator: 404, editor: 404, author: 403, contributor: 403, subscriber: 403 },
   })),
   {
     route: 'GET /api/v1/settings/media',
