@@ -59,7 +59,6 @@ test('the CSP is strict where it matters, and open where a public site needs it'
   expect(directives.get('font-src')).toBe("'self'")
   // Images from any https host (themes show them) and small inline ones; nothing else is opened.
   expect(directives.get('img-src')).toBe("'self' data: https:")
-  // Nobody frames the site, the admin included, until the live preview of phase 3 (Tor's decision).
   // Only the site's own origin frames it: the admin's «Tilpass» preview (M1.5).
   expect(directives.get('frame-ancestors')).toBe("'self'")
   expect(csp).not.toContain('unsafe-inline')

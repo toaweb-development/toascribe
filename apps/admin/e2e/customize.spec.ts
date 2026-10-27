@@ -80,7 +80,6 @@ test('Tilpass: the preview shows unsaved choices, and «Publiser» puts them on 
     await request.patch('/api/v1/customize', {
       data: {
         theme: 'default',
-        version: '0.0.0',
         identity: { blogname: before.identity.blogname, blogdescription: before.identity.blogdescription },
         colors: before.customization.colors,
         fonts: before.customization.fonts,

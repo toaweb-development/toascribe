@@ -15,7 +15,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('Tilpass (needs TEST_DATABASE_U
   let designer: TestClient
   let visitor: TestClient
   const patch = (client: TestClient, body: Record<string, unknown>) =>
-    client.patch('/api/v1/customize', { theme: 'default', version: '1.0.0', ...body })
+    client.patch('/api/v1/customize', { theme: 'default', ...body })
 
   beforeAll(async () => {
     env = await startAuthApp()
@@ -82,6 +82,27 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('Tilpass (needs TEST_DATABASE_U
     // Sending the stored CSS back unchanged is no change.
     expect((await patch(designer, { customCss: answer.customization.customCss })).status).toBe(200)
     expect((await visitor.get('/api/v1/customize?theme=default')).status).toBe(401)
+  })
+
+  it("keeps «Generelt»'s title, tagline and icon at manage_options", async () => {
+    const answer = CustomizeResponse.parse(await (await designer.get('/api/v1/customize?theme=default')).json())
+    expect(answer.mayEditIdentity).toBe(false)
+    expect((await patch(designer, { identity: { blogname: 'Overtatt' } })).status).toBe(403)
+    expect((await patch(designer, { identity: { blogdescription: 'Overtatt' } })).status).toBe(403)
+    expect((await patch(designer, { identity: { site_icon: null, blogname: 'Overtatt' } })).status).toBe(403)
+    // The same values sent back are no change, and the logo is the theme's (edit_theme_options).
+    expect((await patch(designer, { identity: { ...answer.identity } })).status).toBe(200)
+    expect((await patch(designer, { identity: { site_logo: null } })).status).toBe(200)
+    expect(
+      CustomizeResponse.parse(await (await admin.get('/api/v1/customize?theme=default')).json()).mayEditIdentity,
+    ).toBe(true)
+  })
+
+  it("never takes the theme's version from the client", async () => {
+    expect((await patch(admin, { version: '99.0.0', colors: { primary: '#0f766e' } })).status).toBe(400)
+    expect((await patch(admin, { colors: { primary: '#0f766e' } })).status).toBe(200)
+    const rows = await env.query(`select version from extension_state where kind = 'theme' and slug = 'default'`)
+    expect(rows).toEqual([{ version: '' }])
   })
 
   it("clears the site's cache on a change", async () => {

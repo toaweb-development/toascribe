@@ -50,14 +50,14 @@ export const CustomizeResponse = z.object({
   customization: ThemeCustomization,
   media: z.array(ContentMediaRef),
   mayEditCss: z.boolean(),
+  /** Whether the account may change the title, the tagline and the icon (manage_options, as in «Generelt»). */
+  mayEditIdentity: z.boolean(),
 })
 export type CustomizeResponse = z.infer<typeof CustomizeResponse>
 
 /** PATCH /customize: the parts that changed. «Ekstra CSS» needs edit_css. */
 export const UpdateCustomizeRequest = z.strictObject({
   theme: Slug,
-  /** The theme's version (theme.json), kept with its settings. */
-  version: z.string().max(50),
   identity: CustomizeIdentity.extend({
     site_logo: z
       .uuid()

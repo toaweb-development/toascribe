@@ -5,6 +5,11 @@
 // «Ekstra CSS» needs `edit_css`, a meta capability as in WordPress' map_meta_cap(): `edit_theme_options` and `unfiltered_html` (the
 // rule WordPress applies on a multisite, applied always: a stylesheet can make a page look like anything, as raw HTML can). Among the
 // built-in roles only the administrator holds both. The CSS is checked so that it cannot leave its `<style>` (customCssProblem).
+//
+// The title, the tagline and the icon are «Generelt»'s settings and need what it needs, `manage_options` (WordPress' Customizer gives
+// them the same capability); the logo is the theme's, `edit_theme_options`. A row in `extension_state` made here carries no version
+// of the theme: the registry's version is the installer's to write (K-174), never the client's.
+
 import type { Database } from '@toascribe/db'
 import { schema } from '@toascribe/db'
 import { CoreSettings, EMPTY_CUSTOMIZATION, ThemeCustomization } from '@toascribe/shared'
@@ -22,6 +27,9 @@ import type { Auditor, RequestContext } from './support.ts'
 const { extensionState } = schema
 const IDENTITY = CoreSettings.pick({ blogname: true, blogdescription: true, site_logo: true, site_icon: true })
 const VISITOR = { id: '', capabilities: new Set<string>() } as const
+const GENERAL_KEYS = ['blogname', 'blogdescription', 'site_icon'] as const
+/** What `version` holds for a theme whose choices were stored before the theme registry knew it (phase 3 writes the real one). */
+const NO_VERSION = ''
 
 /** `edit_css`: may change «Ekstra CSS» (see the head of this file). */
 export function canEditCss(capabilities: ReadonlySet<string>): boolean {
@@ -34,12 +42,13 @@ export interface CustomizeService {
   publicFor(theme: string): Promise<PublicCustomizeResponse>
 }
 
-async function storedFor(db: Executor, theme: string): Promise<ThemeCustomization> {
-  const rows = await db
+async function storedFor(db: Executor, theme: string, lock = false): Promise<ThemeCustomization> {
+  const query = db
     .select({ settings: extensionState.settings })
     .from(extensionState)
     .where(and(eq(extensionState.kind, 'theme'), eq(extensionState.slug, theme)))
     .limit(1)
+  const rows = lock ? await query.for('update') : await query
   const parsed = ThemeCustomization.safeParse(rows[0]?.settings ?? EMPTY_CUSTOMIZATION)
   return parsed.success ? parsed.data : EMPTY_CUSTOMIZATION
 }
@@ -74,13 +83,35 @@ export function createCustomizeService(options: {
           identity.site_icon,
         ]),
         mayEditCss: canEditCss(auth.capabilities),
+        mayEditIdentity: auth.capabilities.has('manage_options'),
       }
     },
 
     async update(auth, request, ctx) {
       if (!auth.capabilities.has('edit_theme_options')) throw new ForbiddenError()
       await inTransaction(db, async (tx) => {
-        const before = await storedFor(tx, request.theme)
+        // The row first, then locked: two saves at once merge one after the other, and neither brings back what the other replaced.
+        const now = clock()
+        await tx
+          .insert(extensionState)
+          .values({
+            kind: 'theme',
+            slug: request.theme,
+            version: NO_VERSION,
+            settings: EMPTY_CUSTOMIZATION,
+            createdAt: now,
+            modifiedAt: now,
+          })
+          .onConflictDoNothing({ target: [extensionState.kind, extensionState.slug] })
+        const before = await storedFor(tx, request.theme, true)
+        if (request.identity !== undefined && !auth.capabilities.has('manage_options')) {
+          const general = await readSettings(tx, IDENTITY, options.onInvalidSetting)
+          if (
+            GENERAL_KEYS.some((key) => request.identity?.[key] !== undefined && request.identity[key] !== general[key])
+          ) {
+            throw new ForbiddenError()
+          }
+        }
         if (
           request.customCss !== undefined &&
           request.customCss !== before.customCss &&
@@ -102,21 +133,10 @@ export function createCustomizeService(options: {
           fonts: request.fonts ?? before.fonts,
           customCss: request.customCss ?? before.customCss,
         }
-        const now = clock()
         await tx
-          .insert(extensionState)
-          .values({
-            kind: 'theme',
-            slug: request.theme,
-            version: request.version,
-            settings: next,
-            createdAt: now,
-            modifiedAt: now,
-          })
-          .onConflictDoUpdate({
-            target: [extensionState.kind, extensionState.slug],
-            set: { settings: next, version: request.version, modifiedAt: now },
-          })
+          .update(extensionState)
+          .set({ settings: next, modifiedAt: now })
+          .where(and(eq(extensionState.kind, 'theme'), eq(extensionState.slug, request.theme)))
         if (request.identity !== undefined) {
           const identity = Object.fromEntries(
             Object.entries(request.identity).filter(([, value]) => value !== undefined),

@@ -163,8 +163,7 @@ async function publish(): Promise<void> {
   try {
     const answer = await appearanceApi.saveCustomize({
       theme: theme.slug,
-      version: theme.version,
-      identity: { ...identity.value },
+      identity: loaded.value.mayEditIdentity ? { ...identity.value } : { site_logo: identity.value.site_logo },
       colors: { ...colors.value },
       fonts: { ...fonts.value },
       ...(loaded.value.mayEditCss ? { customCss: customCss.value } : {}),
@@ -224,18 +223,21 @@ async function publish(): Promise<void> {
               <legend class="mb-2 text-lg font-semibold text-highlighted">
                 {{ $t('appearance.customize.identity') }}
               </legend>
-              <UFormField :label="$t('appearance.customize.siteTitle')" name="blogname">
-                <UInput v-model="identity.blogname" maxlength="200" size="xl" class="w-full" />
-              </UFormField>
-              <UFormField :label="$t('appearance.customize.tagline')" name="blogdescription">
-                <UInput v-model="identity.blogdescription" maxlength="500" size="xl" class="w-full" />
-              </UFormField>
+              <template v-if="loaded.mayEditIdentity">
+                <UFormField :label="$t('appearance.customize.siteTitle')" name="blogname">
+                  <UInput v-model="identity.blogname" maxlength="200" size="xl" class="w-full" />
+                </UFormField>
+                <UFormField :label="$t('appearance.customize.tagline')" name="blogdescription">
+                  <UInput v-model="identity.blogdescription" maxlength="500" size="xl" class="w-full" />
+                </UFormField>
+              </template>
               <ContentFeaturedImage
                 v-model="identity.site_logo"
                 :label="$t('appearance.customize.logo')"
                 :choose-label="$t('appearance.customize.chooseLogo')"
               />
               <ContentFeaturedImage
+                v-if="loaded.mayEditIdentity"
                 v-model="identity.site_icon"
                 :label="$t('appearance.customize.icon')"
                 :help="$t('appearance.customize.iconHelp')"
