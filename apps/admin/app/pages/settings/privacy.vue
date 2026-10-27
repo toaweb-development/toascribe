@@ -26,6 +26,24 @@ const page = computed({
   },
 })
 
+// «Innbygginger» (M1.6, K-225): a player from another service waits for a click, and the Mastodon instances embeds may come from,
+// one host name per line (the api checks each and keeps them sorted).
+const clickToLoad = computed({
+  get: () => form.value.embed_click_to_load,
+  set: (value: boolean | 'indeterminate') => {
+    form.value.embed_click_to_load = value === true
+  },
+})
+const instances = computed({
+  get: () => (form.value.oembed_mastodon_instances ?? []).join('\n'),
+  set: (value: string) => {
+    form.value.oembed_mastodon_instances = value
+      .split(/\s+/)
+      .map((host) => host.trim().toLowerCase())
+      .filter((host) => host !== '')
+  },
+})
+
 const creating = ref(false)
 /** «Opprett»: a new draft page, chosen at once, opened in the editor (WordPress makes it from its template). */
 async function createPage(): Promise<void> {
@@ -77,6 +95,18 @@ async function createPage(): Promise<void> {
           @click="createPage"
         />
       </div>
+      <fieldset class="flex flex-col gap-3">
+        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.privacy.embeds') }}</legend>
+        <UCheckbox v-model="clickToLoad" :label="$t('settings.privacy.clickToLoad')" />
+        <p class="max-w-prose text-sm text-toned">{{ $t('settings.privacy.clickToLoadHelp') }}</p>
+        <UFormField
+          :label="$t('settings.privacy.mastodon')"
+          :help="$t('settings.privacy.mastodonHelp')"
+          name="oembed_mastodon_instances"
+        >
+          <UTextarea v-model="instances" :rows="4" autoresize spellcheck="false" class="w-full sm:w-80 font-mono" />
+        </UFormField>
+      </fieldset>
     </template>
   </SettingsScreen>
 </template>

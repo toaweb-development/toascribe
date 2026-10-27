@@ -30,6 +30,7 @@ export function useBlockText() {
     'core/html': () => t('blocks.html'),
     'core/query': () => t('blocks.query'),
     'core/global-set': () => t('blocks.globalSet'),
+    'core/embed': () => t('blocks.embed'),
   }
 
   const issues: Readonly<Record<ValidationIssue['code'] | PermissionIssueCode, () => string>> = {

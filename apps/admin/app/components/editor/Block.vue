@@ -8,6 +8,7 @@ import {
   EditorBlocksCode,
   EditorBlocksColumns,
   EditorBlocksGallery,
+  EditorBlocksEmbed,
   EditorBlocksGlobalSet,
   EditorBlocksGroup,
   EditorBlocksHeading,
@@ -54,6 +55,7 @@ const EDIT: Readonly<Record<string, Component>> = {
   'core/html': EditorBlocksHtml,
   'core/query': EditorBlocksQuery,
   'core/global-set': EditorBlocksGlobalSet,
+  'core/embed': EditorBlocksEmbed,
 }
 
 const editor = useBlockEditorContext()

@@ -1,5 +1,6 @@
 import {
   CustomizeResponse,
+  EmbedPreviewResponse,
   GlobalSetChoicesResponse,
   GlobalSetDetail,
   GlobalSetListResponse,
@@ -40,6 +41,9 @@ export function createAppearanceApi(api: ApiCall) {
     saveLocations: async (locations: MenuLocations) =>
       MenuLocationsResponse.parse(await api(`${V1}/menu-locations`, { method: 'PUT', body: { locations } })),
     globalSets: async () => GlobalSetListResponse.parse(await api(`${V1}/global-sets`)),
+    /** What an «Innbygging» block shows for an address (M1.6): read by the server; the save reads it again. */
+    embedPreview: async (url: string) =>
+      EmbedPreviewResponse.parse(await api(`${V1}/oembed/preview`, { method: 'POST', body: { url } })),
     /** The sets to choose from in the «Globalt sett» block (slug and name), for anyone who edits content. */
     globalSetChoices: async () => GlobalSetChoicesResponse.parse(await api(`${V1}/global-sets/choices`)),
     createGlobalSet: async (request: CreateGlobalSetRequest) =>

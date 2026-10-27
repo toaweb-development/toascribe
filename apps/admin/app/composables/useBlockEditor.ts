@@ -6,8 +6,10 @@ import {
   allowedInContentType,
   blocksToText,
   canContain,
+  createBlock,
   createEditorModel,
   createInsertable,
+  EMBED,
   findBlock,
   flatten,
   getBlockDefinition,
@@ -18,8 +20,17 @@ import {
   selectionEnds,
   serializeBlocks,
   siblingRange,
+  inlineText,
   textToBlocks,
 } from '@toascribe/blocks'
+import { embedProviderOf } from '@toascribe/shared'
+
+/** The address in pasted text when it is one link alone, from a service «Innbygging» knows (M1.6); the server checks it again. */
+export function embedFromText(text: string): string | undefined {
+  const line = text.trim()
+  if (line === '' || /\s/.test(line)) return undefined
+  return embedProviderOf(line) === undefined ? undefined : line
+}
 
 // The editor's state (M0.6, M1.3): the model from @toascribe/blocks (the block tree and its one history) in a shallowRef, the block
 // that has the cursor or the blocks of a selection over several (Shift+click, Shift+arrow), and a registry through which each block
@@ -70,7 +81,8 @@ export interface BlockEditor {
   focus(selection: EditorSelection | undefined): void
   /** The element a block's component is drawn into (client only). */
   dock(id: string): HTMLElement
-  insertAt(place: Place, type: string): void
+  /** A new block of the type at the place; `attrs` for a variant (the inserter's «YouTube» is an embed with its provider). */
+  insertAt(place: Place, type: string, attrs?: Record<string, unknown>): void
   insertAfter(id: string, type: string): void
   insertBefore(id: string, type: string): void
   replace(id: string, type: string): void
@@ -268,8 +280,12 @@ export function useBlockEditor(initial: BlockDocument = []): BlockEditor {
       }
       return element
     },
-    insertAt(place, type) {
-      if (mayInsert(type)) refresh(model.insert(place, createInsertable(type), selection))
+    insertAt(place, type, attrs) {
+      if (!mayInsert(type)) return
+      const block = createInsertable(type)
+      refresh(
+        model.insert(place, attrs === undefined ? block : { ...block, attrs: { ...block.attrs, ...attrs } }, selection),
+      )
     },
     insertAfter(id, type) {
       const target = placeAfter(id, [type])
@@ -416,6 +432,25 @@ export function useBlockEditor(initial: BlockDocument = []): BlockEditor {
           )
         )
           blocks = undefined
+      } else if (data.text !== undefined && embedFromText(data.text) !== undefined && mayInsert(EMBED)) {
+        // A link alone on a line from a known service becomes «Innbygging» (as in Gutenberg); in an empty paragraph it takes its place.
+        const embed = [createBlock(EMBED, { url: embedFromText(data.text) })]
+        const current = at === null ? undefined : findBlock(model.document, at)
+        if (
+          at !== null &&
+          current?.type === 'core/paragraph' &&
+          inlineText((current.attrs['content'] ?? []) as InlineNode[]).trim() === '' &&
+          canContain(locate(model.document, at)?.parentType ?? null, EMBED)
+        ) {
+          const after = model.replaceMany([at], embed, selection)
+          refresh(after)
+          return after !== undefined
+        }
+        blocks = embed
+        target =
+          at === null
+            ? { place: { parentId: null, index: model.document.length }, parentType: null }
+            : placeAfter(at, [EMBED])
       } else if (data.text !== undefined) {
         blocks = textToBlocks(data.text)
         if (blocks !== undefined) {

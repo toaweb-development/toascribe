@@ -19,5 +19,5 @@ export function editorInsertableBlocks(parentType: string | null, scope: EditorS
 }
 
 /** The inserter's categories, in its order (block.json `category`). */
-export const INSERTER_CATEGORIES = ['text', 'media', 'design', 'widgets'] as const
+export const INSERTER_CATEGORIES = ['text', 'media', 'design', 'widgets', 'embed'] as const
 export type InserterCategory = (typeof INSERTER_CATEGORIES)[number]

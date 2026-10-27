@@ -27,6 +27,8 @@ export function categoryLabel(t: MessageT, category: InserterCategory): string {
       return t('editor.inserter.design')
     case 'widgets':
       return t('editor.inserter.widgets')
+    case 'embed':
+      return t('editor.inserter.embed')
     default:
       return category satisfies never
   }

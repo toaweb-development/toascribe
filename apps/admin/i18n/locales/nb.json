@@ -801,7 +801,8 @@
     "nextpage": "Sideskift",
     "html": "Egendefinert HTML",
     "query": "Query Loop",
-    "globalSet": "Globalt sett"
+    "globalSet": "Globalt sett",
+    "embed": "Innbygging"
   },
   "content": {
     "posts": {
@@ -1373,7 +1374,8 @@
       "text": "Tekst",
       "media": "Media",
       "design": "Utforming",
-      "widgets": "Widgeter"
+      "widgets": "Widgeter",
+      "embed": "Innbygginger"
     },
     "settings": {
       "none": "Velg en blokk for å se innstillingene.",
@@ -1485,6 +1487,17 @@
       "choose": "Sett",
       "placeholder": "— Velg et sett —",
       "help": "Settet redigeres under «Utseende → Globale sett», og endringer vises alle steder det brukes."
+    },
+    "embed": {
+      "address": "Adresse",
+      "placeholder": "Lim inn adressen til innholdet",
+      "placeholderProvider": "Lim inn en adresse fra {service}",
+      "embed": "Bygg inn",
+      "reading": "Henter …",
+      "found": "Fra {service}: {title}",
+      "notFound": "Denne adressen kan ikke bygges inn. Den vises som en lenke.",
+      "help": "Støttet: YouTube, Vimeo, Spotify, SoundCloud, TikTok, Bluesky og Mastodon-instansene under «Innstillinger → Personvern». Innholdet hentes når innlegget lagres.",
+      "caption": "Bildetekst"
     }
   },
   "settings": {
@@ -1558,7 +1571,12 @@
       "page": "Personvernside",
       "pageHelp": "En side som ikke er publisert, lenkes ikke før den er publisert.",
       "create": "Opprett ny personvernside",
-      "newTitle": "Personvernerklæring"
+      "newTitle": "Personvernerklæring",
+      "embeds": "Innbygginger",
+      "clickToLoad": "Last inn innhold fra andre tjenester først når leseren klikker",
+      "clickToLoadHelp": "Videoer, musikk og innlegg fra YouTube, Vimeo, Spotify og andre vises da som et forhåndsbilde med en knapp. Tjenesten får ikke vite om besøket før leseren klikker.",
+      "mastodon": "Mastodon-instanser",
+      "mastodonHelp": "Én adresse per linje, for eksempel mastodon.social. Innlegg fra disse instansene kan bygges inn."
     },
     "permalinks": {
       "title": "Permalenkeinnstillinger",
