@@ -112,6 +112,9 @@ export function createPreviewLimit(valkeyUrl: string | undefined, onError: (erro
       client.disconnect()
       return Promise.resolve()
     },
-    async () => (await client.ping()) === 'PONG',
+    async () => {
+      await client.ping() // answers PONG, or throws (the command timeout included)
+      return true
+    },
   )
 }
