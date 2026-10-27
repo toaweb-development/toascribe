@@ -6,12 +6,16 @@ import type { MenuItem, PublicMenuItem } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
-import { TEST_PASSWORD, startAuthApp } from './harness.ts'
+import type { ActiveTheme } from '@toascribe/shared'
+
+import { TEST_PASSWORD, TEST_THEME, startAuthApp } from './harness.ts'
 import type { AuthTestApp, TestClient } from './harness.ts'
 
 noticeIfSkipped('menus and global sets')
 
 let serial = 0
+/** The theme the test site runs; a test switches it. */
+let siteTheme: ActiveTheme | null = TEST_THEME
 const item = (fields: Partial<MenuItem> & Pick<MenuItem, 'kind'>, children: MenuItem[] = []): MenuItem => ({
   id: `m_item${String((serial += 1))}`,
   label: '',
@@ -40,7 +44,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('menus and global sets (needs T
     PublicMenuResponse.parse(await (await visitor.get(`/api/v1/public/menus/${location}`)).json())
 
   beforeAll(async () => {
-    env = await startAuthApp()
+    env = await startAuthApp({ activeTheme: { current: () => Promise.resolve(siteTheme) } })
     await env.createAccount({ username: 'menu-admin', role: 'administrator' })
     await env.createAccount({ username: 'menu-editor', role: 'editor' })
     admin = env.client({ ip: '203.0.113.101' })
@@ -87,6 +91,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('menus and global sets (needs T
       const unknown = await admin.put('/api/v1/menu-locations', { locations: { primary: menu.id, sidebar: menu.id } })
       expect(unknown.status).toBe(422)
       expect(await unknown.text()).toContain('sidebar')
+      // Without a theme that has locations, a save would only empty the stored ones: refused, and they stay.
+      siteTheme = null
+      try {
+        expect((await admin.put('/api/v1/menu-locations', { locations: {} })).status).toBe(422)
+      } finally {
+        siteTheme = TEST_THEME
+      }
+      expect((await (await admin.get('/api/v1/menu-locations')).json()) as unknown).toMatchObject({
+        locations: { primary: menu.id },
+      })
 
       const shown = await publicMenu('primary')
       expect(labels(shown.items)).toEqual([['Om oss', [['Folka', ['Ekstern']]]], 'Nyhet', 'Turer', 'Kontakt'])

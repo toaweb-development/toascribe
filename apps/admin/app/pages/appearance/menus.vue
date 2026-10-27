@@ -295,6 +295,7 @@ const locationRows = computed(() =>
 )
 const locationChoices = computed(() => [{ label: t('appearance.menus.noMenu'), value: NONE }, ...menuChoices.value])
 async function saveLocations(): Promise<void> {
+  if (locationRows.value.length === 0) return
   report.value = undefined
   failure.value = undefined
   try {
@@ -585,7 +586,8 @@ async function saveLocations(): Promise<void> {
           <UFormField v-for="row in locationRows" :key="row.slug" :label="row.label" :name="`location-${row.slug}`">
             <USelect v-model="locationForm[row.slug]" :items="locationChoices" size="xl" class="w-full sm:w-72" />
           </UFormField>
-          <div>
+          <!-- Without the theme's locations (not read yet, or the site did not answer) a save would empty every placement. -->
+          <div v-if="locationRows.length > 0">
             <UButton type="submit" size="lg" class="min-h-11">{{ $t('appearance.menus.saveLocations') }}</UButton>
           </div>
         </form>

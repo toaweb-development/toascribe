@@ -330,6 +330,10 @@ export function createAppearanceService(options: {
       // Only the active theme's locations (theme.json `menus`): a key it does not have would be stored and shown nowhere.
       const theme = await options.activeTheme.current()
       const unknown = Object.keys(request.locations).filter((key) => theme === null || !Object.hasOwn(theme.menus, key))
+      // A theme without locations (or none) has nothing to place: an empty save would only wipe the stored placements.
+      if (theme === null || Object.keys(theme.menus).length === 0) {
+        throw new AppError(422, 'no_locations', 'The active theme has no menu locations')
+      }
       if (unknown.length > 0) {
         throw new AppError(
           422,

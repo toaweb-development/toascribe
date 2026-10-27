@@ -31,7 +31,7 @@ const Env = z
     UPLOADS_DIR: z.string().startsWith('/').max(500).default('/var/lib/toascribe/uploads'),
     /** The cap on one upload request in MiB; the setting upload_max_size_mb cannot go above it, and the proxy enforces the same. */
     UPLOAD_MAX_SIZE_MB: z.coerce.number().int().min(1).max(4096).default(64),
-    /** Where the api reaches the site on the internal network, to ask which theme is active (services/active-theme.ts). */
+    /** Where the api reaches the site on the internal network, to ask which theme is active (services/active-theme.ts). Its origin only. */
     SITE_URL_INTERNAL: z.url({ protocol: /^https?$/ }).default('http://site:3000'),
   })
   .superRefine((env, ctx) => {

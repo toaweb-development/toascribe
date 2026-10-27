@@ -2,6 +2,7 @@ import type { Context, ErrorHandler, NotFoundHandler } from 'hono'
 import { AlreadyInstalledError, InstallError } from '@toascribe/install'
 import type { InstallErrorCode } from '@toascribe/install'
 import { HTTPException } from 'hono/http-exception'
+import { routePath } from 'hono/route'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { apiError } from '../lib/api-error.ts'
@@ -69,8 +70,10 @@ export const onError: ErrorHandler<AppEnv> = (err, c) => {
   }
   // Two requests that made the same unique thing at once (a slug, a name): the one that lost is told so, not a 500. The service
   // checks first, so this is the race between its check and the insert; the constraint's name is not shown.
-  if (uniqueViolation(err) !== undefined) {
-    c.get('logger').info({ constraint: uniqueViolation(err) }, 'unique violation answered 409')
+  const constraint = uniqueViolation(err)
+  if (constraint !== undefined) {
+    // At warn, with the route: a violation that is not a race (a table the caller never names) is a bug to find in the log.
+    c.get('logger').warn({ constraint, method: c.req.method, route: routePath(c) }, 'unique violation answered 409')
     return errorResponse(c, 409, 'conflict', 'It already exists; it was made at the same time by another request')
   }
   c.get('logger').error({ err }, 'unhandled error')
