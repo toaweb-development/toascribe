@@ -90,6 +90,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('Tilpass (needs TEST_DATABASE_U
     expect((await patch(designer, { identity: { blogname: 'Overtatt' } })).status).toBe(403)
     expect((await patch(designer, { identity: { blogdescription: 'Overtatt' } })).status).toBe(403)
     expect((await patch(designer, { identity: { site_icon: null, blogname: 'Overtatt' } })).status).toBe(403)
+    expect((await patch(designer, { identity: { site_icon: crypto.randomUUID() } })).status).toBe(403)
     // The same values sent back are no change, and the logo is the theme's (edit_theme_options).
     expect((await patch(designer, { identity: { ...answer.identity } })).status).toBe(200)
     expect((await patch(designer, { identity: { site_logo: null } })).status).toBe(200)

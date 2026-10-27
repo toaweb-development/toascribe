@@ -139,7 +139,12 @@ export function createCustomizeService(options: {
           .where(and(eq(extensionState.kind, 'theme'), eq(extensionState.slug, request.theme)))
         if (request.identity !== undefined) {
           const identity = Object.fromEntries(
-            Object.entries(request.identity).filter(([, value]) => value !== undefined),
+            Object.entries(request.identity).filter(
+              ([key, value]) =>
+                value !== undefined &&
+                // Without manage_options, «Generelt»'s keys were checked to be unchanged above: never written back.
+                (auth.capabilities.has('manage_options') || !(GENERAL_KEYS as readonly string[]).includes(key)),
+            ),
           )
           await writeSettings(tx, identity)
         }
