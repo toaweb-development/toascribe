@@ -69,6 +69,11 @@ export function itemPage(path: string, page: number): string {
   return page <= 1 ? base : `${base}${String(page)}/`
 }
 
+/** The maintenance view (M1.7): the theme's `maintenance` template, or the core's page. */
+export function maintenanceView<T>(available: Readonly<Record<string, T>>, core: T): T {
+  return Object.hasOwn(available, 'maintenance') ? (available['maintenance'] as T) : core
+}
+
 /** The first template of the answer's list that the theme has; `index` is the last in every list. */
 export function pickTemplate<T>(names: readonly string[], available: Readonly<Record<string, T>>): T | undefined {
   // Own names only: a template called `constructor` is no template, not Object's.

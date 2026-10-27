@@ -2,7 +2,15 @@
 import { createBlock } from '@toascribe/blocks'
 import { describe, expect, it } from 'vitest'
 
-import { addressOf, archivePage, isLocalPath, itemPage, pageBlocks, pickTemplate } from '../app/lib/scribe.ts'
+import {
+  addressOf,
+  archivePage,
+  isLocalPath,
+  itemPage,
+  maintenanceView,
+  pageBlocks,
+  pickTemplate,
+} from '../app/lib/scribe.ts'
 
 describe('the catch-all helpers', () => {
   it('asks the api with only the query it reads, or for a preview link', () => {
@@ -61,5 +69,23 @@ describe('the catch-all helpers', () => {
     ]) {
       expect(isLocalPath(location)).toBe(false)
     }
+  })
+})
+
+describe('maintenanceView', () => {
+  it("takes the theme's maintenance template, and the core's page without one", () => {
+    expect(maintenanceView<string>({ maintenance: 'theme', index: 'index' }, 'core')).toBe('theme')
+    expect(maintenanceView<string>({ index: 'index' }, 'core')).toBe('core')
+    // An own property only: not one of Object's.
+    expect(maintenanceView<string>(Object.create({ maintenance: 'inherited' }) as Record<string, string>, 'core')).toBe(
+      'core',
+    )
+  })
+})
+
+describe('itemPage under «Enkel»', () => {
+  it('writes &page= for a /?p= address', () => {
+    expect(itemPage('/?p=12', 2)).toBe('/?p=12&page=2')
+    expect(itemPage('/?p=12', 1)).toBe('/?p=12')
   })
 })

@@ -20,10 +20,10 @@ test.afterEach(async () => {
 test('visitors get the maintenance page with 503, the administrator the site', async ({
   page,
   playwright,
-  allowFailedRequests,
+  allowMaintenance,
 }) => {
   // The 503 is the point; the browser logs it.
-  allowFailedRequests()
+  allowMaintenance()
   const message = `Tilbake snart ${uniqueName('vedlikehold')}`
   const secret = `Innlegg ${uniqueName('skjult')}`
   const writer = await playwright.request.newContext({ baseURL: baseUrl() })

@@ -52,11 +52,22 @@ describe('toa maintenance', () => {
         since: null,
       })
 
+      // A new turn on does not bring back the last message or wait.
+      expect((await cli(['on'])).code).toBe(0)
+      expect(JSON.parse((await cli(['status', '--format', 'json'])).stdout)).toMatchObject({
+        enabled: true,
+        message: '',
+        retryAfter: 600,
+      })
+      expect((await cli(['off'])).code).toBe(0)
+
       const audit = await query<{ action: string; actor: string; source: string }>(
         database.url,
         `select action, actor, source from audit_log where object_id = 'maintenance_mode' order by id`,
       )
       expect(audit).toEqual([
+        { action: 'maintenance.enabled', actor: 'cli', source: 'cli' },
+        { action: 'maintenance.disabled', actor: 'cli', source: 'cli' },
         { action: 'maintenance.enabled', actor: 'cli', source: 'cli' },
         { action: 'maintenance.disabled', actor: 'cli', source: 'cli' },
       ])

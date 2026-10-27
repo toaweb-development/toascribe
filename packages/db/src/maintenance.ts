@@ -36,14 +36,15 @@ export async function setMaintenanceMode<TSchema extends Record<string, unknown>
   now: Date,
 ): Promise<MaintenanceMode> {
   const before = await readMaintenanceMode(db)
+  // A new turn on starts from the defaults (no message, 600 s); only a change while it is on keeps what was not given.
   const value: MaintenanceMode = next.enabled
     ? {
         enabled: true,
-        message: next.message ?? before.message,
-        retryAfter: next.retryAfter ?? before.retryAfter,
+        message: next.message ?? (before.enabled ? before.message : OFF.message),
+        retryAfter: next.retryAfter ?? (before.enabled ? before.retryAfter : OFF.retryAfter),
         since: before.enabled && before.since !== null ? before.since : now.toISOString(),
       }
-    : { ...before, enabled: false, since: null }
+    : { ...OFF, enabled: false }
   await writeSetting(db, 'maintenance_mode', value)
   await db.insert(cacheInvalidation).values({ tag: '*', changedAt: now })
   return value

@@ -9,13 +9,16 @@ import type { Page } from '@playwright/test'
 interface Fixtures {
   /** Call in a test that provokes a 4xx answer on purpose. Failed requests are then not counted; everything else still is. */
   allowFailedRequests: () => void
+  /** Call in a test of maintenance mode (M1.7): its 503 answers are then not counted (only those). */
+  allowMaintenance: () => void
 }
 
-/** The tests that said a refusal is expected. */
+/** The tests that said a refusal is expected, and those that expect maintenance mode's 503. */
 const allowed = new Set<string>()
+const maintenance = new Set<string>()
 
-// A refusal (4xx), or 503 from maintenance mode (M1.7), in a test that expects one.
-const FAILED_REQUEST = /Failed to load resource: the server responded with a status of (4\d\d|503)/
+const FAILED_REQUEST = /Failed to load resource: the server responded with a status of 4\d\d/
+const SERVICE_UNAVAILABLE = /Failed to load resource: the server responded with a status of 503/
 
 export const test = base.extend<Fixtures>({
   // eslint-disable-next-line no-empty-pattern -- Playwright reads the fixtures a function needs from its first argument, and this needs none
@@ -23,6 +26,12 @@ export const test = base.extend<Fixtures>({
     // The flag is read after the test body, by `page` below.
     await use(() => {
       allowed.add(test.info().testId)
+    })
+  },
+  // eslint-disable-next-line no-empty-pattern -- as above
+  allowMaintenance: async ({}, use) => {
+    await use(() => {
+      maintenance.add(test.info().testId)
     })
   },
   page: async ({ page }, use, testInfo) => {
@@ -42,7 +51,11 @@ export const test = base.extend<Fixtures>({
     })
     await use(page)
     const tolerated = allowed.has(testInfo.testId)
-    const counted = problems.filter((problem) => !(tolerated && FAILED_REQUEST.test(problem)))
+    const inMaintenance = maintenance.has(testInfo.testId)
+    const counted = problems.filter(
+      (problem) =>
+        !(tolerated && FAILED_REQUEST.test(problem)) && !(inMaintenance && SERVICE_UNAVAILABLE.test(problem)),
+    )
     expect(counted, 'the console must stay empty').toEqual([])
   },
 })

@@ -20,17 +20,20 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const address = addressOf(to)
   const key = JSON.stringify(address)
   // The server resolved this address already: the browser takes its answer from the payload.
-  if (state.value?.key === key || maintenance.value) return
+  if (state.value?.key === key && !maintenance.value) return
 
   // Maintenance mode (M1.7, K-288): the settings first, and for anyone who may not manage the site, nothing of the address is asked
   // for (no content reaches the page or its payload): 503 with Retry-After, and the maintenance page (theme or core).
-  if (settings.value === null) {
+  // In the browser the settings are asked again on each navigation (cached by tag on the server), so maintenance mode turned on or
+  // off since the page loaded shows on the next page.
+  if (settings.value === null || import.meta.client) {
     try {
       settings.value = await fetcher<PublicSettings>('/_toascribe/data/settings')
     } catch {
       return abortNavigation(createError({ statusCode: 503, statusMessage: 'Service Unavailable', fatal: true }))
     }
   }
+  maintenance.value = false
   if (settings.value.maintenance.enabled && !(await mayManageSite())) {
     maintenance.value = true
     if (event !== undefined) {
