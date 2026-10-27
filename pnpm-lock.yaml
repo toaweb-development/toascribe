@@ -589,6 +589,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@toascribe/backup':
+        specifier: workspace:*
+        version: link:../../packages/backup
       '@toascribe/db':
         specifier: workspace:*
         version: link:../../packages/db

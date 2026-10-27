@@ -10,3 +10,5 @@ export { APP_ROLE, checkBackup, discardChecked, restoreBackup } from './restore.
 export type { CheckedBackup, RestoreOptions, RestoredBackup } from './restore.ts'
 export { ToolError } from './tools.ts'
 export { recordBackupStatus, statusReason } from './status.ts'
+export { takeBackup } from './take.ts'
+export type { TakeOptions } from './take.ts'

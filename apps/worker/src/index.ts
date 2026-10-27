@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 // Entry point: `node dist/index.js` in production, `node --watch src/index.ts` in development
 // (typescript §3, §13). Runs pg-boss and shuts down in order on SIGTERM/SIGINT.
 import { createDb } from '@toascribe/db'
@@ -25,6 +26,14 @@ function loadConfigOrExit() {
     }
     return process.exit(1)
   }
+}
+
+/** The version a backup is stamped with: this package's (every workspace package carries the release's version). */
+function readVersion(): string {
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    version?: unknown
+  }
+  return typeof manifest.version === 'string' ? manifest.version : '0.0.0'
 }
 
 const config = loadConfigOrExit()
@@ -99,6 +108,9 @@ try {
     logger,
     heartbeatFile: config.WORKER_HEARTBEAT_FILE,
     uploadsDir: config.UPLOADS_DIR,
+    backupsDir: config.BACKUPS_DIR,
+    configFile: config.TOASCRIBE_CONFIG_FILE,
+    version: readVersion(),
   })
 } catch (err) {
   // Typically "pg-boss is not installed": the migration step has not run yet. Exit so the

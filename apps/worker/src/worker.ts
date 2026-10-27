@@ -28,6 +28,10 @@ export interface WorkerOptions {
   readonly pollingSeconds?: number
   /** UPLOADS_DIR: the media library's volume. */
   readonly uploadsDir: string
+  /** The backups volume and toascribe.toml (M1.7), and the version a backup is stamped with. */
+  readonly backupsDir: string
+  readonly configFile: string
+  readonly version: string
   /** Tests only: the clock of the clean-up jobs. */
   readonly now?: () => Date
 }
@@ -73,6 +77,15 @@ export async function startWorker(options: WorkerOptions): Promise<Worker> {
         },
         cleanup: { db: options.db, logger, ...(options.now === undefined ? {} : { now: options.now }) },
         content: { db: options.db, logger, ...(options.now === undefined ? {} : { now: options.now }) },
+        backup: {
+          databaseUrl: options.databaseUrl,
+          uploadsDir: options.uploadsDir,
+          backupsDir: options.backupsDir,
+          configFile: options.configFile,
+          version: options.version,
+          logger,
+          ...(options.now === undefined ? {} : { now: options.now }),
+        },
         media: {
           db: options.db,
           logger,

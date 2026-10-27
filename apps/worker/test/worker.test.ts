@@ -114,7 +114,18 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
     const { logger } = lines()
     // "not installed" is pg-boss's migrate:false check; with migrate:true the app role would try DDL instead.
     await expect(
-      startWorker({ pool, db, databaseUrl: database.appUrl, logger, heartbeatFile, uploadsDir: tmpdir(), ...MAIL }),
+      startWorker({
+        pool,
+        db,
+        databaseUrl: database.appUrl,
+        logger,
+        heartbeatFile,
+        uploadsDir: tmpdir(),
+        backupsDir: tmpdir(),
+        configFile: '/nonexistent/toascribe.toml',
+        version: '0.0.0',
+        ...MAIL,
+      }),
     ).rejects.toThrow('pg-boss is not installed')
     expect(await isHeartbeatFresh(heartbeatFile)).toBe(false)
     await pool.end()
@@ -152,6 +163,9 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('worker (needs TEST_DATABASE_UR
       logger,
       heartbeatFile,
       uploadsDir: tmpdir(),
+      backupsDir: tmpdir(),
+      configFile: '/nonexistent/toascribe.toml',
+      version: '0.0.0',
       ...MAIL,
     })
 

@@ -17,6 +17,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
+    "@toascribe/backup": "workspace:*",
     "@toascribe/db": "workspace:*",
     "@toascribe/install": "workspace:*",
     "@toascribe/media": "workspace:*",

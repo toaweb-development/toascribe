@@ -12,6 +12,8 @@ import { emailHandler } from './email.ts'
 import { MEDIA_QUEUE_OPTIONS, MEDIA_SWEEP, runMediaJob, sweepPending } from './media.ts'
 import type { MediaJobDeps } from './media.ts'
 import type { EmailJobDeps } from './email.ts'
+import { BACKUP_CRON, BACKUP_DAILY, dailyBackupOn, runDailyBackup } from './backup.ts'
+import type { BackupJobDeps } from './backup.ts'
 
 export interface JobsOptions {
   readonly email: EmailJobDeps
@@ -20,6 +22,8 @@ export interface JobsOptions {
   readonly content: ContentJobDeps
   /** The media jobs (M1.2): sizes, edits and regeneration with sharp. */
   readonly media: MediaJobDeps
+  /** The daily backup (M1.7), when toascribe.toml turns it on. */
+  readonly backup: BackupJobDeps
   /** How often a worker looks for a new job, in seconds, on every queue. Default: 2 for mail (pg-boss's own), 30 for the clean-up. Tests set it low. */
   readonly pollingSeconds?: number
 }
@@ -77,6 +81,13 @@ export async function registerJobs(boss: PgBoss, options: JobsOptions, logger: L
     await sweepPending(options.media, boss)
   })
   await boss.schedule(MEDIA_SWEEP, '*/5 * * * *', null, { tz: SCHEDULE_TIMEZONE })
+  // The daily backup: scheduled when toascribe.toml says so, and the schedule removed when it does not (read at each start).
+  await boss.createQueue(BACKUP_DAILY, CLEANUP_QUEUE_OPTIONS)
+  await boss.work(BACKUP_DAILY, { batchSize: 1, pollingIntervalSeconds: options.pollingSeconds ?? 60 }, async () => {
+    await runDailyBackup(options.backup)
+  })
+  if (dailyBackupOn(options.backup)) await boss.schedule(BACKUP_DAILY, BACKUP_CRON, null, { tz: SCHEDULE_TIMEZONE })
+  else await boss.unschedule(BACKUP_DAILY)
   logger.info(
     {
       queues: [
@@ -85,6 +96,7 @@ export async function registerJobs(boss: PgBoss, options: JobsOptions, logger: L
         ...CONTENT_JOBS.map((job) => job.queue),
         MEDIA_QUEUE,
         MEDIA_SWEEP,
+        BACKUP_DAILY,
       ],
       schedules: CLEANUP_JOBS.length + CONTENT_JOBS.length + 1,
     },

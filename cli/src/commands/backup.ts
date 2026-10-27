@@ -10,17 +10,14 @@ import {
   BackupError,
   ToolError,
   checkBackup,
-  createBackup,
   discardChecked,
   findBackup,
   listBackups,
   pruneBackups,
   readBackup,
   readBackupConfig,
-  readDatabaseMigration,
-  recordBackupStatus,
   restoreBackup,
-  statusReason,
+  takeBackup,
 } from '@toascribe/backup'
 import {
   createDb,
@@ -101,56 +98,24 @@ function failed(err: unknown, logger: Logger, command: string): CliResult {
 }
 
 /** Makes a backup (as the role in `databaseUrl`) and records its status. */
-export async function makeBackup(
+export function makeBackup(
   config: {
     readonly databaseUrl: string
     readonly UPLOADS_DIR: string
     readonly BACKUPS_DIR: string
     readonly TOASCRIBE_CONFIG_FILE: string
   },
-  options: { readonly includeSecrets: boolean; readonly env: CommandOptions['env']; readonly scheduled: boolean },
+  options: { readonly includeSecrets: boolean; readonly env: CommandOptions['env'] },
 ) {
-  const settings = readBackupConfig(config.TOASCRIBE_CONFIG_FILE)
-  const now = new Date()
-  const { db, pool } = createDb({ connectionString: config.databaseUrl, max: 1, applicationName: 'toascribe-cli' })
-  let migration: { tag: string; when: number }
-  try {
-    migration = await readDatabaseMigration(db)
-  } finally {
-    await pool.end()
-  }
-  try {
-    const made = await createBackup({
-      databaseUrl: config.databaseUrl,
-      uploadsDir: config.UPLOADS_DIR,
-      backupsDir: config.BACKUPS_DIR,
-      version: readVersion(),
-      migration,
-      now,
-      encrypt: settings.encrypt,
-      ...(settings.recipient === undefined ? {} : { recipient: settings.recipient }),
-      ...(options.includeSecrets ? { secrets: loadSecretValues(options.env) } : {}),
-    })
-    await recordBackupStatus(config.databaseUrl, {
-      at: now.toISOString(),
-      ok: true,
-      file: made.file.split('/').pop() ?? null,
-      size: made.size,
-      error: null,
-      scheduled: settings.schedule,
-    }).catch(() => undefined)
-    return made
-  } catch (err) {
-    await recordBackupStatus(config.databaseUrl, {
-      at: now.toISOString(),
-      ok: false,
-      file: null,
-      size: null,
-      error: statusReason(err),
-      scheduled: settings.schedule,
-    }).catch(() => undefined)
-    throw err
-  }
+  return takeBackup({
+    databaseUrl: config.databaseUrl,
+    uploadsDir: config.UPLOADS_DIR,
+    backupsDir: config.BACKUPS_DIR,
+    configFile: config.TOASCRIBE_CONFIG_FILE,
+    version: readVersion(),
+    now: new Date(),
+    ...(options.includeSecrets ? { secrets: loadSecretValues(options.env) } : {}),
+  })
 }
 
 export async function backup(args: readonly string[], options: CommandOptions = {}): Promise<CliResult> {
@@ -191,7 +156,7 @@ async function backupCreate(args: readonly string[], options: CommandOptions): P
   try {
     const made = await makeBackup(
       { ...config, databaseUrl: config.DATABASE_URL },
-      { includeSecrets: flags['include-secrets'] === true, env: options.env, scheduled: false },
+      { includeSecrets: flags['include-secrets'] === true, env: options.env },
     )
     await audit(config.DATABASE_URL, 'backup.created', {
       file: made.file.split('/').pop() ?? '',
@@ -410,10 +375,7 @@ export async function dbMigrate(
       )
     } else {
       try {
-        const made = await makeBackup(
-          { ...config, databaseUrl: ownerUrl },
-          { includeSecrets: false, env: options.env, scheduled: false },
-        )
+        const made = await makeBackup({ ...config, databaseUrl: ownerUrl }, { includeSecrets: false, env: options.env })
         lines.push(`Backup made before the migrations: ${made.file.split('/').pop() ?? made.file}.`)
       } catch (err) {
         const result = failed(err, logger, `${command} (the backup before the migrations)`)
