@@ -2,6 +2,7 @@
   "theme": {
     "skip": "Hopp til innholdet",
     "footer": "{site} · drevet av toascribe",
+    "poweredBy": "Drevet av toascribe",
     "by": "av",
     "in": "i",
     "tags": "Stikkord:",

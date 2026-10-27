@@ -101,11 +101,14 @@ services:
     environment:
       # Where server-side rendering reaches the api (runtimeConfig.apiUrlInternal).
       NUXT_API_URL_INTERNAL: http://api:3001
+      # The shared data cache in Valkey (the `valkey` profile), e.g. redis://valkey:6379. Empty: the site caches in its own memory.
+      NUXT_CACHE_VALKEY_URL: ${TOASCRIBE_CACHE_VALKEY_URL:-}
     read_only: true
     tmpfs:
       - /tmp
     networks:
       - internal
+      - cache
     depends_on:
       api:
         condition: service_healthy
@@ -326,8 +329,8 @@ services:
         limits:
           memory: 1G
 
-  # Optional cache and queue backend. Off by default and not used by the apps yet:
-  #   docker compose --profile valkey up -d      (or COMPOSE_PROFILES=valkey in .env)
+  # Optional shared cache of the site's data (M1.4), for several site instances. Off by default; one instance caches in memory:
+  #   docker compose --profile valkey up -d      (or COMPOSE_PROFILES=valkey in .env), with TOASCRIBE_CACHE_VALKEY_URL set
   valkey:
     <<: *hardened
     profiles:
@@ -339,8 +342,9 @@ services:
     read_only: true
     tmpfs:
       - /data
+    # Only the site reaches it (the `cache` network); it has no password, so it is on no network the other apps share.
     networks:
-      - db
+      - cache
     healthcheck:
       test: ['CMD', 'valkey-cli', 'ping']
       interval: 10s
@@ -401,8 +405,11 @@ networks:
         - subnet: ${TOASCRIBE_EDGE_SUBNET:-10.231.97.0/24}
   # The apps talk to each other here.
   internal: {}
-  # Postgres and valkey live here and nowhere else. `internal: true`: no route out of the network.
+  # Postgres lives here and nowhere else. `internal: true`: no route out of the network.
   db:
+    internal: true
+  # The site and its optional Valkey cache.
+  cache:
     internal: true
 
 volumes:

@@ -76,6 +76,7 @@ catalog:
   '@nuxtjs/i18n': ^10.6.0 # screen text goes through i18n from the start (bokmål only for now); 10.x supports Nuxt 4
   '@iconify-json/lucide': ^1.2.147 # Nuxt UI's default icon set, served from the build instead of api.iconify.design
   tailwindcss: ^4.3.3 # Nuxt UI's peer; the module registers @tailwindcss/vite itself
+  ioredis: ^5.11.1 # the site's data cache in Valkey when several instances share it (PLAN «Cache og invalidering»); the major Nitro itself uses
   smol-toml: ^1.9.1 # reads toascribe.toml (PLAN: the theme is chosen there) in apps/site's nuxt.config; TOML has rules a hand parser would get wrong
   ofetch: ^1.5.1 # the fetch that Nuxt's $fetch is built on; nuxt-base's tests run the API client on the real one, not a stand-in
   nuxt-security: ^2.6.0 # the nonce-based CSP of the site and the admin (nuxt-base) and security headers (K-314): a per-request nonce on Nuxt's inline scripts is what a static header cannot give

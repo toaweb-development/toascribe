@@ -19,7 +19,8 @@ const pageTitle = computed(() => {
   if (kind.value === '404') return t('scribe.head.notFound')
   return ''
 })
-const siteTitle = computed(() => settings.value?.title ?? '')
+// A site without a name (it has not been given one) is called by the product's name, so no page is without a title (WCAG 2.4.2).
+const siteTitle = computed(() => settings.value?.title || t('brand.name'))
 const description = computed(
   () => content.value?.seo.description ?? (content.value?.excerpt || settings.value?.tagline) ?? undefined,
 )
@@ -28,7 +29,7 @@ const noindex = computed(
 )
 
 useHead({
-  title: () => (pageTitle.value === '' ? siteTitle.value : `${pageTitle.value} – ${siteTitle.value}`),
+  title: () => [pageTitle.value, siteTitle.value].filter((part) => part !== '').join(' – '),
   meta: [
     { name: 'description', content: () => description.value },
     { name: 'robots', content: () => (noindex.value ? 'noindex' : undefined) },

@@ -12,7 +12,7 @@ const settings = useSettings()
     <header class="theme-header">
       <div class="theme-wrap theme-header-inner">
         <div>
-          <a href="/" class="theme-site-title">{{ settings?.title }}</a>
+          <a href="/" class="theme-site-title">{{ settings?.title || t('brand.name') }}</a>
           <p v-if="settings?.tagline" class="theme-tagline">{{ settings.tagline }}</p>
         </div>
         <ScribeSearchForm />
@@ -23,7 +23,7 @@ const settings = useSettings()
     </main>
     <footer class="theme-footer">
       <div class="theme-wrap">
-        <p>{{ t('theme.footer', { site: settings?.title ?? '' }) }}</p>
+        <p>{{ settings?.title ? t('theme.footer', { site: settings.title }) : t('theme.poweredBy') }}</p>
       </div>
       <ScribeFooter />
     </footer>

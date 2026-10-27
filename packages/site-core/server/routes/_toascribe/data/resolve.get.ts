@@ -4,5 +4,6 @@ import { ResolveQuery, ResolveResponse } from '@toascribe/shared'
 export default defineEventHandler(async (event) => {
   const { path } = await getValidatedQuery(event, (query) => ResolveQuery.parse(query))
   privateAnswer(event)
-  return ResolveResponse.parse(await fromPublicApi(event, `/resolve?${new URLSearchParams({ path }).toString()}`))
+  const target = `/resolve?${new URLSearchParams({ path }).toString()}`
+  return ResolveResponse.parse(await cachedFromPublicApi(event, target))
 })

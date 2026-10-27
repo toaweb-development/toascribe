@@ -33,6 +33,10 @@
       "wait": "For mange forsøk. Vent litt og prøv igjen.",
       "failed": "Fikk ikke kontakt. Prøv igjen."
     },
-    "preview": "Forhåndsvisning"
+    "preview": "Forhåndsvisning",
+    "query": {
+      "untitled": "(uten tittel)",
+      "empty": "Ingen innlegg å vise."
+    }
   }
 }

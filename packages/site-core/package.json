@@ -26,6 +26,7 @@
     "@toascribe/blocks": "workspace:*",
     "@toascribe/nuxt-base": "workspace:*",
     "@toascribe/shared": "workspace:*",
+    "ioredis": "catalog:",
     "vue": "catalog:"
   },
   "devDependencies": {
