@@ -109,7 +109,9 @@ onMounted(async () => {
     authors.value = (await contentApi.authors(props.type).catch(() => ({ authors: [] }))).authors
   }
   if (props.type === 'page') {
-    const tree = await contentApi.list({ type: 'page', per_page: 100 }).catch(() => undefined)
+    const tree = await listAll(contentApi.list, { type: 'page' })
+      .then((items) => ({ items }))
+      .catch(() => undefined)
     const below = new Set<string>(props.id === undefined ? [] : [props.id])
     for (const entry of tree?.items ?? []) if (entry.parentId !== null && below.has(entry.parentId)) below.add(entry.id)
     parents.value = (tree?.items ?? [])

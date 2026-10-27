@@ -211,10 +211,10 @@ async function loadAuthors(): Promise<ContentAuthorRef[]> {
   return authors.value
 }
 
-/** The pages a page can be put under: the page tree (up to 100), without the page and the pages below it. */
+/** The pages a page can be put under: the whole page tree, without the page and the pages below it. */
 async function loadParents(exclude: string | undefined): Promise<{ id: string; label: string }[]> {
   if (props.type !== 'page') return []
-  const tree = await contentApi.list({ type: 'page', per_page: 100 })
+  const tree = { items: await listAll(contentApi.list, { type: 'page' }) }
   const below = new Set<string>(exclude === undefined ? [] : [exclude])
   for (const entry of tree.items) {
     if (entry.parentId !== null && below.has(entry.parentId)) below.add(entry.id)

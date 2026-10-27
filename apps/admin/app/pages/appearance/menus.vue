@@ -123,7 +123,9 @@ const { data: sources } = await useAsyncData(
   'appearance:menu-sources',
   async () => {
     const [pages, posts, categories, tags] = await Promise.all([
-      contentApi.list({ type: 'page', status: 'publish', per_page: 100, orderby: 'title', order: 'asc' }),
+      listAll(contentApi.list, { type: 'page', status: 'publish', orderby: 'title', order: 'asc' }).then((items) => ({
+        items,
+      })),
       contentApi.list({ type: 'post', status: 'publish', per_page: 20 }),
       termsApi.all('category'),
       termsApi.all('post_tag'),
