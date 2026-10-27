@@ -74,7 +74,9 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('«Deling og søkemotorer» (ne
       (await admin.patch('/api/v1/settings/reading', { seo_default_image: pdf.id })).status,
       'a PDF is no sharing image',
     ).toBe(400)
-    expect((await admin.patch('/api/v1/settings/reading', { seo_publisher_logo: crypto.randomUUID() })).status).toBe(400)
+    expect((await admin.patch('/api/v1/settings/reading', { seo_publisher_logo: crypto.randomUUID() })).status).toBe(
+      400,
+    )
     const res = await admin.patch('/api/v1/settings/reading', {
       seo_default_image: sharing.id,
       seo_publisher_name: '  Fjell AS  ',
@@ -92,17 +94,22 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('«Deling og søkemotorer» (ne
 
   it('names a person by their author page, only one with something published', async () => {
     expect(
-      (await admin.patch('/api/v1/settings/reading', { seo_publisher_type: 'person', seo_publisher_person: adminId })).status,
+      (await admin.patch('/api/v1/settings/reading', { seo_publisher_type: 'person', seo_publisher_person: adminId }))
+        .status,
       'nothing published yet',
     ).toBe(400)
     const post = await admin.post('/api/v1/content', { type: 'post', title: 'Første', status: 'publish' })
     expect(post.status).toBe(201)
     const people = ReadingSettingsResponse.parse(await (await admin.get('/api/v1/settings/reading')).json()).people
     expect(people.map((person) => person.id)).toContain(adminId)
-    const res = await admin.patch('/api/v1/settings/reading', { seo_publisher_type: 'person', seo_publisher_person: adminId })
+    const res = await admin.patch('/api/v1/settings/reading', {
+      seo_publisher_type: 'person',
+      seo_publisher_person: adminId,
+    })
     expect(res.status, await res.clone().text()).toBe(200)
     const nicename =
-      (await env.query<{ nicename: string }>(`select nicename from account where id = $1`, [adminId]))[0]?.nicename ?? ''
+      (await env.query<{ nicename: string }>(`select nicename from account where id = $1`, [adminId]))[0]?.nicename ??
+      ''
     expect((await publicSettings()).seo.publisher).toEqual({
       type: 'person',
       name: expect.any(String) as unknown,
