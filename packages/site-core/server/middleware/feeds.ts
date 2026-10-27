@@ -12,13 +12,11 @@ import {
 } from '@toascribe/shared'
 import type { H3Event } from 'h3'
 
-import { feedHtml, robotsTxt, rssXml, sitemapIndexXml, sitemapXml } from '../../lib/feeds'
+import { feedHtml, feedTarget, robotsTxt, rssXml, sitemapIndexXml, sitemapXml } from '../../lib/feeds'
 
-const FEED = /^(\/(?:[^?#]*\/)?)feed\/?$/
 const SITEMAP_FILE = /^\/sitemap-([a-z]+)-([1-9]\d{0,5})\.xml$/
-/** The api's limits: the highest sitemap page, and the longest feed address. */
+/** The api's highest sitemap page. */
 const MAX_SITEMAP_PAGE = 100_000
-const MAX_FEED_PREFIX = 2000
 
 function answer(event: H3Event, type: string, body: string): string {
   setResponseHeader(event, 'content-type', `${type}; charset=utf-8`)
@@ -67,15 +65,11 @@ export default defineEventHandler(async (event) => {
       : answer(event, 'application/xml', sitemapXml(PublicSitemapPage.parse(found)))
   }
 
-  const feed = FEED.exec(pathname)
-  if (feed === null) return
-  // A path that is not plainly one on this site (`//host/feed`, which `/.//host/feed` becomes once its dot segments are gone, or a
-  // backslash) has no feed, and is never sent anywhere.
-  if (!isSiteLocation(`${pathname}/`)) return notFound(event)
-  // `/feed` and `<archive>/feed` without the closing slash go to the address with it, as WordPress' do.
-  if (!pathname.endsWith('/')) return sendRedirect(event, `${pathname}/`, 301)
-  const prefix = feed[1] ?? '/'
-  if (prefix.length > MAX_FEED_PREFIX) return notFound(event)
+  const target = feedTarget(pathname)
+  if (target.kind === 'none') return
+  if (target.kind === 'not-found') return notFound(event)
+  if (target.kind === 'redirect') return sendRedirect(event, target.location, 301)
+  const prefix = target.prefix
   const found = await read(event, `/feed?path=${encodeURIComponent(prefix)}`)
   if (found === undefined) return notFound(event)
   const parsed = PublicFeedResponse.parse(found)

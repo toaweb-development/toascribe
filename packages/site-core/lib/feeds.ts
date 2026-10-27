@@ -3,7 +3,7 @@
 // it and drops the characters XML does not allow, so a title with `&`, `<` or a control character cannot break the document.
 import { BlockDocument } from '@toascribe/block-views'
 import type { Block } from '@toascribe/blocks'
-import { xmlCdata, xmlText } from '@toascribe/shared'
+import { isSiteLocation, xmlCdata, xmlText } from '@toascribe/shared'
 import type { ContentMediaRef, PublicFeed, PublicSitemapIndex, PublicSitemapPage } from '@toascribe/shared'
 import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
@@ -120,4 +120,26 @@ export function robotsTxt(settings: { readonly searchEngineVisible: boolean; rea
   if (!settings.searchEngineVisible) return 'User-agent: *\nDisallow: /\n'
   const origin = settings.origin.replace(/\/+$/, '')
   return `User-agent: *\nDisallow: /admin/\n\nSitemap: ${origin}/sitemap.xml\n`
+}
+
+const FEED = /^(\/(?:[^?#]*\/)?)feed\/?$/
+/** The longest address before `feed/` the api reads. */
+const MAX_FEED_PREFIX = 2000
+
+/**
+ * What an address means as a feed: none (not a feed address), a 404, a redirect to the address with its closing slash (as
+ * WordPress' `/feed` does), or the feed of the address before `feed/`. A path that is not plainly one on this site (`//host/feed`,
+ * which `/.//host/feed` becomes once its dot segments are gone, or a backslash) is a 404 and never a redirect.
+ */
+export function feedTarget(
+  pathname: string,
+):
+  { kind: 'none' } | { kind: 'not-found' } | { kind: 'redirect'; location: string } | { kind: 'feed'; prefix: string } {
+  const found = FEED.exec(pathname)
+  if (found === null) return { kind: 'none' }
+  const location = pathname.endsWith('/') ? pathname : `${pathname}/`
+  if (!isSiteLocation(location)) return { kind: 'not-found' }
+  if (!pathname.endsWith('/')) return { kind: 'redirect', location }
+  const prefix = found[1] ?? '/'
+  return prefix.length > MAX_FEED_PREFIX ? { kind: 'not-found' } : { kind: 'feed', prefix }
 }

@@ -6,7 +6,16 @@ import { createBlock } from '@toascribe/blocks'
 import type { PublicFeed } from '@toascribe/shared'
 import { describe, expect, it } from 'vitest'
 
-import { absoluteUrls, feedHtml, rfc822, robotsTxt, rssXml, sitemapIndexXml, sitemapXml } from '../lib/feeds'
+import {
+  absoluteUrls,
+  feedHtml,
+  feedTarget,
+  rfc822,
+  robotsTxt,
+  rssXml,
+  sitemapIndexXml,
+  sitemapXml,
+} from '../lib/feeds'
 
 const ORIGIN = 'https://blogg.example'
 
@@ -179,5 +188,26 @@ describe('robots.txt', () => {
 
   it('shuts everything when it may not, as WordPress does', () => {
     expect(robotsTxt({ searchEngineVisible: false, origin: ORIGIN })).toBe('User-agent: *\nDisallow: /\n')
+  })
+})
+
+describe('feedTarget', () => {
+  it('reads the feed addresses, and sends /feed to /feed/', () => {
+    expect(feedTarget('/feed/')).toEqual({ kind: 'feed', prefix: '/' })
+    expect(feedTarget('/category/nyheter/lokalt/feed/')).toEqual({ kind: 'feed', prefix: '/category/nyheter/lokalt/' })
+    expect(feedTarget('/feed')).toEqual({ kind: 'redirect', location: '/feed/' })
+    expect(feedTarget('/tag/fjell/feed')).toEqual({ kind: 'redirect', location: '/tag/fjell/feed/' })
+    expect(feedTarget('/hei/')).toEqual({ kind: 'none' })
+  })
+
+  it('never sends a path that names another host anywhere', () => {
+    for (const path of [
+      '//evil.example/feed',
+      '//evil.example/feed/',
+      '/\\evil.example/feed',
+      `/${'a/'.repeat(1001)}feed/`,
+    ]) {
+      expect(feedTarget(path), path).toEqual({ kind: 'not-found' })
+    }
   })
 })

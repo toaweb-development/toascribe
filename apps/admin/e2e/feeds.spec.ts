@@ -68,7 +68,8 @@ test('the feed, a category feed, the sitemap and robots.txt', async ({ page, pla
     // A path whose dot segments leave `//host/feed` is no feed and goes nowhere (sent as written: Playwright would tidy it).
     for (const raw of ['/.//evil.example/feed', '/%2e//evil.example/feed']) {
       const answer = await rawGet(raw)
-      expect(answer.status, raw).toBe(404)
+      // Refused (the proxy answers 400 to such a path; the site's own check answers 404 behind it), never sent elsewhere.
+      expect([400, 404], raw).toContain(answer.status)
       expect(answer.location, raw).toBeUndefined()
     }
     expect((await request.get('/sitemap-posts-0.xml')).status()).toBe(404)
