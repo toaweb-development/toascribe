@@ -10,7 +10,7 @@ const { t } = useI18n()
 const settingsApi = useSettingsApi()
 useSeoMeta({ title: () => t('settings.general.title') })
 
-const screen = useSettingsScreen<GeneralSettings, Awaited<ReturnType<typeof settingsApi.general>>>({
+const screen = await useSettingsScreen<GeneralSettings, Awaited<ReturnType<typeof settingsApi.general>>>({
   key: 'settings:general',
   load: settingsApi.general,
   save: (changes) => settingsApi.updateGeneral(changes),

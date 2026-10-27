@@ -1,7 +1,7 @@
 // What every settings screen does the same way (M1.5): only for `manage_options` (403 on the server otherwise), the values read once,
 // a form that starts from them, and «Lagre endringer» that sends only what changed. The screen gives its form's fields and how to
 // read and write its group.
-export function useSettingsScreen<S extends Record<string, unknown>, A extends { settings: S }>(options: {
+export async function useSettingsScreen<S extends Record<string, unknown>, A extends { settings: S }>(options: {
   readonly key: string
   readonly load: () => Promise<A>
   readonly save: (changes: Partial<S>) => Promise<A>
@@ -17,7 +17,10 @@ export function useSettingsScreen<S extends Record<string, unknown>, A extends {
     const event = useRequestEvent()
     if (event) setResponseStatus(event, 403)
   }
-  const { data, error, refresh } = useAsyncData(options.key, async () => (mayManage.value ? options.load() : null))
+  // Awaited, so the server draws the form with its values and the browser takes the same page over.
+  const { data, error, refresh } = await useAsyncData(options.key, async () =>
+    mayManage.value ? options.load() : null,
+  )
   const form = ref({}) as Ref<S>
   watch(
     data,

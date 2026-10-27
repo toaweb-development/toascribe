@@ -10,13 +10,13 @@ const settingsApi = useSettingsApi()
 const contentApi = useContentApi()
 useSeoMeta({ title: () => t('settings.privacy.title') })
 
-const screen = useSettingsScreen<PrivacySettings, Awaited<ReturnType<typeof settingsApi.privacy>>>({
+const screen = await useSettingsScreen<PrivacySettings, Awaited<ReturnType<typeof settingsApi.privacy>>>({
   key: 'settings:privacy',
   load: settingsApi.privacy,
   save: (changes) => settingsApi.updatePrivacy(changes),
 })
 const { form, data } = screen
-const { data: pages, refresh: refreshPages } = usePageChoices('privacy', 'all')
+const { data: pages, refresh: refreshPages } = await usePageChoices('privacy', 'all')
 const NONE = '__none__'
 const choices = computed(() => [{ label: t('settings.reading.choose'), value: NONE }, ...pages.value])
 const page = computed({

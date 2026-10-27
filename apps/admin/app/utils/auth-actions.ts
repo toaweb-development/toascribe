@@ -45,5 +45,7 @@ export const NOTICE_QUERY: Readonly<Record<LoginNotice, Record<string, string>>>
 
 /** The actions that are meaningful with a session already open: the others send a signed-in person on. */
 export function allowsSession(action: LoginAction): boolean {
-  return action === 'resetpass' || action === 'setpassword' || action === 'confirmemail'
+  return (
+    action === 'resetpass' || action === 'setpassword' || action === 'confirmemail' || action === 'confirmadminemail'
+  )
 }

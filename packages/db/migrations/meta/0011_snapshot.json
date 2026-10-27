@@ -1,5 +1,5 @@
 {
-  "id": "1e7e16b8-e65d-45ac-82f3-fc0a1d138567",
+  "id": "505e4151-9943-40f5-b2ad-b337212b19e0",
   "prevId": "304e660d-a380-4ac2-9317-5ffb6ce8c474",
   "version": "7",
   "dialect": "postgresql",
@@ -361,7 +361,7 @@
         },
         "ck_account_token_new_email": {
           "name": "ck_account_token_new_email",
-          "value": "(\"account_token\".\"purpose\" in ('email_change', 'admin_email_change')) = (\"account_token\".\"new_email\" is not null)"
+          "value": "(\"account_token\".\"purpose\" = 'email_change' or \"account_token\".\"purpose\" = 'admin_email_change') = (\"account_token\".\"new_email\" is not null)"
         }
       },
       "isRLSEnabled": false

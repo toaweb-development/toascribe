@@ -274,7 +274,7 @@ export const accountToken = pgTable(
     // The pending address belongs to an e-mail change (an account's or the site's), and an e-mail change cannot be without one.
     check(
       'ck_account_token_new_email',
-      sql`(${t.purpose} in ('email_change', 'admin_email_change')) = (${t.newEmail} is not null)`,
+      sql`(${t.purpose} = 'email_change' or ${t.purpose} = 'admin_email_change') = (${t.newEmail} is not null)`,
     ),
     // One-time links go with their account.
     foreignKey({ name: 'fk_account_token_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(

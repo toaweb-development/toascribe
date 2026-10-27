@@ -10,6 +10,7 @@ describe('loginAction', () => {
     ['rp', 'resetpass'],
     ['setpassword', 'setpassword'],
     ['confirmemail', 'confirmemail'],
+    ['confirmadminemail', 'confirmadminemail'],
     ['register', 'register'],
     ['logout', 'logout'],
     ['login', 'login'],
@@ -50,7 +51,11 @@ describe('loginNotice', () => {
 
 describe('allowsSession', () => {
   it('lets the reset, set-password and confirm links work with a session, and sends a signed-in person away from the rest', () => {
-    expect(['resetpass', 'setpassword', 'confirmemail'].every((action) => allowsSession(action as never))).toBe(true)
+    expect(
+      ['resetpass', 'setpassword', 'confirmemail', 'confirmadminemail'].every((action) =>
+        allowsSession(action as never),
+      ),
+    ).toBe(true)
     expect(['login', 'lostpassword', 'register', 'logout'].some((action) => allowsSession(action as never))).toBe(false)
   })
 })

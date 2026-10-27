@@ -74,8 +74,15 @@ describe('MfaConfirmRequest', () => {
 })
 
 describe('AuthOptionsResponse', () => {
-  it('has the site name, which may be empty', () => {
-    expect(AuthOptionsResponse.safeParse({ registrationOpen: false, siteName: '' }).success).toBe(true)
+  it('has the site name, which may be empty, and the privacy page or null (K-199)', () => {
+    expect(
+      AuthOptionsResponse.safeParse({ registrationOpen: false, siteName: '', privacyPolicyPath: null }).success,
+    ).toBe(true)
+    expect(
+      AuthOptionsResponse.safeParse({ registrationOpen: false, siteName: '', privacyPolicyPath: '/personvern/' })
+        .success,
+    ).toBe(true)
+    expect(AuthOptionsResponse.safeParse({ registrationOpen: false, siteName: '' }).success).toBe(false)
     expect(AuthOptionsResponse.safeParse({ registrationOpen: false }).success).toBe(false)
   })
 })

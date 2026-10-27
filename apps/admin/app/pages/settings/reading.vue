@@ -9,13 +9,13 @@ const { t } = useI18n()
 const settingsApi = useSettingsApi()
 useSeoMeta({ title: () => t('settings.reading.title') })
 
-const screen = useSettingsScreen<ReadingSettings, Awaited<ReturnType<typeof settingsApi.reading>>>({
+const screen = await useSettingsScreen<ReadingSettings, Awaited<ReturnType<typeof settingsApi.reading>>>({
   key: 'settings:reading',
   load: settingsApi.reading,
   save: (changes) => settingsApi.updateReading(changes),
 })
 const { form, data } = screen
-const { data: pages } = usePageChoices('reading', 'publish')
+const { data: pages } = await usePageChoices('reading', 'publish')
 const NONE = '__none__'
 const withNone = computed(() => [{ label: t('settings.reading.choose'), value: NONE }, ...pages.value])
 const pageModel = (key: 'page_on_front' | 'page_for_posts') =>

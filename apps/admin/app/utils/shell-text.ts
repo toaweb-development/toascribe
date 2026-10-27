@@ -48,8 +48,16 @@ export function menuLabel({ t, te }: Translator, key: string): string {
       return t('menu.profile')
     case 'menu.settings':
       return t('menu.settings')
+    case 'menu.settingsGeneral':
+      return t('menu.settingsGeneral')
+    case 'menu.settingsWriting':
+      return t('menu.settingsWriting')
+    case 'menu.settingsReading':
+      return t('menu.settingsReading')
     case 'menu.settingsMedia':
       return t('menu.settingsMedia')
+    case 'menu.settingsPrivacy':
+      return t('menu.settingsPrivacy')
     default:
       return te(key) ? t(key) : t('menu.unknown')
   }

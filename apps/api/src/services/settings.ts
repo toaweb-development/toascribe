@@ -111,7 +111,7 @@ export function createSettingsService(options: {
     const changed = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined))
     if (Object.keys(changed).length === 0) return
     await inTransaction(db, async (tx) => {
-      await writeSettings(tx, changed as Parameters<typeof writeSettings>[1])
+      await writeSettings(tx, changed)
       await audit(tx, ctx, {
         actor: { id: auth.account.id, username: auth.account.username },
         action: 'settings.updated',

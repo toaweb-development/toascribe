@@ -10,13 +10,13 @@ const settingsApi = useSettingsApi()
 const termsApi = useTermsApi()
 useSeoMeta({ title: () => t('settings.writing.title') })
 
-const screen = useSettingsScreen<WritingSettings, Awaited<ReturnType<typeof settingsApi.writing>>>({
+const screen = await useSettingsScreen<WritingSettings, Awaited<ReturnType<typeof settingsApi.writing>>>({
   key: 'settings:writing',
   load: settingsApi.writing,
   save: (changes) => settingsApi.updateWriting(changes),
 })
 const { form, data } = screen
-const { data: categories } = useAsyncData(
+const { data: categories } = await useAsyncData(
   'settings:writing:categories',
   async () =>
     (await termsApi.all('category')).map((term) => ({

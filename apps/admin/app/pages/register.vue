@@ -29,12 +29,13 @@ async function onSent() {
         $t('auth.links.lost')
       }}</AuthLink>
       <!-- The privacy policy (K-199): a page on the site, outside the admin's address. -->
-      <a
-        v-if="options?.privacyPolicyPath"
-        :href="options.privacyPolicyPath"
-        class="text-sm text-primary underline underline-offset-2"
-        >{{ $t('auth.links.privacy') }}</a
-      >
+      <li v-if="options?.privacyPolicyPath">
+        <a
+          :href="options.privacyPolicyPath"
+          class="inline-flex min-h-11 items-center text-sm text-toned underline underline-offset-4 hover:text-highlighted"
+          >{{ $t('auth.links.privacy') }}</a
+        >
+      </li>
     </template>
   </AuthShell>
 </template>

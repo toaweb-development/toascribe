@@ -42,9 +42,9 @@ test('Lesing: a static front page, shown on the site', async ({ page }) => {
     await page.goto('/admin/settings/reading')
     await expect(page.getByRole('heading', { name: 'Leseinnstillinger' })).toBeVisible()
     await page.getByRole('radio', { name: 'En statisk side' }).check()
+    await expectNoAxeViolations(page, 'Settings → Reading')
     await page.getByRole('combobox', { name: 'Forside' }).click()
     await page.getByRole('option', { name: title }).click()
-    await expectNoAxeViolations(page, 'Settings → Reading')
     await page.getByRole('button', { name: 'Lagre endringer' }).click()
     await expect(page.getByText('Innstillingene er lagret.')).toBeVisible()
 

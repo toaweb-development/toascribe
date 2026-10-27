@@ -20,6 +20,10 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- «Innstillinger → Generelt», «Skriving», «Lesing» and «Personvern», with WordPress' fields (K-191, K-193, K-194, K-198). A new
+  administrator address is used only after the link sent to it is opened by someone signed in as an administrator (K-192). «Be
+  søkemotorer om ikke å indeksere» adds `noindex` to every page of the site. The privacy page is linked in the default theme's
+  footer and on the registration form once it is published (K-199). One migration (`0011_admin_email_change`).
 - The password form of a protected post works without JavaScript, and «Forhåndsvis» in the post and page lists opens the signed
   preview link on the site, as the editor's button does.
 - The site shows its content (M1.4): every address goes through WordPress' template hierarchy to the active theme's template,
