@@ -215,6 +215,36 @@ test('the password form works without JavaScript', async ({ browser, playwright 
   await context.close()
 })
 
+test('the password form refuses another site, and sends back to this site only', async ({ playwright }) => {
+  const request = await playwright.request.newContext({ baseURL: baseUrl() })
+  const api = await writer(request)
+  const post = await api.create({
+    type: 'post',
+    status: 'publish',
+    title: `Skjemavern ${uniqueName('formguard')}`,
+    password: 'sesam',
+  })
+  const visitor = await playwright.request.newContext({ baseURL: baseUrl() })
+  const send = (origin: string, back: string) =>
+    visitor.post('/_toascribe/unlock', {
+      form: { contentId: post.id, password: 'sesam', return: back },
+      headers: { origin },
+      maxRedirects: 0,
+    })
+  // From another site: no cookie, and back to the form as a wrong password.
+  const foreign = await send('https://evil.example', `/${post.slug}/`)
+  expect(foreign.status()).toBe(303)
+  expect(foreign.headers()['location']).toBe(`/${post.slug}/?postpass=wrong`)
+  expect(foreign.headers()['set-cookie']).toBeUndefined()
+  // A return address that a browser would read as another host goes to the front page instead.
+  const tabbed = await send(baseUrl(), '/\t/evil.example')
+  expect(tabbed.status()).toBe(303)
+  expect(tabbed.headers()['location']).toBe('/')
+  expect(tabbed.headers()['set-cookie']).toContain('__Host-toa_postpass=')
+  await visitor.dispose()
+  await request.dispose()
+})
+
 test('«Forhåndsvis» in the list opens the signed link on the site', async ({ page, context, playwright }) => {
   await signIn(page, author)
   const name = uniqueName('listpreview')

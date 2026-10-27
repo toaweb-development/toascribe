@@ -275,6 +275,8 @@ let previewWaits = false
 async function preview(): Promise<void> {
   // The window is opened in the click itself, before anything is awaited: a window opened after an await is blocked as a pop-up.
   const target = window.open('about:blank', '_blank')
+  // The site's page must not reach back into the signed-in admin window.
+  if (target !== null) target.opener = null
   // With the session gone the preview would show the login screen in that tab: close it, and sign in again here first.
   // Only an answer that nobody is signed in opens the dialog; a network error goes on, and the save or the preview reports it.
   const session = await auth.refresh().catch(() => undefined)

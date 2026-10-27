@@ -25,6 +25,8 @@ const toast = useToast()
  */
 async function preview(): Promise<void> {
   const target = window.open('about:blank', '_blank')
+  // The site's page must not reach back into the signed-in admin window.
+  if (target !== null) target.opener = null
   try {
     const link = await contentApi.previewLink(props.item.id)
     if (target !== null) target.location.href = link.path

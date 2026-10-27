@@ -305,6 +305,14 @@ describe('docker/.env.example', () => {
   })
 })
 
+describe("the site's one form (M1.5)", () => {
+  it('caps the body of the password form, before the api route', () => {
+    const block = caddyfile.indexOf('handle /_toascribe/unlock {')
+    expect(block).toBeGreaterThan(-1)
+    expect(caddyfile.slice(block, block + 200)).toMatch(/max_size 8KiB/)
+  })
+})
+
 describe('the valkey cache (M1.4)', () => {
   it('caps its memory and evicts only entries with a lifetime, never the tag versions', () => {
     const service = compose.slice(compose.indexOf('\n  valkey:'), compose.indexOf('\n  valkey:') + 5000)
@@ -389,8 +397,9 @@ describe('docker/proxy/Caddyfile', () => {
     // Every reverse_proxy replaces X-Real-IP with Caddy's own client_ip (the apps read that header only).
     const proxies = code.match(/reverse_proxy /g) ?? []
     const withHeader = code.match(/reverse_proxy \S+ \{\n\s*header_up X-Real-IP \{client_ip\}\n\s*\}/g) ?? []
-    // The api (twice: the upload routes with their own body limit, and the rest), /uploads, the admin and the site.
-    expect(proxies).toHaveLength(5)
+    // The api (twice: the upload routes with their own body limit, and the rest), /uploads, the admin and the site (twice: its
+    // password form with its own body limit, and the rest).
+    expect(proxies).toHaveLength(6)
     expect(withHeader).toHaveLength(proxies.length)
   })
 

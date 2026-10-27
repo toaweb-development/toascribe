@@ -66,6 +66,8 @@ export default defineNuxtConfig({
     // are pages only: a limiter would count the container health check and a whole office behind one proxy address as one
     // visitor, and refuse them.
     rateLimiter: false,
+    // The apps take no request bodies but one: the site's password form (/_toascribe/unlock), which caps its own (8 KiB, and Caddy
+    // with it).
     requestSizeLimiter: false,
     corsHandler: false,
     allowedMethodsRestricter: false,

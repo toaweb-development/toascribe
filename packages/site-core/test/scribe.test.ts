@@ -50,7 +50,14 @@ describe('the catch-all helpers', () => {
 
   it('follows a redirect to a path on the site only', () => {
     expect(isLocalPath('/hei/')).toBe(true)
-    for (const location of ['//evil.example/', '/\\evil.example', 'https://evil.example/']) {
+    for (const location of [
+      '//evil.example/',
+      '/\\evil.example',
+      'https://evil.example/',
+      '/\t/evil.example',
+      '/\n/evil.example',
+      '/a\\b',
+    ]) {
       expect(isLocalPath(location)).toBe(false)
     }
   })

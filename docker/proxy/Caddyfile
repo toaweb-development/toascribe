@@ -148,6 +148,16 @@
 		method POST
 		path_regexp ^/api/v1/media(/[0-9a-fA-F-]{36}/replace)?$
 	}
+	# The site's one form (the password of a protected post, M1.5) sends a few hundred bytes: nothing more is let through.
+	handle /_toascribe/unlock {
+		request_body {
+			max_size 8KiB
+		}
+		reverse_proxy site:3000 {
+			header_up X-Real-IP {client_ip}
+		}
+	}
+
 	handle @upload {
 		request_body {
 			max_size {$TOASCRIBE_UPLOAD_MAX_SIZE_MB:64}MiB

@@ -73,5 +73,7 @@ export function pickTemplate<T>(names: readonly string[], available: Readonly<Re
 
 /** A redirect the site follows: a path on the site, never another host. */
 export function isLocalPath(location: string): boolean {
-  return location.startsWith('/') && !location.startsWith('//') && !location.startsWith('/\\')
+  // A browser drops tabs and newlines from an address before it reads it, so `/\t/host` is `//host`: no control character, and no
+  // backslash anywhere (a browser reads it as a slash).
+  return location.startsWith('/') && !location.startsWith('//') && !/[\p{Cc}\\]/u.test(location)
 }
