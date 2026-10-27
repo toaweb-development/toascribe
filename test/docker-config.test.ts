@@ -350,6 +350,13 @@ describe('docker/proxy/Caddyfile', () => {
     expect(code).toMatch(/route \{\n\s+rewrite \* \/admin\/login\n\s+redir \* \{uri\} 308\n\s+\}/)
   })
 
+  it("keeps the site's cache change log (M1.4) off the public address: a 404 before the api route", () => {
+    const block = caddyfile.indexOf('handle /api/v1/public/cache/* {')
+    expect(block).toBeGreaterThan(-1)
+    expect(caddyfile.slice(block, caddyfile.indexOf('}', block))).toContain('respond 404')
+    expect(block).toBeLessThan(caddyfile.indexOf('handle /api/* {'))
+  })
+
   it('believes forwarded headers from one configured address only, never private_ranges', () => {
     const code = caddyfile
       .split('\n')
