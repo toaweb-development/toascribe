@@ -27,6 +27,11 @@ worker only), `file-type` and `image-size`.
   pages with «Full bredde», archives, search and 404, and passes WCAG 2.2 AA. The custom HTML block runs as written on the site
   (see SECURITY.md). Signed-in people see a toolbar with «Rediger». «Forhåndsvis» in the editor opens the item on the site
   through a signed link. The editor offers the heading levels and page templates the theme names.
+- The Query Loop block lists published posts or pages by type, category, tag and order, as the page is shown (K-085).
+- The site caches the api's answers by tag, and a change clears what it touched on the next request. One instance keeps the cache
+  in memory. Several instances share it in Valkey: turn on the `valkey` profile and set `TOASCRIBE_CACHE_VALKEY_URL`. Valkey now
+  runs on a network of its own with the site. Nothing is cached for someone who is signed in, has a post password or opens a
+  preview.
 - The public reading API of the site (M1.4): `/api/v1/public/resolve` tells what an address is after WordPress' template
   hierarchy (front page, posts page, posts with their pages after a page break, pages by their whole path, category, tag,
   author and date archives, search, `?p=` as a redirect, 404), `/public/query` lists published posts or pages by filter,
