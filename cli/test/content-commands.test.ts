@@ -234,13 +234,14 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the commands against a databas
       schedule: false,
     })
     await boss.start()
-    let jobId: string | null = null
-    try {
-      await boss.createQueue('cli.test')
-      jobId = await boss.send('cli.test', {})
-    } finally {
-      await boss.stop({ graceful: false })
-    }
+    const jobId = await (async () => {
+      try {
+        await boss.createQueue('cli.test')
+        return await boss.send('cli.test', {})
+      } finally {
+        await boss.stop({ graceful: false })
+      }
+    })()
     const waiting = await cli(['jobs', 'retry', jobId ?? ''])
     expect(waiting.code).toBe(1)
     expect(waiting.stderr).toContain('not failed')
