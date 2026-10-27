@@ -43,7 +43,10 @@ export const ThemeSettingsSpec = z.strictObject({
       z.strictObject({
         name: Label,
         default: FontStack,
-        choices: z.array(z.strictObject({ label: Label, value: FontStack })).min(1).max(30),
+        choices: z
+          .array(z.strictObject({ label: Label, value: FontStack }))
+          .min(1)
+          .max(30),
       }),
     )
     .optional(),
