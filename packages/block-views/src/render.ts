@@ -226,7 +226,8 @@ export function renderBlock(block: Block, context: ViewContext): VNode | null {
       // The HTML parser drops one newline right after <pre>: a text that starts with one gets an extra, so it stays.
       const content = inline(block, 'content')
       const first = content[0]
-      const lead = first?.type === 'text' && first.text.startsWith('\n') ? ['\n'] : []
+      const lead =
+        first?.type === 'text' && (first.marks ?? []).length === 0 && first.text.startsWith('\n') ? ['\n'] : []
       return h('pre', { class: 'block-preformatted' }, [...lead, ...renderInline(content)])
     }
     case TABLE:

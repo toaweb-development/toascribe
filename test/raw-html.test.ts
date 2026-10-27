@@ -66,9 +66,10 @@ describe('no raw HTML in the Nuxt code', () => {
       expect(source).not.toMatch(
         /insertAdjacentHTML|document\.write\(|createStaticVNode|createContextualFragment|\bsrcdoc\b/,
       )
-      // Raw custom HTML is for the public site's templates (M1.4); no admin code asks for it (its scripts would get the nonce).
+      // Raw custom HTML is for the public site's templates (M1.4); no admin code asks for it (its scripts would get the nonce):
+      // the string 'raw' in quotes is not in the admin at all, so neither a binding nor a variable can pass it.
       if (file.includes('/apps/admin/') || file.includes('/packages/nuxt-base/')) {
-        expect(source).not.toMatch(/html[=:]\s*["']raw["']/)
+        expect(source).not.toMatch(/['"]raw['"]/)
       }
     },
   )
