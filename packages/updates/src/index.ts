@@ -9,7 +9,7 @@ export { GHCR_ORIGIN, GHCR_REPOSITORY, UpdateSourceError, ghcrSource } from './g
 export { USER_AGENT } from './source.ts'
 export type { Fetcher, UpdateSource } from './source.ts'
 export { compareReleases, isNewer, newestRelease, parseRelease } from './version.ts'
-export { checkForUpdate, runUpdateCheck, serverAllowsUpdateCheck, updateCheckSetting } from './check.ts'
+export { checkForUpdate, runUpdateCheck, updateCheckSetting } from './check.ts'
 export type { UpdateCheckResult } from './check.ts'
 
 /** The source the app uses: ghcr.io through safeFetch (public addresses only, no redirect, a deadline, a cap on the body). */

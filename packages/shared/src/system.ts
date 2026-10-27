@@ -89,7 +89,7 @@ export const REDACTED = '[skjult]'
 
 const REDACTIONS: readonly RegExp[] = [
   // name=value and name: value where the name says it is secret
-  /\b[\w.-]*(?:password|passwd|secret|token|apikey|api_key|key|cookie|session|auth)[\w.-]*\s*[=:]\s*\S+/gi,
+  /\b[\w.-]{0,64}(?:password|passwd|secret|token|apikey|api_key|key|cookie|session|auth)[\w.-]{0,64}\s*[=:]\s*\S+/gi,
   // an address with a scheme (it may carry a user, a password or a token)
   /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi,
   // an e-mail address
@@ -111,7 +111,8 @@ function isToken(run: string): boolean {
 
 /** A value for the copy, with anything that may identify the server or be a secret replaced by REDACTED. */
 export function redactForCopy(value: string): string {
-  let text = value
+  // Bounded: a value of the copy is short (the longest setting is 255 characters), and the patterns stay linear on what is kept.
+  let text = value.slice(0, 1000)
   for (const pattern of REDACTIONS) text = text.replace(pattern, REDACTED)
   return text
     .split(/(\s+)/)

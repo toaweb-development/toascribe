@@ -1,4 +1,4 @@
-// `toa check-update` and `toa core check-update` (M1.7, K-290, K-272): the update check at once, as the worker runs it each day. The
+// `toa check-update` and `toa core check-update` (M1.7, K-290, K-261): the update check at once, as the worker runs it each day. The
 // result goes into `update_status` («Oppdateringer» and Nettstedshelse show it). Off (TOASCRIBE_UPDATE_CHECK=off, or the setting),
 // nothing is asked and the command says so (exit 1). Nothing about the site is sent: a GET of the public image tags.
 import { schema } from '@toascribe/db'
@@ -48,7 +48,7 @@ export async function checkUpdate(
           actor: 'cli',
           accountId: null,
           action: 'updates.checked',
-          objectType: 'settings',
+          objectType: 'system',
           objectId: 'update_status',
           newValue: { ok: result.status.ok, latest: result.status.latest },
           source: 'cli',

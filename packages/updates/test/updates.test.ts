@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, it } from 'vitest'
 
-import { checkForUpdate, ghcrSource, isNewer, newestRelease, serverAllowsUpdateCheck } from '../src/index.ts'
+import { checkForUpdate, ghcrSource, isNewer, newestRelease } from '../src/index.ts'
 import type { Fetcher } from '../src/index.ts'
 
 const page = (n: number) =>
@@ -109,15 +109,5 @@ describe('the ghcr.io source', () => {
       new Date(),
     )
     expect(thrown.error).toBe('connect ECONNREFUSED [adresse] at [sti]')
-  })
-})
-
-describe('TOASCRIBE_UPDATE_CHECK', () => {
-  it('is on unless it says off', () => {
-    expect(serverAllowsUpdateCheck(undefined)).toBe(true)
-    expect(serverAllowsUpdateCheck('')).toBe(true)
-    expect(serverAllowsUpdateCheck('on')).toBe(true)
-    expect(serverAllowsUpdateCheck('off')).toBe(false)
-    expect(serverAllowsUpdateCheck(' OFF ')).toBe(false)
   })
 })

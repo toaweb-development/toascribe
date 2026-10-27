@@ -10,11 +10,6 @@ import { eq } from 'drizzle-orm'
 import { newestRelease } from './version.ts'
 import type { UpdateSource } from './source.ts'
 
-/** Whether TOASCRIBE_UPDATE_CHECK allows checks: anything but `off` (empty is on). */
-export function serverAllowsUpdateCheck(value: string | undefined): boolean {
-  return value?.trim().toLowerCase() !== 'off'
-}
-
 /** The `update_check` setting (on when it is missing or not a boolean). */
 export async function updateCheckSetting<TSchema extends Record<string, unknown>>(
   db: DbExecutor<TSchema>,

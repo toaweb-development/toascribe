@@ -13,7 +13,8 @@ export const UPDATE_CHECK = 'update.check'
 /** 04:41 UTC: off the hour, so a registry is not asked by every site at once. */
 export const UPDATE_CHECK_CRON = '41 4 * * *'
 /** One try (tomorrow's run is the retry), and a few minutes to finish. */
-export const UPDATE_QUEUE_OPTIONS = { retryLimit: 0, expireInSeconds: 300 } as const
+/** `short`: one job queued at a time (the singleton key holds), so two workers starting together ask once. */
+export const UPDATE_QUEUE_OPTIONS = { policy: 'short', retryLimit: 0, expireInSeconds: 300 } as const
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export interface UpdateJobDeps {

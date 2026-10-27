@@ -1,4 +1,4 @@
-// `toa check-update` (M1.7, K-290, K-272) against a source in memory, never the network: usage errors are exit 2; it stores the
+// `toa check-update` (M1.7, K-290, K-261) against a source in memory, never the network: usage errors are exit 2; it stores the
 // answer and says whether a release is newer; off on the server or by the setting it asks nothing (exit 1); a failure is exit 1
 // with the reason.
 import { runMigrations } from '@toascribe/db'

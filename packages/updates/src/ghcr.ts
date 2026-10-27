@@ -11,7 +11,8 @@ export const GHCR_REPOSITORY = 'toaweb-development/toascribe-api'
 /** At most this many pages of 1000 tags: enough for years of releases, and a stop for a source that never ends. */
 const MAX_PAGES = 20
 
-const TokenAnswer = z.object({ token: z.string().min(1).max(10_000) })
+/** Only characters a header value may hold: a token that would break the header is refused, never quoted into an error. */
+const TokenAnswer = z.object({ token: z.string().regex(/^[A-Za-z0-9._~+/=-]{1,10000}$/) })
 const TagsAnswer = z.object({ tags: z.array(z.string().max(200)).max(10_000).nullable() })
 
 export class UpdateSourceError extends Error {
