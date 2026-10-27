@@ -41,6 +41,8 @@ const errorResponse = (description: string) => ({
 const TAG = 'media'
 const UPLOAD = requireCapability('upload_files')
 const MANAGE = requireCapability('manage_options')
+/** Renaming, moving and deleting folders (the service checks upload_files too). */
+const ORGANIZE = requireCapability('edit_others_posts')
 const STATE_CHANGING_NOTE =
   'Needs the X-CSRF-Token header of the session, a same-origin request and an application/json body (multipart for a file).'
 
@@ -250,7 +252,7 @@ const editRoute = defineRoute({
 const folderErrors = {
   400: errorResponse('Invalid request, or `invalid_folder`'),
   401: errorResponse('Not signed in'),
-  403: errorResponse('CSRF token missing or wrong, or no upload_files'),
+  403: errorResponse('CSRF token missing or wrong, no upload_files, or (rename, move, delete) no edit_others_posts'),
   404: errorResponse('No such folder'),
   409: errorResponse('`folder_exists`: the name is taken beside it'),
 }
@@ -289,8 +291,8 @@ const updateFolderRoute = defineRoute({
   path: '/media-folders/{id}',
   tags: [TAG],
   summary: 'Rename or move a folder',
-  description: STATE_CHANGING_NOTE,
-  policy: UPLOAD,
+  description: `Needs \`edit_others_posts\` as well: a folder holds other people's files. ${STATE_CHANGING_NOTE}`,
+  policy: ORGANIZE,
   request: {
     params: MediaIdParams,
     body: { required: true, content: { 'application/json': { schema: UpdateMediaFolderRequest } } },
@@ -303,8 +305,8 @@ const deleteFolderRoute = defineRoute({
   path: '/media-folders/{id}',
   tags: [TAG],
   summary: 'Delete a folder',
-  description: `With the folders in it; their files move to the top of the library. ${STATE_CHANGING_NOTE}`,
-  policy: UPLOAD,
+  description: `With the folders in it; their files move to the top of the library. Needs \`edit_others_posts\` as well. ${STATE_CHANGING_NOTE}`,
+  policy: ORGANIZE,
   request: { params: MediaIdParams },
   responses: { 204: { description: 'Deleted' }, ...folderErrors },
 })

@@ -461,7 +461,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
   })
 
   describe('folders and settings', () => {
-    it('makes, renames, moves and deletes folders; a deleted folder’s files move to the top', async () => {
+    it('makes folders for upload_files, renames and deletes them for edit_others_posts; files move to the top', async () => {
       const made = MediaFolderListResponse.parse(
         await (await author.post('/api/v1/media-folders', { name: 'Ferie' })).json(),
       )
@@ -473,7 +473,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect(await code(await author.post('/api/v1/media-folders', { name: 'ferie' }))).toBe('folder_exists')
       expect(
         await code(
-          await author.patch(`/api/v1/media-folders/${holiday}`, {
+          await editor.patch(`/api/v1/media-folders/${holiday}`, {
             parentId: nested.folders.find((x) => x.name === 'Fjell')?.id ?? null,
           }),
         ),
@@ -481,7 +481,14 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       const file = await upload(author, f.PNG, 'i-mappe.png', { folderId: holiday })
       const inFolder = MediaListResponse.parse(await (await author.get(`/api/v1/media?folder=${holiday}`)).json())
       expect(inFolder.items.map((item) => item.id)).toEqual([file.id])
-      expect((await author.delete(`/api/v1/media-folders/${holiday}`)).status).toBe(204)
+      // An author makes folders and puts files in them, but renaming, moving and deleting needs edit_others_posts.
+      expect((await author.patch(`/api/v1/media-folders/${holiday}`, { name: 'Sommer' })).status).toBe(403)
+      expect((await author.delete(`/api/v1/media-folders/${holiday}`)).status).toBe(403)
+      const renamed = MediaFolderListResponse.parse(
+        await (await editor.patch(`/api/v1/media-folders/${holiday}`, { name: 'Sommer' })).json(),
+      )
+      expect(renamed.folders.find((folder) => folder.id === holiday)?.name).toBe('Sommer')
+      expect((await editor.delete(`/api/v1/media-folders/${holiday}`)).status).toBe(204)
       const moved = MediaItem.parse((await (await author.get(`/api/v1/media/${file.id}`)).json()) as unknown)
       expect(moved.folderId).toBeNull()
     })

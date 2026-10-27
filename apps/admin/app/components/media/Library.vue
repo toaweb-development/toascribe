@@ -27,6 +27,8 @@ const capabilities = computed(() =>
 )
 const mayUpload = computed(() => capabilities.value.includes('upload_files'))
 const mayManage = computed(() => capabilities.value.includes('manage_options'))
+// Renaming, moving and deleting folders needs edit_others_posts (they hold other people's files); making one only upload_files.
+const mayOrganize = computed(() => capabilities.value.includes('edit_others_posts'))
 
 const ALL = 'all'
 const filters = reactive({ search: '', group: props.group ?? ALL, month: ALL, folder: ALL, page: 1 })
@@ -128,7 +130,7 @@ async function open(item: MediaItem): Promise<void> {
 
 const foldersDialog = overlay.create(MediaFolders)
 async function manageFolders(): Promise<void> {
-  const changed = await foldersDialog.open({ folders: folders.value })
+  const changed = await foldersDialog.open({ folders: folders.value, mayOrganize: mayOrganize.value })
   if (changed === true) await Promise.all([refresh(), refreshFolders()])
 }
 

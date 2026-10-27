@@ -263,6 +263,14 @@ export function createMediaService(options: {
     }
   }
 
+  /** Renaming, moving and deleting a folder: it holds other people's files, so `edit_others_posts` as well (making one needs only
+   * upload_files). */
+  function requireOrganize(auth: SessionAuth): void {
+    if (!has(auth, 'upload_files') || !has(auth, 'edit_others_posts')) {
+      throw new ForbiddenError()
+    }
+  }
+
   function urlOf(row: MediaRow, key: string, which: string): string {
     return row.visibility === 'public'
       ? `/uploads/${key}`
@@ -849,7 +857,7 @@ export function createMediaService(options: {
     },
 
     async updateFolder(auth, id, request, ctx) {
-      requireUpload(auth)
+      requireOrganize(auth)
       await inTransaction(db, async (tx) => {
         await lockFolders(tx)
         const folder = await findFolder(tx, id)
@@ -876,7 +884,7 @@ export function createMediaService(options: {
     },
 
     async deleteFolder(auth, id, ctx) {
-      requireUpload(auth)
+      requireOrganize(auth)
       await inTransaction(db, async (tx) => {
         const folder = await findFolder(tx, id)
         if (folder === undefined) {
