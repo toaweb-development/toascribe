@@ -20,6 +20,12 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- More `toa` commands (K-261, K-263 to K-265, K-270 to K-272), as WP-CLI's: `toa post`, `toa term`, `toa menu` (list, get,
+  create, update, delete) and `toa option` (list, get, update) act as the account named by `--user` and go through the same checks
+  as the admin; `toa cache flush [--tag]`; `toa jobs list|retry|cancel`; `toa secrets list` (names and where they are, never a
+  value) and `toa secrets rotate` (a new encryption key, then every stored secret sealed again with it); `toa shell` (a Node REPL
+  in the container, with a warning); `toa core version`. Every change is in the audit log with «cli» as the actor. Exit codes: 0
+  done, 1 an error underway (not found, not allowed), 2 invalid input.
 - Updates (K-290): «Kontrollpanel → Oppdateringer» shows the version that runs, the newest release and a link to what is new, and
   the command to update on the host (the admin cannot update containers). The worker looks once a day (`toa check-update` at once):
   a plain GET of the public image tags on ghcr.io with `User-Agent: toascribe`, nothing about the site. Off on the page, or on the

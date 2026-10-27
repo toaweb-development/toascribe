@@ -95,7 +95,8 @@ Use `toascribe_owner` for the owner password, and `postgres` for `POSTGRES_PASSW
 - **The CLI** runs in the API container: `docker compose -f docker/compose.yaml exec api toa --version`. Exit codes: `0`
   success, `1` an error underway (the database does not answer, the site is already installed, a name is taken), `2` invalid
   input or usage (an unknown flag, a missing value, a refused password, a bad environment). `toa core is-installed` is the one
-  exception: 0 installed, 1 not installed, 2 error. `toa` with no arguments lists them.
+  exception: 0 installed, 1 not installed, 2 error. `toa` with no arguments lists them. `toa post|term|menu|option` act as an
+  account (`--user <login>`), with its rights and the admin's checks; every change is audited with «cli» as the actor.
 - **Stop.** `docker compose -f docker/compose.yaml down` (add `-v` to delete the database volume as well).
 
 ### Backups
