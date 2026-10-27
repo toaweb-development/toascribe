@@ -135,17 +135,12 @@ export function createAppearanceService(options: {
   }
   const actorOf = (auth: SessionAuth) => ({ id: auth.account.id, username: auth.account.username })
 
-  async function uniqueSlug(
-    executor: Executor,
-    name: string,
-    taken: (slug: string) => Promise<boolean>,
-  ): Promise<string> {
+  async function uniqueSlug(name: string, taken: (slug: string) => Promise<boolean>): Promise<string> {
     const base = slugOf(name)
     for (let n = 1; n < 1000; n += 1) {
       const slug = n === 1 ? base : `${base}-${String(n)}`.slice(0, 64)
       if (!(await taken(slug))) return slug
     }
-    void executor
     throw new AppError(409, 'slug_taken', 'No free slug for that name')
   }
 
@@ -167,7 +162,7 @@ export function createAppearanceService(options: {
         return {
           id: item.id,
           objectTitle: named?.title ?? null,
-          shown: item.kind === 'custom' || (named !== undefined && named.kind === item.kind && named.published),
+          shown: item.kind === 'custom' || (named?.kind === item.kind && named.published),
         }
       }),
     }
@@ -191,7 +186,7 @@ export function createAppearanceService(options: {
     }
   }
 
-  async function checkBlocks(auth: SessionAuth, blocks: readonly unknown[], previous: unknown): Promise<Block[]> {
+  function checkBlocks(auth: SessionAuth, blocks: readonly unknown[], previous: unknown): Block[] {
     const checked = validateDocument(blocks)
     if (!checked.ok) throw new InvalidBlocksError(checked.issues.map((issue) => ({ ...issue, path: [...issue.path] })))
     const before = validateDocument(previous)
@@ -237,7 +232,7 @@ export function createAppearanceService(options: {
     async createMenu(auth, request, ctx) {
       requireThemeOptions(auth)
       const id = await inTransaction(db, async (tx) => {
-        const slug = await uniqueSlug(tx, request.name, (candidate) => menuSlugTaken(tx, candidate))
+        const slug = await uniqueSlug(request.name, (candidate) => menuSlugTaken(tx, candidate))
         const created = await insertMenu(tx, { slug, name: request.name }, clock())
         await audit(tx, ctx, { actor: actorOf(auth), action: 'menu.created', objectType: 'menu', objectId: created })
         return created
@@ -344,7 +339,6 @@ export function createAppearanceService(options: {
         const slug =
           request.slug ??
           (await uniqueSlug(
-            tx,
             request.name,
             async (candidate) => (await findGlobalSet(tx, { slug: candidate })) !== undefined,
           ))
@@ -370,7 +364,7 @@ export function createAppearanceService(options: {
       await inTransaction(db, async (tx) => {
         const row = await findGlobalSet(tx, { id }, { forUpdate: true })
         if (row === undefined) throw new NotFoundError()
-        const blocks = request.blocks === undefined ? undefined : await checkBlocks(auth, request.blocks, row.blocks)
+        const blocks = request.blocks === undefined ? undefined : checkBlocks(auth, request.blocks, row.blocks)
         await updateGlobalSet(
           tx,
           id,

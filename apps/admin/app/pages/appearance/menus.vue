@@ -44,7 +44,6 @@ const report = ref<string>()
 const failure = ref<string>()
 
 async function open(id: string | undefined): Promise<void> {
-  report.value = undefined
   failure.value = undefined
   if (id === undefined) {
     menu.value = undefined
@@ -60,16 +59,10 @@ async function open(id: string | undefined): Promise<void> {
     failure.value = describeApiError(caught, t)
   }
 }
-watch(
-  menus,
-  async (list) => {
-    if (selectedId.value === undefined && list !== undefined && list !== null && list.items[0] !== undefined) {
-      selectedId.value = list.items[0].id
-    }
-  },
-  { immediate: true },
-)
-watch(selectedId, (id) => open(id), { immediate: true })
+// The first menu is opened before the page is drawn, so the server and the browser draw the same page.
+selectedId.value = menus.value?.items[0]?.id
+await open(selectedId.value)
+watch(selectedId, (id) => open(id))
 const menuChoices = computed(() => (menus.value?.items ?? []).map((entry) => ({ label: entry.name, value: entry.id })))
 
 const newName = ref('')
@@ -161,13 +154,15 @@ const titles = computed(() => {
   for (const view of menu.value?.views ?? []) if (view.objectTitle !== null) found.set(view.id, view.objectTitle)
   return found
 })
+/** A new item's empty text fields (its label falls back to its content's title). */
+const BLANK = ''
 const newItem = (kind: MenuItemKind, fields: Partial<MenuItem>): MenuItem => ({
   id: newMenuItemId(),
   kind,
-  label: '',
+  label: BLANK,
   newTab: false,
-  cssClass: '',
-  description: '',
+  cssClass: BLANK,
+  description: BLANK,
   children: [],
   ...fields,
 })

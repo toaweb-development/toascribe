@@ -254,8 +254,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('GET /api/v1/admin/menu (needs 
 
   it('gives an administrator the Brukere menu', async () => {
     const items = await menuAs('administrator')
-    expect(items.map((entry) => entry.id)).toEqual(['dashboard', 'posts', 'media', 'pages', 'users', 'settings'])
-    expect(items[4]).toEqual({
+    expect(items.map((entry) => entry.id)).toEqual([
+      'dashboard',
+      'posts',
+      'media',
+      'pages',
+      'appearance',
+      'users',
+      'settings',
+    ])
+    expect(items[5]).toEqual({
       id: 'users',
       labelKey: 'menu.users',
       icon: 'i-lucide-users',
@@ -292,6 +300,14 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('GET /api/v1/admin/menu (needs 
       [account.id],
     )
     const after = AdminMenuResponse.parse(await (await client.get('/api/v1/admin/menu')).json())
-    expect(after.items.map((entry) => entry.id)).toEqual(['dashboard', 'posts', 'media', 'pages', 'users', 'settings'])
+    expect(after.items.map((entry) => entry.id)).toEqual([
+      'dashboard',
+      'posts',
+      'media',
+      'pages',
+      'appearance',
+      'users',
+      'settings',
+    ])
   })
 })

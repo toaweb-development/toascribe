@@ -105,8 +105,8 @@ export function useGlobalSet(slug: MaybeRefOrGetter<string>) {
   const key = computed(() => `scribe:global-set:${toValue(slug)}`)
   const { data } = useAsyncData(
     key,
-    () => fetcher<PublicGlobalSetResponse>(`/_toascribe/data/global-set/${toValue(slug)}`).catch(() => undefined),
-    { default: () => undefined },
+    () => fetcher<PublicGlobalSetResponse | null>(`/_toascribe/data/global-set/${toValue(slug)}`).catch(() => null),
+    { default: () => null },
   )
   return data
 }

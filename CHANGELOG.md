@@ -20,6 +20,13 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- «Utseende → Menyer» (K-132), as WordPress' menu screen: pages, posts, categories, tags and links of one's own, three levels
+  and more, with drag and drop, buttons or the keyboard, and «Administrer plasseringer» for the theme's locations. An item follows
+  its content when the title or address changes, and leaves when the content is deleted for good; content that is not published
+  is never linked. The default theme has a main menu (with a menu button on phones) and a footer menu.
+- «Utseende → Globale sett» (K-106): named collections of blocks for the whole site, edited in the block editor and shown with the
+  new «Globalt sett» block or by a theme (the default theme shows «Bunntekst» in its footer). One migration
+  (`0013_global_set_blocks`).
 - «Innstillinger → Permalenker» with WordPress' structures (Enkel, Dag og navn, Måned og navn, Numerisk, Innleggsnavn and
   Egendefinert with %year%, %monthnum%, %day%, %hour%, %minute%, %second%, %post_id%, %postname%, %category% and %author%) and the
   category and tag bases (K-197, K-221). «Innleggsnavn» is the default; a site that still has the installer's day and name gets it
