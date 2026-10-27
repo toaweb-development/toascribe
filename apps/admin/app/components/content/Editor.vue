@@ -460,7 +460,7 @@ const path = computed(() => (item.value === null ? '/' : item.value.shortLink))
               :aria-label="$t('editor.sidebar')"
               class="flex w-full shrink-0 flex-col gap-4 rounded-md border border-default p-4 lg:sticky lg:top-16 lg:max-h-[calc(100vh-6rem)] lg:w-80 lg:overflow-y-auto"
             >
-              <UTabs v-model="tab" :items="tabs" :content="false" class="w-full" />
+              <UTabs v-model="tab" :items="tabs" :content="false" color="neutral" variant="link" class="w-full" />
               <ContentDocumentPanel
                 v-if="tab === 'document'"
                 v-model="form"

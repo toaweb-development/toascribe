@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Extension } from '@tiptap/core'
+import { TextSelection } from '@tiptap/pm/state'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import type { FunctionalComponent } from 'vue'
 
@@ -268,7 +269,7 @@ function report(nodes: InlineNode[], kind: 'text' | 'format', before: number, af
 /** Makes the editor and puts the cursor at a text position, or where a click was (screen coordinates). */
 function activate(at: { offset?: number; x?: number; y?: number } = {}): void {
   if (tiptap.value !== undefined) {
-    placeCursor(at)
+    void placeCursor(at)
     return
   }
   mirrored = content.value
@@ -295,20 +296,28 @@ function activate(at: { offset?: number; x?: number; y?: number } = {}): void {
       if (instance.isFocused) editor.select({ blockId: props.block.id, offset: instance.state.selection.from - 1 })
     },
   })
-  // EditorContent mounts the view on the next render.
+  // EditorContent puts the view in the page on the next render (a microtask, before the next key arrives).
   void nextTick(() => placeCursor(at))
 }
 
-function placeCursor(at: { offset?: number; x?: number; y?: number }): void {
+/**
+ * Focuses the editor and puts the cursor there, at once: TipTap's `focus` command waits a frame, and keys typed meanwhile (right after
+ * a click, as a quick typist or a test does) would go nowhere.
+ */
+async function placeCursor(at: { offset?: number; x?: number; y?: number }): Promise<void> {
   const instance = tiptap.value
   if (instance === undefined) return
+  // EditorContent moves the view into the page a tick after it mounts: wait for that (microtasks, before the next key).
+  for (let tries = 0; tries < 5 && !instance.view.dom.isConnected; tries += 1) await nextTick()
+  if (!instance.view.dom.isConnected) return
   const end = instance.state.doc.content.size - 1
+  let position = at.offset === undefined ? end : Math.min(1 + Math.max(0, at.offset), end)
   if (at.x !== undefined && at.y !== undefined) {
     const found = instance.view.posAtCoords({ left: at.x, top: at.y })
-    instance.commands.focus(found === null ? end : Math.min(Math.max(1, found.pos), end))
-    return
+    position = found === null ? end : Math.min(Math.max(1, found.pos), end)
   }
-  instance.commands.focus(at.offset === undefined ? end : Math.min(1 + Math.max(0, at.offset), end))
+  instance.view.focus()
+  instance.view.dispatch(instance.state.tr.setSelection(TextSelection.create(instance.state.doc, position)))
 }
 
 function refreshAttributes(): void {
