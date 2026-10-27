@@ -132,7 +132,9 @@ const getRoute = defineRoute({
   path: '/media/{id}',
   tags: [TAG],
   summary: 'One file, with where it is used',
-  description: '`usedBy` lists the posts and pages whose blocks use the file («Brukes på», K-122).',
+  description:
+    '`usedBy` lists the posts and pages whose blocks use the file and that the asker may read («Brukes på», K-122); ' +
+    '`usedByOthers` counts the rest, without their titles.',
   policy: UPLOAD,
   request: { params: MediaIdParams },
   responses: {

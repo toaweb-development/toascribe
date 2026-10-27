@@ -371,6 +371,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect(post.media.map((ref) => ref.id)).toEqual([image.id])
       const detail = MediaDetail.parse(await (await author.get(`/api/v1/media/${image.id}`)).json())
       expect(detail.usedBy).toEqual([{ id: post.id, type: 'post', title: 'Med bilde', status: 'draft' }])
+      expect(detail.usedByOthers).toBe(0)
 
       // A post stored before M1.2, with the prototype's version 1 block pointing at the file's address.
       const [legacy] = await env.query<{ id: string }>(
@@ -396,6 +397,41 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
         attrs: { mediaId: image.id, alt: 'Gammel alt', decorative: false },
       })
       expect(read.media.map((ref) => ref.id)).toEqual([image.id])
+    })
+
+    it('names only the content the asker may read, and counts the rest without titles', async () => {
+      const image = await upload(author, f.PNG, 'delt.png')
+      await author.patch(`/api/v1/media/${image.id}`, { alt: 'Delt' })
+      const block = [
+        {
+          id: 'b_img00003',
+          type: 'core/image',
+          version: 2,
+          attrs: { mediaId: image.id, alt: 'Delt', caption: '', decorative: false },
+          children: [],
+        },
+      ]
+      const make = async (client: TestClient, title: string, status: string) => {
+        const res = await client.post('/api/v1/content', { type: 'post', title, status, blocks: block })
+        expect(res.status, await res.clone().text()).toBe(201)
+        return ContentItem.parse(await res.json())
+      }
+      const draft = await make(author, 'Utkast fra forfatteren', 'draft')
+      const secret = await make(editor, 'Privat fra redaktøren', 'private')
+      const open = await make(editor, 'Publisert fra redaktøren', 'publish')
+      // Another author: the published post by title; the draft and the private post only as a number.
+      const forOther = MediaDetail.parse(await (await other.get(`/api/v1/media/${image.id}`)).json())
+      expect(forOther.usedBy.map((use) => use.id)).toEqual([open.id])
+      expect(forOther.usedByOthers).toBe(2)
+      expect(JSON.stringify(forOther)).not.toContain('Privat fra redaktøren')
+      expect(JSON.stringify(forOther)).not.toContain('Utkast fra forfatteren')
+      // The uploader writes the draft, so it is hers to read; an editor reads all three.
+      const forAuthor = MediaDetail.parse(await (await author.get(`/api/v1/media/${image.id}`)).json())
+      expect(forAuthor.usedBy.map((use) => use.id).sort()).toEqual([draft.id, open.id].sort())
+      expect(forAuthor.usedByOthers).toBe(1)
+      const forEditor = MediaDetail.parse(await (await editor.get(`/api/v1/media/${image.id}`)).json())
+      expect(forEditor.usedBy.map((use) => use.id).sort()).toEqual([draft.id, secret.id, open.id].sort())
+      expect(forEditor.usedByOthers).toBe(0)
     })
 
     it('refuses an image without alt text unless it is decorative', async () => {

@@ -1158,6 +1158,8 @@
       "copyFailed": "Adressen kunne ikke kopieres. Merk den og kopier den selv.",
       "usedBy": "Brukes på",
       "unused": "Filen brukes ikke i noe innhold.",
+      "usedByOthers": "og {n} annet | og {n} andre",
+      "usedOnlyByOthers": "Filen brukes i {n} innlegg eller side du ikke har tilgang til. | Filen brukes i {n} innlegg eller sider du ikke har tilgang til.",
       "inTrash": "Papirkurv",
       "editImage": "Rediger bilde",
       "replace": "Erstatt",
@@ -1169,6 +1171,7 @@
       "deleteTitle": "Slette filen permanent?",
       "deleteConfirm": "Du er i ferd med å slette denne filen permanent fra nettstedet. Handlingen kan ikke angres.",
       "deleteUsed": "Filen brukes på {list}. Slettes den, mangler bildet der. Handlingen kan ikke angres. | Filen brukes på {list}. Slettes den, mangler bildet der. Handlingen kan ikke angres. | Filen brukes på {n} steder: {list}. Slettes den, mangler bildet der. Handlingen kan ikke angres.",
+      "deleteUsedHidden": "Filen brukes i {n} innlegg eller side du ikke har tilgang til. Slettes den, mangler bildet der. Handlingen kan ikke angres. | Filen brukes i {n} innlegg eller sider du ikke har tilgang til. Slettes den, mangler bildet der. Handlingen kan ikke angres.",
       "save": "Lagre",
       "saved": "Endringene er lagret.",
       "close": "Lukk"

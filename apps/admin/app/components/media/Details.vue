@@ -208,17 +208,24 @@ async function regenerate(): Promise<void> {
 async function remove(): Promise<void> {
   const current = item.value
   if (!current) return
-  const used = current.usedBy.length
+  const used = current.usedBy.length + current.usedByOthers
+  // The titles the account may read, then the rest as a number (the api never sends their titles).
+  const others = current.usedByOthers
+  const names = [
+    current.usedBy.map((use) => titleOf(t, use.title)).join(', '),
+    others > 0 ? t('media.details.usedByOthers', { n: others }, others) : '',
+  ]
+    .filter((part) => part !== '')
+    .join(' ')
+  let description = t('media.details.deleteConfirm')
+  if (current.usedBy.length > 0) {
+    description = t('media.details.deleteUsed', { n: used, list: names }, used)
+  } else if (others > 0) {
+    description = t('media.details.deleteUsedHidden', { n: others }, others)
+  }
   const confirmed = await confirm.ask({
     title: t('media.details.deleteTitle'),
-    description:
-      used > 0
-        ? t(
-            'media.details.deleteUsed',
-            { n: used, list: current.usedBy.map((use) => titleOf(t, use.title)).join(', ') },
-            used,
-          )
-        : t('media.details.deleteConfirm'),
+    description,
     confirmLabel: t('media.details.delete'),
     cancelLabel: t('content.quickEdit.cancel'),
     color: 'error',
@@ -346,7 +353,13 @@ const facts = computed(() => {
                 }}</NuxtLink>
                 <span class="text-toned"> · {{ usageStatus($t, use.status) }}</span>
               </li>
+              <li v-if="item.usedByOthers > 0" class="text-toned">
+                {{ $t('media.details.usedByOthers', { n: item.usedByOthers }, item.usedByOthers) }}
+              </li>
             </ul>
+            <p v-else-if="item.usedByOthers > 0" class="text-sm text-toned">
+              {{ $t('media.details.usedOnlyByOthers', { n: item.usedByOthers }, item.usedByOthers) }}
+            </p>
             <p v-else class="text-sm text-toned">{{ $t('media.details.unused') }}</p>
           </section>
         </div>

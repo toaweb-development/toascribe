@@ -265,13 +265,24 @@ export async function accountNames(db: Executor, ids: readonly string[]): Promis
   return new Map(rows.map((row) => [row.id, row.displayName]))
 }
 
-/** «Brukes på» (K-122): the content whose blocks use the file, newest first. */
-export function mediaUsage(
-  db: Executor,
-  mediaId: string,
-): Promise<{ id: string; type: string; title: string; status: string }[]> {
+export interface MediaUsageRow {
+  readonly id: string
+  readonly type: string
+  readonly title: string
+  readonly status: string
+  readonly statusBeforeTrash: string | null
+}
+
+/** «Brukes på» (K-122): the content whose blocks use the file, by title. The service shows only what the asker may read. */
+export function mediaUsage(db: Executor, mediaId: string): Promise<MediaUsageRow[]> {
   return db
-    .selectDistinct({ id: content.id, type: content.type, title: content.title, status: content.status })
+    .selectDistinct({
+      id: content.id,
+      type: content.type,
+      title: content.title,
+      status: content.status,
+      statusBeforeTrash: content.statusBeforeTrash,
+    })
     .from(contentRef)
     .innerJoin(content, eq(content.id, contentRef.contentId))
     .where(and(eq(contentRef.kind, 'media'), eq(contentRef.targetMediaId, mediaId)))

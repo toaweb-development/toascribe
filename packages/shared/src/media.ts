@@ -96,7 +96,11 @@ export type MediaItem = z.infer<typeof MediaItem>
 export const MediaUsage = z.object({ id: z.uuid(), type: ContentTypeKey, title: z.string(), status: z.string() })
 export type MediaUsage = z.infer<typeof MediaUsage>
 
-export const MediaDetail = MediaItem.extend({ usedBy: z.array(MediaUsage) })
+/**
+ * «Brukes på» (K-122): the content the asker may read, by title, and how many more items use the file. Their titles are not
+ * shown: a private post of someone else is not named to everyone who can see the file.
+ */
+export const MediaDetail = MediaItem.extend({ usedBy: z.array(MediaUsage), usedByOthers: z.int().min(0) })
 export type MediaDetail = z.infer<typeof MediaDetail>
 
 export const MediaIdParams = z.object({ id: z.uuid() })

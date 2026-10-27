@@ -24,7 +24,14 @@ import {
   shownFile,
 } from '@toascribe/media'
 import type { MediaStorage, ShownFile } from '@toascribe/media'
-import { CoreSettings, MediaSettings, MediaVariantsData } from '@toascribe/shared'
+import {
+  ContentStatus,
+  ContentStatusBeforeTrash,
+  ContentTypeKey,
+  CoreSettings,
+  MediaSettings,
+  MediaVariantsData,
+} from '@toascribe/shared'
 import type {
   ContentMediaRef,
   CreateMediaFolderRequest,
@@ -47,9 +54,11 @@ import type {
 import type { Logger } from 'pino'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
+import { canRead as canReadContent } from '../lib/content-access.ts'
 import { AppError, ForbiddenError, NotFoundError } from '../lib/errors.ts'
 import { uploadFileLimit } from '../lib/upload-limit.ts'
 import type { MediaJobPort } from '../ports/media-jobs.ts'
+import { authorsOf } from '../repositories/content.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import type { Executor } from '../repositories/executor.ts'
 import {
@@ -509,13 +518,29 @@ export function createMediaService(options: {
     async get(auth, id) {
       requireUpload(auth)
       const item = await itemOf(auth, id)
-      const usedBy = await mediaUsage(db, id)
-      return {
-        ...item,
-        usedBy: usedBy.flatMap((entry) =>
-          entry.type === 'post' || entry.type === 'page' ? [{ ...entry, type: entry.type }] : [],
-        ),
-      }
+      const usage = await mediaUsage(db, id)
+      const authors = await authorsOf(
+        db,
+        usage.map((entry) => entry.id),
+      )
+      const actor = { id: auth.account.id, capabilities: auth.capabilities }
+      const readable = usage.flatMap((entry) => {
+        const type = ContentTypeKey.safeParse(entry.type)
+        const status = ContentStatus.safeParse(entry.status)
+        if (!type.success || !status.success) return []
+        const before = ContentStatusBeforeTrash.safeParse(entry.statusBeforeTrash)
+        const access = {
+          type: type.data,
+          status: status.data,
+          statusBeforeTrash: before.success ? before.data : null,
+          authorIds: (authors.get(entry.id) ?? []).map((author) => author.id),
+        }
+        return canReadContent(actor, access)
+          ? [{ id: entry.id, type: type.data, title: entry.title, status: entry.status }]
+          : []
+      })
+      // The rest is counted, never named (a private post of someone else, a draft the asker may not edit).
+      return { ...item, usedBy: readable, usedByOthers: usage.length - readable.length }
     },
 
     upload: ingest,
