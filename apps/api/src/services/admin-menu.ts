@@ -73,8 +73,7 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     ],
   },
   {
-    // WordPress' «Innstillinger» (position 80), in its order. «Diskusjon» comes with the comments (phase 3), «Permalenker» with M1.5's
-    // permalinks.
+    // WordPress' «Innstillinger» (position 80), in its order. «Diskusjon» comes with the comments (phase 3).
     id: 'settings',
     labelKey: 'menu.settings',
     icon: 'i-lucide-settings',
@@ -101,6 +100,12 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
         to: '/settings/reading',
       },
       { id: 'settings.media', labelKey: 'menu.settingsMedia', capability: 'manage_options', to: '/settings/media' },
+      {
+        id: 'settings.permalinks',
+        labelKey: 'menu.settingsPermalinks',
+        capability: 'manage_options',
+        to: '/settings/permalinks',
+      },
       {
         id: 'settings.privacy',
         labelKey: 'menu.settingsPrivacy',

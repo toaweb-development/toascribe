@@ -18,7 +18,7 @@ import { COMMENT_STATUS, MediaGroup } from './values.ts'
 // Defaults are WordPress 7.1.3's install-time values (`populate_options()` in wp-admin/includes/schema.php), with
 // these changes:
 // - Tor: `blogname` is empty (WordPress: the installer's title), `locale` is `nb`, comments are open, and
-//   `permalink_structure` is day and name, which the WordPress installer sets whenever pretty permalinks work.
+//   `permalink_structure` is «Innleggsnavn» (Tor, M1.5; the WordPress installer sets day and name).
 // - WordPress' nb_NO translation (translate.wordpress.org, wp/dev and wp/dev/admin, read 2026-10-21): date format
 //   `j. F Y`, time format `H:i`, week starting on Monday, time zone Europe/Oslo.
 //
@@ -179,6 +179,13 @@ export const CoreSettings = z.object({
     .max(255),
   category_base: urlBase,
   tag_base: urlBase,
+  /**
+   * The structures and bases the site had before (M1.5, newest first, at most ten): an address made under one of them is read and
+   * sent on to the post's address now with 301, so a change of structure breaks no link (K-207).
+   */
+  permalink_history: z
+    .array(z.strictObject({ structure: z.string().max(255), category_base: urlBase, tag_base: urlBase }))
+    .max(10),
 
   // Settings → Privacy
   /** The privacy policy page (WordPress: the draft «Personvernerklæring» the installer makes). A content uuid. */
@@ -322,9 +329,10 @@ export const CORE_SETTINGS: CoreSettings = {
   upload_groups_by_role: {}, // every role that may upload takes every allowed type
 
   // Permalinks
-  permalink_structure: '/%year%/%monthnum%/%day%/%postname%/', // Tor, as the WordPress installer sets it
+  permalink_structure: '/%postname%/', // Tor, M1.5: «Innleggsnavn (standard)»
   category_base: '',
   tag_base: '',
+  permalink_history: [],
 
   // Privacy
   wp_page_for_privacy_policy: null, // set by the install (the draft privacy page)

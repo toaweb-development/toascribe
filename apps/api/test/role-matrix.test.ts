@@ -446,7 +446,7 @@ const CASES: readonly MatrixCase[] = [
     expected: { anonymous: 400, administrator: 400, editor: 400, author: 400, contributor: 400, subscriber: 400 },
   },
   // The settings screens of M1.5: manage_options only. A PATCH that names nothing valid is a 400 for the administrator.
-  ...(['general', 'writing', 'reading', 'privacy'] as const).flatMap((group) => [
+  ...(['general', 'writing', 'reading', 'permalinks', 'privacy'] as const).flatMap((group) => [
     {
       route: `GET /api/v1/settings/${group}`,
       method: 'GET',

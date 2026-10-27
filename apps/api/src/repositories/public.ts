@@ -10,7 +10,7 @@ import type { Executor } from './executor.ts'
 import { prefixQuery } from './content.ts'
 import { escapeLike } from './users.ts'
 
-const { account, cacheInvalidation, content, session, taxonomy, term } = schema
+const { account, cacheInvalidation, content, redirect, session, taxonomy, term } = schema
 
 export interface PublicRow {
   readonly id: string
@@ -321,6 +321,115 @@ export async function liveSessionAccount(db: Executor, id: string, now: Date): P
     .where(and(eq(session.id, id), sql`${session.expiresAt} > ${now}`))
     .limit(1)
   return rows[0]?.accountId
+}
+
+// --- Permalinks (M1.5) ---------------------------------------------------------------------------------------------------------
+
+/** Each category's slug with its parents' in front, `nyheter/lokalt` (WordPress' category path). */
+export async function categoryChains(db: Executor, ids: readonly string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map()
+  const result = await db.execute<{ start: string; slug: string; depth: number }>(sql`
+    with recursive chain(start, id, parent_id, slug, depth) as (
+      select id, id, parent_id, slug, 0 from term where id in (${sql.join(
+        [...new Set(ids)].map((id) => sql`${id}`),
+        sql`, `,
+      )})
+      union all
+      select chain.start, t.id, t.parent_id, t.slug, chain.depth + 1
+        from term t join chain on t.id = chain.parent_id where chain.depth < 50
+    )
+    select start, slug, depth from chain order by start, depth desc`)
+  const chains = new Map<string, string[]>()
+  for (const row of result.rows) {
+    const list = chains.get(row.start) ?? []
+    list.push(row.slug)
+    chains.set(row.start, list)
+  }
+  return new Map([...chains].map(([id, slugs]) => [id, slugs.join('/')]))
+}
+
+/** The category that goes into %category% for each post: the first in the post's order, as WordPress takes the first. */
+export async function firstCategoryOf(db: Executor, contentIds: readonly string[]): Promise<Map<string, string>> {
+  if (contentIds.length === 0) return new Map()
+  const result = await db.execute<{ content_id: string; term_id: string }>(sql`
+    select distinct on (ct.content_id) ct.content_id, ct.term_id
+      from content_term ct
+      join term t on t.id = ct.term_id
+      join taxonomy x on x.id = t.taxonomy_id and x.slug = 'category'
+     where ct.content_id in (${sql.join(
+       contentIds.map((id) => sql`${id}`),
+       sql`, `,
+     )})
+     order by ct.content_id, ct.sort, t.slug`)
+  return new Map(result.rows.map((row) => [row.content_id, row.term_id]))
+}
+
+/** A published post by its short id (`%post_id%`). */
+export async function findPublishedPostByShortId(db: Executor, shortId: number): Promise<PublicRow | undefined> {
+  const row = await findPublishedByShortId(db, shortId)
+  return row?.type === 'post' ? row : undefined
+}
+
+/** The published pages below a page, at any depth (their addresses change with it). */
+export async function publishedDescendantIds(db: Executor, id: string): Promise<string[]> {
+  const result = await db.execute<{ id: string }>(sql`
+    with recursive below(id, depth) as (
+      select id, 0 from content where parent_id = ${id} and type = 'page' and status = 'publish'
+      union all
+      select c.id, below.depth + 1 from content c join below on c.parent_id = below.id
+       where c.type = 'page' and c.status = 'publish' and below.depth < 50
+    )
+    select id from below`)
+  return result.rows.map((row) => row.id)
+}
+
+/** Where an old address of an item goes (K-207): the item, whose address now is worked out when it is asked for. */
+export async function findRedirect(
+  db: Executor,
+  source: string,
+): Promise<{ contentId: string | null; target: string | null; statusCode: number } | undefined> {
+  const rows = await db
+    .select({ contentId: redirect.contentId, target: redirect.target, statusCode: redirect.statusCode })
+    .from(redirect)
+    .where(eq(redirect.source, source))
+    .limit(1)
+  return rows[0]
+}
+
+/**
+ * Remembers that the item had these addresses (K-207): each sends visitors to the item from now on. An address that already
+ * points somewhere is pointed here instead; the item's own address now is never kept (it is no old address).
+ */
+export async function rememberOldPaths(
+  db: Executor,
+  contentId: string,
+  oldPaths: readonly string[],
+  currentPaths: readonly string[],
+  at: Date,
+): Promise<void> {
+  const current = new Set(currentPaths)
+  const sources = [...new Set(oldPaths)].filter((path) => !current.has(path) && path.length <= 2000)
+  if (currentPaths.length > 0) {
+    // An address in use again (a slug changed back) is no redirect any more.
+    await db.delete(redirect).where(inArray(redirect.source, [...current]))
+  }
+  if (sources.length === 0) return
+  await db
+    .insert(redirect)
+    .values(
+      sources.map((source) => ({
+        source,
+        contentId,
+        statusCode: 301,
+        origin: 'slug_change',
+        createdAt: at,
+        modifiedAt: at,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: redirect.source,
+      set: { contentId, target: null, statusCode: 301, origin: 'slug_change', modifiedAt: at },
+    })
 }
 
 // --- Cache invalidation ----------------------------------------------------------------------------------------------------------

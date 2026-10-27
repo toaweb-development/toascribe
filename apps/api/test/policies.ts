@@ -91,6 +91,8 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'PATCH /api/v1/settings/writing': 'capability:manage_options',
   'GET /api/v1/settings/reading': 'capability:manage_options',
   'PATCH /api/v1/settings/reading': 'capability:manage_options',
+  'GET /api/v1/settings/permalinks': 'capability:manage_options',
+  'PATCH /api/v1/settings/permalinks': 'capability:manage_options',
   'GET /api/v1/settings/privacy': 'capability:manage_options',
   'PATCH /api/v1/settings/privacy': 'capability:manage_options',
   'GET /uploads/*': 'public',

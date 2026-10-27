@@ -3,6 +3,7 @@
 // with the fields in WordPress' order; an answer adds what the screen shows but cannot change.
 import { z } from 'zod'
 
+import { structureProblem } from './permalinks.ts'
 import { CoreSettings } from './settings.ts'
 
 /** An id in a request, lower-cased: PostgreSQL reads `ABC…` and `abc…` as the same uuid, and the site compares them as text. */
@@ -95,6 +96,30 @@ export const UpdatePrivacySettingsRequest = PrivacySettings.extend({ wp_page_for
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one field' })
 export type UpdatePrivacySettingsRequest = z.infer<typeof UpdatePrivacySettingsRequest>
+
+/** «Innstillinger → Permalenker» (K-197, K-221): the structure of a post's address and the bases of the category and tag archives. */
+export const PermalinkSettings = CoreSettings.pick({ permalink_structure: true, category_base: true, tag_base: true })
+export type PermalinkSettings = z.infer<typeof PermalinkSettings>
+export const PermalinkSettingsResponse = z.object({ settings: PermalinkSettings })
+export type PermalinkSettingsResponse = z.infer<typeof PermalinkSettingsResponse>
+const base = z
+  .string()
+  .max(200)
+  .regex(/^[a-z0-9_-]*(\/[a-z0-9_-]+)*$/i, { message: 'letters, digits, - and _, with / between parts' })
+export const UpdatePermalinkSettingsRequest = z
+  .strictObject({
+    permalink_structure: z
+      .string()
+      .max(255)
+      .refine((value) => structureProblem(value) === undefined, {
+        message: 'not a structure: it needs %postname% or %post_id% and only the listed tags',
+      }),
+    category_base: base,
+    tag_base: base,
+  })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one field' })
+export type UpdatePermalinkSettingsRequest = z.infer<typeof UpdatePermalinkSettingsRequest>
 
 /** The languages the admin and the site can be shown in now (i18n/locales). More come with nynorsk and English (PLAN). */
 export const SITE_LOCALES = [{ code: 'nb', name: 'Norsk bokmål' }] as const

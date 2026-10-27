@@ -9,7 +9,7 @@ import { dummyPasswordHash, verifyPassword } from '@toascribe/auth'
 import type { Block } from '@toascribe/blocks'
 import { MORE, NEXTPAGE, documentMediaRefs, documentText, validateDocument } from '@toascribe/blocks'
 import type { Database } from '@toascribe/db'
-import { ContentSeo, CoreSettings, PREVIEW_LINK_MINUTES, textSearchConfig } from '@toascribe/shared'
+import { ContentSeo, CoreSettings, PREVIEW_LINK_MINUTES, matchPostPath, textSearchConfig } from '@toascribe/shared'
 import type {
   CacheChanges,
   ContentMediaRef,
@@ -38,6 +38,8 @@ import {
   findPublishedByShortId,
   findPublishedPages,
   findPublishedPost,
+  findPublishedPostByShortId,
+  findRedirect,
   findTermBySlug,
   liveSessionAccount,
   listPublic,
@@ -53,6 +55,8 @@ import { termsOfContent } from '../repositories/terms.ts'
 import type { MediaService } from './media.ts'
 import type { RateLimiter } from './rate-limit.ts'
 import { assertNotDelayed } from './support.ts'
+import { loadLinks } from './permalinks.ts'
+import type { Links } from './permalinks.ts'
 
 const SETTINGS = CoreSettings.pick({
   blogname: true,
@@ -67,7 +71,9 @@ const SETTINGS = CoreSettings.pick({
   blog_public: true,
   wp_page_for_privacy_policy: true,
 })
-type Settings = { readonly [K in keyof typeof SETTINGS.shape]: (typeof SETTINGS.shape)[K]['_output'] }
+type StoredSettings = { readonly [K in keyof typeof SETTINGS.shape]: (typeof SETTINGS.shape)[K]['_output'] }
+/** The settings of one request, with its address rules (permalinks.ts). */
+type Settings = StoredSettings & { readonly links: Links }
 
 /** WordPress' excerpt length in words, and what ends an excerpt made from the text. */
 const EXCERPT_WORDS = 55
@@ -103,7 +109,7 @@ function base64url(data: Buffer | string): string {
   return Buffer.from(data).toString('base64url')
 }
 
-function intlTimeZone(settings: Settings): string {
+function intlTimeZone(settings: StoredSettings): string {
   if (settings.timezone_string !== '') return settings.timezone_string
   const minutes = Math.round(Math.abs(settings.gmt_offset) * 60)
   const sign = settings.gmt_offset < 0 ? '-' : '+'
@@ -142,10 +148,6 @@ function asJson(blocks: readonly Block[]): Record<string, unknown>[] {
   return JSON.parse(JSON.stringify(blocks)) as Record<string, unknown>[]
 }
 
-const termPath = (taxonomy: 'category' | 'post_tag', slug: string) =>
-  `/${taxonomy === 'category' ? 'category' : 'tag'}/${encodeURIComponent(slug)}/`
-const authorPath = (nicename: string) => `/author/${encodeURIComponent(nicename)}/`
-
 export function createPublicService(options: {
   readonly db: Database
   readonly clock: () => Date
@@ -155,7 +157,13 @@ export function createPublicService(options: {
   readonly onInvalidSetting?: (key: string) => void
 }): PublicService {
   const { db, clock, media, signingKey, limiter } = options
-  const settingsOf = (executor: Executor = db) => readSettings(executor, SETTINGS, options.onInvalidSetting)
+  const settingsOf = async (executor: Executor = db): Promise<Settings> => {
+    const [stored, links] = await Promise.all([
+      readSettings(executor, SETTINGS, options.onInvalidSetting),
+      loadLinks(executor, options.onInvalidSetting),
+    ])
+    return { ...stored, links }
+  }
 
   /** The cookie value that opens items whose password has this hash: one cookie for the last password, as WordPress has. */
   const passCookieFor = (passwordHash: string) =>
@@ -166,15 +174,20 @@ export function createPublicService(options: {
     return visitor.postPass !== undefined && sameSecret(visitor.postPass, passCookieFor(row.passwordHash))
   }
 
-  async function pathsOf(rows: readonly PublicRow[]): Promise<Map<string, { path: string; ancestors: string[] }>> {
-    const pages = await pagePaths(
-      db,
-      rows.filter((row) => row.type === 'page').map((row) => row.id),
-    )
+  /** The addresses of rows: a page by its parents' slugs and its own, a post after the permalink structure (M1.5). */
+  async function pathsOf(
+    rows: readonly PublicRow[],
+    settings: Settings,
+  ): Promise<Map<string, { path: string; ancestors: string[] }>> {
+    const [pages, posts] = await Promise.all([
+      pagePaths(
+        db,
+        rows.filter((row) => row.type === 'page').map((row) => row.id),
+      ),
+      settings.links.postPaths(rows.filter((row) => row.type === 'post')),
+    ])
     const found = new Map(pages)
-    for (const row of rows) {
-      if (row.type === 'post') found.set(row.id, { path: `/${encodeURIComponent(row.slug)}/`, ancestors: [] })
-    }
+    for (const [id, path] of posts) found.set(id, { path, ancestors: [] })
     return found
   }
 
@@ -188,7 +201,10 @@ export function createPublicService(options: {
     const [authors, terms, paths] = await Promise.all([
       publicAuthorsOf(db, ids),
       termsOfContent(db, ids),
-      pathsOf(rows),
+      pathsOf(rows, settings),
+    ])
+    const categoryPaths = await settings.links.categoryPaths([
+      ...new Set([...terms.values()].flatMap((entry) => entry.categories.map((term) => term.id))),
     ])
     const featuredIds = [...new Set(rows.flatMap((row) => (row.featuredMediaId === null ? [] : [row.featuredMediaId])))]
     const featured = new Map(
@@ -213,19 +229,19 @@ export function createPublicService(options: {
         moreText: teaser?.moreText ?? null,
         authors: (authors.get(row.id) ?? []).map((author): PublicAuthor => ({
           ...author,
-          path: authorPath(author.nicename),
+          path: settings.links.authorPath(author.nicename),
         })),
         categories: (rowTerms?.categories ?? []).map((term): PublicTerm => ({
           id: term.id,
           name: term.name,
           slug: term.slug,
-          path: termPath('category', term.slug),
+          path: categoryPaths.get(term.id) ?? settings.links.tagPath(term.slug),
         })),
         tags: (rowTerms?.tags ?? []).map((term): PublicTerm => ({
           id: term.id,
           name: term.name,
           slug: term.slug,
-          path: termPath('post_tag', term.slug),
+          path: settings.links.tagPath(term.slug),
         })),
         featuredImage: row.featuredMediaId === null ? null : (featured.get(row.featuredMediaId) ?? null),
         sticky: row.type === 'post' && row.sticky,
@@ -382,7 +398,7 @@ export function createPublicService(options: {
 
   /** The canonical address of an item (the front page's is `/`). */
   async function pathOf(row: PublicRow, settings: Settings): Promise<string> {
-    return frontPath(row, settings) ?? (await pathsOf([row])).get(row.id)?.path ?? `/${row.slug}/`
+    return frontPath(row, settings) ?? (await pathsOf([row], settings)).get(row.id)?.path ?? `/${row.slug}/`
   }
 
   function decodeSegments(pathname: string): string[] | undefined {
@@ -412,6 +428,65 @@ export function createPublicService(options: {
         authorIds: (authors.get(row.id) ?? []).map((author) => author.id),
       },
     )
+  }
+
+  /** The published post an address names under a structure, and the page of it. */
+  async function postAt(structure: string, pathname: string): Promise<{ row: PublicRow; page: number } | undefined> {
+    const found = matchPostPath(structure, pathname)
+    if (found === undefined) return undefined
+    const row =
+      found.post_id !== undefined
+        ? await findPublishedPostByShortId(db, Number(found.post_id))
+        : found.postname !== undefined
+          ? await findPublishedPost(db, found.postname)
+          : undefined
+    return row === undefined ? undefined : { row, page: found.page }
+  }
+
+  /**
+   * An address the site used to have (K-207): under a permalink structure or a base it had before, or one an item had before its slug
+   * or its parent changed. 301 to where the item is now; nothing when the item is not published (it is a 404 like any other).
+   */
+  async function oldAddress(pathname: string, settings: Settings): Promise<ResolveResponse | undefined> {
+    const to = async (row: PublicRow, itemPage = 1): Promise<ResolveResponse> => {
+      const canonical = await pathOf(row, settings)
+      return {
+        kind: 'redirect',
+        status: 301,
+        location: itemPage > 1 ? `${canonical.replace(/\/?$/, '/')}${String(itemPage)}/` : canonical,
+        cacheTags: [`content:${row.id}`, 'settings'],
+      }
+    }
+    for (const rules of settings.links.history) {
+      if (rules.structure !== settings.links.structure) {
+        const post = await postAt(rules.structure, pathname)
+        if (post !== undefined) return to(post.row, post.page)
+      }
+      for (const [base, taxonomy] of [
+        [rules.categoryBase, 'category'],
+        [rules.tagBase, 'post_tag'],
+      ] as const) {
+        const current = taxonomy === 'category' ? settings.links.categoryBase : settings.links.tagBase
+        const prefix = `/${base.split('/').map(encodeURIComponent).join('/')}/`
+        if (base === current || !pathname.startsWith(prefix)) continue
+        const slug = decodeSegments(pathname)?.at(-1)
+        const term = slug === undefined ? undefined : await findTermBySlug(db, taxonomy, slug)
+        if (term === undefined) continue
+        const location =
+          taxonomy === 'category'
+            ? ((await settings.links.categoryPaths([term.id])).get(term.id) ?? '/')
+            : settings.links.tagPath(term.slug)
+        return { kind: 'redirect', status: 301, location, cacheTags: [`term:${term.id}`, 'settings'] }
+      }
+    }
+    const remembered =
+      (await findRedirect(db, pathname)) ??
+      (await findRedirect(db, pathname.endsWith('/') ? pathname.slice(0, -1) : `${pathname}/`))
+    if (remembered?.contentId != null) {
+      const row = await findPublishedById(db, remembered.contentId)
+      if (row !== undefined) return to(row)
+    }
+    return undefined
   }
 
   const service: PublicService = {
@@ -447,20 +522,36 @@ export function createPublicService(options: {
 
     async resolve(path, visitor) {
       const settings = await settingsOf()
+      const { links } = settings
       const url = new URL(path.startsWith('/') ? path : `/${path}`, 'http://site.invalid')
       let segments = decodeSegments(url.pathname)
       if (segments === undefined) return notFound()
+      // The address as the site writes it, from the decoded segments: `/.//hei` is `/hei`, and nothing in it can name another host.
+      const pathname =
+        segments.length === 0
+          ? '/'
+          : `/${segments.map(encodeURIComponent).join('/')}${url.pathname.endsWith('/') ? '/' : ''}`
+      const redirectTo = (location: string, tags: string[]): ResolveResponse => ({
+        kind: 'redirect',
+        status: 301,
+        location,
+        cacheTags: [...tags, 'settings'],
+      })
 
-      // `/?p=12` (K-065): to the item's address, published items only.
+      // `/?p=12` (K-065): the post's address. Under «Enkel» that is its address, and it is shown here (`&page=2` for its second page).
       const shortId = url.searchParams.get('p')
       if (shortId !== null) {
         const row = /^\d{1,10}$/.test(shortId) ? await findPublishedByShortId(db, Number(shortId)) : undefined
-        return row === undefined
-          ? notFound()
-          : { kind: 'redirect', status: 301, location: await pathOf(row, settings), cacheTags: [`content:${row.id}`] }
+        if (row === undefined) return notFound()
+        const location = await pathOf(row, settings)
+        if (location.startsWith('/?p=') && segments.length === 0) {
+          const itemPage = Number(url.searchParams.get('page') ?? '1')
+          return single(row, visitor, settings, Number.isInteger(itemPage) && itemPage >= 1 ? itemPage : 1)
+        }
+        return redirectTo(location, [`content:${row.id}`])
       }
 
-      // `/page/2/` at the end of an archive's address, or `/2/` at the end of an item's (K-227).
+      // `/page/2/` at the end of an archive's address (K-227).
       let page = 1
       const pagedAt = segments.length - 2
       if (segments.length >= 2 && segments[pagedAt] === 'page' && /^\d{1,5}$/.test(segments.at(-1) ?? '')) {
@@ -500,13 +591,24 @@ export function createPublicService(options: {
         )
       }
 
-      const [head, second, third, fourth] = segments
-      if (head === 'category' && segments.length >= 2) {
-        const term = await findTermBySlug(db, 'category', segments.at(-1) ?? '')
+      /** The segments after a base (`category`, `emne/tema`), or undefined when the address does not start with it. */
+      const afterBase = (base: string): string[] | undefined => {
+        const parts = base.split('/')
+        return parts.every((part, index) => segments[index] === part) ? segments.slice(parts.length) : undefined
+      }
+      const withPage = (location: string) => (page > 1 ? `${location}page/${String(page)}/` : location)
+
+      // A category with its parents in the address, as WordPress (`/category/nyheter/lokalt/`); a wrong chain goes to the right one.
+      const categoryAt = async (base: string): Promise<ResolveResponse | undefined> => {
+        const rest = afterBase(base)
+        if (rest === undefined || rest.length === 0) return undefined
+        const term = await findTermBySlug(db, 'category', rest.at(-1) ?? '')
         if (term === undefined) return notFound()
+        const termPath = (await links.categoryPaths([term.id])).get(term.id) ?? '/'
+        if (withPage(termPath) !== pathname) return redirectTo(withPage(termPath), [`term:${term.id}`])
         return archive(
           'archive',
-          { type: 'category', term: { ...term, path: termPath('category', term.slug) } },
+          { type: 'category', term: { ...term, path: termPath } },
           [`category-${term.slug}`, 'category', 'archive', 'index'],
           { type: 'post', termIds: await termWithDescendants(db, term.id) },
           page,
@@ -515,12 +617,16 @@ export function createPublicService(options: {
           [`term:${term.id}`],
         )
       }
-      if (head === 'tag' && segments.length === 2 && second !== undefined) {
-        const term = await findTermBySlug(db, 'post_tag', second)
+      const tagAt = async (base: string): Promise<ResolveResponse | undefined> => {
+        const rest = afterBase(base)
+        if (rest?.length !== 1 || rest[0] === undefined) return undefined
+        const term = await findTermBySlug(db, 'post_tag', rest[0])
         if (term === undefined) return notFound()
+        const termPath = links.tagPath(term.slug)
+        if (withPage(termPath) !== pathname) return redirectTo(withPage(termPath), [`term:${term.id}`])
         return archive(
           'archive',
-          { type: 'tag', term: { ...term, path: termPath('post_tag', term.slug) } },
+          { type: 'tag', term: { ...term, path: termPath } },
           [`tag-${term.slug}`, 'tag', 'archive', 'index'],
           { type: 'post', termIds: [term.id] },
           page,
@@ -529,12 +635,16 @@ export function createPublicService(options: {
           [`term:${term.id}`],
         )
       }
+      const term = (await categoryAt(links.categoryBase)) ?? (await tagAt(links.tagBase))
+      if (term !== undefined) return term
+
+      const [head, second, third, fourth] = segments
       if (head === 'author' && segments.length === 2 && second !== undefined) {
         const author = await findAuthorByNicename(db, second)
         if (author === undefined) return notFound()
         return archive(
           'archive',
-          { type: 'author', author: { ...author, path: authorPath(author.nicename) } },
+          { type: 'author', author: { ...author, path: links.authorPath(author.nicename) } },
           [`author-${author.nicename}`, 'author', 'archive', 'index'],
           { type: 'post', authorId: author.id },
           page,
@@ -576,34 +686,38 @@ export function createPublicService(options: {
           ])
         }
       }
+      if (page !== 1) return (await oldAddress(pathname, settings)) ?? notFound()
 
-      // A page by its whole path, or a post by its slug; `/<slug>/2/` is the second page of an item split by page breaks.
-      if (page !== 1) return notFound()
+      // A page by its whole path first (a page wins over a post of the same name, as in WordPress), with `/2/` for its second page.
       let pageNumber = 1
       let itemSegments = segments
-      const lastSegment = segments.at(-1) ?? ''
-      if (segments.length >= 2 && /^\d{1,5}$/.test(lastSegment)) {
-        pageNumber = Number(lastSegment)
+      if (segments.length >= 2 && /^\d{1,5}$/.test(segments.at(-1) ?? '')) {
+        pageNumber = Number(segments.at(-1))
         itemSegments = segments.slice(0, -1)
       }
-      const asPage = await pageAt(itemSegments)
-      const asPost =
-        asPage === undefined && itemSegments.length === 1
-          ? await findPublishedPost(db, itemSegments[0] ?? '')
-          : undefined
-      const row = asPage ?? asPost
-      if (row === undefined || pageNumber < 1) return notFound()
-      // The front page lives at `/`; its own path goes there.
-      if (frontPath(row, settings) !== undefined) {
-        return { kind: 'redirect', status: 301, location: '/', cacheTags: [`content:${row.id}`, 'settings'] }
+      const asPage = (await pageAt(segments)) ?? (pageNumber > 1 ? await pageAt(itemSegments) : undefined)
+      if (asPage !== undefined) {
+        const own = (await pageAt(segments)) !== undefined
+        const pageOf = own ? 1 : pageNumber
+        if (frontPath(asPage, settings) !== undefined) return redirectTo('/', [`content:${asPage.id}`])
+        const canonical = await pathOf(asPage, settings)
+        const wanted = pageOf > 1 ? `${canonical}${String(pageOf)}/` : canonical
+        // An address without the closing slash goes to the one with it (WordPress' canonical redirect), built from the address the
+        // site gives, never from the raw path.
+        if (wanted !== pathname) return redirectTo(wanted, [`content:${asPage.id}`])
+        return single(asPage, visitor, settings, pageOf)
       }
-      // An address without the closing slash goes to the one with it (WordPress' canonical redirect).
-      if (!url.pathname.endsWith('/')) {
-        // Built from the decoded segments, never from the raw path: `/.//host` would otherwise become `//host/`, another site.
-        const canonical = `/${[...itemSegments, ...(pageNumber > 1 ? [String(pageNumber)] : [])].map(encodeURIComponent).join('/')}/`
-        return { kind: 'redirect', status: 301, location: canonical, cacheTags: [`content:${row.id}`] }
+
+      // A post after the permalink structure: by its id or its name, and then at its own address (a wrong date or category goes there).
+      const post = await postAt(links.structure, pathname)
+      if (post !== undefined) {
+        const canonical = await pathOf(post.row, settings)
+        const wanted = post.page > 1 ? `${canonical.replace(/\/?$/, '/')}${String(post.page)}/` : canonical
+        if (frontPath(post.row, settings) !== undefined) return redirectTo('/', [`content:${post.row.id}`])
+        if (wanted !== pathname) return redirectTo(wanted, [`content:${post.row.id}`])
+        return single(post.row, visitor, settings, post.page)
       }
-      return single(row, visitor, settings, pageNumber)
+      return (await oldAddress(pathname, settings)) ?? notFound()
     },
 
     async query(query, visitor) {

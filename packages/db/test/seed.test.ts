@@ -116,7 +116,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('seedCore (needs TEST_DATABASE_
       { key: 'blogname', value: '' },
       { key: 'default_comment_status', value: 'open' },
       { key: 'locale', value: 'nb' },
-      { key: 'permalink_structure', value: '/%year%/%monthnum%/%day%/%postname%/' },
+      { key: 'permalink_structure', value: '/%postname%/' },
     ])
   })
 

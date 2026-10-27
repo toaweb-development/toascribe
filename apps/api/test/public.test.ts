@@ -144,7 +144,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the public API (needs TEST_DAT
       })
       if (first.kind !== 'single') throw new Error('not single')
       expect(first.content).toMatchObject({ page: 1, pages: 2, locked: false })
-      expect(first.content.categories.map((term) => term.path)).toEqual(['/category/lokalt/'])
+      expect(first.content.categories.map((term) => term.path)).toEqual(['/category/nyheter/lokalt/'])
       expect(first.content.tags.map((term) => term.path)).toEqual(['/tag/fjell/'])
       expect(first.cacheTags).toEqual(
         expect.arrayContaining([`content:${ids['hello'] ?? ''}`, `term:${terms['Lokalt'] ?? ''}`, 'settings']),

@@ -85,6 +85,13 @@
       "when": 1793103063344,
       "tag": "0011_admin_email_change",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793103641018,
+      "tag": "0012_permalink_default",
+      "breakpoints": true
     }
   ]
 }

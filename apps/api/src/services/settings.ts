@@ -10,6 +10,7 @@ import {
   CoreSettings,
   GeneralSettings,
   ONE_TIME_LINK_HOURS,
+  PermalinkSettings,
   PrivacySettings,
   ReadingSettings,
   SITE_LOCALES,
@@ -17,9 +18,11 @@ import {
 } from '@toascribe/shared'
 import type {
   GeneralSettingsResponse,
+  PermalinkSettingsResponse,
   PrivacySettingsResponse,
   ReadingSettingsResponse,
   UpdateGeneralSettingsRequest,
+  UpdatePermalinkSettingsRequest,
   UpdatePrivacySettingsRequest,
   UpdateReadingSettingsRequest,
   UpdateWritingSettingsRequest,
@@ -48,6 +51,12 @@ import type { Auditor, RequestContext, SafeMail } from './support.ts'
 
 const HOUR_MS = 60 * 60 * 1000
 const ADMIN_EMAIL = CoreSettings.pick({ admin_email: true })
+const PERMALINK_STATE = CoreSettings.pick({
+  permalink_structure: true,
+  category_base: true,
+  tag_base: true,
+  permalink_history: true,
+})
 
 export interface SettingsService {
   general(auth: SessionAuth): Promise<GeneralSettingsResponse>
@@ -75,6 +84,12 @@ export interface SettingsService {
     request: UpdatePrivacySettingsRequest,
     ctx: RequestContext,
   ): Promise<PrivacySettingsResponse>
+  permalinks(auth: SessionAuth): Promise<PermalinkSettingsResponse>
+  updatePermalinks(
+    auth: SessionAuth,
+    request: UpdatePermalinkSettingsRequest,
+    ctx: RequestContext,
+  ): Promise<PermalinkSettingsResponse>
 }
 
 /** An IANA zone the runtime knows, or UTC, or empty (WordPress «UTC+1», gmt_offset). */
@@ -306,6 +321,36 @@ export function createSettingsService(options: {
       await checkPage('wp_page_for_privacy_policy', request.wp_page_for_privacy_policy, false)
       await save(auth, 'privacy', request, ctx)
       return service.privacy(auth)
+    },
+
+    async permalinks(auth) {
+      requireManage(auth)
+      return { settings: await read(PermalinkSettings) }
+    },
+
+    async updatePermalinks(auth, request, ctx) {
+      requireManage(auth)
+      const before = await read(PERMALINK_STATE)
+      const next = {
+        structure: request.permalink_structure ?? before.permalink_structure,
+        category_base: request.category_base ?? before.category_base,
+        tag_base: request.tag_base ?? before.tag_base,
+      }
+      const old = {
+        structure: before.permalink_structure,
+        category_base: before.category_base,
+        tag_base: before.tag_base,
+      }
+      const same = (a: typeof old, b: typeof old) => JSON.stringify(a) === JSON.stringify(b)
+      const changed = !same(next, old)
+      // The rules the site had go first in the history: an address made under them is sent on to the new one with 301 (K-207).
+      const history = changed
+        ? [old, ...before.permalink_history.filter((entry) => !same(entry, old))]
+            .filter((entry) => !same(entry, next))
+            .slice(0, 10)
+        : before.permalink_history
+      await save(auth, 'permalinks', { ...request, ...(changed ? { permalink_history: history } : {}) }, ctx)
+      return service.permalinks(auth)
     },
   }
   return service

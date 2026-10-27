@@ -36,7 +36,14 @@ describe('the core menu', () => {
       {
         id: 'settings',
         to: '/settings/general',
-        children: ['settings.general', 'settings.writing', 'settings.reading', 'settings.media', 'settings.privacy'],
+        children: [
+          'settings.general',
+          'settings.writing',
+          'settings.reading',
+          'settings.media',
+          'settings.permalinks',
+          'settings.privacy',
+        ],
       },
     ])
   })
@@ -127,6 +134,7 @@ describe('the core menu', () => {
       'settings.writing',
       'settings.reading',
       'settings.media',
+      'settings.permalinks',
       'settings.privacy',
     ])
   })

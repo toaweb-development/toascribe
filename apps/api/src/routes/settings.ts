@@ -4,9 +4,11 @@ import {
   ConfirmAdminEmailRequest,
   ConfirmAdminEmailResponse,
   GeneralSettingsResponse,
+  PermalinkSettingsResponse,
   PrivacySettingsResponse,
   ReadingSettingsResponse,
   UpdateGeneralSettingsRequest,
+  UpdatePermalinkSettingsRequest,
   UpdatePrivacySettingsRequest,
   UpdateReadingSettingsRequest,
   UpdateWritingSettingsRequest,
@@ -97,6 +99,15 @@ const privacy = pair(
   UpdatePrivacySettingsRequest,
 )
 
+const permalinks = pair(
+  'permalinks',
+  'Permalinks',
+  "The structure of a post's address (empty is «Enkel», `/?p=`) and the category and tag bases (empty is WordPress' `category` " +
+    'and `tag`). The rules before a change keep working: their addresses answer 301 to the new ones (K-207).',
+  PermalinkSettingsResponse,
+  UpdatePermalinkSettingsRequest,
+)
+
 const confirmRoute = defineRoute({
   method: 'post',
   path: '/settings/general/admin-email/confirm',
@@ -136,6 +147,10 @@ export function createSettingsApp(services: Services): OpenAPIHono<AppEnv> {
     .openapi(reading.get, async (c) => c.json(await settings.reading(await requireSession(c)), 200))
     .openapi(reading.patch, async (c) =>
       c.json(await settings.updateReading(await requireSession(c), c.req.valid('json'), context(c)), 200),
+    )
+    .openapi(permalinks.get, async (c) => c.json(await settings.permalinks(await requireSession(c)), 200))
+    .openapi(permalinks.patch, async (c) =>
+      c.json(await settings.updatePermalinks(await requireSession(c), c.req.valid('json'), context(c)), 200),
     )
     .openapi(privacy.get, async (c) => c.json(await settings.privacy(await requireSession(c)), 200))
     .openapi(privacy.patch, async (c) =>

@@ -74,10 +74,10 @@ describe('core settings', () => {
     expect(Object.keys(CORE_SETTINGS).sort()).toEqual([...CORE_SETTING_KEYS].sort())
   })
 
-  it("keeps Tor's choices: empty site title, nb, day-and-name permalinks, comments open", () => {
+  it("keeps Tor's choices: empty site title, nb, post-name permalinks (M1.5), comments open", () => {
     expect(CORE_SETTINGS.blogname).toBe('')
     expect(CORE_SETTINGS.locale).toBe('nb')
-    expect(CORE_SETTINGS.permalink_structure).toBe('/%year%/%monthnum%/%day%/%postname%/')
+    expect(CORE_SETTINGS.permalink_structure).toBe('/%postname%/')
     expect(CORE_SETTINGS.default_comment_status).toBe('open')
   })
 

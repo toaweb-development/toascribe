@@ -140,6 +140,7 @@ describe('the OpenAPI document', () => {
         '/api/v1/settings/general',
         '/api/v1/settings/general/admin-email/confirm',
         '/api/v1/settings/media',
+        '/api/v1/settings/permalinks',
         '/api/v1/settings/privacy',
         '/api/v1/settings/reading',
         '/api/v1/settings/writing',

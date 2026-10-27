@@ -113,6 +113,8 @@ import type { ContentTermRow } from '../repositories/terms.ts'
 import type { Auditor, RequestContext } from './support.ts'
 import type { MediaService } from './media.ts'
 import { replaceLinkRefs, replaceMediaRefs } from '../repositories/media.ts'
+import { findPublishedById, pagePaths, publishedDescendantIds, rememberOldPaths } from '../repositories/public.ts'
+import { loadLinks } from './permalinks.ts'
 
 export interface ContentService {
   list: (auth: SessionAuth, query: ContentListQuery) => Promise<ContentListResponse>
@@ -698,6 +700,8 @@ export function createContentService(options: {
     }
     const type = row.type
     const now = clock()
+    // The addresses the item and the pages below it have now: the ones that change are remembered (K-207).
+    const addressesBefore = await publishedAddresses(tx, row.id)
 
     const requestedStatus: SettableContentStatus = request.status ?? row.status
     const publishedAt = request.publishedAt === undefined ? row.publishedAt : (toDate(request.publishedAt) ?? null)
@@ -856,6 +860,7 @@ export function createContentService(options: {
       ...(authorsChanged ? ['authors'] : []),
       ...(termsChanged ? ['terms'] : []),
     ].sort()
+    await rememberChangedAddresses(tx, addressesBefore, now)
     await audit(tx, ctx, {
       actor: { id: actor.id, username: auth.account.username },
       action: 'content.updated',
@@ -865,6 +870,31 @@ export function createContentService(options: {
       newValue: { status: schedule.status, fields },
     })
     return 'changed'
+  }
+
+  /** The address of a published item and of the published pages below it, by id, after the permalink rules (M1.5). */
+  async function publishedAddresses(tx: Executor, id: string): Promise<Map<string, string>> {
+    const root = await findPublishedById(tx, id)
+    if (root === undefined) return new Map()
+    const ids = root.type === 'page' ? [root.id, ...(await publishedDescendantIds(tx, root.id))] : [root.id]
+    const links = await loadLinks(tx, options.onInvalidSetting)
+    if (root.type === 'post') return links.postPaths([root])
+    return new Map([...(await pagePaths(tx, ids))].map(([pageId, entry]) => [pageId, entry.path]))
+  }
+
+  /**
+   * K-207: an address an item had before a change (its slug, its parent, its date or category under a structure that has them) sends
+   * visitors on with 301. The redirect names the item, not its address, so a later change cannot make a chain, and an address the
+   * item has again is no redirect any more.
+   */
+  async function rememberChangedAddresses(tx: Executor, before: ReadonlyMap<string, string>, now: Date): Promise<void> {
+    if (before.size === 0) return
+    const [first] = before.keys()
+    const after = first === undefined ? new Map<string, string>() : await publishedAddresses(tx, first)
+    for (const [id, oldPath] of before) {
+      const newPath = after.get(id)
+      if (newPath !== oldPath) await rememberOldPaths(tx, id, [oldPath], newPath === undefined ? [] : [newPath], now)
+    }
   }
 
   async function trashIn(tx: Executor, auth: SessionAuth, id: string, ctx: RequestContext): Promise<Outcome> {
