@@ -12,11 +12,19 @@
 import { randomUUID } from 'node:crypto'
 
 import { hashPassword } from '@toascribe/auth'
-import { documentMediaRefs, documentText, legacyImageUrls, migrateDocument, validateDocument } from '@toascribe/blocks'
+import {
+  documentMediaRefs,
+  documentText,
+  legacyImageUrls,
+  migrateDocument,
+  permissionIssues,
+  validateDocument,
+} from '@toascribe/blocks'
 import type { Block } from '@toascribe/blocks'
 import { deleteContentPermanently, legacyBlocksText, uniqueContentSlug } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
 import {
+  ContentSeo,
   CoreSettings,
   PUBLISHING_STATUSES,
   sanitizeTitle,
@@ -40,6 +48,7 @@ import type {
   ContentTypeKey,
   ContentVisibility,
   CreateContentRequest,
+  SeoRequest,
   SettableContentStatus,
   UpdateContentRequest,
 } from '@toascribe/shared'
@@ -348,17 +357,50 @@ export function createContentService(options: {
     return migrateDocument(blocks, { mediaIdForUrl: (url) => ids.get(url) }).blocks
   }
 
-  /** Checks a sent tree after upgrading it; the stored form, its text and the media it uses. */
-  async function checkSent(blocks: readonly unknown[]) {
+  /**
+   * Checks a sent tree after upgrading it, and the blocks the account may use there (permissionIssues: custom HTML needs
+   * unfiltered_html, «Les mer» belongs in posts) against the tree stored before; the stored form, its text and the media it uses.
+   */
+  async function checkSent(blocks: readonly unknown[], actor: Actor, contentType: ContentTypeKey, previous: unknown) {
     const upgraded = await migrated(blocks)
     const result = validateDocument(upgraded)
     if (!result.ok) {
       throw new InvalidBlocksError(result.issues.map((issue) => ({ ...issue, path: [...issue.path] })))
     }
+    const stored = validateDocument(await migrated(previous))
+    const refused = permissionIssues(result.blocks, stored.ok ? stored.blocks : [], {
+      capabilities: actor.capabilities,
+      contentType,
+    })
+    if (refused.length > 0) {
+      throw new InvalidBlocksError(refused.map((issue) => ({ ...issue, path: [...issue.path] })))
+    }
     return { stored: toJson(result.blocks), text: documentText(result.blocks), refs: documentMediaRefs(result.blocks) }
   }
 
   const settingsOf = (executor: Executor) => readSettings(executor, SETTINGS, options.onInvalidSetting)
+
+  /** A featured or sharing image: an image in the media library that the account may see (a private file of someone else is not). */
+  async function checkImage(actor: Actor, id: string | null | undefined): Promise<void> {
+    if (id === undefined || id === null) {
+      return
+    }
+    const [ref] = await media.contentRefs(actor, [id])
+    if (!ref?.mime.startsWith('image/')) {
+      throw new AppError(400, 'invalid_media', 'The image is not in the media library, or not one you may use')
+    }
+  }
+
+  /** The SEO panel as it is stored: only what has a value (an empty title means «use the item's title»). */
+  async function seoOf(actor: Actor, request: SeoRequest): Promise<ContentSeo> {
+    await checkImage(actor, request.image)
+    return {
+      ...(request.title === undefined || request.title === '' ? {} : { title: request.title }),
+      ...(request.description === undefined || request.description === '' ? {} : { description: request.description }),
+      ...(request.image === undefined ? {} : { image: request.image }),
+      ...(request.noindex === true ? { noindex: true } : {}),
+    }
+  }
 
   async function loadItem(executor: Executor, actor: Actor, id: string): Promise<ContentItem> {
     const row = await findContent(executor, id)
@@ -370,18 +412,20 @@ export function createContentService(options: {
     const blocks = await migrated(row.blocks)
     const checked = validateDocument(blocks)
     const refs = checked.ok ? documentMediaRefs(checked.blocks) : []
+    const seo = ContentSeo.catch({}).parse(row.seo)
+    const mediaIds = [
+      ...refs.map((ref) => ref.mediaId),
+      ...(row.featuredMediaId === null ? [] : [row.featuredMediaId]),
+      ...(seo.image === undefined ? [] : [seo.image]),
+    ]
     return {
       ...baseFields(row, authors, actor, terms),
       excerpt: row.excerpt,
       blocks: checked.ok ? toJson(checked.blocks) : row.blocks,
       blocksFormat: checked.ok ? 'blocks' : 'legacy',
-      media:
-        refs.length === 0
-          ? []
-          : await media.contentRefs(
-              actor,
-              refs.map((ref) => ref.mediaId),
-            ),
+      featuredMediaId: row.featuredMediaId,
+      seo,
+      media: mediaIds.length === 0 ? [] : await media.contentRefs(actor, mediaIds),
     }
   }
 
@@ -560,7 +604,10 @@ export function createContentService(options: {
       toDate(request.unpublishAt) ?? null,
       now,
     )
-    const blocks = request.blocks === undefined ? { stored: [], text: '', refs: [] } : await checkSent(request.blocks)
+    const blocks =
+      request.blocks === undefined
+        ? { stored: [], text: '', refs: [] }
+        : await checkSent(request.blocks, actor, type, [])
     const passwordHash =
       request.password === undefined || request.password === null ? null : await hashPassword(request.password)
     const settings = await settingsOf(db)
@@ -585,7 +632,10 @@ export function createContentService(options: {
       publishedAt: schedule.publishedAt,
       unpublishAt: toDate(request.unpublishAt) ?? null,
       blocks: blocks.stored,
+      featuredMediaId: request.featuredMediaId ?? null,
+      seo: request.seo === undefined ? {} : await seoOf(actor, request.seo),
     }
+    await checkImage(actor, values.featuredMediaId)
     const search: SearchText = { config: textSearchConfig(locale), title, excerpt, blocks: blocks.text }
 
     const id = await inTransaction(db, async (tx) => {
@@ -695,7 +745,7 @@ export function createContentService(options: {
 
     const title = request.title ?? row.title
     const excerpt = request.excerpt ?? row.excerpt
-    const blocks = request.blocks === undefined ? undefined : await checkSent(request.blocks)
+    const blocks = request.blocks === undefined ? undefined : await checkSent(request.blocks, actor, type, row.blocks)
 
     // The slug: one that was sent; or, while the item is a draft or pending, a new one from a changed title when the old one was
     // made from the title; otherwise the old one. It is made unique again when it or the parent changes.
@@ -736,6 +786,16 @@ export function createContentService(options: {
     }
     if (blocks !== undefined && JSON.stringify(blocks.stored) !== JSON.stringify(row.blocks)) {
       changes.blocks = blocks.stored
+    }
+    if (request.featuredMediaId !== undefined && request.featuredMediaId !== row.featuredMediaId) {
+      await checkImage(actor, request.featuredMediaId)
+      changes.featuredMediaId = request.featuredMediaId
+    }
+    if (request.seo !== undefined) {
+      const seo = await seoOf(actor, request.seo)
+      if (JSON.stringify(seo) !== JSON.stringify(ContentSeo.catch({}).parse(row.seo))) {
+        changes.seo = seo
+      }
     }
 
     const termsChanged = await applyTerms(
