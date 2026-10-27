@@ -84,7 +84,8 @@ test('upload an image, describe it, crop it, and insert it in a post', async ({ 
   // A new post: the image block's picker finds the file; the block takes its alternative text.
   await page.goto('/admin/posts/new')
   await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
-  await page.getByRole('menuitem', { name: 'Bilde' }).click()
+  await page.getByRole('searchbox', { name: 'Søk etter blokk' }).fill('Bilde')
+  await page.getByRole('button', { name: 'Bilde', exact: true }).click()
   await page.getByRole('button', { name: 'Mediebibliotek' }).click()
   const picker = page.getByRole('dialog', { name: 'Velg eller last opp medier' })
   await picker.getByRole('searchbox').fill(word)

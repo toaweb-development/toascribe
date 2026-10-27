@@ -3,7 +3,7 @@ import { MediaPicker } from '#components'
 
 // An image from the media library for the sidebar: «Fremhevet bilde» (K-070) and the SEO panel's sharing image. Stores the id only; the
 // address comes from the library (useMediaRefs), so a replaced or edited file shows at once.
-const props = defineProps<{ label: string; help?: string }>()
+const props = defineProps<{ label: string; help?: string; chooseLabel?: string }>()
 const mediaId = defineModel<string | null>({ required: true })
 
 const mediaRefs = useMediaRefs()
@@ -54,7 +54,7 @@ async function pick(): Promise<void> {
       color="neutral"
       variant="outline"
       class="min-h-11 self-start"
-      :label="t('editor.featured.choose')"
+      :label="props.chooseLabel ?? t('editor.featured.choose')"
       @click="pick"
     />
   </div>

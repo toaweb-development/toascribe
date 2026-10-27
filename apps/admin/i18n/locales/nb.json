@@ -1409,7 +1409,8 @@
       "noindex": "Skjul fra søkemotorer",
       "searchPreview": "Slik kan det se ut i et søkeresultat",
       "sharePreview": "Slik kan det se ut når det deles",
-      "noDescription": "Ingen beskrivelse. Søkemotoren velger tekst selv."
+      "noDescription": "Ingen beskrivelse. Søkemotoren velger tekst selv.",
+      "chooseImage": "Velg bilde for deling"
     },
     "login": {
       "title": "Økten er utløpt",

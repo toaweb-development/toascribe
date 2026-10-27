@@ -325,7 +325,7 @@ const path = computed(() => (item.value === null ? '/' : item.value.shortLink))
           <div
             role="toolbar"
             :aria-label="$t('editorPrototype.toolbarLabel')"
-            class="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-default bg-default py-2"
+            class="z-10 flex flex-wrap items-center gap-2 border-b border-default bg-default py-2 lg:sticky lg:top-0"
           >
             <EditorInserter
               v-if="!legacy && !readOnly"

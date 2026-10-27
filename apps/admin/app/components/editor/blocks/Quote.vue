@@ -13,6 +13,7 @@ const { t } = useI18n()
     <EditorRichText
       :block="block"
       attr="citation"
+      :primary="false"
       enter="none"
       :label="t('editor.quote.citation')"
       :placeholder="t('editor.quote.citation')"

@@ -36,15 +36,31 @@ const groups = computed(() =>
   })).filter((group) => group.blocks.length > 0),
 )
 
+// When a block was chosen, the popover must not hand the focus back to its button as it closes: the new block has the cursor (and a
+// space typed into it would otherwise press the button).
+let chosen = false
+const content = {
+  align: 'start' as const,
+  onCloseAutoFocus: (event: Event) => {
+    if (chosen) {
+      event.preventDefault()
+      chosen = false
+    }
+  },
+}
+
 function choose(definition: BlockDefinition | undefined): void {
   if (definition === undefined) return
+  chosen = true
   open.value = false
+  // The chosen button keeps the focus while the popover closes: a key pressed meanwhile would press it again.
+  ;(document.activeElement as HTMLElement | null)?.blur()
   editor.insertAt(props.place, definition.name)
 }
 </script>
 
 <template>
-  <UPopover v-model:open="open" :content="{ align: 'start' }">
+  <UPopover v-model:open="open" :content="content">
     <UButton
       icon="i-lucide-plus"
       color="neutral"

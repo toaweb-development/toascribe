@@ -34,6 +34,8 @@ const props = withDefaults(
     listItem?: boolean
     /** Classes of the text (a heading's size). */
     textClass?: string
+    /** Takes the cursor when the editor gives it to the block (false for a second text of a block, a quote's citation). */
+    primary?: boolean
   }>(),
   {
     attr: 'content',
@@ -46,6 +48,7 @@ const props = withDefaults(
     selected: false,
     listItem: false,
     textClass: '',
+    primary: true,
   },
 )
 /** A text that is not stored as an attribute of the block (a table cell): the change goes to the block, which knows where it lives. */
@@ -340,9 +343,10 @@ function onStaticPointer(event: MouseEvent): void {
 }
 
 const handler = { focus: (offset?: number) => activate({ offset }) }
-// A block with more than one text (a quote's citation, a table's cells) leaves the cursor to the block's own handler.
+// A block's main text takes the cursor the editor gives the block; a second text (a quote's citation) or a table's cells leave it to
+// the block's own handler.
 onMounted(() => {
-  if (props.attr === 'content' && props.value === undefined) editor.registerFocus(props.block.id, handler)
+  if (props.primary && props.value === undefined) editor.registerFocus(props.block.id, handler)
 })
 onBeforeUnmount(() => {
   editor.unregisterFocus(props.block.id, handler)
@@ -437,7 +441,7 @@ const formatButtons = computed(() => [
       <span
         v-if="plain === '' && placeholder !== undefined && (selected || !tiptap)"
         aria-hidden="true"
-        :class="['pointer-events-none absolute top-1 left-2 text-dimmed', textClass]"
+        :class="['pointer-events-none absolute top-1 left-2 text-muted', textClass]"
         >{{ placeholder }}</span
       >
       <EditorContent v-if="tiptap" :editor="tiptap" />

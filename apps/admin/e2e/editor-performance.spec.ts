@@ -2,7 +2,7 @@ import { expect, test } from './helpers/fixtures.ts'
 import { signIn } from './helpers/screens.ts'
 import { createUser } from './helpers/stack.ts'
 
-// The block editor with 200 blocks (M0.6, on a post since M1.1): how long the page takes until every paragraph has its TipTap, and how long a
+// The block editor with 200 blocks of mixed types (M0.6, M1.3): how long the page takes until every block is drawn, and how long a
 // keystroke, a move and an undo take in the browser (Event Timing API: the time from the key to the next paint). The numbers
 // are written to the test output and go into docs/decisions/0001-editor-model.md. They are not a gate; the limits below only
 // catch a model that has become unusable.
@@ -10,7 +10,14 @@ import { createUser } from './helpers/stack.ts'
 const BLOCKS = 200
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 
+/**
+ * 200 blocks of mixed types (M1.3): in each of 13 rounds a paragraph, a heading, a list of two items, a quote with a paragraph, a
+ * table, a code block, a separator and two columns with a paragraph each (15 blocks), and 5 paragraphs at the end. Every paragraph has
+ * bold text and a link.
+ */
 function document200(): unknown[] {
+  let serial = 0
+  const id = (kind: string) => `b_${kind}${String((serial += 1)).padStart(5, '0')}`
   const text = (n: number) => [
     { type: 'text', text: `Avsnitt ${String(n)} med litt tekst, ` },
     { type: 'text', text: 'fet', marks: [{ type: 'bold' }] },
@@ -18,38 +25,45 @@ function document200(): unknown[] {
     { type: 'text', text: 'lenke', marks: [{ type: 'link', attrs: { href: 'https://example.com/' } }] },
     { type: 'text', text: '.' },
   ]
-  const paragraph = (n: number) => ({
-    id: `b_perf${String(n).padStart(4, '0')}`,
-    type: 'core/paragraph',
+  const block = (type: string, attrs: Record<string, unknown>, children: unknown[] = []) => ({
+    id: id(type.replace('core/', '').replace('-', '')),
+    type,
     version: 1,
-    attrs: { content: text(n) },
-    children: [],
+    attrs,
+    children,
   })
+  const paragraph = (n: number) => block('core/paragraph', { content: text(n) })
   const blocks: unknown[] = []
-  // 180 paragraphs at the top, and 10 columns blocks of two columns with one paragraph each: 200 text blocks, 230 blocks in all.
-  for (let n = 0; n < 180; n += 1) {
-    blocks.push(paragraph(n))
-    if (n % 18 === 17) {
-      const k = blocks.length
-      blocks.push({
-        id: `b_cols${String(k).padStart(4, '0')}`,
-        type: 'core/columns',
-        version: 1,
-        attrs: {},
-        children: [0, 1].map((c) => ({
-          id: `b_col${String(k).padStart(4, '0')}${String(c)}`,
-          type: 'core/column',
-          version: 1,
-          attrs: {},
-          children: [paragraph(1000 + k * 2 + c)],
-        })),
-      })
-    }
+  for (let round = 0; round < 13; round += 1) {
+    blocks.push(
+      paragraph(round),
+      block('core/heading', { level: 2, content: [{ type: 'text', text: `Overskrift ${String(round)}` }] }),
+      block('core/list', { ordered: round % 2 === 0 }, [
+        block('core/list-item', { content: [{ type: 'text', text: 'Første punkt' }] }),
+        block('core/list-item', { content: [{ type: 'text', text: 'Andre punkt' }] }),
+      ]),
+      block('core/quote', { citation: [{ type: 'text', text: 'Kilde' }] }, [paragraph(100 + round)]),
+      block('core/table', {
+        hasHeader: true,
+        cells: [
+          [[{ type: 'text', text: 'A' }], [{ type: 'text', text: 'B' }]],
+          [[{ type: 'text', text: '1' }], [{ type: 'text', text: '2' }]],
+        ],
+        caption: '',
+      }),
+      block('core/code', { content: `const runde = ${String(round)}` }),
+      block('core/separator', {}),
+      block('core/columns', {}, [
+        block('core/column', {}, [paragraph(200 + round)]),
+        block('core/column', {}, [paragraph(300 + round)]),
+      ]),
+    )
   }
+  for (let n = 0; n < 5; n += 1) blocks.push(paragraph(400 + n))
   return blocks
 }
 
-test('200 text blocks: load, typing, moving and undo stay quick', async ({ page }, testInfo) => {
+test('200 blocks of mixed types: load, typing, moving and undo stay quick', async ({ page }, testInfo) => {
   test.setTimeout(180_000)
   const user = await createUser('editor', 'blockperf')
   await signIn(page, user)
@@ -85,8 +99,11 @@ test('200 text blocks: load, typing, moving and undo stay quick', async ({ page 
 
   const started = Date.now()
   await page.goto(`/admin/posts/${id}`)
-  await expect(page.locator('[contenteditable="true"]')).toHaveCount(BLOCKS, { timeout: 60_000 })
+  // Ready: every block drawn in the editor (its text as the site draws it; TipTap is made at the first focus, M1.3).
+  await expect(page.locator('[data-block-id]')).toHaveCount(BLOCKS, { timeout: 60_000 })
   const loadMs = Date.now() - started
+  // TipTap instances made at load: none, they come with the focus.
+  const tiptapAtLoad = await page.locator('[contenteditable="true"]').count()
   const navigation = await page.evaluate(() => {
     const [entry] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
     return {
@@ -107,7 +124,7 @@ test('200 text blocks: load, typing, moving and undo stay quick', async ({ page 
     return { eventsOver16ms: durations.length, p50: at(50), p95: at(95), max: durations.at(-1) ?? 0 }
   }
 
-  const target = page.getByRole('textbox', { name: 'Avsnitt' }).nth(100)
+  const target = page.getByRole('textbox', { name: 'Avsnitt' }).nth(30)
   await target.click()
   await page.keyboard.press('End')
   const sentence = ' Litt mer tekst skrevet midt i dokumentet.'
@@ -124,7 +141,7 @@ test('200 text blocks: load, typing, moving and undo stay quick', async ({ page 
 
   mark = (await timings()).length
   for (let step = 0; step < 6; step += 1) await page.keyboard.press(`${MOD}+z`)
-  await expect(page.getByRole('textbox', { name: 'Avsnitt' }).nth(100)).not.toContainText('skrevet midt')
+  await expect(page.getByText('skrevet midt i dokumentet.')).toHaveCount(0)
   const undoing = await phase(mark)
 
   const heapMb = await page.evaluate(() => {
@@ -136,7 +153,8 @@ test('200 text blocks: load, typing, moving and undo stay quick', async ({ page 
   const result = {
     project: testInfo.project.name,
     cpuThrottle: throttle,
-    textBlocks: BLOCKS,
+    blocks: BLOCKS,
+    tiptapAtLoad,
     pageReadyMs: loadMs,
     navigation,
     heapMb,

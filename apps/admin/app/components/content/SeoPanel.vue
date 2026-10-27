@@ -41,7 +41,12 @@ const SEARCH_DESCRIPTION = 155
     >
       <UTextarea v-model="seo.description" :rows="3" class="w-full" :maxlength="SEO_DESCRIPTION_MAX_LENGTH" />
     </UFormField>
-    <ContentFeaturedImage v-model="seo.image" :label="t('editor.seo.image')" :help="t('editor.seo.imageHelp')" />
+    <ContentFeaturedImage
+      v-model="seo.image"
+      :label="t('editor.seo.image')"
+      :help="t('editor.seo.imageHelp')"
+      :choose-label="t('editor.seo.chooseImage')"
+    />
     <USwitch v-model="seo.noindex" :label="t('editor.seo.noindex')" />
 
     <section :aria-labelledby="`${uid}-search`" class="flex flex-col gap-1">
