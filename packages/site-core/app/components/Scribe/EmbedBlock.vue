@@ -51,17 +51,16 @@ const loaded = ref(settings.value?.embed.clickToLoad === false)
     class="block-embed scribe-embed"
     :class="[`is-provider-${provider}`, kind, { 'is-loaded': loaded }]"
   >
+    <!-- Drawn only when asked for (or with «Klikk for å laste» off), so it loads at once; full screen is in `allow`. -->
     <iframe
       v-if="loaded"
       :src="frame"
       :title="title"
       :width="size('width')"
       :height="size('height')"
-      loading="lazy"
       referrerpolicy="strict-origin-when-cross-origin"
       allow="encrypted-media; picture-in-picture; fullscreen; clipboard-write"
       sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation"
-      allowfullscreen
     />
     <div v-else class="scribe-embed-consent">
       <img

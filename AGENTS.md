@@ -82,6 +82,12 @@ The site and the admin share one security setup in `packages/nuxt-base` (`nuxt-s
 the admin's «Tilpass» preview can frame it, Tor's decision of M0.4; the admin has `frame-src 'self'` for it), and the cache rule. Do not repeat a shared directive in an app: layers concatenate
 arrays.
 
+Since M1.6 the site also differs for «Innbygging» (K-225): `frame-src` is added per response by `packages/site-core/server/plugins/embed-csp.ts`
+from the hosts the api lists (`PublicSettings.embed.frameHosts`: the fixed providers' hosts in `shared/oembed.ts` and the Mastodon
+instances in «Personvern»), never `*` or a scheme; `Cross-Origin-Embedder-Policy: unsafe-none` (a provider's player sends no COEP of
+its own, so credentialless or require-corp would block every player); and `fullscreen` for the players' hosts in `Permissions-Policy`.
+No provider script runs on the site: every player is an iframe whose address is checked again before it is drawn (`isEmbedFrame`).
+
 The admin also sets `style-src-attr` with `'unsafe-hashes'` and the hashes of the inline style strings that Nuxt UI and Reka UI
 write into the server-drawn HTML (Tor's decision): `'unsafe-hashes'` for style attributes only, never in a script directive, and
 not on the site. The strings are in one list, `ADMIN_STYLE_ATTRIBUTES` in `apps/admin/csp-style-attributes.ts`, each with its

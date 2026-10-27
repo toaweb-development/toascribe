@@ -51,6 +51,20 @@ export default defineNuxtConfig({
         'frame-ancestors': ["'self'"],
       },
       xFrameOptions: 'SAMEORIGIN',
+      // «Innbygging» (M1.6, K-225): a provider's player is a cross-origin frame that sends no embedder policy of its own, so a
+      // site with COEP (credentialless or require-corp) would block every player. The public site needs no cross-origin isolation
+      // (nothing on it uses SharedArrayBuffer), so it sends `unsafe-none`; the admin keeps nuxt-base's.
+      crossOriginEmbedderPolicy: 'unsafe-none',
+      // Full screen for the players that offer it (the providers' own hosts; the iframe asks with `allow="fullscreen"`). Merged into
+      // nuxt-base's list, which stays `()` for camera, microphone, geolocation and screen capture.
+      permissionsPolicy: {
+        fullscreen: [
+          'self',
+          '"https://www.youtube-nocookie.com"',
+          '"https://player.vimeo.com"',
+          '"https://www.tiktok.com"',
+        ],
+      },
     },
   },
 })

@@ -20,6 +20,12 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- «Innbygging» (K-225): videos, music and posts from YouTube, Vimeo, Spotify, SoundCloud, TikTok, Bluesky and the Mastodon instances
+  listed under «Innstillinger → Personvern». Paste a link alone on a line, or choose the service in the block inserter. The server
+  reads the service when the post is saved and keeps only the player's address on the service's own hosts and a thumbnail in the
+  media library; any other address is shown as a link. YouTube is shown from youtube-nocookie.com. With «Klikk for å laste» (on by
+  default, «Personvern») the site loads nothing from the service until the reader clicks.
+- The site is an oEmbed provider: `/oembed?url=` answers for its own published, public content, and such pages name it in their head.
 - Search engines and sharing (K-224): every page has a canonical address, a description, Open Graph and Twitter cards, `rel="prev"`
   and `rel="next"` on paged lists and split posts, and JSON-LD (`WebSite`, `BlogPosting` or `WebPage`, `BreadcrumbList`, and the
   publisher). Titles are «Tittel – Nettstedstittel», and the front page «Nettstedstittel – Slagord». The SEO panel's fields go first.

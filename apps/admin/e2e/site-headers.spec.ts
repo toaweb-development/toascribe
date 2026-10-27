@@ -59,6 +59,11 @@ test('the CSP is strict where it matters, and open where a public site needs it'
   expect(directives.get('font-src')).toBe("'self'")
   // Images from any https host (themes show them) and small inline ones; nothing else is opened.
   expect(directives.get('img-src')).toBe("'self' data: https:")
+  // Players of «Innbygging» (M1.6) from the providers' own hosts only, never a wildcard.
+  const frames = directives.get('frame-src') ?? ''
+  expect(frames).toContain('https://www.youtube-nocookie.com')
+  expect(frames).toContain('https://player.vimeo.com')
+  expect(frames).not.toMatch(/(^|\s)(\*|https:)(\s|$)/)
   // Only the site's own origin frames it: the admin's «Tilpass» preview (M1.5).
   expect(directives.get('frame-ancestors')).toBe("'self'")
   expect(csp).not.toContain('unsafe-inline')
@@ -72,6 +77,9 @@ test('the other security headers, and a page that no shared cache may keep', asy
   expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
   expect(headers['x-frame-options']).toBe('SAMEORIGIN')
   expect(headers['permissions-policy']).toContain('camera=()')
+  // Full screen for the players' own hosts only; no cross-origin isolation, which would block every player (M1.6).
+  expect(headers['permissions-policy']).toContain('fullscreen=(self "https://www.youtube-nocookie.com"')
+  expect(headers['cross-origin-embedder-policy']).toBe('unsafe-none')
   expect(headers['cache-control']).toBe('private, no-cache')
   // The public site is meant to be found.
   expect(headers['x-robots-tag']).toBeUndefined()
