@@ -82,7 +82,7 @@ const linkTags = computed(() =>
 const scriptTags = computed(() =>
   head.value?.jsonLd == null
     ? []
-    : [{ key: 'scribe-jsonld', type: 'application/ld+json' as const, innerHTML: jsonLdText(head.value.jsonLd) }],
+    : [{ key: 'scribe-jsonld', type: 'application/ld+json' as const, textContent: jsonLdText(head.value.jsonLd) }],
 )
 useHead({
   title: () => head.value?.title ?? siteTitle.value,
