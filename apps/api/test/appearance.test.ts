@@ -177,6 +177,15 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('menus and global sets (needs T
       )
       expect((await admin.post('/api/v1/global-sets', { name: 'Kontaktinfo', slug: 'kontaktinfo' })).status).toBe(409)
       expect((await editor.post('/api/v1/global-sets', { name: 'Nei' })).status).toBe(403)
+      // Made at the same time: one wins, the others are told 409 (not 500), whichever step catches it.
+      const statuses = await Promise.all(
+        Array.from(
+          { length: 6 },
+          async () => (await admin.post('/api/v1/global-sets', { name: 'Samtidig', slug: 'samtidig' })).status,
+        ),
+      )
+      expect(statuses.filter((status) => status === 201)).toHaveLength(1)
+      expect(statuses.filter((status) => status !== 201).every((status) => status === 409)).toBe(true)
       // An editor may not change the sets, but may choose one in the «Globalt sett» block.
       const choices = (await (await editor.get('/api/v1/global-sets/choices')).json()) as { items: { slug: string }[] }
       expect(choices.items.map((item) => item.slug)).toContain('kontaktinfo')

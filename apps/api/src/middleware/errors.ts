@@ -5,6 +5,7 @@ import { HTTPException } from 'hono/http-exception'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { apiError } from '../lib/api-error.ts'
+import { uniqueViolation } from '../lib/db-errors.ts'
 import type { AppEnv } from '../lib/env.ts'
 import { AppError, InvalidBlocksError, TooManyRequestsError } from '../lib/errors.ts'
 
@@ -39,7 +40,7 @@ export function errorResponse(c: Context<AppEnv>, status: ContentfulStatusCode, 
 
 /**
  * The single error handler (typescript §8). Typed errors and 4xx HTTP exceptions become an
- * ApiError with a message that is safe to show. Everything else is a 500 with a fixed text; the
+ * ApiError with a message that is safe to show, and a unique violation from the database a 409. Everything else is a 500 with a fixed text; the
  * error, stack included, goes to the log only, tagged with the request id.
  */
 export const onError: ErrorHandler<AppEnv> = (err, c) => {
@@ -65,6 +66,12 @@ export const onError: ErrorHandler<AppEnv> = (err, c) => {
       CODE_BY_STATUS[err.status] ?? 'bad_request',
       err.message === '' ? 'Bad request' : err.message,
     )
+  }
+  // Two requests that made the same unique thing at once (a slug, a name): the one that lost is told so, not a 500. The service
+  // checks first, so this is the race between its check and the insert; the constraint's name is not shown.
+  if (uniqueViolation(err) !== undefined) {
+    c.get('logger').info({ constraint: uniqueViolation(err) }, 'unique violation answered 409')
+    return errorResponse(c, 409, 'conflict', 'It already exists; it was made at the same time by another request')
   }
   c.get('logger').error({ err }, 'unhandled error')
   return errorResponse(c, 500, 'internal_error', 'Internal server error')
