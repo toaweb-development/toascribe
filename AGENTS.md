@@ -206,6 +206,9 @@ These are choices Tor has not made yet. Say which one you hit if your work touch
 - **Two upstream images are rebuilt in `docker/`.** The proxy builds Caddy 2.11.7 with a current Go and x/net 0.60.0, and
   the postgres image rebuilds gosu 1.19 with Go 1.27.3, because the official images fail the Trivy gate
   (Critical and High with a fix) on Go standard-library findings. Remove both stages when the upstream images are rebuilt.
+- **The tag workflow is `release.yml`, not `deploy.yml`.** VERSIONING_STANDARD §7 names `deploy.yml` as the one workflow and no
+  `release.yml`. toascribe deploys nowhere: its tag builds, scans and publishes images, so the workflow keeps its name (build and
+  publish only; no GitHub Release since toa-rules 5.0).
 - **Audit exceptions.** `pnpm audit --prod` reports two High advisories without a patched version
   (GHSA-86w9-cpqp-85rv node-forge, GHSA-vfj7-8cjw-p6xm braces), both from nitropack and absent from every runtime image.
   They are listed in `pnpm-workspace.yaml` with a review date; `scripts/audit.sh` (the release's audit) fails after it.
