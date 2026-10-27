@@ -33,6 +33,12 @@ const Env = z
     UPLOAD_MAX_SIZE_MB: z.coerce.number().int().min(1).max(4096).default(64),
     /** Where the api reaches the site on the internal network, to ask which theme is active (services/active-theme.ts). Its origin only. */
     SITE_URL_INTERNAL: z.url({ protocol: /^https?$/ }).default('http://site:3000'),
+    /** Valkey (the `valkey` profile, the server the site's cache uses): limits shared by every api process. Empty: each counts alone. */
+    CACHE_VALKEY_URL: z
+      .string()
+      .trim()
+      .default('')
+      .refine((value) => value === '' || /^rediss?:\/\//.test(value), { message: 'a redis:// or rediss:// address' }),
   })
   .superRefine((env, ctx) => {
     const versions = [

@@ -503,6 +503,9 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.13.13
+      ioredis:
+        specifier: 'catalog:'
+        version: 5.11.1(supports-color@10.2.2)
       otpauth:
         specifier: 'catalog:'
         version: 9.5.2

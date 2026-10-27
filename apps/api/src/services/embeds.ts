@@ -25,9 +25,10 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
-import { ForbiddenError, TooManyRequestsError } from '../lib/errors.ts'
+import { ForbiddenError } from '../lib/errors.ts'
 import { readSettings } from '../repositories/settings.ts'
 import type { MediaService } from './media.ts'
+import type { PreviewLimit } from './preview-limit.ts'
 import type { RequestContext } from './support.ts'
 
 const { oembedCache } = schema
@@ -44,8 +45,6 @@ export const MAX_EMBEDS_PER_SAVE = 20
 /** The longest address kept in the cache (its key column has a limit; a longer one is asked every time). */
 const MAX_CACHED_URL = 2000
 const ANSWER_MAX_BYTES = 256 * 1024
-/** The editor's previews per account per minute: each new address is a request to a provider (security §5, expensive flows). */
-const PREVIEWS_PER_MINUTE = 60
 /** The longest address an embed block holds (its block.json); a longer one is never asked about. */
 const MAX_URL = 2000
 const THUMBNAIL_MAX_BYTES = 5 * 1024 * 1024
@@ -94,6 +93,8 @@ export function createEmbedService(options: {
   readonly clock: () => Date
   readonly fetch: EmbedFetch
   readonly media: Pick<MediaService, 'contentRefs' | 'upload'>
+  /** The editor's previews per account per minute (preview-limit.ts: shared through Valkey when it is on). */
+  readonly previewLimit: PreviewLimit
   readonly onInvalidSetting?: (key: string) => void
 }): EmbedService {
   const { db, clock, media } = options
@@ -109,19 +110,6 @@ export function createEmbedService(options: {
     if (row === undefined) return undefined
     const parsed = Cached.safeParse(row.data)
     return parsed.success ? { data: parsed.data, fresh: row.expiresAt.getTime() > clock().getTime() } : undefined
-  }
-
-  // Previews per account in the last minute (in this process: one api instance; several would each count their own).
-  const previews = new Map<string, number[]>()
-  function countPreview(accountId: string): void {
-    const now = clock().getTime()
-    const recent = (previews.get(accountId) ?? []).filter((at) => at > now - 60_000)
-    if (recent.length >= PREVIEWS_PER_MINUTE) {
-      throw new TooManyRequestsError(((recent[0] ?? now) + 60_000 - now) / 1000)
-    }
-    recent.push(now)
-    previews.set(accountId, recent)
-    if (previews.size > 10_000) previews.delete(previews.keys().next().value ?? '')
   }
 
   async function keep(url: string, data: Cached): Promise<void> {
@@ -227,7 +215,7 @@ export function createEmbedService(options: {
   return {
     async preview(auth, url) {
       if (!mayEmbed(auth)) throw new ForbiddenError()
-      countPreview(auth.account.id)
+      await options.previewLimit.count(auth.account.id, clock().getTime())
       const { oembed_mastodon_instances: hosts } = await readSettings(db, EMBED_SETTINGS, options.onInvalidSetting)
       const looked = isSafeEmbedLink(url) ? await lookup(url, hosts) : undefined
       const found = looked?.data

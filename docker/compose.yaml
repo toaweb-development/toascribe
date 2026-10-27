@@ -185,6 +185,8 @@ services:
       UPLOAD_MAX_SIZE_MB: ${TOASCRIBE_UPLOAD_MAX_SIZE_MB:-64}
       # Where the api asks the site which theme is active (menu locations, «Tilpass»), on the internal network.
       SITE_URL_INTERNAL: http://site:3000
+      # Valkey (the `valkey` profile): the embed preview limit is shared by every api process. Empty: each counts alone.
+      CACHE_VALKEY_URL: ${TOASCRIBE_CACHE_VALKEY_URL:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     read_only: true
     tmpfs:
@@ -194,6 +196,7 @@ services:
     networks:
       - internal
       - db
+      - cache
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -357,7 +360,8 @@ services:
     read_only: true
     tmpfs:
       - /data
-    # Only the site reaches it (the `cache` network); it has no password, so it is on no network the other apps share.
+    # Only the site and the api reach it (the `cache` network: the data cache, and the api's shared limits under `toascribe:api:`);
+    # it has no password, so it is on no network the database or the worker share.
     networks:
       - cache
     healthcheck:

@@ -19,6 +19,7 @@ import { onError, onNotFound } from './middleware/errors.ts'
 import { siteThemeSource } from './services/active-theme.ts'
 import type { ActiveThemeSource } from './services/active-theme.ts'
 import type { EmbedFetch } from './services/embeds.ts'
+import { createPreviewLimit } from './services/preview-limit.ts'
 import { annotatePolicies, findUnguardedRoutes, policyGuard } from './middleware/policy.ts'
 import { requestLogger } from './middleware/request-logger.ts'
 import type { MediaJobPort } from './ports/media-jobs.ts'
@@ -77,6 +78,8 @@ export interface AppDeps {
   readonly siteUrlInternal?: string
   /** How oEmbed providers are asked; safeFetch when not given (tests pass stored answers). */
   readonly embedFetch?: EmbedFetch
+  /** CACHE_VALKEY_URL: the embed preview limit is shared through it when set. */
+  readonly valkeyUrl?: string
 }
 
 /**
@@ -125,6 +128,9 @@ export function buildApp(deps: AppDeps) {
     mediaJobs: deps.mediaJobs,
     uploadCapMb: deps.uploadCapMb ?? 64,
     ...(deps.embedFetch === undefined ? {} : { embedFetch: deps.embedFetch }),
+    previewLimit: createPreviewLimit(deps.valkeyUrl, (err) => {
+      deps.logger.warn({ err }, 'valkey did not answer; the embed preview limit counts in this process')
+    }),
     activeTheme: deps.activeTheme ?? siteThemeSource({ siteUrl: deps.siteUrlInternal ?? 'http://site:3000' }),
     ...(deps.trustedProxy === undefined ? {} : { trustedProxy: deps.trustedProxy }),
     ...(deps.minimumResponseMs === undefined ? {} : { minimumResponseMs: deps.minimumResponseMs }),

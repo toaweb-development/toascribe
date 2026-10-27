@@ -166,6 +166,10 @@ worker only), `file-type` and `image-size`.
 
 ### Changed
 
+- An update of a post asks a service about its embeds only after the rights check, so a refused save fetches nothing.
+- The editor's embed preview limit (60 a minute per account) is shared by every api process when Valkey is on
+  (`TOASCRIBE_CACHE_VALKEY_URL`); the api joins the `cache` network for it.
+
 - The old administrator address gets a notice naming the new one once the change is confirmed, as in WordPress (K-192).
 - Two requests that make the same thing at once (a global set with the same slug, say) answer 409 to the one that loses, not 500.
 - «Administrer plasseringer» takes only the active theme's menu locations (422 for others), and «Tilpass» stores choices for the

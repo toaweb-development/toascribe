@@ -28,6 +28,7 @@ import { safeFetch } from '@toascribe/http'
 import type { ActiveThemeSource } from './active-theme.ts'
 import { createEmbedService } from './embeds.ts'
 import type { EmbedFetch, EmbedService } from './embeds.ts'
+import type { PreviewLimit } from './preview-limit.ts'
 import { createAppearanceService } from './appearance.ts'
 import { createCustomizeService } from './customize.ts'
 import type { CustomizeService } from './customize.ts'
@@ -86,6 +87,8 @@ export interface ServiceDeps {
   readonly uploadCapMb: number
   /** How oEmbed providers are asked (safeFetch; tests pass stored answers). */
   readonly embedFetch?: EmbedFetch
+  /** The editor's embed previews per account (preview-limit.ts). */
+  readonly previewLimit: PreviewLimit
   /** The site's active theme (menu locations, «Tilpass»). */
   readonly activeTheme: ActiveThemeSource
 }
@@ -180,6 +183,7 @@ export function createServices(deps: ServiceDeps): Services {
     clock,
     fetch: deps.embedFetch ?? safeFetch,
     media,
+    previewLimit: deps.previewLimit,
     ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
   })
   const content = createContentService({

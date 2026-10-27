@@ -28,6 +28,7 @@
     "@toascribe/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
+    "ioredis": "catalog:",
     "otpauth": "catalog:",
     "pg-boss": "catalog:",
     "pino": "catalog:",

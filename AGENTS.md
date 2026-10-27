@@ -145,6 +145,9 @@ with native fields or `<ClientOnly>`. There is still no `'unsafe-inline'`.
   `X-Forwarded-For` from the right (`trusted_proxies_strict`) and sends the result to every upstream in `X-Real-IP`.
   **The apps read the client IP from `X-Real-IP` only and never parse `X-Forwarded-For`** (M0.3 relies on it: login
   limits, `audit_log.ip`). A new `reverse_proxy` in the Caddyfile keeps `header_up X-Real-IP {client_ip}` (a test checks it).
+- **Limits shared across api processes.** The embed preview limit (60 a minute per account, `apps/api/src/services/preview-limit.ts`)
+  counts in Valkey when `CACHE_VALKEY_URL` is set (the `valkey` profile; keys under `toascribe:api:`, with an expiry), so several api
+  processes share it. Without Valkey, or while it does not answer, each process counts alone, which is enough for compose's one api.
 - **One exception to "only the proxy publishes a port":** the `mailpit` compose profile (development only, off by default,
   nothing depends on it) publishes its web page on `127.0.0.1` only, through `TOASCRIBE_MAILPIT_PORT`; the SMTP port stays
   on the internal network. A test pins the loopback address. The worker's mail settings come from `SMTP_*` and
