@@ -194,6 +194,11 @@ export const PublicSettings = z.object({
       ])
       .nullable(),
   }),
+  /**
+   * «Innbygginger» (M1.6, K-225): whether a player waits for a click, and the hosts players come from (the fixed providers' and
+   * the listed Mastodon instances'): the site's `frame-src`, never `*`.
+   */
+  embed: z.object({ clickToLoad: z.boolean(), frameHosts: z.array(z.string().regex(/^[a-z0-9.-]+$/)) }),
   cacheTags: CacheTags,
 })
 export type PublicSettings = z.infer<typeof PublicSettings>

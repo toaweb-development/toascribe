@@ -12,6 +12,8 @@ import type { Database } from '@toascribe/db'
 import {
   ContentSeo,
   CoreSettings,
+  EMBED_FRAME_HOSTS,
+  InstanceHost,
   PREVIEW_LINK_MINUTES,
   SITEMAP_KINDS,
   SITEMAP_MAX_URLS,
@@ -102,6 +104,8 @@ const SETTINGS = CoreSettings.pick({
   seo_publisher_name: true,
   seo_publisher_logo: true,
   seo_publisher_person: true,
+  embed_click_to_load: true,
+  oembed_mastodon_instances: true,
 })
 type StoredSettings = { readonly [K in keyof typeof SETTINGS.shape]: (typeof SETTINGS.shape)[K]['_output'] }
 /**
@@ -633,6 +637,15 @@ export function createPublicService(options: {
         privacyPolicyPath: privacyPage === undefined ? null : await pathOf(privacyPage, settings),
         origin: options.publicOrigin.replace(/\/+$/, ''),
         seo,
+        embed: {
+          clickToLoad: settings.embed_click_to_load,
+          frameHosts: [
+            ...new Set([
+              ...Object.values(EMBED_FRAME_HOSTS).flat(),
+              ...settings.oembed_mastodon_instances.filter((host) => InstanceHost.safeParse(host).success),
+            ]),
+          ],
+        },
         // `list:page`: a chosen page that is published later (or unpublished) changes these addresses too.
         cacheTags: [
           'settings',

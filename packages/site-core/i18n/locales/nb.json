@@ -39,6 +39,11 @@
     "query": {
       "untitled": "(uten tittel)",
       "empty": "Ingen innlegg å vise."
+    },
+    "embed": {
+      "notice": "Innholdet lastes fra {service}. Når du laster det, kan {service} lagre informasjonskapsler og se at du er her.",
+      "load": "Last inn fra {service}",
+      "open": "Åpne hos {service}"
     }
   }
 }

@@ -3,7 +3,7 @@
 // (`blocks/<name>/View.vue`). Custom HTML is written as markup here, on the public site only (Tor's decision, M1.4): only an account
 // with unfiltered_html can write it, and the admin always shows its source (SECURITY.md).
 import type { Block } from '@toascribe/blocks'
-import { GLOBAL_SET, QUERY } from '@toascribe/blocks'
+import { EMBED, GLOBAL_SET, QUERY } from '@toascribe/blocks'
 import { BlockDocument, DEFAULT_IMAGE_SIZES } from '@toascribe/block-views'
 import type { ContentMediaRef } from '@toascribe/shared'
 import type { Component } from 'vue'
@@ -21,10 +21,11 @@ const props = withDefaults(
 )
 
 const blocks = computed(() => props.blocks as readonly Block[])
-// The core's own views of the blocks that need the site (the Query Loop reads its items); a theme's view of the same block wins.
+// The core's own views of the blocks that need the site (the Query Loop reads its items, an embed waits for a click); a theme's view of the same block wins.
 const views = new Map<string, Component>([
   [QUERY, resolveComponent('ScribeQueryLoop') as Component],
   [GLOBAL_SET, resolveComponent('ScribeGlobalSetBlock') as Component],
+  [EMBED, resolveComponent('ScribeEmbedBlock') as Component],
   ...blockViews,
 ])
 </script>
