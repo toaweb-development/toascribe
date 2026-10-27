@@ -1,4 +1,5 @@
 import {
+  GlobalSetChoicesResponse,
   GlobalSetDetail,
   GlobalSetListResponse,
   MenuDetail,
@@ -38,6 +39,8 @@ export function createAppearanceApi(api: ApiCall) {
     saveLocations: async (locations: MenuLocations) =>
       MenuLocationsResponse.parse(await api(`${V1}/menu-locations`, { method: 'PUT', body: { locations } })),
     globalSets: async () => GlobalSetListResponse.parse(await api(`${V1}/global-sets`)),
+    /** The sets to choose from in the «Globalt sett» block (slug and name), for anyone who edits content. */
+    globalSetChoices: async () => GlobalSetChoicesResponse.parse(await api(`${V1}/global-sets/choices`)),
     createGlobalSet: async (request: CreateGlobalSetRequest) =>
       GlobalSetDetail.parse(await api(`${V1}/global-sets`, { method: 'POST', body: request })),
     globalSet: async (id: string) => GlobalSetDetail.parse(await api(set(id))),

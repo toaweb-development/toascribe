@@ -39,7 +39,7 @@ import {
 import type { TaxonomyRow, TermRow, TermValues } from '../repositories/terms.ts'
 import { flattenTree } from './content.ts'
 import type { Auditor, RequestContext } from './support.ts'
-import { removeFromMenus } from './appearance.ts'
+import { removeFromMenus } from '@toascribe/db'
 
 export interface TermService {
   taxonomies: (auth: SessionAuth) => Promise<TaxonomyListResponse>

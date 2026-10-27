@@ -9,7 +9,7 @@
 import { documentMediaRefs, isSafeHref, permissionIssues, validateDocument } from '@toascribe/blocks'
 import type { Block } from '@toascribe/blocks'
 import type { Database } from '@toascribe/db'
-import { CoreSettings, MenuItems, menuItemsOf, sanitizeTitle } from '@toascribe/shared'
+import { CoreSettings, MENU_MAX_DEPTH, MENU_MAX_ITEMS, MenuItems, menuItemsOf, sanitizeTitle } from '@toascribe/shared'
 import type {
   CreateGlobalSetRequest,
   CreateMenuRequest,
@@ -45,7 +45,7 @@ import {
 } from '../repositories/appearance.ts'
 import type { Executor } from '../repositories/executor.ts'
 import { inTransaction } from '../repositories/executor.ts'
-import { findPublishedByIds, pagePaths, recordInvalidation } from '../repositories/public.ts'
+import { findPublishedByIds, pagePaths } from '../repositories/public.ts'
 import { readSettings, writeSettings } from '../repositories/settings.ts'
 import type { MediaService } from './media.ts'
 import { loadLinks } from './permalinks.ts'
@@ -85,8 +85,10 @@ export interface AppearanceService {
   deleteGlobalSet(auth: SessionAuth, id: string, ctx: RequestContext): Promise<void>
   /** The menu in a theme location, as the site draws it. */
   publicMenu(location: string): Promise<PublicMenuResponse>
-  /** A global set as the site draws it; NotFoundError when there is none of that slug. */
+  /** A global set as the site draws it (`found: false` when there is none of that slug). */
   publicGlobalSet(slug: string): Promise<PublicGlobalSetResponse>
+  /** The sets to choose from in the «Globalt sett» block: for anyone who edits content. */
+  globalSetChoices(auth: SessionAuth): Promise<{ items: { slug: string; name: string }[] }>
 }
 
 function slugOf(name: string): string {
@@ -106,19 +108,22 @@ export function withoutItems(items: readonly MenuItem[], drop: (item: MenuItem) 
   })
 }
 
-/**
- * Takes the items that name `objectId` out of every menu (content or a term deleted for good: Tor, M1.5), in the caller's transaction.
- * The children of an item take its place.
- */
-export async function removeFromMenus(tx: Executor, objectId: string, at: Date): Promise<void> {
-  for (const row of await listMenus(tx)) {
-    const items = MenuItems.catch([]).parse(row.items)
-    const kept = withoutItems(items, (item) => item.objectId === objectId)
-    if (menuItemsOf(kept).length !== menuItemsOf(items).length) {
-      await updateMenu(tx, row.id, { items: kept }, at)
-      await recordInvalidation(tx, [`menu:${row.id}`, 'menus'], at)
+/** True when a sent tree is deeper or larger than a menu may be: walked without recursion, before any schema reads it. */
+export function treeTooBig(items: readonly unknown[]): boolean {
+  const stack: { list: readonly unknown[]; depth: number }[] = [{ list: items, depth: 0 }]
+  let count = 0
+  while (stack.length > 0) {
+    const next = stack.pop()
+    if (next === undefined) break
+    if (next.depth >= MENU_MAX_DEPTH) return true
+    for (const item of next.list) {
+      count += 1
+      if (count > MENU_MAX_ITEMS) return true
+      const children: unknown = typeof item === 'object' && item !== null ? Reflect.get(item, 'children') : undefined
+      if (Array.isArray(children) && children.length > 0) stack.push({ list: children, depth: next.depth + 1 })
     }
   }
+  return false
 }
 
 export function createAppearanceService(options: {
@@ -169,8 +174,20 @@ export function createAppearanceService(options: {
   }
 
   /** Each item names what it says: a link of one's own an address the site allows, content and terms one that exists. */
-  async function checkItems(executor: Executor, items: readonly MenuItem[]): Promise<void> {
-    const all = menuItemsOf(items).map(({ item }) => item)
+  /**
+   * Each item names what it says: a link of one's own an address the site allows, content and terms one that exists. An item the
+   * stored menu already has with the same object is not checked again: its content may be in the trash (hidden on the site, and back
+   * when it is restored), which must not stop the menu from being saved.
+   */
+  async function checkItems(
+    executor: Executor,
+    items: readonly MenuItem[],
+    stored: readonly MenuItem[],
+  ): Promise<void> {
+    const before = new Set(menuItemsOf(stored).map(({ item }) => `${item.id}\0${item.kind}\0${item.objectId ?? ''}`))
+    const all = menuItemsOf(items)
+      .map(({ item }) => item)
+      .filter((item) => item.kind === 'custom' || !before.has(`${item.id}\0${item.kind}\0${item.objectId ?? ''}`))
     const objects = await namedObjects(
       executor,
       all.flatMap((item) => (item.objectId === undefined ? [] : [item.objectId])),
@@ -251,12 +268,20 @@ export function createAppearanceService(options: {
         const row = await findMenu(tx, id, { forUpdate: true })
         if (row === undefined) throw new NotFoundError()
         // The whole tree, checked here: the route's schema describes one level (OpenAPI cannot draw a recursive one).
+        // A cheap walk first: a tree nested deeper than a menu may be is refused before the recursive schema reads it.
+        if (request.items !== undefined && treeTooBig(request.items)) {
+          throw new AppError(
+            400,
+            'invalid_menu_item',
+            `at most ${String(MENU_MAX_ITEMS)} items in ${String(MENU_MAX_DEPTH)} levels`,
+          )
+        }
         const parsed = request.items === undefined ? undefined : MenuItems.safeParse(request.items)
         if (parsed !== undefined && !parsed.success) {
           throw new AppError(400, 'invalid_menu_item', parsed.error.issues.map((issue) => issue.message).join('; '))
         }
         const items = parsed?.data
-        if (items !== undefined) await checkItems(tx, items)
+        if (items !== undefined) await checkItems(tx, items, MenuItems.catch([]).parse(row.items))
         await updateMenu(
           tx,
           id,
@@ -477,16 +502,25 @@ export function createAppearanceService(options: {
       }
     },
 
+    async globalSetChoices(auth) {
+      if (!['edit_posts', 'edit_pages', 'edit_theme_options'].some((capability) => auth.capabilities.has(capability))) {
+        throw new ForbiddenError()
+      }
+      return { items: (await listGlobalSets(db)).map((row) => ({ slug: row.slug, name: row.name })) }
+    },
+
     async publicGlobalSet(slug) {
       const row = await findGlobalSet(db, { slug })
-      if (row === undefined) throw new NotFoundError()
+      // No set of that slug (a theme asks for its own before it is made): an answer the site may keep, cleared when one is made.
+      if (row === undefined) return { found: false, slug, name: '', blocks: [], media: [], cacheTags: ['global_sets'] }
       const found = await setDetail(row.id, undefined)
       return {
+        found: true,
         slug: found.slug,
         name: found.name,
         blocks: found.blocks,
         media: found.media,
-        cacheTags: [`global_set:${row.id}`, ...found.media.map((ref) => `media:${ref.id}`)],
+        cacheTags: [`global_set:${row.id}`, 'global_sets', ...found.media.map((ref) => `media:${ref.id}`)],
       }
     },
   }

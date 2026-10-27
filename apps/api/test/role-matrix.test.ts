@@ -479,10 +479,16 @@ const CASES: readonly MatrixCase[] = [
     ...(json === undefined ? {} : { json }),
     expected: { ...ok, administrator: status, editor: 403, author: 403, contributor: 403, subscriber: 403 },
   })),
+  {
+    route: 'GET /api/v1/global-sets/choices',
+    method: 'GET',
+    path: '/api/v1/global-sets/choices',
+    expected: { ...ok, subscriber: 403 },
+  },
   ...(
     [
       ['GET /api/v1/public/menus/:location', '/api/v1/public/menus/primary', 200],
-      ['GET /api/v1/public/global-sets/:slug', '/api/v1/public/global-sets/finnes-ikke', 404],
+      ['GET /api/v1/public/global-sets/:slug', '/api/v1/public/global-sets/finnes-ikke', 200],
     ] as const
   ).map(([route, path, status]) => ({
     route,

@@ -1638,7 +1638,8 @@
       "slugHelp": "Kortnavn:",
       "save": "Lagre sett",
       "saved": "Settet er lagret.",
-      "saveFailed": "Settet ble ikke lagret"
+      "saveFailed": "Settet ble ikke lagret",
+      "deleteThemeConfirm": "Settet «{name}» slettes. Temaet bruker det, så det lages på nytt, tomt, neste gang denne siden åpnes."
     }
   }
 }

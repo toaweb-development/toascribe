@@ -7,7 +7,7 @@
   "icon": "i-lucide-library",
   "keywords": ["global", "reusable", "set"],
   "attributes": {
-    "slug": { "type": "string", "default": "", "maxLength": 64 }
+    "slug": { "type": "string", "default": "", "maxLength": 64, "format": "slug" }
   },
   "supports": {},
   "parent": null,

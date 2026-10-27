@@ -172,6 +172,10 @@ export const GlobalSetDetail = GlobalSetSummary.extend({
 export type GlobalSetDetail = z.infer<typeof GlobalSetDetail>
 export const GlobalSetListResponse = z.object({ items: z.array(GlobalSetSummary) })
 export type GlobalSetListResponse = z.infer<typeof GlobalSetListResponse>
+/** GET /global-sets/choices: the sets the «Globalt sett» block may name. */
+export const GlobalSetChoicesResponse = z.object({ items: z.array(z.object({ slug: Slug, name: z.string() })) })
+export type GlobalSetChoicesResponse = z.infer<typeof GlobalSetChoicesResponse>
+
 export const CreateGlobalSetRequest = z.strictObject({ name: Name, slug: Slug.optional() })
 export type CreateGlobalSetRequest = z.infer<typeof CreateGlobalSetRequest>
 export const UpdateGlobalSetRequest = z
@@ -180,6 +184,8 @@ export const UpdateGlobalSetRequest = z
   .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one field' })
 export type UpdateGlobalSetRequest = z.infer<typeof UpdateGlobalSetRequest>
 export const PublicGlobalSetResponse = z.object({
+  /** False when there is no set of the slug (a theme asks for its own before it is made): no blocks, and tags that clear it. */
+  found: z.boolean(),
   slug: Slug,
   name: z.string(),
   blocks: z.array(z.record(z.string(), z.unknown())),

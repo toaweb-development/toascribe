@@ -67,6 +67,7 @@ export function attributeValidator(schema: AttributeSchema): z.ZodType {
       const isUrl = schema.format === 'url'
       const isHref = schema.format === 'href'
       const isUuid = schema.format === 'uuid'
+      const isSlug = schema.format === 'slug'
       validator = base
         .refine((value) => value.isWellFormed(), { message: 'Not well-formed text' })
         .refine((value) => allowed === undefined || allowed.includes(value), {
@@ -76,6 +77,10 @@ export function attributeValidator(schema: AttributeSchema): z.ZodType {
         .refine((value) => !isUrl || value === '' || isSafeMediaUrl(value), { message: 'Not an allowed address' })
         .refine((value) => !isHref || value === '' || isSafeHref(value), { message: 'Not an allowed link address' })
         .refine((value) => !isUuid || value === '' || UUID.test(value), { message: 'Not an id' })
+        // A slug of the site's own (a global set's): what an address segment may hold, nothing that could step out of it.
+        .refine((value) => !isSlug || value === '' || /^[a-z0-9][a-z0-9-]{0,63}$/.test(value), {
+          message: 'Not a slug',
+        })
       break
     }
     case 'number':

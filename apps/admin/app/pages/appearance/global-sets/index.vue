@@ -29,7 +29,8 @@ const making = ref(false)
 watch(
   [data, activeTheme],
   async ([list, theme]) => {
-    if (!list || !theme || making.value) return
+    // In the browser only: a page view on the server changes nothing.
+    if (import.meta.server || !list || !theme || making.value) return
     const missing = theme.globalSets.filter((set) => !list.items.some((item) => item.slug === set.slug))
     if (missing.length === 0) return
     making.value = true
@@ -55,10 +56,12 @@ async function create(): Promise<void> {
     failure.value = describeApiError(caught, t)
   }
 }
-async function remove(id: string, setName: string): Promise<void> {
+async function remove(id: string, setName: string, slug: string): Promise<void> {
   const ok = await confirm.ask({
     title: t('appearance.sets.delete'),
-    description: t('appearance.sets.deleteConfirm', { name: setName }),
+    description: expected(slug)
+      ? t('appearance.sets.deleteThemeConfirm', { name: setName })
+      : t('appearance.sets.deleteConfirm', { name: setName }),
     confirmLabel: t('appearance.sets.delete'),
     cancelLabel: t('content.quickEdit.cancel'),
     color: 'error',
@@ -117,7 +120,7 @@ const expected = (slug: string) => activeTheme.value?.globalSets.some((set) => s
               size="sm"
               class="ms-auto min-h-11"
               :aria-label="$t('appearance.sets.deleteNamed', { name: item.name })"
-              @click="remove(item.id, item.name)"
+              @click="remove(item.id, item.name, item.slug)"
               >{{ $t('appearance.sets.delete') }}</UButton
             >
           </li>

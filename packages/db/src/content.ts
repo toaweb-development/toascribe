@@ -1,12 +1,15 @@
 // What the api and the worker both do to content rows (M1.1): find a free slug the way WordPress' `wp_unique_post_slug()` does,
 // and delete an item for good the way `wp_delete_post()` does (its children move up to its parent first). The api calls these
 // from the content service, the worker from the daily trash purge. Run them inside a transaction: the slug lock is held to its end.
-import { truncateSlug } from '@toascribe/shared'
+import { MenuItems, truncateSlug } from '@toascribe/shared'
+import type { MenuItem } from '@toascribe/shared'
 import { and, eq, isNull, ne, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 
 import type { DbExecutor } from './executor.ts'
 import { content } from './schema/content.ts'
+import { menu } from './schema/site.ts'
+import { cacheInvalidation } from './schema/system.ts'
 
 /** WordPress' `get_default_feed()` names and `embed`: a slug that is one of them gets a number (they are URL endpoints). */
 const RESERVED_SLUGS: ReadonlySet<string> = new Set(['feed', 'rdf', 'rss', 'rss2', 'atom', 'embed'])
@@ -128,7 +131,37 @@ export async function deleteContentPermanently<TSchema extends Record<string, un
     await db.update(content).set({ parentId: item.parentId, slug }).where(eq(content.id, child.id))
   }
   await db.delete(content).where(eq(content.id, id))
+  // Its menu items go with it (Tor, M1.5), whoever deletes it: the api, or the worker's purge of the trash.
+  await removeFromMenus(db, id, new Date())
   return { id: item.id, type: item.type, title: item.title, slug: item.slug }
+}
+
+/**
+ * Takes the items that name `objectId` out of every menu, in the caller's transaction, and clears the site's cached menus they were
+ * in. The children of an item take its place. Used when content or a term is deleted for good.
+ */
+export async function removeFromMenus<TSchema extends Record<string, unknown>>(
+  db: DbExecutor<TSchema>,
+  objectId: string,
+  at: Date,
+): Promise<void> {
+  const prune = (items: readonly MenuItem[]): MenuItem[] =>
+    items.flatMap((item) => {
+      const children = prune(item.children)
+      return item.objectId === objectId ? children : [{ ...item, children }]
+    })
+  const count = (items: readonly MenuItem[]): number => items.reduce((sum, item) => sum + 1 + count(item.children), 0)
+  for (const row of await db.select({ id: menu.id, items: menu.items }).from(menu)) {
+    const parsed = MenuItems.safeParse(row.items)
+    if (!parsed.success) continue
+    const kept = prune(parsed.data)
+    if (count(kept) === count(parsed.data)) continue
+    await db.update(menu).set({ items: kept, modifiedAt: at }).where(eq(menu.id, row.id))
+    await db.insert(cacheInvalidation).values([
+      { tag: `menu:${row.id}`, changedAt: at },
+      { tag: 'menus', changedAt: at },
+    ])
+  }
 }
 
 /**

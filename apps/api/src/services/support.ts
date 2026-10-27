@@ -57,7 +57,8 @@ export function cacheTagsOf(input: Pick<AuditInput, 'objectType' | 'objectId'>):
       // A menu, or the locations (no id): the site's menus are cleared.
       return id === undefined ? ['menus'] : [`menu:${id}`, 'menus']
     case 'global_set':
-      return id === undefined ? [] : [`global_set:${id}`]
+      // `global_sets`: a set made or deleted changes the site's answer «no such set» too.
+      return id === undefined ? ['global_sets'] : [`global_set:${id}`, 'global_sets']
     case 'settings':
       return ['*']
     default:

@@ -23,7 +23,7 @@ const StringAttribute = z.strictObject({
   maxLength: z.int().positive(),
   minLength: z.int().nonnegative().optional(),
   enum: z.array(z.string()).min(1).optional(),
-  format: z.enum(['url', 'href', 'uuid']).optional(),
+  format: z.enum(['url', 'href', 'uuid', 'slug']).optional(),
 })
 
 const NumberAttribute = z.strictObject({

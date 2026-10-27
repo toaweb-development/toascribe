@@ -43,6 +43,7 @@ export {
   isReservedSlug,
   legacyBlocksText,
   lockSlugScope,
+  removeFromMenus,
   uniqueContentSlug,
 } from './content.ts'
 export type { DeletedContent, SlugScope } from './content.ts'

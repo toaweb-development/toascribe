@@ -109,6 +109,7 @@ describe('the OpenAPI document', () => {
         '/api/v1/content/{id}/trash',
         '/api/v1/dashboard/glance',
         '/api/v1/global-sets',
+        '/api/v1/global-sets/choices',
         '/api/v1/global-sets/{id}',
         '/api/v1/me',
         '/api/v1/me/email-change',

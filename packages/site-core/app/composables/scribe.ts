@@ -101,11 +101,19 @@ export function useArea(_id: string) {
  * theme's expected set is made empty in «Globale sett»).
  */
 export function useGlobalSet(slug: MaybeRefOrGetter<string>) {
+  // Only a slug as the api makes them goes into the address (a block's attribute is checked when it is saved, and here again).
   const fetcher = useRequestFetch()
   const key = computed(() => `scribe:global-set:${toValue(slug)}`)
   const { data } = useAsyncData(
     key,
-    () => fetcher<PublicGlobalSetResponse | null>(`/_toascribe/data/global-set/${toValue(slug)}`).catch(() => null),
+    async () => {
+      const wanted = toValue(slug)
+      if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(wanted)) return null
+      const answer = await fetcher<PublicGlobalSetResponse>(
+        `/_toascribe/data/global-set/${encodeURIComponent(wanted)}`,
+      ).catch(() => null)
+      return answer?.found === true ? answer : null
+    },
     { default: () => null },
   )
   return data

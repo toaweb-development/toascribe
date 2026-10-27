@@ -3,6 +3,7 @@ import {
   ApiError,
   CreateGlobalSetRequest,
   CreateMenuRequest,
+  GlobalSetChoicesResponse,
   GlobalSetDetail,
   GlobalSetListResponse,
   MenuDetail,
@@ -16,7 +17,7 @@ import {
 
 import { getClientIp } from '../lib/client-ip.ts'
 import type { AppEnv } from '../lib/env.ts'
-import { publicAccess, requireCapability } from '../lib/policy.ts'
+import { publicAccess, requireAnyCapability, requireCapability } from '../lib/policy.ts'
 import { requireSession } from '../middleware/auth.ts'
 import { defineRoute } from '../middleware/policy.ts'
 import type { Services } from '../services/index.ts'
@@ -208,9 +209,21 @@ const publicSet = defineRoute({
   policy: publicAccess(),
   request: { params: z.object({ slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/) }) },
   responses: {
-    200: json(PublicGlobalSetResponse, 'The set'),
+    200: json(PublicGlobalSetResponse, 'The set, or `found: false`'),
     400: errorResponse('Invalid slug'),
-    404: errorResponse('No such set'),
+  },
+})
+
+const setChoices = defineRoute({
+  method: 'get',
+  path: '/global-sets/choices',
+  tags: ['appearance'],
+  summary: 'The global sets to choose from in the «Globalt sett» block',
+  description: 'Slug and name only, for anyone who edits content (the sets themselves need edit_theme_options).',
+  policy: requireAnyCapability('edit_posts', 'edit_pages', 'edit_theme_options'),
+  responses: {
+    200: json(GlobalSetChoicesResponse, 'The sets'),
+    ...refused,
   },
 })
 
@@ -237,6 +250,7 @@ export function createAppearanceApp(services: Services): OpenAPIHono<AppEnv> {
     .openapi(putLocations, async (c) =>
       c.json(await appearance.updateLocations(await requireSession(c), c.req.valid('json'), context(c)), 200),
     )
+    .openapi(setChoices, async (c) => c.json(await appearance.globalSetChoices(await requireSession(c)), 200))
     .openapi(listSets, async (c) => c.json(await appearance.globalSets(await requireSession(c)), 200))
     .openapi(createSet, async (c) =>
       c.json(await appearance.createGlobalSet(await requireSession(c), c.req.valid('json'), context(c)), 201),

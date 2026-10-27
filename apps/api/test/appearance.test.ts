@@ -103,6 +103,14 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('menus and global sets (needs T
       expect((await publicMenu('primary')).items[1]).toMatchObject({ label: 'Nyheter', url: '/nytt/' })
       expect((await admin.post(`/api/v1/content/${ids['post'] ?? ''}/trash`)).status).toBe(200)
       expect(labels((await publicMenu('primary')).items)).not.toContain('Nyheter')
+      // A menu with an item whose content is in the trash can still be saved (the item waits for the content to come back).
+      const held = MenuDetail.parse(await (await admin.get(`/api/v1/menus/${menu.id}`)).json())
+      const reordered = await admin.patch(`/api/v1/menus/${menu.id}`, {
+        items: [...held.items].reverse(),
+        name: 'Hovedmeny',
+      })
+      expect(reordered.status, await reordered.clone().text()).toBe(200)
+      await admin.patch(`/api/v1/menus/${menu.id}`, { items: held.items })
       expect((await admin.delete(`/api/v1/content/${ids['post'] ?? ''}`)).status).toBe(204)
       const stored = MenuDetail.parse(await (await admin.get(`/api/v1/menus/${menu.id}`)).json())
       expect(stored.items.map((entry) => entry.objectId)).not.toContain(ids['post'])
@@ -119,6 +127,19 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('menus and global sets (needs T
         expect(res.status, JSON.stringify(bad)).toBe(400)
       }
       expect((await admin.patch(`/api/v1/menus/${menu.id}`, { items: [{ kind: 'custom' }] })).status).toBe(400)
+      // A tree deeper than a menu may be is refused before it is read (no stack overflow).
+      let deep: Record<string, unknown> = {
+        id: 'm_deep0',
+        kind: 'custom',
+        url: '/',
+        label: '',
+        newTab: false,
+        cssClass: '',
+        description: '',
+        children: [],
+      }
+      for (let level = 1; level < 1500; level += 1) deep = { ...deep, id: `m_deep${String(level)}`, children: [deep] }
+      expect((await admin.patch(`/api/v1/menus/${menu.id}`, { items: [deep] })).status).toBe(400)
     })
 
     it('is edit_theme_options only, and a deleted menu leaves its location empty', async () => {
@@ -145,7 +166,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('menus and global sets (needs T
       )
       expect(JSON.stringify(shown.blocks)).toContain('Ring oss')
       expect(shown.cacheTags).toContain(`global_set:${set.id}`)
-      expect((await visitor.get('/api/v1/public/global-sets/finnes-ikke')).status).toBe(404)
+      const missing = PublicGlobalSetResponse.parse(
+        await (await visitor.get('/api/v1/public/global-sets/finnes-ikke')).json(),
+      )
+      expect(missing).toMatchObject({ found: false, blocks: [], cacheTags: ['global_sets'] })
 
       // A «Les mer» belongs in a post; a custom HTML block needs unfiltered_html.
       expect((await admin.patch(`/api/v1/global-sets/${set.id}`, { blocks: [createBlock('core/more')] })).status).toBe(
@@ -153,6 +177,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('menus and global sets (needs T
       )
       expect((await admin.post('/api/v1/global-sets', { name: 'Kontaktinfo', slug: 'kontaktinfo' })).status).toBe(409)
       expect((await editor.post('/api/v1/global-sets', { name: 'Nei' })).status).toBe(403)
+      // An editor may not change the sets, but may choose one in the «Globalt sett» block.
+      const choices = (await (await editor.get('/api/v1/global-sets/choices')).json()) as { items: { slug: string }[] }
+      expect(choices.items.map((item) => item.slug)).toContain('kontaktinfo')
+      // The block names a slug as the api makes them, nothing that could step out of the address.
+      const res2 = await editor.post('/api/v1/content', {
+        type: 'post',
+        title: 'Med sett',
+        blocks: [createBlock('core/global-set', { slug: '../settings' })],
+      })
+      expect(res2.status).toBe(400)
     })
   })
 })

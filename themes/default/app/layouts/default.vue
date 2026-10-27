@@ -3,8 +3,6 @@
 // tagline, the search, the content, and the core's footer (ScribeFooter). Landmarks: banner, main, contentinfo (WCAG 1.3.1, 2.4.1).
 const { t } = useI18n()
 const settings = useSettings()
-// The theme's «Bunntekst» set (theme.json `globalSets`): blocks the site's people edit in «Utseende → Globale sett».
-const footerSet = useGlobalSet('bunntekst')
 </script>
 
 <template>
@@ -28,11 +26,8 @@ const footerSet = useGlobalSet('bunntekst')
     </main>
     <footer class="theme-footer">
       <div class="theme-wrap theme-footer-inner">
-        <ScribeBlocks
-          v-if="footerSet && footerSet.blocks.length > 0"
-          :blocks="footerSet.blocks"
-          :media="footerSet.media"
-        />
+        <!-- The theme's «Bunntekst» set (theme.json `globalSets`), edited in «Utseende → Globale sett». -->
+        <ScribeGlobalSet slug="bunntekst" />
         <ThemeFooterMenu />
         <p>{{ settings?.title ? t('theme.footer', { site: settings.title }) : t('theme.poweredBy') }}</p>
         <p v-if="settings?.privacyPolicyPath">

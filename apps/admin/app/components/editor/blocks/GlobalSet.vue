@@ -13,7 +13,7 @@ const uid = useId()
 const sets = ref<{ label: string; value: string }[]>([])
 onMounted(async () => {
   try {
-    sets.value = (await appearanceApi.globalSets()).items.map((set) => ({ label: set.name, value: set.slug }))
+    sets.value = (await appearanceApi.globalSetChoices()).items.map((set) => ({ label: set.name, value: set.slug }))
   } catch {
     sets.value = []
   }
