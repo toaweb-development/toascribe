@@ -51,5 +51,5 @@ export function siteThemeSource(options: {
 
 /** A fixed answer (tests, and a stack whose site is known). */
 export function fixedThemeSource(theme: ActiveTheme | null): ActiveThemeSource {
-  return { current: async () => theme }
+  return { current: () => Promise.resolve(theme) }
 }

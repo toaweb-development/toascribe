@@ -11,11 +11,15 @@ function source(answers: (() => Response)[]) {
   const theme = siteThemeSource({
     siteUrl: 'http://site:3000',
     now: () => time,
-    fetch: async (input) => {
-      asked.push(String(input))
+    fetch: (input) => {
+      asked.push(input instanceof Request ? input.url : input instanceof URL ? input.href : input)
       const next = answers.shift()
-      if (next === undefined) throw new Error('no answer')
-      return next()
+      if (next === undefined) return Promise.reject(new Error('no answer'))
+      try {
+        return Promise.resolve(next())
+      } catch (error) {
+        return Promise.reject(error instanceof Error ? error : new Error('failed'))
+      }
     },
   })
   return { theme, asked, advance: (ms: number) => (time += ms) }
