@@ -283,11 +283,24 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       // Through the api the uploader still has both.
       expect((await author.get(`/api/v1/media/${item.id}/file?size=original`)).status).toBe(200)
       expect((await author.get(`/api/v1/media/${item.id}/file?size=thumbnail`)).status).toBe(200)
+      // A generated file missing on disk does not block the change: it is left out.
+      const gone = MediaItem.parse(
+        await (await author.patch(`/api/v1/media/${item.id}`, { visibility: 'public' })).json(),
+      )
+      await createLocalStorage(env.uploadsDir).remove(newKeys[1] ?? '')
+      expect((await author.patch(`/api/v1/media/${item.id}`, { visibility: 'private' })).status).toBe(200)
+      const [after] = await env.query<{ storage_key: string; variants: { sizes: Record<string, unknown> } }>(
+        'select storage_key, variants from media where id = $1',
+        [item.id],
+      )
+      expect(after?.variants.sizes).toEqual({})
+      expect(gone.originalUrl).not.toBe(`/uploads/${after?.storage_key ?? ''}`)
+      expect((await author.get(`/api/v1/media/${item.id}/file?size=original`)).status).toBe(200)
       // Made public again, it is served at its new address.
       const pub = MediaItem.parse(
         await (await author.patch(`/api/v1/media/${item.id}`, { visibility: 'public' })).json(),
       )
-      expect(pub.originalUrl).toBe(`/uploads/${row?.storage_key ?? ''}`)
+      expect(pub.originalUrl).toBe(`/uploads/${after?.storage_key ?? ''}`)
       expect((await env.client().get(pub.originalUrl)).status).toBe(200)
     })
 

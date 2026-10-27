@@ -51,7 +51,7 @@ const itemResponse = (description: string) => ({ content: { 'application/json': 
 const uploadErrors = {
   400: errorResponse(
     'Not allowed: `unsupported_type` (not on the list, or not for this role), `type_mismatch` (the content is not what the name ' +
-      'says), `empty_file`, `unreadable_image`, `image_too_large` (more pixels than `image_max_pixels`), `invalid_folder`, `invalid_attached_to` (no such content)',
+      'says), `empty_file`, `unreadable_image`, `image_too_large` (more pixels than `image_max_pixels`), `invalid_folder`, `invalid_attached_to` (no such content, or content the uploader may not edit)',
   ),
   401: errorResponse('Not signed in'),
   403: errorResponse('CSRF token missing or wrong, or no right to the file'),

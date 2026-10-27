@@ -427,17 +427,27 @@ export function createMediaService(options: {
       moved.push({ from, to })
       return to
     }
+    /** A generated file that is missing on disk is left out (the worker can make it again); it never blocks the change. */
+    const copyGenerated = async (from: string): Promise<string | undefined> =>
+      (await storage.stat(from)) === undefined ? undefined : copy(from)
+    if ((await storage.stat(row.storageKey)) === undefined) {
+      throw new AppError(409, 'media_missing', 'The file is missing on the server')
+    }
+    const storageKey = await copy(row.storageKey)
     const sizes: MediaVariantsData['sizes'] = {}
     for (const [name, size] of Object.entries(row.variants.sizes)) {
-      sizes[name] = { ...size, key: await copy(size.key) }
+      const key = await copyGenerated(size.key)
+      if (key !== undefined) sizes[name] = { ...size, key }
     }
     const { scaled, edited } = row.variants
+    const scaledKey = scaled === undefined ? undefined : await copyGenerated(scaled.key)
+    const editedKey = edited === undefined ? undefined : await copyGenerated(edited.key)
     return {
-      storageKey: await copy(row.storageKey),
+      storageKey,
       variants: {
         sizes,
-        ...(scaled === undefined ? {} : { scaled: { ...scaled, key: await copy(scaled.key) } }),
-        ...(edited === undefined ? {} : { edited: { ...edited, key: await copy(edited.key) } }),
+        ...(scaled === undefined || scaledKey === undefined ? {} : { scaled: { ...scaled, key: scaledKey } }),
+        ...(edited === undefined || editedKey === undefined ? {} : { edited: { ...edited, key: editedKey } }),
       },
     }
   }
