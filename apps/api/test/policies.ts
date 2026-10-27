@@ -72,6 +72,9 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   // The public reading API (M1.4): open to anyone; it shows only what is published and public.
   'GET /api/v1/public/settings': 'public',
   'GET /api/v1/public/resolve': 'public',
+  'GET /api/v1/public/feed': 'public',
+  'GET /api/v1/public/sitemap': 'public',
+  'GET /api/v1/public/sitemap/:kind/:page': 'public',
   'GET /api/v1/public/query': 'public',
   'POST /api/v1/public/unlock': 'public',
   'GET /api/v1/public/preview': 'public',

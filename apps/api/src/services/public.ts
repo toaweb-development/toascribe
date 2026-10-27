@@ -13,6 +13,9 @@ import {
   ContentSeo,
   CoreSettings,
   PREVIEW_LINK_MINUTES,
+  SITEMAP_KINDS,
+  SITEMAP_MAX_URLS,
+  sitemapPath,
   matchPostPath,
   isSiteLocation,
   slugSegment,
@@ -31,6 +34,11 @@ import type {
   PublicSettings,
   PublicSummary,
   PublicTerm,
+  PublicFeed,
+  PublicFeedResponse,
+  PublicSitemapIndex,
+  PublicSitemapPage,
+  SitemapKind,
   ResolveResponse,
 } from '@toascribe/shared'
 
@@ -43,6 +51,13 @@ import {
   findAnyById,
   findAuthorByNicename,
   findPublishedById,
+  findPublishedByIds,
+  countIndexable,
+  countIndexableAuthors,
+  countIndexableTerms,
+  listIndexable,
+  listIndexableAuthors,
+  listIndexableTerms,
   findPublishedByShortId,
   findPublishedPages,
   findPublishedPost,
@@ -73,6 +88,8 @@ const SETTINGS = CoreSettings.pick({
   timezone_string: true,
   gmt_offset: true,
   posts_per_page: true,
+  posts_per_rss: true,
+  rss_use_excerpt: true,
   show_on_front: true,
   page_on_front: true,
   page_for_posts: true,
@@ -80,8 +97,11 @@ const SETTINGS = CoreSettings.pick({
   wp_page_for_privacy_policy: true,
 })
 type StoredSettings = { readonly [K in keyof typeof SETTINGS.shape]: (typeof SETTINGS.shape)[K]['_output'] }
-/** The settings of one request, with its address rules (permalinks.ts). */
-type Settings = StoredSettings & { readonly links: Links }
+/**
+ * The settings of one request, with its address rules (permalinks.ts). `feed`: the request is for a feed, so a list is as long as
+ * «Elementer i RSS» (K-194) and sticky posts are not lifted (WordPress' feeds).
+ */
+type Settings = StoredSettings & { readonly links: Links; readonly feed?: boolean }
 
 /** WordPress' excerpt length in words, and what ends an excerpt made from the text. */
 const EXCERPT_WORDS = 55
@@ -100,7 +120,13 @@ export interface Visitor {
 
 export interface PublicService {
   settings(): Promise<PublicSettings>
-  resolve(path: string, visitor: Visitor): Promise<ResolveResponse>
+  resolve(path: string, visitor: Visitor, options?: { readonly feed?: boolean }): Promise<ResolveResponse>
+  /** The RSS feed under an address (K-222): `/` for the site's, an archive's address for its own. 404 when it has none. */
+  feed(path: string): Promise<PublicFeedResponse>
+  /** The sitemap's index (K-223). 404 when the site asks search engines not to index it. */
+  sitemapIndex(): Promise<PublicSitemapIndex>
+  /** One file of the sitemap; 404 past its last page, and when the site asks not to be indexed. */
+  sitemapPage(kind: SitemapKind, page: number): Promise<PublicSitemapPage>
   query(query: PublicQuery, visitor: Visitor): Promise<PublicListResponse>
   /**
    * The cookie value that opens items with this password, or undefined for a wrong password or an item that is not public and
@@ -162,6 +188,8 @@ export function createPublicService(options: {
   readonly media: Pick<MediaService, 'contentRefs'>
   readonly signingKey: Uint8Array
   readonly limiter: Pick<RateLimiter, 'begin' | 'succeed'>
+  /** PUBLIC_ORIGIN: the addresses in feeds and sitemaps are absolute, built on it and never on a request's Host. */
+  readonly publicOrigin: string
   readonly onInvalidSetting?: (key: string) => void
 }): PublicService {
   const { db, clock, media, signingKey, limiter } = options
@@ -379,7 +407,7 @@ export function createPublicService(options: {
   ): Promise<ResolveResponse> {
     const { list: result, tags } = await list(
       filter,
-      { orderby: 'date', order: 'desc', stickyFirst: kind === 'home' && page === 1 },
+      { orderby: 'date', order: 'desc', stickyFirst: kind === 'home' && page === 1 && settings.feed !== true },
       page,
       settings.posts_per_page,
       visitor,
@@ -510,6 +538,18 @@ export function createPublicService(options: {
     return undefined
   }
 
+  /** How many addresses each part of the sitemap has. */
+  async function sitemapCounts(settings: Settings): Promise<Record<SitemapKind, number>> {
+    const [posts, pages, categories, tags, authors] = await Promise.all([
+      countIndexable(db, 'post'),
+      countIndexable(db, 'page'),
+      countIndexableTerms(db, 'category'),
+      countIndexableTerms(db, 'post_tag'),
+      countIndexableAuthors(db),
+    ])
+    return { posts, pages: pages + (settings.show_on_front === 'posts' ? 1 : 0), categories, tags, authors }
+  }
+
   const service: PublicService = {
     async settings() {
       const settings = await settingsOf()
@@ -541,8 +581,10 @@ export function createPublicService(options: {
       }
     },
 
-    async resolve(path, visitor) {
-      const settings = await settingsOf()
+    async resolve(path, visitor, resolveOptions) {
+      const loaded = await settingsOf()
+      const settings: Settings =
+        resolveOptions?.feed === true ? { ...loaded, posts_per_page: loaded.posts_per_rss, feed: true } : loaded
       const { links } = settings
       const url = new URL(path.startsWith('/') ? path : `/${path}`, 'http://site.invalid')
       const decoded = decodeSegments(url.pathname)
@@ -737,6 +779,190 @@ export function createPublicService(options: {
         return single(post.row, visitor, settings, post.page)
       }
       return (await oldAddress(pathname, settings)) ?? notFound()
+    },
+
+    async feed(path) {
+      const origin = options.publicOrigin.replace(/\/+$/, '')
+      const absolute = (sitePath: string) => `${origin}${sitePath}`
+      const loaded = await settingsOf()
+      const settings: Settings = { ...loaded, posts_per_page: loaded.posts_per_rss, feed: true }
+      // A feed is read by nobody in particular: no password cookie, so a protected item is locked (title and link only).
+      const reader: Visitor = {}
+      // `/feed/` is always the latest posts (WordPress), whatever the front page shows; an archive's feed is under its address.
+      const found: ResolveResponse =
+        path === '/'
+          ? {
+              kind: 'home',
+              status: 200,
+              templates: [],
+              archive: { type: 'home' },
+              ...(await (async () => {
+                const { list: result, tags } = await list(
+                  { type: 'post' },
+                  { orderby: 'date', order: 'desc', stickyFirst: false },
+                  1,
+                  settings.posts_per_page,
+                  reader,
+                  settings,
+                )
+                return { list: result, cacheTags: tags }
+              })()),
+            }
+          : await service.resolve(path, reader, { feed: true })
+      if (found.kind === 'redirect') {
+        // An archive's old address: its feed moved with it.
+        return { kind: 'redirect', location: `${found.location}feed/`, cacheTags: found.cacheTags }
+      }
+      if ((found.kind !== 'home' && found.kind !== 'archive') || !('list' in found) || found.list.page !== 1) {
+        throw new NotFoundError()
+      }
+      const where = found.archive
+      const siteName = settings.blogname
+      const named = (name: string) => (siteName === '' ? name : `${siteName} » ${name}`)
+      const pad = (value: number) => String(value).padStart(2, '0')
+      const channel =
+        where.type === 'category' || where.type === 'tag'
+          ? { title: named(where.term.name), page: where.term.path }
+          : where.type === 'author'
+            ? { title: named(where.author.displayName), page: where.author.path }
+            : where.type === 'date'
+              ? {
+                  title: named(
+                    [where.year, where.month, where.day]
+                      .filter((part) => part !== null)
+                      .map(pad)
+                      .join('-'),
+                  ),
+                  page: `/${[String(where.year), ...(where.month === null ? [] : [pad(where.month)]), ...(where.day === null ? [] : [pad(where.day)])].join('/')}/`,
+                }
+              : { title: siteName, page: path }
+      const items = found.list.items
+      const rows = settings.rss_use_excerpt
+        ? []
+        : await findPublishedByIds(
+            db,
+            items.map((item) => item.id),
+          )
+      const textOf = new Map<string, Block[]>(
+        rows
+          .filter((row) => row.passwordHash === null)
+          // The whole text, all its pages, without the «Les mer» and page-break markers (WordPress' feeds do the same).
+          .map((row) => [row.id, blocksOf(row).filter((block) => block.type !== MORE && block.type !== NEXTPAGE)]),
+      )
+      const mediaOf = (blocks: readonly Block[]) => documentMediaRefs(blocks).map((ref) => ref.mediaId)
+      const mediaIds = [...new Set([...textOf.values()].flatMap(mediaOf))]
+      const refs = mediaIds.length === 0 ? [] : await media.contentRefs(VISITOR, mediaIds)
+      const answer: PublicFeed = {
+        kind: 'feed',
+        channel: {
+          title: channel.title,
+          description: settings.blogdescription,
+          link: absolute(channel.page),
+          self: absolute(`${path === '/' ? '/' : channel.page}feed/`),
+          language: settings.locale.replace('_', '-'),
+          lastBuildDate:
+            items.length === 0
+              ? null
+              : items.map((item) => item.modifiedAt).reduce((latest, at) => (at > latest ? at : latest)),
+        },
+        useExcerpt: settings.rss_use_excerpt,
+        origin,
+        items: items.map((item) => {
+          const blocks = textOf.get(item.id)
+          const own = new Set(blocks === undefined ? [] : mediaOf(blocks))
+          return {
+            title: item.title,
+            link: absolute(item.path),
+            guid: absolute(`/?p=${String(item.shortId)}`),
+            publishedAt: item.publishedAt,
+            author: item.authors[0]?.displayName ?? '',
+            categories: [...item.categories, ...item.tags].map((term) => term.name),
+            excerpt: item.protected ? '' : item.excerpt,
+            blocks: item.protected || blocks === undefined ? null : asJson(blocks),
+            media: refs.filter((ref) => own.has(ref.id)),
+          }
+        }),
+        cacheTags: [
+          ...new Set([
+            ...found.cacheTags,
+            ...items.map((item) => `content:${item.id}`),
+            ...refs.map((ref) => `media:${ref.id}`),
+            'settings',
+          ]),
+        ],
+      }
+      return answer
+    },
+
+    async sitemapIndex() {
+      const settings = await settingsOf()
+      if (!settings.blog_public) throw new NotFoundError()
+      const counts = await sitemapCounts(settings)
+      const origin = options.publicOrigin.replace(/\/+$/, '')
+      return {
+        sitemaps: SITEMAP_KINDS.flatMap((kind) =>
+          Array.from({ length: Math.ceil(counts[kind] / SITEMAP_MAX_URLS) }, (_, index) => ({
+            kind,
+            page: index + 1,
+            loc: `${origin}${sitemapPath(kind, index + 1)}`,
+          })),
+        ),
+        cacheTags: ['settings', 'list:post', 'list:page'],
+      }
+    },
+
+    async sitemapPage(kind, page) {
+      const settings = await settingsOf()
+      if (!settings.blog_public) throw new NotFoundError()
+      const counts = await sitemapCounts(settings)
+      if (page < 1 || (page - 1) * SITEMAP_MAX_URLS >= counts[kind]) throw new NotFoundError()
+      const origin = options.publicOrigin.replace(/\/+$/, '')
+      const at = (path: string, lastmod: Date | null) => ({
+        loc: `${origin}${path}`,
+        lastmod: lastmod?.toISOString() ?? null,
+      })
+      const start = (page - 1) * SITEMAP_MAX_URLS
+      if (kind === 'posts' || kind === 'pages') {
+        const type = kind === 'posts' ? 'post' : 'page'
+        // The front page of latest posts has no item: it opens the pages' sitemap, as in WordPress.
+        const home = kind === 'pages' && settings.show_on_front === 'posts'
+        const skip = home ? Math.max(0, start - 1) : start
+        const take = home && start === 0 ? SITEMAP_MAX_URLS - 1 : SITEMAP_MAX_URLS
+        const rows = await listIndexable(db, type, take, skip)
+        const paths = await pathsOf(rows, settings)
+        return {
+          urls: [
+            ...(home && start === 0 ? [at('/', null)] : []),
+            ...rows.map((row) =>
+              at(frontPath(row, settings) ?? paths.get(row.id)?.path ?? `/${row.slug}/`, row.modifiedAt),
+            ),
+          ],
+          cacheTags: ['settings', `list:${type}`],
+        }
+      }
+      if (kind === 'authors') {
+        const authors = await listIndexableAuthors(db, SITEMAP_MAX_URLS, start)
+        return {
+          urls: authors.map((author) => at(settings.links.authorPath(author.nicename), null)),
+          cacheTags: ['settings', 'list:post'],
+        }
+      }
+      const terms = await listIndexableTerms(
+        db,
+        kind === 'categories' ? 'category' : 'post_tag',
+        SITEMAP_MAX_URLS,
+        start,
+      )
+      const categoryPaths =
+        kind === 'categories'
+          ? await settings.links.categoryPaths(terms.map((entry) => entry.id))
+          : new Map<string, string>()
+      return {
+        urls: terms.map((entry) =>
+          at(kind === 'categories' ? (categoryPaths.get(entry.id) ?? '/') : settings.links.tagPath(entry.slug), null),
+        ),
+        cacheTags: ['settings', 'list:post', ...terms.map((entry) => `term:${entry.id}`)],
+      }
     },
 
     async query(query, visitor) {

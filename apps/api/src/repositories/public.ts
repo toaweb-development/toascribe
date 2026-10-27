@@ -475,3 +475,89 @@ export async function tagsChangedSince(db: Executor, sinceXid: string): Promise<
 }
 
 export type { ContentSeo }
+
+// The sitemap (M1.6, K-223; WordPress' wp-sitemap). What a search engine may index: published, public items without a password and
+// without «noindex» (the SEO panel), terms and authors with such a post.
+
+/** What the sitemap leaves out of the published items: a password, or «noindex». */
+const indexable: SQL = sql`${visible} and ${content.passwordHash} is null and coalesce((${content.seo}->>'noindex')::boolean, false) = false`
+
+export async function countIndexable(db: Executor, type: 'post' | 'page'): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(content)
+    .where(and(indexable, eq(content.type, type)))
+  return row?.count ?? 0
+}
+
+/** One file's worth of indexable items of a type, oldest first (a new item lands on the last file, as in WordPress). */
+export async function listIndexable(
+  db: Executor,
+  type: 'post' | 'page',
+  limit: number,
+  offset: number,
+): Promise<PublicRow[]> {
+  return db
+    .select(columns)
+    .from(content)
+    .where(and(indexable, eq(content.type, type)))
+    .orderBy(asc(content.publishedAt), asc(content.id))
+    .limit(limit)
+    .offset(offset)
+}
+
+/** A term's own indexable posts (WordPress' sitemap counts the term's own posts, not its children's). */
+const termHasPosts: SQL = sql`exists (select 1 from content_term join content on content.id = content_term.content_id
+  where content_term.term_id = ${term.id} and ${indexable} and content.type = 'post')`
+
+export async function countIndexableTerms(db: Executor, taxonomySlug: 'category' | 'post_tag'): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(term)
+    .innerJoin(taxonomy, eq(taxonomy.id, term.taxonomyId))
+    .where(and(eq(taxonomy.slug, taxonomySlug), termHasPosts))
+  return row?.count ?? 0
+}
+
+export async function listIndexableTerms(
+  db: Executor,
+  taxonomySlug: 'category' | 'post_tag',
+  limit: number,
+  offset: number,
+): Promise<{ id: string; slug: string }[]> {
+  return db
+    .select({ id: term.id, slug: term.slug })
+    .from(term)
+    .innerJoin(taxonomy, eq(taxonomy.id, term.taxonomyId))
+    .where(and(eq(taxonomy.slug, taxonomySlug), termHasPosts))
+    .orderBy(asc(term.slug), asc(term.id))
+    .limit(limit)
+    .offset(offset)
+}
+
+/** An active account with an indexable post (its author archive), as findAuthorByNicename lets through. */
+const authorHasPosts: SQL = sql`${account.status} = 'active' and exists (select 1 from content_author
+  join content on content.id = content_author.content_id
+  where content_author.account_id = ${account.id} and ${indexable} and content.type = 'post')`
+
+export async function countIndexableAuthors(db: Executor): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(account)
+    .where(authorHasPosts)
+  return row?.count ?? 0
+}
+
+export async function listIndexableAuthors(
+  db: Executor,
+  limit: number,
+  offset: number,
+): Promise<{ nicename: string }[]> {
+  return db
+    .select({ nicename: account.nicename })
+    .from(account)
+    .where(authorHasPosts)
+    .orderBy(asc(account.nicename), asc(account.id))
+    .limit(limit)
+    .offset(offset)
+}

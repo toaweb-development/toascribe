@@ -241,6 +241,7 @@ export function createServices(deps: ServiceDeps): Services {
       media,
       signingKey: deps.signingKey,
       limiter,
+      publicOrigin: deps.publicOrigin,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     mfa: createMfaService({

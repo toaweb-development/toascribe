@@ -1,4 +1,4 @@
-import { OpenAPIHono } from '@hono/zod-openapi'
+import { OpenAPIHono, z } from '@hono/zod-openapi'
 import {
   ApiError,
   CacheChanges,
@@ -11,6 +11,11 @@ import {
   PublicPasswordRequest,
   PublicQuery,
   PublicSettings,
+  PublicFeedQuery,
+  PublicSitemapIndex,
+  PublicSitemapPage,
+  SitemapKind,
+  PublicFeedResponse,
   ResolveQuery,
   ResolveResponse,
 } from '@toascribe/shared'
@@ -62,6 +67,54 @@ const resolveRoute = defineRoute({
   policy: PUBLIC,
   request: { query: ResolveQuery },
   responses: { 200: json(ResolveResponse, 'What the address is'), 400: errorResponse('Invalid query') },
+})
+
+const feedRoute = defineRoute({
+  method: 'get',
+  path: '/public/feed',
+  tags: [TAG],
+  summary: 'The RSS feed under an address (K-222)',
+  description:
+    "For the site's `/feed/`, `<archive>/feed/` routes: the latest posts (`path=/`), or a category's (with its parents), a tag's, " +
+    "an author's or a date archive's, as many as «Elementer i RSS» and with the text or the excerpt as «Lesing» says. Published, " +
+    'public posts only; a password-protected post has its title and link only. Addresses are absolute (PUBLIC_ORIGIN). An old ' +
+    'archive address answers where its feed is now; an address without a feed is 404.',
+  policy: PUBLIC,
+  request: { query: PublicFeedQuery },
+  responses: {
+    200: json(PublicFeedResponse, 'The feed, or where it moved'),
+    400: errorResponse('Invalid query'),
+    404: errorResponse('No feed at that address'),
+  },
+})
+
+const sitemapIndexRoute = defineRoute({
+  method: 'get',
+  path: '/public/sitemap',
+  tags: [TAG],
+  summary: "The sitemap's index (K-223)",
+  description:
+    "For the site's `/sitemap.xml`: the files of posts, pages, categories, tags and authors, at most 2000 addresses each. 404 " +
+    'when «Be søkemotorer om ikke å indeksere» is on.',
+  policy: PUBLIC,
+  responses: { 200: json(PublicSitemapIndex, 'The files'), 404: errorResponse('The site asks not to be indexed') },
+})
+
+const sitemapPageRoute = defineRoute({
+  method: 'get',
+  path: '/public/sitemap/{kind}/{page}',
+  tags: [TAG],
+  summary: 'One file of the sitemap',
+  description:
+    'Published, public items without a password and without «noindex», and the categories, tags and authors with such a post. ' +
+    'Addresses are absolute (PUBLIC_ORIGIN).',
+  policy: PUBLIC,
+  request: { params: z.object({ kind: SitemapKind, page: z.coerce.number().int().min(1).max(100_000) }) },
+  responses: {
+    200: json(PublicSitemapPage, 'The addresses'),
+    400: errorResponse('Invalid kind or page'),
+    404: errorResponse('No such file, or the site asks not to be indexed'),
+  },
 })
 
 const queryRoute = defineRoute({
@@ -148,6 +201,12 @@ export function createPublicApp(services: Services): OpenAPIHono<AppEnv> {
     .openapi(settingsRoute, async (c) => {
       return c.json(await services.public.settings(), 200)
     })
+    .openapi(sitemapIndexRoute, async (c) => c.json(await services.public.sitemapIndex(), 200))
+    .openapi(sitemapPageRoute, async (c) => {
+      const { kind, page } = c.req.valid('param')
+      return c.json(await services.public.sitemapPage(kind, page), 200)
+    })
+    .openapi(feedRoute, async (c) => c.json(await services.public.feed(c.req.valid('query').path), 200))
     .openapi(resolveRoute, async (c) => {
       return c.json(await services.public.resolve(c.req.valid('query').path, visitor(c)), 200)
     })
