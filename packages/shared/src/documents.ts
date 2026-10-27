@@ -77,9 +77,7 @@ export type FocalPoint = z.infer<typeof FocalPoint>
 export const MediaVariants = JsonObject
 export type MediaVariants = JsonObject
 
-/** menu.items (K-132): the menu as one JSON tree of links to content, terms or URLs (M1.5). */
-export const MenuItems = z.array(JsonObject)
-export type MenuItems = z.infer<typeof MenuItems>
+/** menu.items (K-132): the menu as one JSON tree, specified in menus.ts (M1.5). */
 
 /** global_set.fields (K-106): the values of a global set (M1.5). */
 export const GlobalSetFields = JsonObject

@@ -445,6 +445,58 @@ const CASES: readonly MatrixCase[] = [
     }),
     expected: { anonymous: 400, administrator: 400, editor: 400, author: 400, contributor: 400, subscriber: 400 },
   },
+  // Appearance (M1.5): edit_theme_options, which the administrator alone holds among the built-in roles.
+  {
+    route: 'GET /api/v1/menus',
+    method: 'GET',
+    path: '/api/v1/menus',
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'POST /api/v1/menus',
+    method: 'POST',
+    path: '/api/v1/menus',
+    json: {},
+    expected: { ...ok, administrator: 400, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  ...(
+    [
+      ['GET /api/v1/menus/:id', 'GET', `/api/v1/menus/${NO_SUCH_CONTENT}`, undefined, 404],
+      ['PATCH /api/v1/menus/:id', 'PATCH', `/api/v1/menus/${NO_SUCH_CONTENT}`, { name: 'x' }, 404],
+      ['DELETE /api/v1/menus/:id', 'DELETE', `/api/v1/menus/${NO_SUCH_CONTENT}`, undefined, 404],
+      ['GET /api/v1/menu-locations', 'GET', '/api/v1/menu-locations', undefined, 200],
+      ['PUT /api/v1/menu-locations', 'PUT', '/api/v1/menu-locations', { locations: {} }, 200],
+      ['GET /api/v1/global-sets', 'GET', '/api/v1/global-sets', undefined, 200],
+      ['POST /api/v1/global-sets', 'POST', '/api/v1/global-sets', {}, 400],
+      ['GET /api/v1/global-sets/:id', 'GET', `/api/v1/global-sets/${NO_SUCH_CONTENT}`, undefined, 404],
+      ['PATCH /api/v1/global-sets/:id', 'PATCH', `/api/v1/global-sets/${NO_SUCH_CONTENT}`, { name: 'x' }, 404],
+      ['DELETE /api/v1/global-sets/:id', 'DELETE', `/api/v1/global-sets/${NO_SUCH_CONTENT}`, undefined, 404],
+    ] as const
+  ).map(([route, method, path, json, status]) => ({
+    route,
+    method,
+    path,
+    ...(json === undefined ? {} : { json }),
+    expected: { ...ok, administrator: status, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  })),
+  ...(
+    [
+      ['GET /api/v1/public/menus/:location', '/api/v1/public/menus/primary', 200],
+      ['GET /api/v1/public/global-sets/:slug', '/api/v1/public/global-sets/finnes-ikke', 404],
+    ] as const
+  ).map(([route, path, status]) => ({
+    route,
+    method: 'GET',
+    path,
+    expected: {
+      anonymous: status,
+      administrator: status,
+      editor: status,
+      author: status,
+      contributor: status,
+      subscriber: status,
+    },
+  })),
   // The settings screens of M1.5: manage_options only. A PATCH that names nothing valid is a 400 for the administrator.
   ...(['general', 'writing', 'reading', 'permalinks', 'privacy'] as const).flatMap((group) => [
     {

@@ -115,6 +115,7 @@ import type { MediaService } from './media.ts'
 import { replaceLinkRefs, replaceMediaRefs } from '../repositories/media.ts'
 import { findPublishedById, pagePaths, publishedDescendantIds, rememberOldPaths } from '../repositories/public.ts'
 import { loadLinks } from './permalinks.ts'
+import { removeFromMenus } from './appearance.ts'
 
 export interface ContentService {
   list: (auth: SessionAuth, query: ContentListQuery) => Promise<ContentListResponse>
@@ -956,6 +957,7 @@ export function createContentService(options: {
       throw new AppError(409, 'not_trashed', 'Only an item in the trash can be deleted for good')
     }
     await deleteContentPermanently(tx, row.id)
+    await removeFromMenus(tx, row.id, clock())
     await audit(tx, ctx, {
       actor: { id: actor.id, username: auth.account.username },
       action: 'content.deleted',

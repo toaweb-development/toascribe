@@ -92,6 +92,13 @@
       "when": 1793103641018,
       "tag": "0012_permalink_default",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793105463478,
+      "tag": "0013_global_set_blocks",
+      "breakpoints": true
     }
   ]
 }

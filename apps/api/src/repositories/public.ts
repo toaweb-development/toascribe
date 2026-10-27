@@ -79,6 +79,15 @@ export async function findPublishedPages(db: Executor, slug: string): Promise<Pu
     .limit(50)
 }
 
+/** Published items by id (posts and pages), in no order. */
+export async function findPublishedByIds(db: Executor, ids: readonly string[]): Promise<PublicRow[]> {
+  if (ids.length === 0) return []
+  return db
+    .select(columns)
+    .from(content)
+    .where(and(inArray(content.id, [...new Set(ids)]), visible))
+}
+
 export async function findPublishedById(db: Executor, id: string): Promise<PublicRow | undefined> {
   return first(
     await db

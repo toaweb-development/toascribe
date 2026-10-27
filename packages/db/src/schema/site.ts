@@ -57,8 +57,12 @@ export const globalSet = pgTable(
   'global_set',
   {
     id: id(),
+    /** The set's slug: what a theme and the «Globalt sett» block ask for. */
     key: text('key').notNull(),
     name: text('name').notNull(),
+    /** The set's blocks (M1.5), checked against each block's block.json as content is. */
+    blocks: jsonb('blocks').$type<Blocks>().notNull().default([]),
+    /** Typed fields (K-093, phase 2). */
     fields: jsonb('fields').$type<GlobalSetFields>().notNull().default({}),
     ...timestamps(),
   },

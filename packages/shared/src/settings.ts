@@ -187,6 +187,9 @@ export const CoreSettings = z.object({
     .array(z.strictObject({ structure: z.string().max(255), category_base: urlBase, tag_base: urlBase }))
     .max(10),
 
+  // Appearance → Menus (M1.5): a theme location's slug → the menu shown there (WordPress' nav_menu_locations).
+  menu_locations: z.record(z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/), z.uuid().nullable()),
+
   // Settings → Privacy
   /** The privacy policy page (WordPress: the draft «Personvernerklæring» the installer makes). A content uuid. */
   wp_page_for_privacy_policy: z.uuid().nullable(),
@@ -333,6 +336,7 @@ export const CORE_SETTINGS: CoreSettings = {
   category_base: '',
   tag_base: '',
   permalink_history: [],
+  menu_locations: {},
 
   // Privacy
   wp_page_for_privacy_policy: null, // set by the install (the draft privacy page)

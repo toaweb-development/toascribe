@@ -39,6 +39,7 @@ import {
 import type { TaxonomyRow, TermRow, TermValues } from '../repositories/terms.ts'
 import { flattenTree } from './content.ts'
 import type { Auditor, RequestContext } from './support.ts'
+import { removeFromMenus } from './appearance.ts'
 
 export interface TermService {
   taxonomies: (auth: SessionAuth) => Promise<TaxonomyListResponse>
@@ -165,6 +166,7 @@ export function createTermService(options: {
       throw new AppError(409, 'default_term', 'The default category can be renamed, not deleted')
     }
     await deleteTermMovingItems(tx, row, defaultId, clock())
+    await removeFromMenus(tx, row.id, clock())
     await audit(tx, ctx, {
       actor: { id: auth.account.id, username: auth.account.username },
       action: 'term.deleted',

@@ -39,7 +39,7 @@ export type Auditor = (db: Executor, ctx: RequestContext, input: AuditInput) => 
 
 /**
  * The site's cache tags a change clears (M1.4): a post or a page clears itself and the lists of its type, a category or a tag
- * itself and the post lists, a file itself, and settings everything (`*`: a setting can change any page). The other objects
+ * itself and the post lists, a file itself, a menu or a global set itself, and settings everything (`*`: a setting can change any page). The other objects
  * (accounts, sessions, folders, notices) are not shown on the site. An author's name is cleared where it changes (me.ts).
  */
 export function cacheTagsOf(input: Pick<AuditInput, 'objectType' | 'objectId'>): string[] {
@@ -53,6 +53,11 @@ export function cacheTagsOf(input: Pick<AuditInput, 'objectType' | 'objectId'>):
       return id === undefined ? ['list:post'] : [`term:${id}`, 'list:post']
     case 'media':
       return id === undefined ? [] : [`media:${id}`]
+    case 'menu':
+      // A menu, or the locations (no id): the site's menus are cleared.
+      return id === undefined ? ['menus'] : [`menu:${id}`, 'menus']
+    case 'global_set':
+      return id === undefined ? [] : [`global_set:${id}`]
     case 'settings':
       return ['*']
     default:
