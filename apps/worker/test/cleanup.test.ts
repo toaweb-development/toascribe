@@ -127,10 +127,22 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('clean-up jobs (needs TEST_DATA
       const live = await addSession(ahead(1), ago(1))
       await addToken(ago(1), null)
       const first = await run(cleanupCredentials)
-      expect(first.counts).toEqual({ sessions: 1, accountTokens: 1 })
+      expect(first.counts).toEqual({ sessions: 1, accountTokens: 1, cacheInvalidations: 0 })
       const second = await run(cleanupCredentials)
-      expect(second.counts).toEqual({ sessions: 0, accountTokens: 0 })
+      expect(second.counts).toEqual({ sessions: 0, accountTokens: 0, cacheInvalidations: 0 })
       expect(await ids('session')).toEqual([live])
+    })
+
+    it("deletes the site's cache change log older than a day, and keeps the rest", async () => {
+      await env.query(
+        `insert into cache_invalidation (tag, changed_at) values ('content:gammel', $1), ('list:post', $2)`,
+        [ago(1, 1), ago(0, 23)],
+      )
+      const { counts } = await run(cleanupCredentials)
+      expect(counts['cacheInvalidations']).toBe(1)
+      expect((await env.query<{ tag: string }>('select tag from cache_invalidation')).map((row) => row.tag)).toEqual([
+        'list:post',
+      ])
     })
 
     it('logs the counts and no ids or addresses', async () => {
@@ -142,7 +154,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('clean-up jobs (needs TEST_DATA
     })
 
     it('works on an empty database', async () => {
-      expect((await run(cleanupCredentials)).counts).toEqual({ sessions: 0, accountTokens: 0 })
+      expect((await run(cleanupCredentials)).counts).toEqual({ sessions: 0, accountTokens: 0, cacheInvalidations: 0 })
     })
 
     it('is bounded: a large backlog goes in batches and all of it is deleted', async () => {

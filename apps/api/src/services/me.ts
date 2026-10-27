@@ -15,6 +15,8 @@ import type { SessionAuth } from '../lib/auth-context.ts'
 import { AppError } from '../lib/errors.ts'
 import { findPendingEmailChange } from '../repositories/account-tokens.ts'
 import { mergePreferences, updateProfile } from '../repositories/accounts.ts'
+import { inTransaction } from '../repositories/executor.ts'
+import { recordInvalidation } from '../repositories/public.ts'
 
 /** Profile fields that may be absent or undefined: what a parsed partial schema gives. */
 type ProfileChanges = { readonly [K in keyof ProfileFields]?: ProfileFields[K] | undefined }
@@ -131,7 +133,11 @@ export function createMeService(options: { readonly db: Database; readonly clock
           )
         }
       }
-      await updateProfile(db, auth.account.id, displayName, next, clock())
+      await inTransaction(db, async (tx) => {
+        await updateProfile(tx, auth.account.id, displayName, next, clock())
+        // The site shows authors' names on every post and list: a new name clears everything.
+        if (displayName !== auth.account.displayName) await recordInvalidation(tx, ['*'], clock())
+      })
       return {
         ...toSessionAccount(auth),
         displayName,

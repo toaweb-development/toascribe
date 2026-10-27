@@ -1,12 +1,12 @@
 // The content jobs' statements (M1.1, K-062 to K-064). The scheduler publishes and unpublishes what is due; the purge deletes
 // what has been in the trash for 30 days. Each statement takes its rows with FOR UPDATE SKIP LOCKED and checks the status again on
 // the row it locked, so two workers that run at the same moment split the rows between them, and a row is changed once: the
-// second run finds nothing left. The audit entries are written in the same transaction as the change.
+// second run finds nothing left. The audit entries, and the cache tags the site drops, are written in the same transaction as the change.
 import { deleteContentPermanently, schema } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
 import { sql } from 'drizzle-orm'
 
-const { auditLog } = schema
+const { auditLog, cacheInvalidation } = schema
 
 /** Rows per statement. A safety bound, not a setting: the loop runs again until a batch comes back short. */
 const BATCH_SIZE = 500
@@ -42,6 +42,9 @@ async function audit(
       createdAt: at,
     })),
   )
+  // The site drops what it cached of these items and of their lists (M1.4), in the same transaction as the change.
+  const tags = [...new Set(items.flatMap((item) => [`content:${item.id}`, `list:${item.type}`]))]
+  await tx.insert(cacheInvalidation).values(tags.map((tag) => ({ tag, changedAt: at })))
 }
 
 async function inBatches(db: Database, batch: (tx: Executor) => Promise<number>): Promise<number> {

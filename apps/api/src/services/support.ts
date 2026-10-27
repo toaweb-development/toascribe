@@ -6,6 +6,7 @@ import { UNKNOWN_IP } from '../lib/client-ip.ts'
 import { TooManyRequestsError } from '../lib/errors.ts'
 import type { MailPort, MailRequest } from '../ports/mail.ts'
 import { insertAuditEntry } from '../repositories/audit.ts'
+import { recordInvalidation } from '../repositories/public.ts'
 import type { Executor } from '../repositories/executor.ts'
 import type { LimitStatus } from './rate-limit.ts'
 
@@ -36,9 +37,34 @@ export interface AuditInput {
 
 export type Auditor = (db: Executor, ctx: RequestContext, input: AuditInput) => Promise<void>
 
+/**
+ * The site's cache tags a change clears (M1.4): a post or a page clears itself and the lists of its type, a category or a tag
+ * itself and the post lists, a file itself, and settings everything (`*`: a setting can change any page). The other objects
+ * (accounts, sessions, folders, notices) are not shown on the site. An author's name is cleared where it changes (me.ts).
+ */
+export function cacheTagsOf(input: Pick<AuditInput, 'objectType' | 'objectId'>): string[] {
+  const id = input.objectId
+  switch (input.objectType) {
+    case 'post':
+    case 'page':
+      return id === undefined ? [`list:${input.objectType}`] : [`content:${id}`, `list:${input.objectType}`]
+    case 'category':
+    case 'post_tag':
+      return id === undefined ? ['list:post'] : [`term:${id}`, 'list:post']
+    case 'media':
+      return id === undefined ? [] : [`media:${id}`]
+    case 'settings':
+      return ['*']
+    default:
+      return []
+  }
+}
+
+/** Writes the audit entry, and in the same transaction the cache tags the change clears on the site. */
 export function createAuditor(clock: () => Date): Auditor {
-  return (db, ctx, input) =>
-    insertAuditEntry(db, {
+  return async (db, ctx, input) => {
+    const at = clock()
+    await insertAuditEntry(db, {
       actorType: input.actor === null ? 'system' : 'account',
       actor: input.actor?.username ?? 'anonymous',
       accountId: input.accountId === undefined ? (input.actor?.id ?? null) : input.accountId,
@@ -51,8 +77,10 @@ export function createAuditor(clock: () => Date): Auditor {
       source: 'api',
       ...(ctx.requestId === undefined ? {} : { correlationId: ctx.requestId }),
       ip: shownIp(ctx.ip),
-      at: clock(),
+      at,
     })
+    await recordInvalidation(db, cacheTagsOf(input), at)
+  }
 }
 
 /**

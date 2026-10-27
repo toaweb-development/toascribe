@@ -32,3 +32,19 @@ export function readSessionCookie(c: Context): string | undefined {
   // A token is 43 base64url characters. Anything else cannot be one, so it is not worth a database lookup.
   return value !== undefined && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : undefined
 }
+
+/**
+ * The post password cookie (K-067), `__Host-toa_postpass`: a keyed hash of the last password typed for a protected item, never the
+ * password. HttpOnly, Secure, SameSite=Lax, for ten days, as WordPress' `wp-postpass_` cookie.
+ */
+export const POST_PASSWORD_COOKIE = 'toa_postpass'
+
+export function setPostPassCookie(c: Context, value: string, maxAgeSeconds: number): void {
+  setCookie(c, POST_PASSWORD_COOKIE, value, { prefix: 'host', httpOnly: true, sameSite: 'Lax', maxAge: maxAgeSeconds })
+}
+
+/** The value of the post password cookie, if it looks like one (43 base64url characters). */
+export function readPostPassCookie(c: Context): string | undefined {
+  const value = getCookie(c, POST_PASSWORD_COOKIE, 'host')
+  return value !== undefined && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : undefined
+}

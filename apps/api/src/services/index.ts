@@ -21,6 +21,8 @@ import { createTermService } from './terms.ts'
 import type { TermService } from './terms.ts'
 import { createMediaService } from './media.ts'
 import type { MediaService } from './media.ts'
+import { createPublicService } from './public.ts'
+import type { PublicService } from './public.ts'
 import type { DashboardService } from './dashboard.ts'
 import { createMeService } from './me.ts'
 import type { MeService } from './me.ts'
@@ -93,6 +95,8 @@ export interface Services {
   readonly terms: TermService
   /** The media library (M1.2). */
   readonly media: MediaService
+  /** The public reading API of the site and its theme (M1.4). */
+  readonly public: PublicService
   /** Second factor: enrolment, recovery codes, the second step of a login (K-023). */
   readonly mfa: MfaService
   /** Lost password, first password, registration (K-003, K-005). */
@@ -191,6 +195,14 @@ export function createServices(deps: ServiceDeps): Services {
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     media,
+    public: createPublicService({
+      db,
+      clock,
+      media,
+      signingKey: deps.signingKey,
+      limiter,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
     mfa: createMfaService({
       db,
       clock,

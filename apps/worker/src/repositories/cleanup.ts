@@ -81,6 +81,15 @@ export function deleteOldLoginAttempts(db: Database, cutoff: Date): Promise<numb
   )
 }
 
+/** Deletes the site's cache change log older than `cutoff`: the site looks every few seconds, and after a day it drops everything. */
+export function deleteOldCacheInvalidations(db: Database, cutoff: Date): Promise<number> {
+  return inBatches(
+    db,
+    (limit) => sql`delete from cache_invalidation where id in (
+      select id from cache_invalidation where changed_at < ${cutoff} limit ${limit})`,
+  )
+}
+
 /** Deletes comments marked as spam since before `cutoff`. Their replies keep standing (parent_id is set to null by the foreign key). */
 export function deleteOldSpamComments(db: Database, cutoff: Date): Promise<number> {
   return inBatches(

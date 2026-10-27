@@ -28,6 +28,7 @@ import { createDashboardApp } from './routes/dashboard.ts'
 import { createTermsApp } from './routes/terms.ts'
 import { createHealthApp } from './routes/health.ts'
 import { createMediaApp, sendFile } from './routes/media.ts'
+import { createPublicApp } from './routes/public.ts'
 import { createMeApp } from './routes/me.ts'
 import { createNoticesApp } from './routes/notices.ts'
 import { createUsersApp } from './routes/users.ts'
@@ -203,6 +204,7 @@ export function buildApp(deps: AppDeps) {
   app.route('/api/v1', createContentApp(services))
   app.route('/api/v1', createTermsApp(services))
   app.route('/api/v1', createMediaApp(services))
+  app.route('/api/v1', createPublicApp(services))
   app.route('/api/v1', createSetupApp(services))
 
   const document = { openapi: '3.1.0', info: { title: 'toascribe API', version: deps.version } } as const

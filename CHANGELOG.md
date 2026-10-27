@@ -20,6 +20,13 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- The public reading API of the site (M1.4): `/api/v1/public/resolve` tells what an address is after WordPress' template
+  hierarchy (front page, posts page, posts with their pages after a page break, pages by their whole path, category, tag,
+  author and date archives, search, `?p=` as a redirect, 404), `/public/query` lists published posts or pages by filter,
+  `/public/settings` gives what a theme shows. Only published, public content is read; a password-protected item shows its
+  title and the form until its password is given (a ten-day cookie, guesses limited as logins are). A preview link
+  (`POST /content/{id}/preview-link`) shows an item as it is stored for 30 minutes, until the session that made it ends. One
+  migration (`0010_cache_invalidation`): the log of cache tags a change clears, which the worker empties after a day.
 - The default content («Hei, verden!», the sample page and the privacy policy) is made in toascribe's block format, and content
   stored in WordPress' block form is converted by the migration step, so the editor can change it; only a WordPress block type
   toascribe does not know keeps an item read-only.

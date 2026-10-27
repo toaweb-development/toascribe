@@ -83,6 +83,12 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('content jobs (needs TEST_DATAB
     expect(audit).toEqual([
       { action: 'content.published', actor: 'content.scheduler', actor_type: 'system', source: 'job' },
     ])
+    // The site drops what it cached of the item and of the post lists (M1.4).
+    const tags = await env.query<{ tag: string }>(
+      `select tag from cache_invalidation where tag = $1 or tag = 'list:post'`,
+      [`content:${due}`],
+    )
+    expect(tags.map((row) => row.tag).sort()).toEqual([`content:${due}`, 'list:post'])
   })
 
   it('unpublishes a published item whose time has passed, back to draft, and clears the time', async () => {

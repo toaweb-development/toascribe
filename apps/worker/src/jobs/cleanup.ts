@@ -1,6 +1,6 @@
 // The daily clean-up (M0.3, PLAN «Personvern»): what must not be kept for ever is removed, and each run says how much. Three
 // jobs, each on its own schedule, so one that fails does not hold the others back:
-// - `cleanup.credentials`: sessions that have ended, and one-time links that are used up or expired;
+// - `cleanup.credentials`: sessions that have ended, one-time links that are used up or expired, and the site's cache change log of more than a day;
 // - `cleanup.ip-retention`: IP addresses older than `ip_retention_days` on sessions, comments, application passwords and the
 //   audit log, and the login attempts of that age;
 // - `cleanup.spam-comments`: comments marked as spam for longer than `spam_comment_retention_days`.
@@ -16,6 +16,7 @@ import {
   clearOldAuditIps,
   clearSessionIps,
   deleteExpiredSessions,
+  deleteOldCacheInvalidations,
   deleteOldLoginAttempts,
   deleteOldSpamComments,
   deleteSpentAccountTokens,
@@ -70,6 +71,7 @@ export function cleanupCredentials(deps: CleanupDeps): Promise<CleanupCounts> {
     [
       ['sessions', () => deleteExpiredSessions(deps.db, now)],
       ['accountTokens', () => deleteSpentAccountTokens(deps.db, now)],
+      ['cacheInvalidations', () => deleteOldCacheInvalidations(deps.db, daysAgo(now, 1))],
     ],
     deps.logger,
   )

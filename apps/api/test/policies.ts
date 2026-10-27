@@ -49,6 +49,14 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'POST /api/v1/content/:id/publish': 'capability:edit_posts|edit_pages',
   'POST /api/v1/content/:id/trash': 'capability:edit_posts|edit_pages',
   'POST /api/v1/content/:id/restore': 'capability:edit_posts|edit_pages',
+  'POST /api/v1/content/:id/preview-link': 'capability:edit_posts|edit_pages',
+  // The public reading API (M1.4): open to anyone; it shows only what is published and public.
+  'GET /api/v1/public/settings': 'public',
+  'GET /api/v1/public/resolve': 'public',
+  'GET /api/v1/public/query': 'public',
+  'POST /api/v1/public/unlock': 'public',
+  'GET /api/v1/public/preview': 'public',
+  'GET /api/v1/public/cache/changes': 'public',
   // Taxonomies and terms (M1.2): reading for those who can edit content, changing for manage_categories.
   'GET /api/v1/taxonomies': 'capability:edit_posts|edit_pages',
   'GET /api/v1/taxonomies/:tax/terms': 'capability:edit_posts|edit_pages',

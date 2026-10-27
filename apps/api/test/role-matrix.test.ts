@@ -7,7 +7,7 @@ import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
 import { TEST_PASSWORD, startAuthApp } from './harness.ts'
 import type { AuthTestApp } from './harness.ts'
 import { EXPECTED_POLICIES } from './policies.ts'
-import { describeRoleMatrix } from './role-matrix.ts'
+import { ACTORS, describeRoleMatrix } from './role-matrix.ts'
 import type { MatrixCase } from './role-matrix.ts'
 
 noticeIfSkipped('role-matrix')
@@ -406,6 +406,45 @@ const CASES: readonly MatrixCase[] = [
         : {}),
     expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 403, subscriber: 403 },
   })),
+  {
+    route: 'POST /api/v1/content/:id/preview-link',
+    method: 'POST',
+    path: `/api/v1/content/${NO_SUCH_CONTENT}/preview-link`,
+    expected: { ...ok, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 403 },
+  },
+  // The public reading API (M1.4): the same answer for everyone.
+  ...(
+    [
+      ['GET /api/v1/public/settings', '/api/v1/public/settings', 200],
+      ['GET /api/v1/public/resolve', '/api/v1/public/resolve?path=%2Fingen-slik%2F', 200],
+      ['GET /api/v1/public/query', '/api/v1/public/query', 200],
+      ['GET /api/v1/public/preview', `/api/v1/public/preview?token=v1.${NOT_A_TOKEN}.${NOT_A_TOKEN}`, 404],
+      ['GET /api/v1/public/cache/changes', '/api/v1/public/cache/changes', 200],
+    ] as const
+  ).map(([route, path, status]) => ({
+    route,
+    method: 'GET',
+    path,
+    expected: {
+      anonymous: status,
+      administrator: status,
+      editor: status,
+      author: status,
+      contributor: status,
+      subscriber: status,
+    },
+  })),
+  {
+    route: 'POST /api/v1/public/unlock',
+    method: 'POST',
+    path: '/api/v1/public/unlock',
+    // An item of its own per caller: guesses are limited per item, and six callers would pass the limit of five.
+    body: (actor) => ({
+      contentId: `0198a3c2-0000-7000-8000-0000000001${String(ACTORS.indexOf(actor)).padStart(2, '0')}`,
+      password: 'feil',
+    }),
+    expected: { anonymous: 400, administrator: 400, editor: 400, author: 400, contributor: 400, subscriber: 400 },
+  },
   {
     route: 'GET /api/v1/media-folders',
     method: 'GET',
