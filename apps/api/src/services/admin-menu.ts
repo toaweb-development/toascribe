@@ -73,6 +73,29 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     ],
   },
   {
+    // WordPress' «Utseende» (position 60): «Tilpass» comes with M1.5's Customizer, «Temaer» and «Widgets» in phase 3.
+    id: 'appearance',
+    labelKey: 'menu.appearance',
+    icon: 'i-lucide-paintbrush',
+    position: 60,
+    capability: 'edit_theme_options',
+    to: '/appearance/menus',
+    children: [
+      {
+        id: 'appearance.menus',
+        labelKey: 'menu.appearanceMenus',
+        capability: 'edit_theme_options',
+        to: '/appearance/menus',
+      },
+      {
+        id: 'appearance.global-sets',
+        labelKey: 'menu.appearanceGlobalSets',
+        capability: 'edit_theme_options',
+        to: '/appearance/global-sets',
+      },
+    ],
+  },
+  {
     // WordPress' «Innstillinger» (position 80), in its order. «Diskusjon» comes with the comments (phase 3).
     id: 'settings',
     labelKey: 'menu.settings',

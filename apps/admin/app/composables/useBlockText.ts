@@ -29,6 +29,7 @@ export function useBlockText() {
     'core/nextpage': () => t('blocks.nextpage'),
     'core/html': () => t('blocks.html'),
     'core/query': () => t('blocks.query'),
+    'core/global-set': () => t('blocks.globalSet'),
   }
 
   const issues: Readonly<Record<ValidationIssue['code'] | PermissionIssueCode, () => string>> = {

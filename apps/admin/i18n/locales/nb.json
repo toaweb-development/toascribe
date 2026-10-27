@@ -398,7 +398,10 @@
     "settingsWriting": "Skriving",
     "settingsReading": "Lesing",
     "settingsPrivacy": "Personvern",
-    "settingsPermalinks": "Permalenker"
+    "settingsPermalinks": "Permalenker",
+    "appearance": "Utseende",
+    "appearanceMenus": "Menyer",
+    "appearanceGlobalSets": "Globale sett"
   },
   "notices": {
     "emailNotVerified": "E-post fra nettstedet er ikke testet. Passordlenker og bekreftelser kommer kanskje ikke fram før en testmelding har gått gjennom. Innstillingene for e-post kommer i en senere versjon.",
@@ -796,7 +799,8 @@
     "more": "Les mer",
     "nextpage": "Sideskift",
     "html": "Egendefinert HTML",
-    "query": "Query Loop"
+    "query": "Query Loop",
+    "globalSet": "Globalt sett"
   },
   "content": {
     "posts": {
@@ -1475,6 +1479,11 @@
       "stickyFirst": "Først",
       "showDate": "Vis dato",
       "showExcerpt": "Vis utdrag"
+    },
+    "globalSet": {
+      "choose": "Sett",
+      "placeholder": "— Velg et sett —",
+      "help": "Settet redigeres under «Utseende → Globale sett», og endringer vises alle steder det brukes."
     }
   },
   "settings": {
@@ -1552,6 +1561,84 @@
       "optionalHelp": "Du kan bruke egne prefikser for kategori- og stikkordadressene. Tomt gir category og tag.",
       "categoryBase": "Kategoribase",
       "tagBase": "Stikkordbase"
+    }
+  },
+  "appearance": {
+    "denied": "Du har ikke tilgang til utseendet",
+    "menus": {
+      "title": "Menyer",
+      "editTab": "Rediger menyer",
+      "locationsTab": "Administrer plasseringer",
+      "failed": "Det gikk ikke",
+      "choose": "Velg en meny å redigere",
+      "newName": "Ny meny",
+      "create": "Opprett meny",
+      "created": "Menyen «{name}» er opprettet.",
+      "saved": "Menyen er lagret.",
+      "delete": "Slett meny",
+      "deleteConfirm": "Menyen «{name}» slettes for godt. Plasseringer som viste den, blir tomme.",
+      "deleted": "Menyen er slettet.",
+      "add": "Legg til menypunkter",
+      "pages": "Sider",
+      "posts": "Innlegg",
+      "categories": "Kategorier",
+      "tags": "Stikkord",
+      "none": "Ingen å velge ennå.",
+      "addTo": "Legg til i menyen: {what}",
+      "custom": "Egne lenker",
+      "url": "URL",
+      "linkText": "Lenketekst",
+      "structure": "Menystruktur",
+      "name": "Menynavn",
+      "structureHelp": "Dra punktene for å endre rekkefølge og nivå, eller bruk knappene. Med tastaturet: Alt og piltastene på et punkt.",
+      "empty": "Menyen er tom. Legg til punkter fra boksene.",
+      "items": "Menypunkter",
+      "untitled": "(uten tittel)",
+      "kindPage": "Side",
+      "kindPost": "Innlegg",
+      "kindCategory": "Kategori",
+      "kindTag": "Stikkord",
+      "kindCustom": "Egen lenke",
+      "notShown": "Vises ikke (ikke publisert)",
+      "itemLabel": "{label}, nivå {level}",
+      "drag": "Dra for å flytte",
+      "up": "Flytt «{label}» opp",
+      "down": "Flytt «{label}» ned",
+      "in": "Flytt «{label}» inn under punktet over",
+      "out": "Flytt «{label}» ut ett nivå",
+      "editItem": "Rediger «{label}»",
+      "navLabel": "Navigasjonsetikett",
+      "cssClass": "CSS-klasser (valgfritt)",
+      "description": "Beskrivelse",
+      "newTab": "Åpne lenken i en ny fane",
+      "remove": "Fjern",
+      "removed": "Punktet er fjernet.",
+      "movedTo": "«{label}» er flyttet, nivå {level}.",
+      "save": "Lagre meny",
+      "first": "Det finnes ingen menyer ennå. Opprett den første over.",
+      "locationsHelp": "Temaet viser menyer på disse stedene. Velg hvilken meny som skal vises hvor.",
+      "noLocations": "Temaet har ingen menyplasseringer.",
+      "noMenu": "— Velg en meny —",
+      "saveLocations": "Lagre endringer",
+      "locationsSaved": "Plasseringene er lagret."
+    },
+    "sets": {
+      "title": "Globale sett",
+      "intro": "Et globalt sett er en samling blokker som brukes flere steder på nettstedet, for eksempel kontaktinformasjon eller bunntekst. Endrer du settet, endres det overalt.",
+      "failed": "Det gikk ikke",
+      "newName": "Nytt sett",
+      "create": "Opprett sett",
+      "empty": "Ingen globale sett ennå.",
+      "fromTheme": "Brukes av temaet",
+      "delete": "Slett",
+      "deleteNamed": "Slett «{name}»",
+      "deleteConfirm": "Settet «{name}» slettes for godt. Steder som viser det, blir tomme.",
+      "editTitle": "Globalt sett: {name}",
+      "name": "Navn",
+      "slugHelp": "Kortnavn:",
+      "save": "Lagre sett",
+      "saved": "Settet er lagret.",
+      "saveFailed": "Settet ble ikke lagret"
     }
   }
 }
