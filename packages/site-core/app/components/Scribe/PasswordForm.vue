@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // The form of a password-protected item (K-067; PLAN «Regler» 4). The password goes to the api, which sets a cookie for ten days
 // when it is right; the item is then read again with it. Only the form is ever drawn before that: the api sends no text.
+// Without script it is a plain POST to the site's /_toascribe/unlock, which sends the visitor back here (`?postpass=` says why when
+// it did not open); with script the same answer comes without a reload.
 
 const props = defineProps<{ contentId: string }>()
 const { t } = useI18n()
@@ -9,7 +11,15 @@ const refresh = useScribeRefresh()
 const id = useId()
 const password = ref('')
 const busy = ref(false)
-const message = ref('')
+const route = useRoute()
+const returnTo = computed(() => route.path)
+const message = ref(
+  route.query['postpass'] === 'wait'
+    ? t('scribe.password.wait')
+    : route.query['postpass'] === 'wrong'
+      ? t('scribe.password.wrong')
+      : '',
+)
 
 async function submit() {
   if (password.value === '' || busy.value) return
@@ -33,7 +43,9 @@ async function submit() {
 </script>
 
 <template>
-  <form class="scribe-password" @submit.prevent="submit">
+  <form class="scribe-password" method="post" action="/_toascribe/unlock" @submit.prevent="submit">
+    <input type="hidden" name="contentId" :value="contentId" />
+    <input type="hidden" name="return" :value="returnTo" />
     <p>{{ t('scribe.password.intro') }}</p>
     <label :for="id">{{ t('scribe.password.label') }}</label>
     <input :id="id" v-model="password" type="password" name="password" autocomplete="off" required maxlength="255" />

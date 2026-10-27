@@ -188,6 +188,48 @@ test('a password-protected post shows the form, and its text only with the passw
   await expect(page.getByText(`Hemmelig tekst ${name}`)).toBeVisible()
 })
 
+test('the password form works without JavaScript', async ({ browser, playwright }) => {
+  const request = await playwright.request.newContext({ baseURL: baseUrl() })
+  const api = await writer(request)
+  const name = uniqueName('sitenojs')
+  const post = await api.create({
+    type: 'post',
+    status: 'publish',
+    title: `Uten skript ${name}`,
+    password: 'sesam',
+    blocks: [paragraph(`Skjult ${name}`)],
+  })
+  await request.dispose()
+
+  const context = await browser.newContext({ baseURL: baseUrl(), javaScriptEnabled: false })
+  const page = await context.newPage()
+  await page.goto(`/${post.slug}/`)
+  await page.getByLabel('Passord').fill('feil')
+  await page.getByRole('button', { name: 'Åpne' }).click()
+  await expect(page).toHaveURL(new RegExp(`/${post.slug}/\\?postpass=wrong$`))
+  await expect(page.getByText('Passordet er feil.')).toBeVisible()
+  await page.getByLabel('Passord').fill('sesam')
+  await page.getByRole('button', { name: 'Åpne' }).click()
+  await expect(page).toHaveURL(new RegExp(`/${post.slug}/$`))
+  await expect(page.getByText(`Skjult ${name}`)).toBeVisible()
+  await context.close()
+})
+
+test('«Forhåndsvis» in the list opens the signed link on the site', async ({ page, context, playwright }) => {
+  await signIn(page, author)
+  const name = uniqueName('listpreview')
+  const request = await playwright.request.newContext({ baseURL: baseUrl() })
+  const api = await writer(request)
+  await api.create({ type: 'post', status: 'draft', title: `Listekladd ${name}`, blocks: [paragraph('Fra lista.')] })
+  await request.dispose()
+  await page.goto(`/admin/posts?search=${name}`)
+  const opened = context.waitForEvent('page')
+  await page.getByRole('button', { name: `Forhåndsvis «Listekladd ${name}»` }).click()
+  const tab = await opened
+  await expect(tab).toHaveURL(/\/\?preview=v1\./)
+  await expect(tab.getByRole('heading', { level: 1, name: `Listekladd ${name}` })).toBeVisible()
+})
+
 test('a preview link shows a draft, and `/?p=` goes to the post', async ({ page, playwright, allowFailedRequests }) => {
   // The draft's own address is a 404, which the browser logs.
   allowFailedRequests()

@@ -57,7 +57,6 @@ const formatter = computed(
 )
 
 const editPath = (item: ContentListItem) => `/${props.type === 'page' ? 'pages' : 'posts'}/${item.id}`
-const previewPath = (item: ContentListItem) => `/preview/${item.id}`
 const label = (item: ContentListItem) => `${depthPrefix(item.depth)}${titleOf(t, item.title)}`
 const states = (item: ContentListItem) => itemStates(t, item, props.view.status)
 const authorsOf = (item: ContentListItem) => item.authors.map((author) => author.displayName).join(', ')
@@ -174,7 +173,6 @@ const dangerClass =
                 :item="item"
                 :in-trash="inTrash"
                 :edit-path="editPath(item)"
-                :preview-path="previewPath(item)"
                 :action-class="actionClass"
                 :danger-class="dangerClass"
                 @quick-edit="emit('quickEdit', item)"
@@ -290,7 +288,6 @@ const dangerClass =
               :item="item"
               :in-trash="inTrash"
               :edit-path="editPath(item)"
-              :preview-path="previewPath(item)"
               :action-class="actionClass"
               :danger-class="dangerClass"
               @quick-edit="emit('quickEdit', item)"

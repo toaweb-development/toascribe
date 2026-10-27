@@ -20,6 +20,8 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- The password form of a protected post works without JavaScript, and «Forhåndsvis» in the post and page lists opens the signed
+  preview link on the site, as the editor's button does.
 - The site shows its content (M1.4): every address goes through WordPress' template hierarchy to the active theme's template,
   chosen in the new `toascribe.toml` (`[site] theme`). A theme is a folder with `theme.json` (`themeApi: 1`); the build stops
   with a list of what is wrong when it does not pass. A child theme extends its parent and overrides only its own files, one
