@@ -80,6 +80,19 @@ export function isUploadRequest(method: string, path: string): boolean {
   return method === 'POST' && (path === '/api/v1/media' || /^\/api\/v1\/media\/[0-9a-f-]{36}\/replace$/i.test(path))
 }
 
+/** The routes that answer with a stored file rather than JSON. */
+export function isFileRequest(path: string): boolean {
+  return path.startsWith('/uploads/') || /^\/api\/v1\/media\/[0-9a-f-]{36}\/file$/i.test(path)
+}
+
+/** The CSP of a served file: `default-src 'none'; style-src 'unsafe-inline'; sandbox; frame-ancestors 'none'`. */
+export const FILE_CSP = {
+  defaultSrc: ["'none'"],
+  styleSrc: ["'unsafe-inline'"],
+  sandbox: [] as string[],
+  frameAncestors: ["'none'"],
+}
+
 export const OPENAPI_PATH = '/api/v1/openapi.json'
 
 export function createApp(deps: AppDeps) {
@@ -131,18 +144,27 @@ export function buildApp(deps: AppDeps) {
     services.proxy.observe(c.req.header('x-real-ip'))
     await next()
   })
-  app.use(
-    secureHeaders({
-      xFrameOptions: 'DENY',
-      // Only where the site is served over HTTPS: a browser that sees HSTS on plain HTTP ignores it, but a local
-      // http://localhost setup should not send a header that says otherwise.
-      strictTransportSecurity: publicOrigin.startsWith('https:') ? 'max-age=31536000; includeSubDomains' : false,
-      referrerPolicy: 'strict-origin-when-cross-origin',
-      permissionsPolicy: { camera: [], microphone: [], geolocation: [] },
-      // A JSON API: nothing it returns should load or embed anything (security §7).
-      contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
-    }),
-  )
+  const headerOptions = {
+    xFrameOptions: 'DENY' as const,
+    // Only where the site is served over HTTPS: a browser that sees HSTS on plain HTTP ignores it, but a local
+    // http://localhost setup should not send a header that says otherwise.
+    strictTransportSecurity: publicOrigin.startsWith('https:') ? 'max-age=31536000; includeSubDomains' : false,
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    permissionsPolicy: { camera: [] as string[], microphone: [] as string[], geolocation: [] as string[] },
+  }
+  // A JSON API: nothing it returns should load or embed anything (security §7).
+  const apiHeaders = secureHeaders({
+    ...headerOptions,
+    contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+  })
+  // A served file (/uploads/*, /api/v1/media/{id}/file): the same, plus a sandbox, so a file opened in the browser never runs script
+  // or reaches the site's origin, and inline styles only (a PDF viewer needs them). secureHeaders writes its headers after the
+  // handler and would replace a CSP the route set itself, so the file routes get their own instance here.
+  const fileHeaders = secureHeaders({
+    ...headerOptions,
+    contentSecurityPolicy: FILE_CSP,
+  })
+  app.use((c, next) => (isFileRequest(c.req.path) ? fileHeaders(c, next) : apiHeaders(c, next)))
   const generalLimit = bodyLimit({
     maxSize: BODY_LIMIT_BYTES,
     onError: (c) => c.json(apiError('payload_too_large', 'Request body too large', c.get('requestId')), 413),

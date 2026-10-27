@@ -183,6 +183,28 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
     })
   })
 
+  describe('the headers of a served file', () => {
+    const FILE_CSP = "default-src 'none'; style-src 'unsafe-inline'; sandbox; frame-ancestors 'none'"
+
+    it('sends the sandbox CSP on /uploads/ and on the file route, and the plain API CSP on JSON', async () => {
+      const item = await upload(author, f.PDF, 'sandkasse.pdf')
+      const pub = await env.client().get(item.originalUrl)
+      expect(pub.status).toBe(200)
+      expect(pub.headers.get('content-security-policy')).toBe(FILE_CSP)
+      expect(pub.headers.get('x-frame-options')).toBe('DENY')
+      expect(pub.headers.get('x-content-type-options')).toBe('nosniff')
+      const own = await author.get(`/api/v1/media/${item.id}/file?size=original`)
+      expect(own.status).toBe(200)
+      expect(own.headers.get('content-security-policy')).toBe(FILE_CSP)
+      const json = await author.get(`/api/v1/media/${item.id}`)
+      expect(json.headers.get('content-security-policy')).toBe("default-src 'none'; frame-ancestors 'none'")
+      // A 404 under /uploads/ is not a file, but still never runs anything.
+      expect(
+        (await env.client().get('/uploads/2026/10/ingen-00000000.png')).headers.get('content-security-policy'),
+      ).toBe(FILE_CSP)
+    })
+  })
+
   describe('rights and private files', () => {
     it('lets the uploader and an editor change a file, not another author', async () => {
       const item = await upload(author, f.PNG, 'eget.png')

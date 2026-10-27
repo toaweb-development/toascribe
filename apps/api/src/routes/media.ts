@@ -344,8 +344,7 @@ export function sendFile(c: Context<AppEnv>, file: OpenedFile, cache: string): R
   c.header('Content-Length', String(file.size))
   c.header('X-Content-Type-Options', 'nosniff')
   c.header('Cache-Control', cache)
-  // A file never runs script, and is never framed (the app's secure headers add frame-ancestors 'none' as well).
-  c.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+  // Its Content-Security-Policy (a sandbox, no script, never framed) is set by the app's secure headers for the file routes (app.ts).
   const name = encodeURIComponent(file.fileName).replace(
     /['()*]/g,
     (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
