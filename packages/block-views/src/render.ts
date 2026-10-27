@@ -41,6 +41,13 @@ export interface ViewContext {
   readonly media: ReadonlyMap<string, ContentMediaRef>
   /** `sizes` for an image that fills the content column (a theme knows its width; the default is the admin preview's 48rem). */
   readonly imageSizes: string
+  /**
+   * How the custom HTML block is drawn: `source` (the default) shows its HTML as text, `raw` writes it as markup. Only the public
+   * site asks for `raw` (M1.4). A nonce does not stop a script written into the page: nuxt-security stamps the response's nonce on
+   * every <script>, <style> and <link> in the server-rendered body, so raw HTML runs with the page's rights. In the admin that would
+   * be every signed-in viewer's session; it never asks for `raw`.
+   */
+  readonly html?: 'raw' | 'source'
 }
 
 function text(block: Block, key: string): string {
@@ -215,8 +222,13 @@ export function renderBlock(block: Block, context: ViewContext): VNode | null {
     }
     case CODE:
       return h('pre', { class: 'block-code' }, [h('code', null, text(block, 'content'))])
-    case PREFORMATTED:
-      return h('pre', { class: 'block-preformatted' }, renderInline(inline(block, 'content')))
+    case PREFORMATTED: {
+      // The HTML parser drops one newline right after <pre>: a text that starts with one gets an extra, so it stays.
+      const content = inline(block, 'content')
+      const first = content[0]
+      const lead = first?.type === 'text' && first.text.startsWith('\n') ? ['\n'] : []
+      return h('pre', { class: 'block-preformatted' }, [...lead, ...renderInline(content)])
+    }
     case TABLE:
       return tableView(block)
     case IMAGE:
@@ -247,7 +259,10 @@ export function renderBlock(block: Block, context: ViewContext): VNode | null {
       // it lists or pages a post (M1.4). In the whole post they show nothing.
       return null
     case HTML:
-      // Raw HTML by design: only unfiltered_html may write it (see the top of this file). Scripts still need the page's nonce.
+      if (context.html !== 'raw') {
+        return h('pre', { class: 'block-html is-source' }, [h('code', null, text(block, 'content'))])
+      }
+      // Raw HTML by design, and only where the caller asks for it (ViewContext.html): only unfiltered_html may write it.
       return h('div', { class: 'block-html', innerHTML: text(block, 'content') })
     default:
       // A block the views do not know (from an extension that is not active): nothing, rather than its data (PLAN «Regler» 4).

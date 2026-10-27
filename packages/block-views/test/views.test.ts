@@ -136,7 +136,7 @@ const CASES: [string, Block, RegExp][] = [
   [
     'html',
     createBlock('core/html', { content: '<p class="egen">Rå</p>' }),
-    /^<div class="block-html"><p class="egen">Rå<\/p><\/div>$/,
+    /^<pre class="block-html is-source"><code>&lt;p class=&quot;egen&quot;&gt;Rå&lt;\/p&gt;<\/code><\/pre>$/,
   ],
 ]
 
@@ -169,6 +169,28 @@ describe('an empty block', () => {
   it('an image without a file, or whose file is gone, shows nothing', async () => {
     expect(await render([createBlock('core/image')], [])).toBe('<div class="blocks"></div>')
     expect(await render([image()], [])).toBe('<div class="blocks"></div>')
+  })
+})
+
+describe('custom HTML', () => {
+  const block = createBlock('core/html', { content: '<script>alert(1)</script><p onclick="x()">Rå</p>' })
+
+  it('is shown as its source by default, so no script in it can run (the admin never asks for raw)', async () => {
+    const html = await render([block])
+    expect(html).not.toMatch(/<script|<p onclick/)
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
+  })
+
+  it('is written as markup only when the caller asks for raw (the public site, M1.4)', async () => {
+    const app = createSSRApp({ render: () => h(BlockDocument, { blocks: [block], html: 'raw' }) })
+    expect(await renderToString(app)).toContain('<div class="block-html"><script>alert(1)</script>')
+  })
+})
+
+describe('preformatted text', () => {
+  it('keeps a first line that is empty (the parser drops one newline after <pre>)', async () => {
+    const html = await render([createBlock('core/preformatted', { content: text('\nto') })])
+    expect(html).toContain('<pre class="block-preformatted">\n\nto</pre>')
   })
 })
 

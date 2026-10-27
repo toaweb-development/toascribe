@@ -99,6 +99,10 @@ with native fields or `<ClientOnly>`. There is still no `'unsafe-inline'`.
   build are the same for every visitor, so their hashes are fixed; check how it behaves on a cached route before relying on it)
   and change the cache line of that route only. The site e2e
   (`apps/admin/e2e/site-headers.spec.ts`) pins the nonce and the cache header, so a cache that breaks the pairing fails there.
+- **A nonce does not limit HTML written into the page.** nuxt-security stamps the response's nonce on every `<script>`, `<style>`
+  and `<link>` in the server-rendered body, so raw HTML runs with the page's rights. The custom HTML block (only `unfiltered_html`
+  writes one) is therefore drawn as its source in the admin, and as markup only where a caller asks for `html: 'raw'` (the public
+  site, M1.4); `test/raw-html.test.ts` keeps raw out of the admin.
 - A new inline script or style attribute needs its reason in `nuxt.config.ts`; a new third-party host needs its directive and
   its reason there too. Report-Only first (`security` §7) was replaced by a browser check of the built output: every e2e test fails on
   a CSP violation.
@@ -209,6 +213,9 @@ These are choices Tor has not made yet. Say which one you hit if your work touch
 - **The tag workflow is `release.yml`, not `deploy.yml`.** VERSIONING_STANDARD §7 names `deploy.yml` as the one workflow and no
   `release.yml`. toascribe deploys nowhere: its tag builds, scans and publishes images, so the workflow keeps its name (build and
   publish only; no GitHub Release since toa-rules 5.0).
+- **Links in blocks take more than `https:`.** `security` §4 asks for user URLs to be `https:` (or `http:`). A link in rich text and a
+  button's address (`format: "href"`, `isSafeHref`) also take `mailto:`, a path on the site (`/…`) and a fragment (`#…`), as a
+  WordPress link does; `javascript:`, `data:` and another host by `//` are refused.
 - **Audit exceptions.** `pnpm audit --prod` reports two High advisories without a patched version
   (GHSA-86w9-cpqp-85rv node-forge, GHSA-vfj7-8cjw-p6xm braces), both from nitropack and absent from every runtime image.
   They are listed in `pnpm-workspace.yaml` with a review date; `scripts/audit.sh` (the release's audit) fails after it.

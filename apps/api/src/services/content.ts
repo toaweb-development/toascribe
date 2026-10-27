@@ -391,9 +391,14 @@ export function createContentService(options: {
     }
   }
 
-  /** The SEO panel as it is stored: only what has a value (an empty title means «use the item's title»). */
-  async function seoOf(actor: Actor, request: SeoRequest): Promise<ContentSeo> {
-    await checkImage(actor, request.image)
+  /**
+   * The SEO panel as it is stored: only what has a value (an empty title means «use the item's title»). The image is checked when it
+   * is new; the one already stored is kept as it is (like the featured image), so a save never fails on an image someone else hid.
+   */
+  async function seoOf(actor: Actor, request: SeoRequest, stored?: string): Promise<ContentSeo> {
+    if (request.image !== stored) {
+      await checkImage(actor, request.image)
+    }
     return {
       ...(request.title === undefined || request.title === '' ? {} : { title: request.title }),
       ...(request.description === undefined || request.description === '' ? {} : { description: request.description }),
@@ -792,8 +797,9 @@ export function createContentService(options: {
       changes.featuredMediaId = request.featuredMediaId
     }
     if (request.seo !== undefined) {
-      const seo = await seoOf(actor, request.seo)
-      if (JSON.stringify(seo) !== JSON.stringify(ContentSeo.catch({}).parse(row.seo))) {
+      const storedSeo = ContentSeo.catch({}).parse(row.seo)
+      const seo = await seoOf(actor, request.seo, storedSeo.image)
+      if (JSON.stringify(seo) !== JSON.stringify(storedSeo)) {
         changes.seo = seo
       }
     }

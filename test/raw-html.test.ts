@@ -51,8 +51,9 @@ describe('no raw HTML in the Nuxt code', () => {
       let source = readFileSync(file, 'utf8')
       if (file.endsWith(CUSTOM_HTML_VIEW)) {
         // Exactly one, in the branch of core/html, and that branch is what is taken out before the checks below.
+        // ... and only after the branch that shows the source unless the caller asked for `raw`.
         const allowed =
-          /\n {4}case HTML:\n(?: {6}\/\/.*\n)* {6}return h\('div', \{ class: 'block-html', innerHTML: text\(block, 'content'\) \}\)\n/
+          /\n {4}case HTML:\n {6}if \(context\.html !== 'raw'\) \{\n.*\n {6}\}\n(?: {6}\/\/.*\n)* {6}return h\('div', \{ class: 'block-html', innerHTML: text\(block, 'content'\) \}\)\n/
         expect(source).toMatch(allowed)
         source = source.replace(allowed, '\n')
       }
@@ -61,7 +62,14 @@ describe('no raw HTML in the Nuxt code', () => {
       expect(source).not.toMatch(/\b(inner|outer)HTML\b/)
       // TipTap parses a string given to setContent or insertContent as HTML; the editor only ever hands it JSON.
       expect(source).not.toMatch(/\b(setContent|insertContent)\(\s*['"`]/)
-      expect(source).not.toMatch(/insertAdjacentHTML|document\.write\(/)
+      // Other ways to write markup from a string (security §4).
+      expect(source).not.toMatch(
+        /insertAdjacentHTML|document\.write\(|createStaticVNode|createContextualFragment|\bsrcdoc\b/,
+      )
+      // Raw custom HTML is for the public site's templates (M1.4); no admin code asks for it (its scripts would get the nonce).
+      if (file.includes('/apps/admin/') || file.includes('/packages/nuxt-base/')) {
+        expect(source).not.toMatch(/html[=:]\s*["']raw["']/)
+      }
     },
   )
 })

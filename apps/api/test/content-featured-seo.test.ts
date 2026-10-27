@@ -81,6 +81,18 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('featured image and SEO (needs 
     }
   })
 
+  it('saves the SEO panel unchanged when its image was deleted since', async () => {
+    const sharing = await upload(author, f.PNG, 'slettes.png')
+    const post = ContentItem.parse(
+      await (
+        await author.post('/api/v1/content', { type: 'post', title: 'Deling', seo: { image: sharing.id } })
+      ).json(),
+    )
+    expect((await author.delete(`/api/v1/media/${sharing.id}`)).status).toBe(204)
+    const res = await author.patch(`/api/v1/content/${post.id}`, { title: 'Ny tittel', seo: { image: sharing.id } })
+    expect(res.status, await res.clone().text()).toBe(200)
+  })
+
   it('caps the SEO title and description, and takes no other field', async () => {
     const long = await author.post('/api/v1/content', { type: 'post', seo: { title: 'x'.repeat(201) } })
     expect(long.status).toBe(400)

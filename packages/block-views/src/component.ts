@@ -19,9 +19,11 @@ export const BlockDocument = defineComponent({
     /** The media the blocks use (ContentItem.media). */
     media: { type: Array as PropType<readonly ContentMediaRef[]>, default: () => [] },
     imageSizes: { type: String, default: DEFAULT_IMAGE_SIZES },
+    /** `raw` writes custom HTML as markup: for the public site only (see ViewContext.html). The default shows it as text. */
+    html: { type: String as PropType<'raw' | 'source'>, default: 'source' },
   },
   setup(props) {
     const media = computed(() => new Map(props.media.map((entry) => [entry.id, entry])))
-    return () => renderDocument(props.blocks, { media: media.value, imageSizes: props.imageSizes })
+    return () => renderDocument(props.blocks, { media: media.value, imageSizes: props.imageSizes, html: props.html })
   },
 })
