@@ -13,8 +13,10 @@ const { content } = useContent()
 const hasSession = import.meta.server
   ? useRequestHeaders(['cookie']).cookie?.includes(`${SESSION_COOKIE_NAME}=`) === true
   : true
-if (auth.session.value.status === 'unknown' && hasSession) {
-  await auth.refresh().catch(() => undefined)
+if (auth.session.value.status === 'unknown') {
+  // Without the cookie the answer is known: nobody. It goes to the browser in the payload, so it does not ask either.
+  if (hasSession) await auth.refresh().catch(() => undefined)
+  else auth.session.value = { status: 'anonymous' }
 }
 
 const account = computed(() => (auth.session.value.status === 'authenticated' ? auth.session.value.account : undefined))

@@ -184,9 +184,13 @@ export function createDataCache(options: {
     } catch (error) {
       throw new FetchFailed(error)
     }
-    const versions = await versionsOf([...new Set(tagsOf(value))])
-    if ((await store.get(CHANGES_KEY)) === changesBefore) {
-      await store.set(entryKey(path), JSON.stringify({ value, versions } satisfies Entry), ENTRY_TTL_SECONDS)
+    try {
+      const versions = await versionsOf([...new Set(tagsOf(value))])
+      if ((await store.get(CHANGES_KEY)) === changesBefore) {
+        await store.set(entryKey(path), JSON.stringify({ value, versions } satisfies Entry), ENTRY_TTL_SECONDS)
+      }
+    } catch {
+      // The answer is here; only keeping it failed.
     }
     return { value, hit: false }
   }
