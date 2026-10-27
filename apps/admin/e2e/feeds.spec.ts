@@ -1,3 +1,5 @@
+import http from 'node:http'
+
 import type { APIRequestContext } from '@playwright/test'
 
 import { expect, test } from './helpers/fixtures.ts'
@@ -13,6 +15,19 @@ let admin: TestUser
 test.beforeAll(async () => {
   admin = await createUser('administrator', 'feedsadmin')
 })
+
+/** A GET with the path exactly as written, as some feed readers send it. */
+function rawGet(path: string): Promise<{ status: number; location: string | undefined }> {
+  const url = new URL(baseUrl())
+  return new Promise((resolve, reject) => {
+    const req = http.request({ host: url.hostname, port: url.port, path, method: 'GET' }, (res) => {
+      res.resume()
+      resolve({ status: res.statusCode ?? 0, location: res.headers.location })
+    })
+    req.on('error', reject)
+    req.end()
+  })
+}
 
 async function api(request: APIRequestContext) {
   const origin = baseUrl()
@@ -50,6 +65,14 @@ test('the feed, a category feed, the sitemap and robots.txt', async ({ page, pla
     expect(categoryFeed.status()).toBe(200)
     expect(await categoryFeed.text()).toContain(`<title>Strøm &amp; ${name}</title>`)
     expect((await request.get('/finnes-ikke-her/feed/')).status()).toBe(404)
+    // A path whose dot segments leave `//host/feed` is no feed and goes nowhere (sent as written: Playwright would tidy it).
+    for (const raw of ['/.//evil.example/feed', '/%2e//evil.example/feed']) {
+      const answer = await rawGet(raw)
+      expect(answer.status, raw).toBe(404)
+      expect(answer.location, raw).toBeUndefined()
+    }
+    expect((await request.get('/sitemap-posts-0.xml')).status()).toBe(404)
+    expect((await request.get('/sitemap-posts-999999.xml')).status()).toBe(404)
 
     const robots = await request.get('/robots.txt')
     expect(robots.headers()['content-type']).toBe('text/plain; charset=utf-8')

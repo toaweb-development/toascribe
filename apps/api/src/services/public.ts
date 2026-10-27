@@ -538,16 +538,29 @@ export function createPublicService(options: {
     return undefined
   }
 
-  /** How many addresses each part of the sitemap has. */
+  /** How many addresses a part of the sitemap has (the front page of latest posts opens the pages'). */
+  async function sitemapCount(kind: SitemapKind, settings: Settings): Promise<number> {
+    switch (kind) {
+      case 'posts':
+        return countIndexable(db, 'post')
+      case 'pages':
+        return (await countIndexable(db, 'page')) + (settings.show_on_front === 'posts' ? 1 : 0)
+      case 'categories':
+        return countIndexableTerms(db, 'category')
+      case 'tags':
+        return countIndexableTerms(db, 'post_tag')
+      case 'authors':
+        return countIndexableAuthors(db)
+    }
+  }
+
+  /** How many addresses each part of the sitemap has (the index). */
   async function sitemapCounts(settings: Settings): Promise<Record<SitemapKind, number>> {
-    const [posts, pages, categories, tags, authors] = await Promise.all([
-      countIndexable(db, 'post'),
-      countIndexable(db, 'page'),
-      countIndexableTerms(db, 'category'),
-      countIndexableTerms(db, 'post_tag'),
-      countIndexableAuthors(db),
-    ])
-    return { posts, pages: pages + (settings.show_on_front === 'posts' ? 1 : 0), categories, tags, authors }
+    const counts = await Promise.all(SITEMAP_KINDS.map((kind) => sitemapCount(kind, settings)))
+    return Object.fromEntries(SITEMAP_KINDS.map((kind, index) => [kind, counts[index] ?? 0])) as Record<
+      SitemapKind,
+      number
+    >
   }
 
   const service: PublicService = {
@@ -811,7 +824,12 @@ export function createPublicService(options: {
             }
           : await service.resolve(path, reader, { feed: true })
       if (found.kind === 'redirect') {
-        // An archive's old address: its feed moved with it.
+        // An archive's old address (a wrong category chain, a changed base): its feed moved with it. A redirect to an item (an old
+        // post address, `/?p=`) has no feed to go to.
+        const target = found.location.includes('?')
+          ? undefined
+          : await service.resolve(found.location, reader, { feed: true })
+        if (target?.kind !== 'archive' && target?.kind !== 'home') throw new NotFoundError()
         return { kind: 'redirect', location: `${found.location}feed/`, cacheTags: found.cacheTags }
       }
       if ((found.kind !== 'home' && found.kind !== 'archive') || !('list' in found) || found.list.page !== 1) {
@@ -915,8 +933,7 @@ export function createPublicService(options: {
     async sitemapPage(kind, page) {
       const settings = await settingsOf()
       if (!settings.blog_public) throw new NotFoundError()
-      const counts = await sitemapCounts(settings)
-      if (page < 1 || (page - 1) * SITEMAP_MAX_URLS >= counts[kind]) throw new NotFoundError()
+      if (page < 1 || (page - 1) * SITEMAP_MAX_URLS >= (await sitemapCount(kind, settings))) throw new NotFoundError()
       const origin = options.publicOrigin.replace(/\/+$/, '')
       const at = (path: string, lastmod: Date | null) => ({
         loc: `${origin}${path}`,

@@ -3,6 +3,7 @@
 // and its files, and `/robots.txt`. The data comes through the cache by tag, as a page's does; a change to a post, a term or a
 // setting shows on the next request. Nothing is rendered with a nonce, so the documents carry none.
 import {
+  isSiteLocation,
   PublicFeedResponse,
   PublicSettings,
   PublicSitemapIndex,
@@ -14,7 +15,10 @@ import type { H3Event } from 'h3'
 import { feedHtml, robotsTxt, rssXml, sitemapIndexXml, sitemapXml } from '../../lib/feeds'
 
 const FEED = /^(\/(?:[^?#]*\/)?)feed\/?$/
-const SITEMAP_FILE = /^\/sitemap-([a-z]+)-(\d{1,6})\.xml$/
+const SITEMAP_FILE = /^\/sitemap-([a-z]+)-([1-9]\d{0,5})\.xml$/
+/** The api's limits: the highest sitemap page, and the longest feed address. */
+const MAX_SITEMAP_PAGE = 100_000
+const MAX_FEED_PREFIX = 2000
 
 function answer(event: H3Event, type: string, body: string): string {
   setResponseHeader(event, 'content-type', `${type}; charset=utf-8`)
@@ -56,7 +60,7 @@ export default defineEventHandler(async (event) => {
   const file = SITEMAP_FILE.exec(pathname)
   if (file !== null) {
     const kind = SitemapKind.safeParse(file[1])
-    if (!kind.success) return notFound(event)
+    if (!kind.success || Number(file[2]) > MAX_SITEMAP_PAGE) return notFound(event)
     const found = await read(event, `/sitemap/${kind.data}/${String(Number(file[2]))}`)
     return found === undefined
       ? notFound(event)
@@ -65,17 +69,19 @@ export default defineEventHandler(async (event) => {
 
   const feed = FEED.exec(pathname)
   if (feed === null) return
+  // A path that is not plainly one on this site (`//host/feed`, which `/.//host/feed` becomes once its dot segments are gone, or a
+  // backslash) has no feed, and is never sent anywhere.
+  if (!isSiteLocation(`${pathname}/`)) return notFound(event)
   // `/feed` and `<archive>/feed` without the closing slash go to the address with it, as WordPress' do.
   if (!pathname.endsWith('/')) return sendRedirect(event, `${pathname}/`, 301)
   const prefix = feed[1] ?? '/'
+  if (prefix.length > MAX_FEED_PREFIX) return notFound(event)
   const found = await read(event, `/feed?path=${encodeURIComponent(prefix)}`)
   if (found === undefined) return notFound(event)
   const parsed = PublicFeedResponse.parse(found)
   if (parsed.kind === 'redirect') {
     // A path on this site only (the api builds it from its own addresses).
-    return parsed.location.startsWith('/') && !parsed.location.startsWith('//') && !parsed.location.includes('\\')
-      ? sendRedirect(event, parsed.location, 301)
-      : notFound(event)
+    return isSiteLocation(parsed.location) ? sendRedirect(event, parsed.location, 301) : notFound(event)
   }
   const html = new Map<number, string>()
   await Promise.all(

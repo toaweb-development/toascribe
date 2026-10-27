@@ -480,7 +480,8 @@ export type { ContentSeo }
 // without «noindex» (the SEO panel), terms and authors with such a post.
 
 /** What the sitemap leaves out of the published items: a password, or «noindex». */
-const indexable: SQL = sql`${visible} and ${content.passwordHash} is null and coalesce((${content.seo}->>'noindex')::boolean, false) = false`
+// `noindex` compared as JSON, with no cast: a stored value that is not a boolean cannot make the query fail (only `true` counts).
+const indexable: SQL = sql`${visible} and ${content.passwordHash} is null and coalesce(${content.seo}->'noindex' = 'true'::jsonb, false) = false`
 
 export async function countIndexable(db: Executor, type: 'post' | 'page'): Promise<number> {
   const [row] = await db

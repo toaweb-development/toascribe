@@ -203,6 +203,17 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('feeds and the sitemap (needs T
         kind: 'redirect',
         location: '/category/nyheter/lokalt/feed/',
       })
+      // An old post address and `/?p=` lead to an item, which has no feed.
+      const renamed = await create({ type: 'post', title: 'Flyttet', slug: 'gammel-adresse', status: 'publish' })
+      expect((await admin.patch(`/api/v1/content/${renamed.id}`, { slug: 'ny-adresse' })).status).toBe(200)
+      try {
+        for (const path of ['/gammel-adresse/', `/?p=${String(renamed.shortId)}`]) {
+          const res = await visitor.get(`/api/v1/public/feed?path=${encodeURIComponent(path)}`)
+          expect(res.status, path).toBe(404)
+        }
+      } finally {
+        await env.query(`delete from content where id = $1`, [renamed.id])
+      }
       for (const path of ['/hei/', '/om/', '/finnes-ikke/', '/category/nyheter/page/2/', '/?s=fjell']) {
         const res = await visitor.get(`/api/v1/public/feed?path=${encodeURIComponent(path)}`)
         expect(res.status, path).toBe(404)
@@ -234,6 +245,15 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('feeds and the sitemap (needs T
       expect(await page('authors')).toEqual([`/author/${nicename}/`])
       expect((await visitor.get('/api/v1/public/sitemap/posts/2')).status).toBe(404)
       expect((await visitor.get('/api/v1/public/sitemap/users/1')).status).toBe(400)
+    })
+
+    it('reads «noindex» as JSON: a stored value that is not a boolean does not break it', async () => {
+      await env.query(`update content set seo = '{"noindex": "kanskje"}'::jsonb where id = $1`, [ids['hidden']])
+      try {
+        expect((await visitor.get('/api/v1/public/sitemap/posts/1')).status).toBe(200)
+      } finally {
+        await env.query(`update content set seo = '{"noindex": true}'::jsonb where id = $1`, [ids['hidden']])
+      }
     })
 
     it('splits a part at 2000 addresses', async () => {
