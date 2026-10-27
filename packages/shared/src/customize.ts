@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { ContentMediaRef } from './content.ts'
 import { FontStack, HexColor } from './theme.ts'
+import type { ThemeSettingsSpec } from './theme.ts'
 
 /** The most «Ekstra CSS» may hold (WordPress has no limit; a stylesheet this size is already a theme of its own). */
 export const CUSTOM_CSS_MAX_LENGTH = 100_000
@@ -58,8 +59,14 @@ export const UpdateCustomizeRequest = z.strictObject({
   /** The theme's version (theme.json), kept with its settings. */
   version: z.string().max(50),
   identity: CustomizeIdentity.extend({
-    site_logo: z.uuid().transform((value) => value.toLowerCase()).nullable(),
-    site_icon: z.uuid().transform((value) => value.toLowerCase()).nullable(),
+    site_logo: z
+      .uuid()
+      .transform((value) => value.toLowerCase())
+      .nullable(),
+    site_icon: z
+      .uuid()
+      .transform((value) => value.toLowerCase())
+      .nullable(),
   })
     .partial()
     .optional(),
@@ -87,5 +94,60 @@ export function customizationCss(customization: ThemeCustomization): string {
     ...Object.entries(customization.colors).map(([slug, color]) => `--theme-color-${slug}: ${color};`),
     ...Object.entries(customization.fonts).map(([slug, font]) => `--theme-font-${slug}: ${font};`),
   ]
-  return [variables.length === 0 ? '' : `:root { ${variables.join(' ')} }`, customization.customCss].filter(Boolean).join('\n')
+  return [variables.length === 0 ? '' : `:root { ${variables.join(' ')} }`, customization.customCss]
+    .filter(Boolean)
+    .join('\n')
 }
+
+/**
+ * A theme's stored choices as the theme reads them: only the colours it names, and a font only when it is one of that font's choices
+ * (a theme that dropped a slot or a choice gets its own default back). «Ekstra CSS» is kept as it is.
+ */
+export function themeCustomization(stored: ThemeCustomization, spec: ThemeSettingsSpec): ThemeCustomization {
+  const colors = spec.colors ?? {}
+  const fonts = spec.fonts ?? {}
+  return {
+    colors: Object.fromEntries(Object.entries(stored.colors).filter(([slug]) => Object.hasOwn(colors, slug))),
+    fonts: Object.fromEntries(
+      Object.entries(stored.fonts).filter(([slug, value]) =>
+        (Object.hasOwn(fonts, slug) ? (fonts[slug]?.choices ?? []) : []).some((choice) => choice.value === value),
+      ),
+    ),
+    customCss: stored.customCss,
+  }
+}
+
+/** What the site's data route gives the page (useCustomize): the CSS to write in ScribeHead, the logo and the icon. */
+export const SiteCustomization = z.object({
+  css: z.string().refine((css) => !css.includes('<'), { message: 'nothing that can end the <style> element' }),
+  logo: ContentMediaRef.nullable(),
+  icon: ContentMediaRef.nullable(),
+})
+export type SiteCustomization = z.infer<typeof SiteCustomization>
+
+/** A media address the site may draw from a preview message: a path on the site, or https. */
+const PreviewImage = ContentMediaRef.pick({ id: true, url: true, width: true, height: true, alt: true }).extend({
+  url: z
+    .string()
+    .max(2000)
+    .refine((url) => /^\/(?![/\\])/.test(url) || url.startsWith('https://'), {
+      message: 'a path on the site or an https address',
+    }),
+})
+
+/**
+ * What «Utseende → Tilpass» posts to the site in its preview frame (same origin only): the choices not saved yet. The site checks it
+ * as it checks what it reads from the api, and draws it in that page only.
+ */
+export const CustomizePreviewMessage = z.strictObject({
+  type: z.literal('toascribe:customize'),
+  title: z.string().max(200),
+  tagline: z.string().max(500),
+  customization: ThemeCustomization,
+  logo: PreviewImage.nullable(),
+  icon: PreviewImage.nullable(),
+})
+export type CustomizePreviewMessage = z.infer<typeof CustomizePreviewMessage>
+
+/** What the site posts to its parent when its preview listener is ready (the admin then sends what it shows). */
+export const CUSTOMIZE_PREVIEW_READY = 'toascribe:customize-ready'

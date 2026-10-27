@@ -1,6 +1,6 @@
 // The theme SDK (M1.4; PLAN «Regler et tema må følge» 1): the only way a theme reads data. useContent gives what the address is,
 // useQuery lists published items, useSettings the site's settings, useUser who is signed in, useMenu a theme location's menu and
-// useGlobalSet a global set (M1.5); useArea answers empty until areas come (phase 3).
+// useGlobalSet a global set and useCustomize what «Utseende → Tilpass» set (M1.5); useArea answers empty until areas come (phase 3).
 import type { Block } from '@toascribe/blocks'
 import type {
   PublicArchive,
@@ -13,6 +13,7 @@ import type {
   PublicQueryInput,
   PublicSettings,
   ResolveResponse,
+  SiteCustomization,
 } from '@toascribe/shared'
 import type { MaybeRefOrGetter } from 'vue'
 
@@ -33,6 +34,20 @@ export function useScribeState() {
 /** The site's settings, read once per page load (the catch-all route reads them with the address). */
 export function useSettings() {
   return useState<PublicSettings | null>('scribe:settings', () => null)
+}
+
+/** What «Tilpass» set, read with the settings (the middleware); the admin's preview changes it in the browser. */
+export function useCustomizeState() {
+  return useState<SiteCustomization | null>('scribe:customize', () => null)
+}
+
+/**
+ * What «Utseende → Tilpass» set (K-150, K-151): the site's logo and icon, and the CSS of the theme's colours and fonts and «Ekstra
+ * CSS» (ScribeHead writes it; a theme reads its choices as `--theme-color-<slug>` and `--theme-font-<slug>`).
+ */
+export function useCustomize() {
+  const state = useCustomizeState()
+  return computed<SiteCustomization>(() => state.value ?? { css: '', logo: null, icon: null })
 }
 
 /** What the address is: an item, a list (home, archive, search) or nothing (404). */

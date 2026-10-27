@@ -1,4 +1,4 @@
-import type { PublicSettings, ResolveResponse } from '@toascribe/shared'
+import type { PublicSettings, ResolveResponse, SiteCustomization } from '@toascribe/shared'
 
 import { addressOf, isLocalPath } from '../lib/scribe'
 
@@ -6,7 +6,7 @@ import { addressOf, isLocalPath } from '../lib/scribe'
 // After `setup-redirect` (global middleware run in name order), so an uninstalled site still goes to the wizard first.
 // - A redirect (`/?p=12`, an address without its closing slash, the front page's own slug) is a 301 to a path on the site.
 // - 404 is an answer the theme draws (`templates/404.vue`), with the status 404.
-// - The site's settings are read with the first address and kept for the page load.
+// - The site's settings and «Tilpass» are read with the first address and kept for the page load.
 // - A preview link (`?preview=`) shows its item; a link that is not good is a 404.
 export default defineNuxtRouteMiddleware(async (to) => {
   if (import.meta.client && useNuxtApp().payload.error) return
@@ -14,6 +14,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const event = useRequestEvent()
   const state = useScribeState()
   const settings = useSettings()
+  const customize = useCustomizeState()
 
   const address = addressOf(to)
   const key = JSON.stringify(address)
@@ -38,12 +39,16 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   let resolved: ResolveResponse
   try {
-    const [answer, read] = await Promise.all([
+    const [answer, read, look] = await Promise.all([
       ask(),
       settings.value === null ? fetcher<PublicSettings>('/_toascribe/data/settings') : Promise.resolve(settings.value),
+      customize.value === null
+        ? fetcher<SiteCustomization>('/_toascribe/data/customize')
+        : Promise.resolve(customize.value),
     ])
     resolved = answer
     settings.value = read
+    customize.value = look
   } catch (error) {
     // An address the api refuses to read (too long, say) is no page: the theme's 404. Anything else is the api being away.
     if (typeof error === 'object' && error !== null && Reflect.get(error, 'statusCode') === 400) {

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 // The core's part of every page's head (PLAN «Regler et tema må følge» 2, WordPress' wp_head()): the title after the site's name,
 // the description, and no indexing of a search, a 404 or a preview. The toolbar for a signed-in person comes here too (K-032).
+// «Tilpass» (M1.5): the site icon, and one `<style>` with the theme's colours and fonts and «Ekstra CSS». The style is always written,
+// empty or not, so it carries the response's nonce and the admin's preview can change its text (a style element made later would
+// have none, and the CSP would refuse it). Its text never holds `<` (customCssProblem, SiteCustomization).
 // SEO in full (canonical, Open Graph, structured data) is M1.6.
 const { t } = useI18n()
 const settings = useSettings()
+const customize = useCustomize()
 const { kind, content, archive, preview } = useContent()
 
 const pageTitle = computed(() => {
@@ -39,6 +43,8 @@ useHead({
     { name: 'description', content: () => description.value },
     { name: 'robots', content: () => (noindex.value ? 'noindex' : undefined) },
   ],
+  link: [{ key: 'scribe-icon', rel: 'icon', href: () => customize.value.icon?.url }],
+  style: [{ key: 'scribe-customize', id: 'scribe-customize', textContent: () => customize.value.css }],
 })
 </script>
 

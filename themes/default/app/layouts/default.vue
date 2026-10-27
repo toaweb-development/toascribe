@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // The frame around every template: a skip link, the core's head (ScribeHead: title, description, the toolbar), the site's name and
-// tagline, the search, the content, and the core's footer (ScribeFooter). Landmarks: banner, main, contentinfo (WCAG 1.3.1, 2.4.1).
+// tagline (with the logo from «Tilpass» when there is one), the search, the content, and the core's footer (ScribeFooter). Landmarks: banner, main, contentinfo (WCAG 1.3.1, 2.4.1).
 const { t } = useI18n()
 const settings = useSettings()
+const customize = useCustomize()
 </script>
 
 <template>
@@ -12,7 +13,17 @@ const settings = useSettings()
     <header class="theme-header">
       <div class="theme-wrap theme-header-inner">
         <div>
-          <a href="/" class="theme-site-title">{{ settings?.title || t('brand.name') }}</a>
+          <a href="/" class="theme-site-title">
+            <img
+              v-if="customize.logo"
+              :src="customize.logo.url"
+              :width="customize.logo.width ?? undefined"
+              :height="customize.logo.height ?? undefined"
+              alt=""
+              class="theme-logo"
+            />
+            <span>{{ settings?.title || t('brand.name') }}</span>
+          </a>
           <p v-if="settings?.tagline" class="theme-tagline">{{ settings.tagline }}</p>
         </div>
         <ScribeSearchForm />
