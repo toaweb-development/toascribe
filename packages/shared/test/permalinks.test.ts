@@ -78,6 +78,7 @@ describe('what is stored', () => {
       '/100%/%postname%/',
       '/blåbær/%postname%/',
       '/a:b/%postname%/',
+      '/(news)/%postname%/',
       // Two or more free-text tags in one segment would make reading an address back slow (review M1.5).
       '/%category%-%postname%-%author%/',
       '/%category%%postname%%author%/',

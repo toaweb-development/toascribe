@@ -47,9 +47,9 @@ export function structureProblem(structure: string): string | undefined {
   if (new Set(tags).size !== tags.length) return 'each tag once'
   if (!tags.includes('%postname%') && !tags.includes('%post_id%')) return 'needs %postname% or %post_id%'
   if (structure.replace(TAG, '').includes('%')) return 'a % that is no tag'
-  // Letters, digits and a few marks between the tags: the address is written as the structure says, and read back the same way.
-  if (!/^[A-Za-z0-9._~!*'()/-]*$/.test(structure.replace(TAG, '')))
-    return "only letters, digits and - . _ ~ ! * ' ( ) between the tags"
+  // Between the tags only what slugSegment leaves as it is: the address is written as the structure says and read back the same way.
+  if (!/^[A-Za-z0-9._~/-]*$/.test(structure.replace(TAG, '')))
+    return 'only letters, digits and - . _ ~ between the tags'
   // At most one free-text tag in a segment: two or more make reading an address back slow (each can take any part of the segment).
   for (const segment of structure.split('/')) {
     const free = (segment.match(TAG) ?? []).filter(

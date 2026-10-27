@@ -456,11 +456,11 @@ export function createPublicService(options: {
    * or its parent changed. 301 to where the item is now; nothing when the item is not published (it is a 404 like any other).
    */
   async function oldAddress(pathname: string, settings: Settings): Promise<ResolveResponse | undefined> {
-    const to = async (row: PublicRow, itemPage = 1): Promise<ResolveResponse> => {
+    const to = async (row: PublicRow, itemPage = 1): Promise<ResolveResponse | undefined> => {
       const canonical = await pathOf(row, settings)
-      return {
-        kind: 'redirect',
-        status: 301,
+      const answer = {
+        kind: 'redirect' as const,
+        status: 301 as const,
         // Under «Enkel» the page is a query parameter (`/?p=12&page=2`).
         location:
           itemPage <= 1
@@ -470,6 +470,7 @@ export function createPublicService(options: {
               : `${canonical.replace(/\/?$/, '/')}${String(itemPage)}/`,
         cacheTags: [`content:${row.id}`, 'settings'],
       }
+      return isSiteLocation(answer.location) ? answer : undefined
     }
     for (const rules of settings.links.history) {
       if (rules.structure !== settings.links.structure) {
@@ -495,6 +496,7 @@ export function createPublicService(options: {
           taxonomy === 'category'
             ? ((await settings.links.categoryPaths([term.id])).get(term.id) ?? '/')
             : settings.links.tagPath(term.slug)
+        if (!isSiteLocation(location)) continue
         return { kind: 'redirect', status: 301, location, cacheTags: [`term:${term.id}`, 'settings'] }
       }
     }
