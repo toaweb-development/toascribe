@@ -228,7 +228,7 @@ These are choices Tor has not made yet. Say which one you hit if your work touch
   button's address (`format: "href"`, `isSafeHref`) also take `mailto:`, a path on the site (`/…`) and a fragment (`#…`), as a
   WordPress link does; `javascript:`, `data:` and another host by `//` are refused.
 - **A backup's sha256s prove it is whole, not who made it (M1.7).** The api and the worker write the `backups` volume (`toa backup
-  create` and the daily backup), so code running in either could plant an archive with a manifest of its own; a restore of it runs its
+create` and the daily backup), so code running in either could plant an archive with a manifest of its own; a restore of it runs its
   SQL as `toascribe_owner` (NOSUPERUSER, NOCREATEROLE: DDL in this database, not the host). The restore refuses SQL without the
   `\restrict` line pg_restore 17.6+ writes, so psql meta-commands in a dump do not run. Signing backups, or making them only in a
   service the internet does not reach, is Tor's call.
