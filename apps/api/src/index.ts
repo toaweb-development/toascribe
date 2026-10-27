@@ -65,6 +65,7 @@ const { app, services } = buildApp({
   mediaJobs: mediaQueue,
   uploadsDir: config.UPLOADS_DIR,
   uploadCapMb: config.UPLOAD_MAX_SIZE_MB,
+  siteUrlInternal: config.SITE_URL_INTERNAL,
 })
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   logger.info({ port: info.port, env: config.NODE_ENV }, 'api listening')

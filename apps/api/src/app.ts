@@ -16,6 +16,8 @@ import { publicAccess } from './lib/policy.ts'
 import { uploadRequestLimit } from './lib/upload-limit.ts'
 import { authContext } from './middleware/auth.ts'
 import { onError, onNotFound } from './middleware/errors.ts'
+import { siteThemeSource } from './services/active-theme.ts'
+import type { ActiveThemeSource } from './services/active-theme.ts'
 import { annotatePolicies, findUnguardedRoutes, policyGuard } from './middleware/policy.ts'
 import { requestLogger } from './middleware/request-logger.ts'
 import type { MediaJobPort } from './ports/media-jobs.ts'
@@ -68,6 +70,10 @@ export interface AppDeps {
   readonly mediaJobs: MediaJobPort
   /** UPLOAD_MAX_SIZE_MB: the cap on one upload, above any setting. Default 64. */
   readonly uploadCapMb?: number
+  /** Which theme the site runs (menu locations, «Tilpass»). Default: asked of the site at `siteUrlInternal`. */
+  readonly activeTheme?: ActiveThemeSource
+  /** SITE_URL_INTERNAL, used when `activeTheme` is not given. */
+  readonly siteUrlInternal?: string
 }
 
 /**
@@ -115,6 +121,7 @@ export function buildApp(deps: AppDeps) {
     storage: deps.storage ?? createLocalStorage(deps.uploadsDir ?? '/var/lib/toascribe/uploads'),
     mediaJobs: deps.mediaJobs,
     uploadCapMb: deps.uploadCapMb ?? 64,
+    activeTheme: deps.activeTheme ?? siteThemeSource({ siteUrl: deps.siteUrlInternal ?? 'http://site:3000' }),
     ...(deps.trustedProxy === undefined ? {} : { trustedProxy: deps.trustedProxy }),
     ...(deps.minimumResponseMs === undefined ? {} : { minimumResponseMs: deps.minimumResponseMs }),
     onInvalidSetting: (key) => {

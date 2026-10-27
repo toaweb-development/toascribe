@@ -7,12 +7,14 @@ import { join } from 'node:path'
 // on it.
 import { hashPassword } from '@toascribe/auth'
 import { runMigrations } from '@toascribe/db'
-import type { BuiltInRole } from '@toascribe/shared'
+import type { ActiveTheme, BuiltInRole } from '@toascribe/shared'
 import { createDb } from '@toascribe/db'
 import pg from 'pg'
 import { pino } from 'pino'
 
 import { buildApp } from '../src/app.ts'
+import { fixedThemeSource } from '../src/services/active-theme.ts'
+import type { ActiveThemeSource } from '../src/services/active-theme.ts'
 import { createTestDatabase } from './db.ts'
 import type { TestDatabase } from './db.ts'
 import type { MailPort } from '../src/ports/mail.ts'
@@ -29,6 +31,20 @@ export const SESSION_COOKIE_NAME = '__Host-toa_session'
 
 /** The password every test account has unless a test says otherwise. */
 export const TEST_PASSWORD = 'correct horse battery staple'
+
+/** The theme the test site runs (the default theme's locations), unless a test passes another `activeTheme`. */
+export const TEST_THEME: ActiveTheme = {
+  slug: 'default',
+  name: 'Standard',
+  version: '1.0.0',
+  parents: [],
+  headingLevels: [1, 2, 3, 4, 5, 6],
+  templates: [],
+  menus: { primary: 'Hovedmeny', footer: 'Bunnmeny' },
+  areas: {},
+  globalSets: [],
+  settings: {},
+}
 
 let defaultHash: Promise<string> | undefined
 
@@ -207,6 +223,8 @@ export interface AuthTestApp {
 
 export interface StartOptions {
   readonly publicOrigin?: string
+  /** Which theme the site runs; default TEST_THEME. */
+  readonly activeTheme?: ActiveThemeSource
   /** How long the flows that hide whether an account exists take at least (ms). Default 0, so the tests are not slowed; the timing tests pass a real value. */
   readonly minimumResponseMs?: number
   /**
@@ -267,6 +285,7 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
       uploadsDir,
       mediaJobs,
       ...(options.uploadCapMb === undefined ? {} : { uploadCapMb: options.uploadCapMb }),
+      activeTheme: options.activeTheme ?? fixedThemeSource(TEST_THEME),
     })
 
     const roleIds = new Map<string, string>()

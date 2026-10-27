@@ -376,6 +376,13 @@ describe('docker/proxy/Caddyfile', () => {
     expect(block).toBeLessThan(caddyfile.indexOf('handle /api/* {'))
   })
 
+  it("keeps the themes' «Tilpass» choices (M1.5) off the public address: only the site reads them, for its active theme", () => {
+    const block = caddyfile.indexOf('handle /api/v1/public/customize {')
+    expect(block).toBeGreaterThan(-1)
+    expect(caddyfile.slice(block, caddyfile.indexOf('}', block))).toContain('respond 404')
+    expect(block).toBeLessThan(caddyfile.indexOf('handle /api/* {'))
+  })
+
   it('believes forwarded headers from one configured address only, never private_ranges', () => {
     const code = caddyfile
       .split('\n')

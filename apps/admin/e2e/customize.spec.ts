@@ -90,3 +90,9 @@ test('Tilpass: the preview shows unsaved choices, and «Publiser» puts them on 
     await request.dispose()
   }
 })
+
+test("a theme's choices are not served on the public address (only the site reads them)", async ({ playwright }) => {
+  const request = await playwright.request.newContext({ baseURL: baseUrl() })
+  expect((await request.get('/api/v1/public/customize?theme=default')).status()).toBe(404)
+  await request.dispose()
+})

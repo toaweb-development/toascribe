@@ -53,6 +53,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('Tilpass (needs TEST_DATABASE_U
     // Another theme has its own.
     const other = CustomizeResponse.parse(await (await admin.get('/api/v1/customize?theme=annet')).json())
     expect(other.customization).toEqual({ colors: {}, fonts: {}, customCss: '' })
+    // Only the theme the site runs takes choices: no row for a theme that is not there.
+    const inactive = await admin.patch('/api/v1/customize', { theme: 'annet', colors: { primary: '#000000' } })
+    expect(inactive.status).toBe(422)
+    expect(await env.query(`select slug from extension_state where kind = 'theme' and slug = 'annet'`)).toEqual([])
 
     const site = PublicCustomizeResponse.parse(
       await (await visitor.get('/api/v1/public/customize?theme=default')).json(),

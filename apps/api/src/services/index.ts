@@ -23,6 +23,7 @@ import { createMediaService } from './media.ts'
 import type { MediaService } from './media.ts'
 import { createPublicService } from './public.ts'
 import { createSettingsService } from './settings.ts'
+import type { ActiveThemeSource } from './active-theme.ts'
 import { createAppearanceService } from './appearance.ts'
 import { createCustomizeService } from './customize.ts'
 import type { CustomizeService } from './customize.ts'
@@ -79,6 +80,8 @@ export interface ServiceDeps {
   readonly mediaJobs: MediaJobPort
   /** UPLOAD_MAX_SIZE_MB. */
   readonly uploadCapMb: number
+  /** The site's active theme (menu locations, «Tilpass»). */
+  readonly activeTheme: ActiveThemeSource
 }
 
 /** Everything the routes and the later flows (MFA, lost password, registration) build on, made once at start-up. */
@@ -209,6 +212,7 @@ export function createServices(deps: ServiceDeps): Services {
     media,
     customize: createCustomizeService({
       db,
+      activeTheme: deps.activeTheme,
       clock,
       audit,
       media,
@@ -216,6 +220,7 @@ export function createServices(deps: ServiceDeps): Services {
     }),
     appearance: createAppearanceService({
       db,
+      activeTheme: deps.activeTheme,
       clock,
       audit,
       media,

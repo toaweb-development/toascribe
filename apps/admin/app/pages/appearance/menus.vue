@@ -304,7 +304,8 @@ async function saveLocations(): Promise<void> {
         locationForm.value[slug] === NONE ? null : (locationForm.value[slug] ?? null),
       ]),
     )
-    await appearanceApi.saveLocations({ ...(placed.value?.locations ?? {}), ...locations })
+    // The active theme's locations only: the api refuses others (a location of an earlier theme is dropped with this save).
+    await appearanceApi.saveLocations(locations)
     await refreshLocations()
     report.value = t('appearance.menus.locationsSaved')
   } catch (caught) {

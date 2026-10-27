@@ -173,6 +173,12 @@
 		respond 404
 	}
 
+	# «Tilpass» per theme (M1.5) is for the site, which asks for its active theme only: the stored choices and «Ekstra CSS» of a
+	# theme that is not active are not served to the world.
+	handle /api/v1/public/customize {
+		respond 404
+	}
+
 	handle /api/* {
 		reverse_proxy api:3001 {
 			header_up X-Real-IP {client_ip}

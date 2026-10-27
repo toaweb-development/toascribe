@@ -21,6 +21,7 @@ import { AppError, ForbiddenError } from '../lib/errors.ts'
 import type { Executor } from '../repositories/executor.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import { readSettings, writeSettings } from '../repositories/settings.ts'
+import type { ActiveThemeSource } from './active-theme.ts'
 import type { MediaService } from './media.ts'
 import type { Auditor, RequestContext } from './support.ts'
 
@@ -58,6 +59,7 @@ export function createCustomizeService(options: {
   readonly clock: () => Date
   readonly audit: Auditor
   readonly media: Pick<MediaService, 'contentRefs'>
+  readonly activeTheme: ActiveThemeSource
   readonly onInvalidSetting?: (key: string) => void
 }): CustomizeService {
   const { db, clock, audit, media } = options
@@ -89,6 +91,11 @@ export function createCustomizeService(options: {
 
     async update(auth, request, ctx) {
       if (!auth.capabilities.has('edit_theme_options')) throw new ForbiddenError()
+      // Choices are stored for the theme the site runs only: no row for a theme that is not there (the registry is phase 3).
+      const active = await options.activeTheme.current()
+      if (active?.slug !== request.theme) {
+        throw new AppError(422, 'inactive_theme', 'Choices can be stored for the active theme only')
+      }
       await inTransaction(db, async (tx) => {
         // The row first, then locked: two saves at once merge one after the other, and neither brings back what the other replaced.
         const now = clock()

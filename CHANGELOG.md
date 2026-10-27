@@ -146,6 +146,12 @@ worker only), `file-type` and `image-size`.
 
 ### Changed
 
+- The old administrator address gets a notice naming the new one once the change is confirmed, as in WordPress (K-192).
+- Two requests that make the same thing at once (a global set with the same slug, say) answer 409 to the one that loses, not 500.
+- «Administrer plasseringer» takes only the active theme's menu locations (422 for others), and «Tilpass» stores choices for the
+  active theme only. The api asks the site which theme that is (new variable `SITE_URL_INTERNAL`, default `http://site:3000`).
+- A theme's «Tilpass» choices are no longer served on the public address; only the site reads them, for its own theme.
+
 - «I korte trekk» on the dashboard counts published posts and pages with the content API, and links to the lists.
 - Content routes check the right of the type: a role with only `edit_pages` can work with pages (M1.2).
 - Words of the admin now follow WordPress' Norwegian translation (nb_NO), among them «Kladd», «Hurtigrediger»,

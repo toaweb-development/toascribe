@@ -16,6 +16,12 @@ line in the same commit; when it becomes a milestone task, move it into `docs/PL
 - Media storage on S3 (or a compatible service) as a second implementation of the storage interface; M1.2 has the local volume only. — M1.2 brief
 - A static front page split by page breaks has no second page: `/2/` is read as a slug and gives 404 (WordPress: `/2/` or `/?page=2`). Item pages and archives are paged. — M1.4
 
+- The theme registry (phase 3): «Tilpass» stores choices for the active theme only, and the site alone reads them
+  (`/api/v1/public/customize` is closed in the proxy). When themes are installed and switched in the admin, the registry owns
+  `extension_state` (version, approved permissions, K-174), a theme's stored choices follow it, and an uninstalled theme's row
+  goes. — M1.6 Del A
+- Themes and extensions add lines to `robots.txt` (phase 3); M1.6 writes it from the core only. — M1.6
+- A title pattern as a setting («%title% – %sitename%»); M1.6 has the fixed WordPress pattern. — M1.6
 - `apps/admin` has its own copy of `globals.css` and `tokens/colors.css`, identical to `themes/default`; decide whether they should be shared, for example in `packages/nuxt-base`. — issue #6
 - `nuxt dev` prints a note that Vite found `zod` at runtime (via the alias to `shared/src`); harmless, costs at most one reload. — issue #6
 - The placeholder tests in `packages/sdk` and `packages/ui` stay until those packages get content. — issue #6

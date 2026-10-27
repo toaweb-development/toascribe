@@ -466,7 +466,7 @@ const CASES: readonly MatrixCase[] = [
       ['DELETE /api/v1/menus/:id', 'DELETE', `/api/v1/menus/${NO_SUCH_CONTENT}`, undefined, 404],
       ['GET /api/v1/menu-locations', 'GET', '/api/v1/menu-locations', undefined, 200],
       ['GET /api/v1/customize', 'GET', '/api/v1/customize?theme=matrix', undefined, 200],
-      ['PATCH /api/v1/customize', 'PATCH', '/api/v1/customize', { theme: 'matrix' }, 200],
+      ['PATCH /api/v1/customize', 'PATCH', '/api/v1/customize', { theme: 'default' }, 200],
       ['PUT /api/v1/menu-locations', 'PUT', '/api/v1/menu-locations', { locations: {} }, 200],
       ['GET /api/v1/global-sets', 'GET', '/api/v1/global-sets', undefined, 200],
       ['POST /api/v1/global-sets', 'POST', '/api/v1/global-sets', {}, 400],

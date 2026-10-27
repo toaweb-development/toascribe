@@ -47,6 +47,7 @@ import type { Executor } from '../repositories/executor.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import { findPublishedByIds, pagePaths } from '../repositories/public.ts'
 import { readSettings, writeSettings } from '../repositories/settings.ts'
+import type { ActiveThemeSource } from './active-theme.ts'
 import type { MediaService } from './media.ts'
 import { loadLinks } from './permalinks.ts'
 import type { Auditor, RequestContext } from './support.ts'
@@ -131,6 +132,7 @@ export function createAppearanceService(options: {
   readonly clock: () => Date
   readonly audit: Auditor
   readonly media: Pick<MediaService, 'contentRefs'>
+  readonly activeTheme: ActiveThemeSource
   readonly onInvalidSetting?: (key: string) => void
 }): AppearanceService {
   const { db, clock, audit, media } = options
@@ -325,6 +327,16 @@ export function createAppearanceService(options: {
 
     async updateLocations(auth, request, ctx) {
       requireThemeOptions(auth)
+      // Only the active theme's locations (theme.json `menus`): a key it does not have would be stored and shown nowhere.
+      const theme = await options.activeTheme.current()
+      const unknown = Object.keys(request.locations).filter((key) => theme === null || !Object.hasOwn(theme.menus, key))
+      if (unknown.length > 0) {
+        throw new AppError(
+          422,
+          'unknown_location',
+          `The active theme has no menu location ${unknown.sort().join(', ')}`,
+        )
+      }
       await inTransaction(db, async (tx) => {
         for (const menuId of Object.values(request.locations)) {
           if (menuId !== null && (await findMenu(tx, menuId)) === undefined) {

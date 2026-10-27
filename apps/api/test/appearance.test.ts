@@ -83,6 +83,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('menus and global sets (needs T
         MenuDetail.parse(await saved.json()).views.find((view) => view.objectTitle === 'Hemmelig kladd')?.shown,
       ).toBe(false)
       expect((await admin.put('/api/v1/menu-locations', { locations: { primary: menu.id } })).status).toBe(200)
+      // A location the active theme does not have is refused, not stored and shown nowhere.
+      const unknown = await admin.put('/api/v1/menu-locations', { locations: { primary: menu.id, sidebar: menu.id } })
+      expect(unknown.status).toBe(422)
+      expect(await unknown.text()).toContain('sidebar')
 
       const shown = await publicMenu('primary')
       expect(labels(shown.items)).toEqual([['Om oss', [['Folka', ['Ekstern']]]], 'Nyhet', 'Turer', 'Kontakt'])

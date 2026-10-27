@@ -183,6 +183,8 @@ services:
       # The media library (M1.2): the volume below, and the cap on one upload (the setting upload_max_size_mb stays under it).
       UPLOADS_DIR: /var/lib/toascribe/uploads
       UPLOAD_MAX_SIZE_MB: ${TOASCRIBE_UPLOAD_MAX_SIZE_MB:-64}
+      # Where the api asks the site which theme is active (menu locations, «Tilpass»), on the internal network.
+      SITE_URL_INTERNAL: http://site:3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
     read_only: true
     tmpfs:
