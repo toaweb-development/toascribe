@@ -78,6 +78,7 @@ catalog:
   tailwindcss: ^4.3.3 # Nuxt UI's peer; the module registers @tailwindcss/vite itself
   ioredis: ^5.11.1 # the site's data cache in Valkey when several instances share it (PLAN «Cache og invalidering»); the major Nitro itself uses
   smol-toml: ^1.9.1 # reads toascribe.toml (PLAN: the theme is chosen there) in apps/site's nuxt.config; TOML has rules a hand parser would get wrong
+  tar: ^7.5.22 # reads a backup archive entry by entry on restore (M1.7), so each path is checked before anything is written; 7.5.22 has every fix up to CVE-2026-73566
   ofetch: ^1.5.1 # the fetch that Nuxt's $fetch is built on; nuxt-base's tests run the API client on the real one, not a stand-in
   nuxt-security: ^2.6.0 # the nonce-based CSP of the site and the admin (nuxt-base) and security headers (K-314): a per-request nonce on Nuxt's inline scripts is what a static header cannot give
 

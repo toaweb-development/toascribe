@@ -1,0 +1,11 @@
+// @toascribe/backup (M1.7, K-292, K-293): backups made, read, listed, pruned and restored. Node only; needs pg_dump, pg_restore, psql,
+// zstd and age (the api image has them).
+export { BackupError, EXCLUDED_DATA, createBackup, readBackup } from './archive.ts'
+export type { CreateOptions, CreatedBackup, ReadOptions } from './archive.ts'
+export { AgeRecipient, BackupConfig, BackupConfigError, DEFAULT_CONFIG_FILE, readBackupConfig } from './config.ts'
+export { findBackup, listBackups, pruneBackups, readDatabaseMigration } from './files.ts'
+export type { ListedBackup } from './files.ts'
+export { ARCHIVE_NAME, Manifest, archiveName, compareVersions, isArchivePath } from './manifest.ts'
+export { APP_ROLE, checkBackup, discardChecked, restoreBackup } from './restore.ts'
+export type { CheckedBackup, RestoreOptions, RestoredBackup } from './restore.ts'
+export { ToolError } from './tools.ts'
