@@ -1,6 +1,8 @@
 // The api's services for `toa` (M1.7, K-263, K-264): `toa post|term|menu|option` call the same services, with the same validation
 // and rights checks, as the HTTP routes. A command acts as a named account (`--user`, as WP-CLI) and gets exactly that account's
 // capabilities; the audit log names «cli» as the actor, with that account. Imported by the cli through `@toascribe/api/cli`.
+import { randomBytes } from 'node:crypto'
+
 import type { Database } from '@toascribe/db'
 import type { KeyRing } from '@toascribe/shared'
 import { createLocalStorage } from '@toascribe/media'
@@ -10,7 +12,6 @@ import { createMailQueue } from './adapters/mail-queue.ts'
 import { createMediaQueue } from './adapters/media-queue.ts'
 import type { SessionAuth } from './lib/auth-context.ts'
 import { UNKNOWN_IP } from './lib/client-ip.ts'
-import { AppError } from './lib/errors.ts'
 import { findAccountById, findAccountByLogin, listRoleGrants } from './repositories/accounts.ts'
 import { siteThemeSource } from './services/active-theme.ts'
 import type { ActiveThemeSource } from './services/active-theme.ts'
@@ -71,8 +72,9 @@ export function openCliServices(options: CliServicesOptions): CliServices {
   const services = createServices({
     db: options.db,
     clock: () => new Date(),
-    // CSRF tokens are never made or checked here; the key only satisfies the type.
-    signingKey: new Uint8Array(32),
+    // A key of this run only: nothing the cli signs (a rate-limit hash, a preview token) is checked by anyone else, and a
+    // predictable key would make such a value forgeable.
+    signingKey: new Uint8Array(randomBytes(32)),
     keyRing: options.keyRing,
     mail,
     logger: options.logger,
@@ -124,9 +126,4 @@ export function openCliServices(options: CliServicesOptions): CliServices {
       await Promise.allSettled([mail.stop(), media.stop(), previewLimit.close()])
     },
   }
-}
-
-/** An AppError as the CLI shows it: its status says whether the input was refused (4xx: exit 2) or the run failed. */
-export function isInputError(error: unknown): error is AppError {
-  return error instanceof AppError && error.status >= 400 && error.status < 500 && error.status !== 409
 }

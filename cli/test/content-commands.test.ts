@@ -2,7 +2,8 @@
 // command with valid input against a migrated database, through the api's own services as --user, audited with «cli»; `post
 // create` refuses what the api refuses (the schema: exit 2; the rights: exit 1); no command prints a secret; the shell runs only in
 // a container and at a terminal.
-import { runMigrations } from '@toascribe/db'
+import { PGBOSS_APP_OPTIONS, runMigrations } from '@toascribe/db'
+import { PgBoss } from 'pg-boss'
 import { createKeyRing, parseKeyMaterial, SMTP_PASSWORD_AAD } from '@toascribe/shared'
 import { pino } from 'pino'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -97,6 +98,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the commands against a databas
     for (const [username, role] of [
       ['redaktor', 'administrator'],
       ['bidragsyter', 'contributor'],
+      ['abonnent', 'subscriber'],
     ] as const) {
       const made = await run(
         [
@@ -145,6 +147,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the commands against a databas
     expect(list.map((row) => row.id)).toContain(id)
     expect((await cli(['post', 'delete', id, '--user', 'redaktor'])).stdout).toContain('trash')
     expect((await cli(['post', 'delete', id, '--force', '--user', 'redaktor'])).code).toBe(0)
+    // --force goes past the trash, as WP-CLI's.
+    const other = await cli(['post', 'create', '--title', 'Bort', '--format', 'json', '--user', 'redaktor'])
+    const otherId = (JSON.parse(other.stdout) as { id: string }).id
+    expect((await cli(['post', 'delete', otherId, '--force', '--user', 'redaktor'])).code).toBe(0)
     const audit = await query<{ actor: string; actor_type: string; source: string }>(
       database.url,
       `select distinct actor, actor_type, source from audit_log where object_type = 'post'`,
@@ -173,6 +179,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the commands against a databas
     expect((await cli(['term', 'create', 'category', '--name', '', '--user', 'redaktor'])).code).toBe(2)
     expect((await cli(['term', 'delete', 'category', id, '--user', 'redaktor'])).code).toBe(0)
     expect((await cli(['term', 'list', 'category', '--user', 'bidragsyter'])).code).toBe(0)
+    // The api refuses a subscriber the term lists, and so does toa (the check is in the service, not only the route).
+    expect((await cli(['term', 'list', 'category', '--user', 'abonnent'])).code).toBe(1)
 
     const menu = await cli(['menu', 'create', '--name', 'Hoved', '--format', 'json', '--user', 'redaktor'])
     expect(menu.code, menu.stderr).toBe(0)
@@ -218,6 +226,27 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the commands against a databas
     expect((await cli(['jobs', 'list', '--format', 'json'])).code).toBe(0)
     const missing = await cli(['jobs', 'retry', '7c9e6679-7425-40de-944b-e07fc1f90ae7'])
     expect(missing.code).toBe(1)
+    // A job that has not failed is not retried, and nothing is audited for it.
+    const boss = new PgBoss({
+      ...PGBOSS_APP_OPTIONS,
+      connectionString: database.url,
+      supervise: false,
+      schedule: false,
+    })
+    await boss.start()
+    let jobId: string | null = null
+    try {
+      await boss.createQueue('cli.test')
+      jobId = await boss.send('cli.test', {})
+    } finally {
+      await boss.stop({ graceful: false })
+    }
+    const waiting = await cli(['jobs', 'retry', jobId ?? ''])
+    expect(waiting.code).toBe(1)
+    expect(waiting.stderr).toContain('not failed')
+    expect(await query(database.url, `select 1 from audit_log where action = 'jobs.retried'`)).toEqual([])
+    expect((await cli(['jobs', 'cancel', jobId ?? ''])).code).toBe(0)
+    expect((await cli(['jobs', 'cancel', jobId ?? ''])).stderr).toContain('already finished')
   })
 
   it('names the secrets without a value, and seals the stored ones again with a new key', async () => {
@@ -230,6 +259,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the commands against a databas
 
     const steps = await cli(['secrets', 'rotate', '--new-key'])
     expect(steps.stdout).toContain('TOASCRIBE_ENCRYPTION_KEY_VERSION=2')
+    const past = await cli(['secrets', 'rotate', '--new-key'], { TOASCRIBE_ENCRYPTION_OLD_KEYS: `v4:${NEW_KEY}` })
+    expect(past.stdout).toContain('TOASCRIBE_ENCRYPTION_KEY_VERSION=5')
     expect(steps.stdout).not.toContain(KEY)
 
     const rotated = {

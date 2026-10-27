@@ -12,7 +12,7 @@ import { PgBoss } from 'pg-boss'
 import { z } from 'zod'
 
 import type { EnvSource } from '../config.ts'
-import { currentKeyVersion, keyRingOf, loadKeyedDatabaseConfig, namesSet } from '../config.ts'
+import { currentKeyVersion, highestKeyVersion, keyRingOf, loadKeyedDatabaseConfig, namesSet } from '../config.ts'
 import { createTerminalPrompter } from '../prompt.ts'
 import {
   UsageError,
@@ -112,11 +112,11 @@ interface JobRow extends Record<string, unknown> {
   completed: string | null
 }
 
-/** The queue of a job, or undefined when there is none with that id. */
-async function queueOf(db: Database, id: string): Promise<string | undefined> {
-  const result = await db.execute(sql`select name from pgboss.job where id = ${id}::uuid limit 1`)
-  const row = z.object({ name: z.string() }).safeParse(result.rows[0])
-  return row.success ? row.data.name : undefined
+/** The queue and state of a job, or undefined when there is none with that id. */
+async function jobOf(db: Database, id: string): Promise<{ name: string; state: string } | undefined> {
+  const result = await db.execute(sql`select name, state::text as state from pgboss.job where id = ${id}::uuid limit 1`)
+  const row = z.object({ name: z.string(), state: z.string() }).safeParse(result.rows[0])
+  return row.success ? row.data : undefined
 }
 
 /** `toa jobs list [--queue <name>] [--state <state>] [--limit n]`, `jobs retry <id>`, `jobs cancel <id>`. */
@@ -159,8 +159,15 @@ export async function jobs(args: readonly string[], options: CommandOptions = {}
       const parsedId = JobId.safeParse(id)
       if (!parsedId.success) throw new UsageError(`Give the job's id (a UUID) after ${action}.`)
       const outcome = await withDatabase(options, `jobs ${action}`, async (db, _logger, config) => {
-        const queue = await queueOf(db, parsedId.data)
-        if (queue === undefined) return refusal('There is no job with that id.')
+        const job = await jobOf(db, parsedId.data)
+        if (job === undefined) return refusal('There is no job with that id.')
+        // pg-boss changes only a failed job on retry, and only a waiting or running one on cancel: anything else is refused here,
+        // so nothing is reported (or audited) that did not happen.
+        if (action === 'retry' && job.state !== 'failed') return refusal(`The job is ${job.state}, not failed.`)
+        if (action === 'cancel' && !['created', 'retry', 'active'].includes(job.state)) {
+          return refusal(`The job is ${job.state}: it has already finished.`)
+        }
+        const queue = job.name
         // The app role's pg-boss: no supervision, no schedules, no schema work (AGENTS.md).
         const boss = new PgBoss({
           ...PGBOSS_APP_OPTIONS,
@@ -205,7 +212,6 @@ const ENV_SECRETS = [
   ['TOASCRIBE_ENCRYPTION_OLD_KEYS', 'older encryption keys that must stay readable'],
   ['TOASCRIBE_SIGNING_KEY', 'signs the CSRF tokens (api only)'],
   ['DATABASE_URL', 'the app role and its password'],
-  ['SMTP_PASSWORD', 'the default SMTP password (worker only)'],
 ] as const
 
 /** The database, or a transaction on it. */
@@ -293,7 +299,7 @@ export async function secrets(args: readonly string[], options: CommandOptions =
     }
     if (action === 'rotate') {
       const flags = parseFlags(rest, { yes: 'boolean', 'new-key': 'boolean' })
-      if (flags['new-key'] === true) return newKeySteps(currentKeyVersion(options.env))
+      if (flags['new-key'] === true) return newKeySteps(currentKeyVersion(options.env), highestKeyVersion(options.env))
       return await rotate(options, flags['yes'] === true)
     }
     throw new UsageError('Say list or rotate.')
@@ -305,8 +311,8 @@ export async function secrets(args: readonly string[], options: CommandOptions =
 }
 
 /** Step 1 of a rotation: a new key and what to do with it. The current key is not printed (it is already in .env). */
-function newKeySteps(current: number): CliResult {
-  const next = current + 1
+function newKeySteps(current: number, highest: number): CliResult {
+  const next = highest + 1
   const key = randomBytes(32).toString('hex')
   return {
     code: 0,
@@ -350,7 +356,15 @@ async function rotate(options: CommandOptions, yes: boolean): Promise<CliResult>
             current += 1
             continue
           }
-          const plain = await ring.decrypt(entry.value, entry.aad)
+          let plain: string
+          try {
+            plain = await ring.decrypt(entry.value, entry.aad)
+          } catch {
+            // Names the row (an id, not a secret) so the operator can find it; nothing was changed.
+            throw new Error(
+              `${store.name} ${entry.key}: cannot be read with the keys given (key v${String(versionOf(entry.value))} missing from TOASCRIBE_ENCRYPTION_OLD_KEYS?)`,
+            )
+          }
           await store.write(tx, entry.key, await ring.encrypt(plain, entry.aad))
           resealed += 1
         }

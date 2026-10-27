@@ -25,7 +25,7 @@ import { z } from 'zod'
 import { UsageError, invalidInput, parseFlags, usageResult } from '../kit.ts'
 import type { CommandOptions } from '../options.ts'
 import type { CliResult } from '../result.ts'
-import { Format, render, takeArgument, withServices } from '../services.ts'
+import { Format, render, takeArgument, withServices, withoutControls } from '../services.ts'
 import type { ServiceRun } from '../services.ts'
 import { OPTION_USAGE } from '../usage.ts'
 import { zodFields } from './content.ts'
@@ -127,7 +127,7 @@ export async function option(args: readonly string[], options: CommandOptions = 
         if (key === undefined) throw new UsageError('Give the key after get.')
         return await withServices(options, 'option get', str(flags['user']), async (run) => {
           const values = await readAll(run)
-          if (!(key in values)) {
+          if (!Object.hasOwn(values, key)) {
             return (CORE_SETTING_KEYS as readonly string[]).includes(key)
               ? invalidInput(`${key} is not on a settings screen; it is read-only here.`)
               : invalidInput(`There is no setting ${key}.`)
@@ -138,7 +138,7 @@ export async function option(args: readonly string[], options: CommandOptions = 
             stdout:
               format === 'json'
                 ? `${JSON.stringify(value)}\n`
-                : `${typeof value === 'string' ? value : JSON.stringify(value)}\n`,
+                : `${withoutControls(typeof value === 'string' ? value : JSON.stringify(value))}\n`,
             stderr: '',
           }
         })

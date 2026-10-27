@@ -70,6 +70,14 @@ export interface TermService {
 /** The capability that changes terms of the built-in taxonomies (WordPress' `manage_terms`, `edit_terms`, `delete_terms`). */
 export const MANAGE_TERMS = 'manage_categories'
 
+/**
+ * Reading the terms in the admin needs a capability to edit content, as WordPress' edit-tags.php. Checked here as well as in the
+ * route, so `toa term` (which calls the service directly) refuses the same accounts (M1.7 review).
+ */
+function requireRead(auth: SessionAuth): void {
+  if (!auth.capabilities.has('edit_posts') && !auth.capabilities.has('edit_pages')) throw new ForbiddenError()
+}
+
 export function createTermService(options: {
   readonly db: Database
   readonly clock: () => Date
@@ -192,7 +200,8 @@ export function createTermService(options: {
       return { taxonomies }
     },
 
-    async list(_auth, slug, query) {
+    async list(auth, slug, query) {
+      requireRead(auth)
       const tax = await taxonomyOf(db, slug)
       const defaultId = await defaultTermId(db, tax)
       const offset = (query.page - 1) * query.per_page
@@ -225,7 +234,8 @@ export function createTermService(options: {
       }
     },
 
-    async get(_auth, slug, id) {
+    async get(auth, slug, id) {
+      requireRead(auth)
       return load(db, await taxonomyOf(db, slug), id)
     },
 

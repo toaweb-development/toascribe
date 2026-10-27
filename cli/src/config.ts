@@ -139,6 +139,14 @@ export function currentKeyVersion(env: EnvSource = process.env): number {
   return parsed.success ? parsed.data : 1
 }
 
+/** The highest key version in use: the current one or any in TOASCRIBE_ENCRYPTION_OLD_KEYS (`v<n>:<key>`). */
+export function highestKeyVersion(env: EnvSource = process.env): number {
+  const old = [...(env['TOASCRIBE_ENCRYPTION_OLD_KEYS'] ?? '').matchAll(/(?:^|,)\s*v(\d{1,4}):/g)].map((match) =>
+    Number(match[1]),
+  )
+  return Math.max(currentKeyVersion(env), ...old)
+}
+
 /** Which of `names` are set (not empty) in the environment. Names only: `core gen-env` must not touch the values. */
 export function namesSet(names: readonly string[], env: EnvSource = process.env): string[] {
   return names.filter((name) => (env[name] ?? '').trim() !== '')

@@ -150,6 +150,9 @@ export async function post(args: readonly string[], options: CommandOptions = {}
         // As WP-CLI: to the trash, or for good with --force.
         return await withServices(options, 'post delete', user, async ({ services, auth, ctx }) => {
           if (flags['force'] === true) {
+            // As WP-CLI's --force: past the trash. The api deletes only from the trash, so it goes there first.
+            const item = await services.content.get(auth, target)
+            if (item.status !== 'trash') await services.content.trash(auth, target, ctx)
             await services.content.remove(auth, target, ctx)
             return ok(`Deleted ${target} for good.\n`)
           }

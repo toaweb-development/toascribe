@@ -87,6 +87,12 @@ export async function withServices(
   }
 }
 
+/** Text without control characters (an ESC sequence in a post title must not reach the terminal); line breaks become spaces. */
+export function withoutControls(text: string): string {
+  // eslint-disable-next-line no-control-regex -- removing them is the point
+  return text.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, '')
+}
+
 /** `--format table|json`. */
 export const Format = z.enum(['table', 'json'])
 export type Format = z.infer<typeof Format>
@@ -97,7 +103,7 @@ export function render(rows: readonly Record<string, unknown>[], columns: readon
   const cell = (value: unknown): string => {
     if (value === null || value === undefined) return ''
     const text = typeof value === 'string' ? value : JSON.stringify(value)
-    return text.replace(/\s+/g, ' ').slice(0, 80)
+    return withoutControls(text).replace(/\s+/g, ' ').slice(0, 80)
   }
   const table = [columns, ...rows.map((row) => columns.map((column) => cell(row[column])))]
   const widths = columns.map((_, index) => Math.max(...table.map((line) => (line[index] ?? '').length)))

@@ -16,6 +16,7 @@ import {
   serializeBlocks,
   siblingRange,
   textToBlocks,
+  textToParagraphs,
 } from '../src/index.ts'
 import { col, cols, img, outline, p, text } from './fixtures.ts'
 
@@ -162,5 +163,14 @@ describe('the model: paste, cut and the end of a list, one step each', () => {
     expect(endList([list], 'b_itm1')).toBeUndefined()
     const only = createBlock('core/list', {}, [item('b_itm3')], 'b_lst2')
     expect(endList([only], 'b_itm3')?.document.map((block) => block.type)).toEqual(['core/paragraph'])
+  })
+})
+
+describe('textToParagraphs', () => {
+  it('makes none of empty text, one of one paragraph, and one per paragraph of more (CRLF too)', () => {
+    expect(textToParagraphs('')).toEqual([])
+    expect(textToParagraphs('  \n\n ')).toEqual([])
+    expect(textToParagraphs('Bare én linje')).toHaveLength(1)
+    expect(textToParagraphs('Første\r\n\r\nAndre\n\nTredje')).toHaveLength(3)
   })
 })
