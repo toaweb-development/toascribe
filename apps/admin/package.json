@@ -28,6 +28,7 @@
     "@tiptap/extension-text": "catalog:",
     "@tiptap/pm": "catalog:",
     "@tiptap/vue-3": "catalog:",
+    "@toascribe/block-views": "workspace:*",
     "@toascribe/blocks": "workspace:*",
     "@toascribe/nuxt-base": "workspace:*",
     "@toascribe/shared": "workspace:*",

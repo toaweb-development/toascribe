@@ -3,7 +3,7 @@ import { Extension } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 
 import type { Block, BlockDefinition, InlineNode } from '@toascribe/blocks'
-import { contentOf, inlineText, insertableBlocks, isSafeHref, normalizeInline } from '@toascribe/blocks'
+import { contentOf, inlineText, isSafeHref, normalizeInline } from '@toascribe/blocks'
 
 // A paragraph: its own TipTap instance for the formatting inside the text (bold, italic, code, link, line break), and nothing
 // else. The block tree owns the paragraph; TipTap only mirrors the block's content. Each change TipTap makes goes to the editor's
@@ -31,7 +31,7 @@ const slashOptions = computed<BlockDefinition[]>(() => {
   if (query === null) {
     return []
   }
-  return insertableBlocks(props.parentType).filter(
+  return editorInsertableBlocks(props.parentType).filter(
     (definition) =>
       title(definition.name).toLowerCase().includes(query) ||
       definition.name.includes(query) ||

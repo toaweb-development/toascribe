@@ -22,6 +22,8 @@ export default defineNuxtConfig({
     '@toascribe/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)),
     // The block format and the editor model (M0.6); the admin's editor reads it.
     '@toascribe/blocks': fileURLToPath(new URL('../blocks/src/index.ts', import.meta.url)),
+    // How the blocks look on the site (M1.3): the admin's preview draws them, the site's templates will (M1.4).
+    '@toascribe/block-views': fileURLToPath(new URL('../block-views/src/index.ts', import.meta.url)),
   },
 
   typescript: {

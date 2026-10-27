@@ -20,6 +20,16 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- The basic blocks of M1.3 in the block format (K-078, K-079): heading, list (bulleted and numbered, with levels), quote, code,
+  preformatted, table (with a header row), gallery (columns, cropped or not, linked to the file or not), buttons, group,
+  separator, spacer, «Les mer» (posts only) and page break, and custom HTML, beside paragraph, image and columns. Each block's
+  `block.json` is checked in the editor and again by the api.
+- `@toascribe/block-views`: how the blocks look on the site, as server-rendered HTML with no script and no style attribute, and a
+  default stylesheet. The admin's preview uses it; the site's templates will (M1.4).
+- Custom HTML needs `unfiltered_html` (only the administrator by default). An account without it may keep, move and delete such a
+  block but never add, change or copy one, also straight through the API (K-088).
+- The content API takes a featured image (`featuredMediaId`, K-070) and the SEO panel (`seo`: title, description, sharing image,
+  noindex; K-105). Both images must be images in the media library that the account may see.
 - Categories and tags (M1.2): «Innlegg → Kategorier» and «Innlegg → Stikkord» (`manage_categories`), with the form on the left
   and the list on the right, search, Rediger, Hurtigrediger, Slett and bulk delete; categories have a parent. «Ukategorisert» is
   the default category: it can be renamed, not deleted. Deleting a category works as in WordPress: its child categories

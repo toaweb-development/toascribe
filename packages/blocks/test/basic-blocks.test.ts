@@ -83,9 +83,10 @@ describe('what each block refuses', () => {
     ])
   })
 
-  it('a heading level outside 1 to 6, a spacer outside its limits', () => {
+  it('a heading level outside 1 to 6, a spacer size the theme does not have', () => {
     expect(issuesOf([createBlock('core/heading', { level: 7 })])).toEqual(['invalid_attribute@0.attrs.level'])
-    expect(issuesOf([createBlock('core/spacer', { height: 2 })])).toEqual(['invalid_attribute@0.attrs.height'])
+    // Sizes, not pixels: the view gives a class, never a style attribute (the site's CSP has no 'unsafe-inline').
+    expect(issuesOf([createBlock('core/spacer', { size: '200px' })])).toEqual(['invalid_attribute@0.attrs.size'])
   })
 
   it('«Les mer» and a page break inside a container (they stand at the top level only)', () => {

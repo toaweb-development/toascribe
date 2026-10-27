@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { fileURLToPath } from 'node:url'
 
 import { ADMIN_STYLE_ATTRIBUTES } from './csp-style-attributes.ts'
 
@@ -18,7 +19,12 @@ export default defineNuxtConfig({
     nodeTsConfig: { include: ['../playwright.config.ts'] },
   },
 
-  css: ['~/assets/theme/globals.css'],
+  // The block views' default look (packages/block-views) for the preview and the editor's blocks without focus.
+  // By path: the package's name is an alias to its src/index.ts (packages/nuxt-base/nuxt.config.ts).
+  css: [
+    '~/assets/theme/globals.css',
+    fileURLToPath(new URL('../../packages/block-views/src/styles.css', import.meta.url)),
+  ],
 
   // Nuxt UI draws its own icons by name, and the scan of the sources does not see those: the ones the sign-in screens, the setup
   // wizard and the shell show are listed. They come from the build, never from api.iconify.design. The menu's icons are named by
