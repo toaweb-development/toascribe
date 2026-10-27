@@ -8,7 +8,7 @@ import type { Server } from 'node:http'
 import { join } from 'node:path'
 
 import { createBlock } from '@toascribe/blocks'
-import { createSafeFetch } from '@toascribe/http'
+import { createSafeFetch } from '@toascribe/http/testing'
 import type { SafeResponse } from '@toascribe/http'
 import { ContentItem, EmbedPreviewResponse } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -55,10 +55,10 @@ const storedAnswers: EmbedFetch = (url) => {
   const endpoint = new URL(url)
   const content = endpoint.searchParams.get('url')
   const fixture = FIXTURES.find(([, entry]) => entry.url === content)?.[1]
-  if (fixture !== undefined) {
-    const body = hostile === undefined ? fixture.answer : { ...fixture.answer, html: hostile }
-    return Promise.resolve(answer(url, 200, JSON.stringify(body)))
+  if (hostile !== undefined && endpoint.hostname === 'www.youtube.com') {
+    return Promise.resolve(answer(url, 200, JSON.stringify({ type: 'video', title: 'Ond', html: hostile })))
   }
+  if (fixture !== undefined) return Promise.resolve(answer(url, 200, JSON.stringify(fixture.answer)))
   if (FIXTURES.some(([, entry]) => entry.answer.thumbnail_url === url)) return Promise.resolve(answer(url, 200, f.PNG))
   return Promise.resolve(answer(url, 404, ''))
 }
@@ -127,7 +127,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('«Innbygging» on save (needs 
   it('leaves a link for a hostile answer, with nothing of its HTML kept', async () => {
     hostile = '<iframe src="https://evil.example/embed/x"></iframe><script>alert(1)</script>'
     try {
-      const url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1'
+      const url = 'https://www.youtube.com/watch?v=hostile1234'
       // A new address, so the stored answer (kept a day) is not used.
       const item = await save(admin, [embed(url)])
       expect(attrsOf(item)).toMatchObject({ provider: '', frameSrc: '' })
@@ -135,6 +135,23 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('«Innbygging» on save (needs 
     } finally {
       hostile = undefined
     }
+  })
+
+  it('asks once per video, whatever else the address holds, and keeps one thumbnail per address, also after a day', async () => {
+    const before = asked.length
+    const first = await save(admin, [embed('https://vimeo.com/76979871#t=10')])
+    const again = await save(admin, [embed('https://vimeo.com/76979871?share=copy')])
+    expect(asked.length - before).toBe(0) // both are the stored vimeo answer's key, kept from the first test
+    const thumbnail = attrsOf(first)['thumbnailId']
+    expect(attrsOf(again)['thumbnailId']).toBe(thumbnail)
+    // Once the kept answer has expired the provider is asked again, and the stored thumbnail is used, not a new one.
+    const media = async () => Number((await env.query<{ n: string }>('select count(*) as n from media'))[0]?.n ?? 0)
+    const count = await media()
+    await env.query(`update oembed_cache set expires_at = '2000-01-01' where url = 'https://vimeo.com/76979871'`)
+    const later = await save(admin, [embed('https://vimeo.com/76979871')])
+    expect(attrsOf(later)['thumbnailId']).toBe(thumbnail)
+    expect(await media()).toBe(count)
+    expect(asked.length - before).toBeGreaterThan(0)
   })
 
   it('reads at most a fixed number of embeds in one save; the rest are links', async () => {
@@ -203,6 +220,18 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('«Innbygging» on save (needs 
     )
     expect(unknown.provider).toBeNull()
     expect((await subscriber.post('/api/v1/oembed/preview', { url: 'https://vimeo.com/76979871' })).status).toBe(403)
+  })
+
+  it('limits the previews of one account (each new address is a request to a provider)', async () => {
+    const author = env.client({ ip: '203.0.113.96' })
+    await env.createAccount({ username: 'emb-author', role: 'author' })
+    expect((await author.login('emb-author', TEST_PASSWORD)).status).toBe(200)
+    const statuses: number[] = []
+    for (let i = 0; i < 61; i += 1) {
+      statuses.push((await author.post('/api/v1/oembed/preview', { url: `https://example.com/${String(i)}` })).status)
+    }
+    expect(statuses.slice(0, 60).every((status) => status === 200)).toBe(true)
+    expect(statuses[60]).toBe(429)
   })
 })
 

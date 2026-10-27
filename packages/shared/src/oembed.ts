@@ -250,3 +250,25 @@ export const PublicOEmbedResponse = z.object({
   cacheTags: z.array(z.string()),
 })
 export type PublicOEmbedResponse = z.infer<typeof PublicOEmbedResponse>
+
+/**
+ * A content address as the server asks for it and keeps its answer under it: the host in lower case, no fragment, and only the
+ * query a provider reads (YouTube's `v` and `list`, nothing else; the others keep their content in the path). So `?v=x&a=1` and
+ * `?v=x&a=2` are one video, asked once, with one thumbnail.
+ */
+export function embedKey(provider: EmbedProvider, address: string): string {
+  const url = new URL(address)
+  url.hash = ''
+  url.hostname = url.hostname.toLowerCase()
+  if (provider === 'youtube') {
+    const kept = new URLSearchParams()
+    for (const name of ['v', 'list']) {
+      const value = url.searchParams.get(name)
+      if (value !== null) kept.set(name, value)
+    }
+    url.search = kept.toString() === '' ? '' : `?${kept.toString()}`
+  } else {
+    url.search = ''
+  }
+  return url.toString()
+}

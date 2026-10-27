@@ -3,7 +3,7 @@
 // that is not a plain name is left out.
 const HOST = /^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/
 
-/** The policy with `https://<host>` for each host in `frame-src` (made when there is none). */
+/** The policy with `https://<host>` for each host in `frame-src` (made with the hosts only when there is none: the site frames nothing of its own). */
 export function withFrameHosts(policy: string, hosts: readonly string[]): string {
   const sources = [...new Set(hosts.filter((host) => HOST.test(host)).map((host) => `https://${host}`))]
   if (sources.length === 0) return policy
@@ -12,7 +12,7 @@ export function withFrameHosts(policy: string, hosts: readonly string[]): string
     .map((part) => part.trim())
     .filter((part) => part !== '')
   const at = directives.findIndex((part) => part.split(/\s+/)[0]?.toLowerCase() === 'frame-src')
-  if (at === -1) return [...directives, `frame-src 'self' ${sources.join(' ')}`].join('; ') + ';'
+  if (at === -1) return [...directives, `frame-src ${sources.join(' ')}`].join('; ') + ';'
   const existing = directives[at]?.split(/\s+/) ?? ['frame-src']
   directives[at] = [...existing, ...sources.filter((source) => !existing.includes(source))].join(' ')
   return directives.join('; ') + ';'

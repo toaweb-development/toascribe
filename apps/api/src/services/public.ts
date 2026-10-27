@@ -645,7 +645,10 @@ export function createPublicService(options: {
           frameHosts: [
             ...new Set([
               ...Object.values(EMBED_FRAME_HOSTS).flat(),
-              ...settings.oembed_mastodon_instances.filter((host) => InstanceHost.safeParse(host).success),
+              ...settings.oembed_mastodon_instances.flatMap((host) => {
+                const parsed = InstanceHost.safeParse(host)
+                return parsed.success ? [parsed.data] : []
+              }),
             ]),
           ],
         },

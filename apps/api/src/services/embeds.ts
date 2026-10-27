@@ -14,6 +14,7 @@ import {
   CoreSettings,
   OEmbedAnswer,
   embedEndpoint,
+  embedKey,
   embedFrameOf,
   embedProviderOf,
   embedSize,
@@ -24,7 +25,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
-import { ForbiddenError } from '../lib/errors.ts'
+import { ForbiddenError, TooManyRequestsError } from '../lib/errors.ts'
 import { readSettings } from '../repositories/settings.ts'
 import type { MediaService } from './media.ts'
 import type { RequestContext } from './support.ts'
@@ -43,6 +44,10 @@ export const MAX_EMBEDS_PER_SAVE = 20
 /** The longest address kept in the cache (its key column has a limit; a longer one is asked every time). */
 const MAX_CACHED_URL = 2000
 const ANSWER_MAX_BYTES = 256 * 1024
+/** The editor's previews per account per minute: each new address is a request to a provider (security §5, expensive flows). */
+const PREVIEWS_PER_MINUTE = 60
+/** The longest address an embed block holds (its block.json); a longer one is never asked about. */
+const MAX_URL = 2000
 const THUMBNAIL_MAX_BYTES = 5 * 1024 * 1024
 
 /** What is kept of an answer, per address. */
@@ -93,16 +98,30 @@ export function createEmbedService(options: {
 }): EmbedService {
   const { db, clock, media } = options
 
-  async function fromCache(url: string): Promise<Cached | undefined> {
-    if (url.length > MAX_CACHED_URL) return undefined
+  /** The kept answer for a key, and whether it is still fresh (an expired one still names its thumbnail, which is reused). */
+  async function fromCache(key: string): Promise<{ data: Cached; fresh: boolean } | undefined> {
+    if (key.length > MAX_CACHED_URL) return undefined
     const [row] = await db
       .select({ data: oembedCache.data, expiresAt: oembedCache.expiresAt })
       .from(oembedCache)
-      .where(eq(oembedCache.url, url))
+      .where(eq(oembedCache.url, key))
       .limit(1)
-    if (row === undefined || row.expiresAt.getTime() <= clock().getTime()) return undefined
+    if (row === undefined) return undefined
     const parsed = Cached.safeParse(row.data)
-    return parsed.success ? parsed.data : undefined
+    return parsed.success ? { data: parsed.data, fresh: row.expiresAt.getTime() > clock().getTime() } : undefined
+  }
+
+  // Previews per account in the last minute (in this process: one api instance; several would each count their own).
+  const previews = new Map<string, number[]>()
+  function countPreview(accountId: string): void {
+    const now = clock().getTime()
+    const recent = (previews.get(accountId) ?? []).filter((at) => at > now - 60_000)
+    if (recent.length >= PREVIEWS_PER_MINUTE) {
+      throw new TooManyRequestsError(((recent[0] ?? now) + 60_000 - now) / 1000)
+    }
+    recent.push(now)
+    previews.set(accountId, recent)
+    if (previews.size > 10_000) previews.delete(previews.keys().next().value ?? '')
   }
 
   async function keep(url: string, data: Cached): Promise<void> {
@@ -148,14 +167,22 @@ export function createEmbedService(options: {
   }
 
   /** The answer for an address, from the cache or the provider; undefined for an address without a provider or a usable answer. */
-  async function lookup(url: string, mastodonHosts: readonly string[]): Promise<Cached | undefined> {
+  async function lookup(
+    url: string,
+    mastodonHosts: readonly string[],
+  ): Promise<{ key: string; data: Cached } | undefined> {
+    if (url.length > MAX_URL) return undefined
     const provider = embedProviderOf(url, mastodonHosts)
     if (provider === undefined) return undefined
-    const cached = await fromCache(url)
-    if (cached !== undefined) return cached
-    const fresh = await ask(provider, url)
-    if (fresh !== undefined) await keep(url, fresh)
-    return fresh
+    const key = embedKey(provider, url)
+    const cached = await fromCache(key)
+    if (cached?.fresh === true) return { key, data: cached.data }
+    const asked = await ask(provider, key)
+    if (asked === undefined) return undefined
+    // A new answer keeps the thumbnail already stored for the address: one media item per address, not one a day.
+    const data = { ...asked, thumbnailId: cached?.data.thumbnailId ?? null }
+    await keep(key, data)
+    return { key, data }
   }
 
   /**
@@ -199,8 +226,10 @@ export function createEmbedService(options: {
   return {
     async preview(auth, url) {
       if (!mayEmbed(auth)) throw new ForbiddenError()
+      countPreview(auth.account.id)
       const { oembed_mastodon_instances: hosts } = await readSettings(db, EMBED_SETTINGS, options.onInvalidSetting)
-      const found = isSafeEmbedLink(url) ? await lookup(url, hosts) : undefined
+      const looked = isSafeEmbedLink(url) ? await lookup(url, hosts) : undefined
+      const found = looked?.data
       return found === undefined
         ? { provider: null, title: '', frameSrc: '', thumbnailUrl: null }
         : {
@@ -232,8 +261,9 @@ export function createEmbedService(options: {
           }
           const attrs = block['attrs'] as Record<string, unknown>
           const url = typeof attrs['url'] === 'string' ? attrs['url'].trim() : ''
-          const found = isSafeEmbedLink(url) && read < MAX_EMBEDS_PER_SAVE ? await lookup(url, hosts) : undefined
-          if (embedProviderOf(url, hosts) !== undefined) read += 1
+          const looked = isSafeEmbedLink(url) && read < MAX_EMBEDS_PER_SAVE ? await lookup(url, hosts) : undefined
+          if (url.length <= MAX_URL && embedProviderOf(url, hosts) !== undefined) read += 1
+          const found = looked?.data
           const set =
             found === undefined
               ? { provider: '', title: '', authorName: '', frameSrc: '', width: 0, height: 0, thumbnailId: '' }
@@ -244,7 +274,7 @@ export function createEmbedService(options: {
                   frameSrc: found.frameSrc,
                   width: found.width,
                   height: found.height,
-                  thumbnailId: await thumbnailOf(auth, url, found, ctx),
+                  thumbnailId: looked === undefined ? '' : await thumbnailOf(auth, looked.key, found, ctx),
                 }
           out.push({ ...block, children, attrs: { ...attrs, url, ...set } })
         }

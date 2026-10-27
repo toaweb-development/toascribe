@@ -601,7 +601,8 @@ export function createContentService(options: {
   }
 
   async function create(auth: SessionAuth, sent: CreateContentRequest, ctx: RequestContext): Promise<ContentItem> {
-    const request = await withEmbeds(auth, sent, ctx)
+    // Embeds are read only for an account that may write the type (one that may not is refused below, and asks no provider).
+    const request = canEditType(actorOf(auth), sent.type) ? await withEmbeds(auth, sent, ctx) : sent
     const actor = actorOf(auth)
     const { type } = request
     if (!canEditType(actor, type)) {

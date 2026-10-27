@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest'
 import { withFrameHosts } from '../lib/embed-csp'
 
 describe('withFrameHosts', () => {
-  it("adds frame-src with 'self' and the hosts when there is none", () => {
+  it('adds frame-src with the hosts only when there is none', () => {
     expect(
       withFrameHosts("default-src 'none'; frame-ancestors 'self';", ['www.youtube-nocookie.com', 'player.vimeo.com']),
     ).toBe(
-      "default-src 'none'; frame-ancestors 'self'; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com;",
+      "default-src 'none'; frame-ancestors 'self'; frame-src https://www.youtube-nocookie.com https://player.vimeo.com;",
     )
   })
 
