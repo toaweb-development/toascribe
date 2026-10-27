@@ -13,8 +13,9 @@ export type BlockName = z.infer<typeof BlockName>
 const Json = z.json()
 
 /**
- * A string attribute. `format: 'url'` takes an http(s) address or a path on this site (inline.ts, isSafeMediaUrl); `format: 'uuid'`
- * takes an id (a media file's), or empty for none.
+ * A string attribute. `format: 'url'` takes an http(s) address or a path on this site (inline.ts, isSafeMediaUrl); `format: 'href'`
+ * what a link may point to (isSafeHref: also `mailto:` and `#…`); `format: 'uuid'` takes an id (a media file's). Each format also
+ * takes empty, for none.
  */
 const StringAttribute = z.strictObject({
   type: z.literal('string'),
@@ -22,7 +23,7 @@ const StringAttribute = z.strictObject({
   maxLength: z.int().positive(),
   minLength: z.int().nonnegative().optional(),
   enum: z.array(z.string()).min(1).optional(),
-  format: z.enum(['url', 'uuid']).optional(),
+  format: z.enum(['url', 'href', 'uuid']).optional(),
 })
 
 const NumberAttribute = z.strictObject({
@@ -45,11 +46,24 @@ const RichTextAttribute = z.strictObject({
   maxLength: z.int().positive(),
 })
 
+/**
+ * A table (core/table): rows of cells, each cell rich text. Every row has the same number of cells. toascribe's type: WordPress keeps
+ * a table's `head` and `body` as arrays of rows of HTML strings; here the cells are data like any rich text.
+ */
+const TableAttribute = z.strictObject({
+  type: z.literal('table'),
+  default: z.array(z.array(z.array(Json).length(0)).min(1)).min(1),
+  maxRows: z.int().positive(),
+  maxColumns: z.int().positive(),
+  cellMaxLength: z.int().positive(),
+})
+
 export const AttributeSchema = z.discriminatedUnion('type', [
   StringAttribute,
   NumberAttribute,
   BooleanAttribute,
   RichTextAttribute,
+  TableAttribute,
 ])
 export type AttributeSchema = z.infer<typeof AttributeSchema>
 
@@ -73,6 +87,19 @@ export const BlockDefinition = z.strictObject({
   allowedBlocks: z.array(BlockName),
   /** toascribe's addition (prototype): how many children it must have. WordPress has no field for this. */
   childCount: z.strictObject({ min: z.int().nonnegative(), max: z.int().positive() }).optional(),
+  /** toascribe's addition (M1.3): the content types it may be used in (`core/more` in posts only). Left out: every type. */
+  contentTypes: z
+    .array(z.enum(['post', 'page']))
+    .min(1)
+    .optional(),
+  /**
+   * toascribe's addition (M1.3): the capability needed to put the block in or change it (`core/html`: `unfiltered_html`). Someone
+   * without it may keep, move or delete a block that is there, never add one or change its attributes. The api checks it on save.
+   */
+  capability: z
+    .string()
+    .regex(/^[a-z_]+$/)
+    .optional(),
 })
 export type BlockDefinition = z.infer<typeof BlockDefinition>
 

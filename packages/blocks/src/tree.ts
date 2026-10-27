@@ -3,10 +3,10 @@
 // block, a parent would get too few or too many children). The editor's model calls these and records the result in its history;
 // nothing here knows about Vue, TipTap or the history.
 import type { Block, BlockDocument } from './block.ts'
-import { createParagraph } from './block.ts'
+import { createBlock, createParagraph, isTextBlock } from './block.ts'
 import type { InlineNode } from './inline.ts'
 import { inlineLength, joinInline } from './inline.ts'
-import { PARAGRAPH, canContain, getBlockDefinition } from './registry.ts'
+import { HEADING, LIST, LIST_ITEM, PARAGRAPH, PREFORMATTED, canContain, getBlockDefinition } from './registry.ts'
 
 /** A place in a document: the parent block (`null` for the top level) and an index in its children. */
 export interface Place {
@@ -232,20 +232,32 @@ export function moveBlock(document: BlockDocument, id: string, direction: Direct
 }
 
 /**
- * Enter inside a paragraph: the paragraph keeps the content before the cursor, and a new paragraph with the content after it is
- * put right after it. Returns the document and the new paragraph's id.
+ * The type of the block that Enter makes after a text block: another list item in a list, a paragraph after a paragraph or a
+ * heading (as in Gutenberg). Undefined for a block where Enter is a line break (preformatted).
  */
-export function splitParagraph(
+export function splitType(type: string): string | undefined {
+  if (type === LIST_ITEM) return LIST_ITEM
+  if (type === PREFORMATTED || !isTextBlock(type)) return undefined
+  return PARAGRAPH
+}
+
+/**
+ * Enter inside a text block: the block keeps the content before the cursor, and a new block (splitType) with the content after it
+ * is put right after it. Returns the document and the new block's id.
+ */
+export function splitText(
   document: BlockDocument,
   id: string,
   before: readonly InlineNode[],
   after: readonly InlineNode[],
-  newBlock: Block = createParagraph(after),
+  newId?: string,
 ): { document: BlockDocument; newId: string } | undefined {
   const located = locate(document, id)
-  if (located?.block.type !== PARAGRAPH) {
+  const type = located === undefined ? undefined : splitType(located.block.type)
+  if (located === undefined || type === undefined) {
     return undefined
   }
+  const newBlock = createBlock(type, { content: after }, [], newId)
   const updated = updateAttrs(document, id, { content: before })
   const inserted =
     updated === undefined
@@ -254,9 +266,28 @@ export function splitParagraph(
   return inserted === undefined ? undefined : { document: inserted, newId: newBlock.id }
 }
 
+/** Enter inside a paragraph (the prototype's name for splitText). */
+export function splitParagraph(
+  document: BlockDocument,
+  id: string,
+  before: readonly InlineNode[],
+  after: readonly InlineNode[],
+  newBlock: Block = createParagraph(after),
+): { document: BlockDocument; newId: string } | undefined {
+  return locate(document, id)?.block.type === PARAGRAPH
+    ? splitText(document, id, before, after, newBlock.id)
+    : undefined
+}
+
+/** Two text blocks whose text may join: paragraphs and headings with each other, list items with each other. */
+function mergeable(previous: string, current: string): boolean {
+  const flowing = [PARAGRAPH, HEADING]
+  return (flowing.includes(previous) && flowing.includes(current)) || (previous === LIST_ITEM && current === LIST_ITEM)
+}
+
 /**
- * Backspace at the start of a paragraph whose previous sibling is a paragraph: the two become one, and the cursor goes to where
- * they meet. Undefined when there is no paragraph right before it in the same list.
+ * Backspace at the start of a text block whose previous sibling is a text block it may join (mergeable): the two become one, and
+ * the cursor goes to where they meet. A list item with a nested list is not joined (its list would have nowhere to go).
  */
 export function mergeWithPrevious(
   document: BlockDocument,
@@ -264,7 +295,12 @@ export function mergeWithPrevious(
 ): { document: BlockDocument; targetId: string; offset: number } | undefined {
   const located = locate(document, id)
   const previous = located === undefined ? undefined : childrenOf(document, located.parentId)?.[located.index - 1]
-  if (located?.block.type !== PARAGRAPH || previous?.type !== PARAGRAPH) {
+  if (
+    located === undefined ||
+    previous === undefined ||
+    !mergeable(previous.type, located.block.type) ||
+    located.block.children.length > 0
+  ) {
     return undefined
   }
   const previousContent = contentOf(previous)
@@ -276,7 +312,86 @@ export function mergeWithPrevious(
     : { document: removed, targetId: previous.id, offset: inlineLength(previousContent) }
 }
 
-/** The inline content of a paragraph (`[]` for anything else). */
+/**
+ * Tab in a list item: it moves into a list under the item before it (the end of that item's nested list, or a new one of the same
+ * kind). Undefined for the first item of a list.
+ */
+export function indentListItem(document: BlockDocument, id: string): BlockDocument | undefined {
+  const located = locate(document, id)
+  if (located?.block.type !== LIST_ITEM || located.parentId === null) {
+    return undefined
+  }
+  const previous = childrenOf(document, located.parentId)?.[located.index - 1]
+  if (previous === undefined) {
+    return undefined
+  }
+  const nested = previous.children[0]
+  if (nested !== undefined) {
+    return moveBlockTo(document, id, { parentId: nested.id, index: nested.children.length })
+  }
+  const list = findBlock(document, located.parentId)
+  const without = removeBlock(document, id)
+  if (without === undefined || list === undefined) {
+    return undefined
+  }
+  const newList = createBlock(LIST, { ordered: list.attrs['ordered'] === true }, [located.block])
+  return insertBlock(without, { parentId: previous.id, index: 0 }, newList)
+}
+
+/**
+ * Shift+Tab in a nested list item: it moves out, to just after the item whose list it is in. When it was the only item, that list
+ * goes too. Undefined at the top level of a list (there is nowhere further out to go inside the list).
+ */
+export function outdentListItem(document: BlockDocument, id: string): BlockDocument | undefined {
+  const located = locate(document, id)
+  if (located?.block.type !== LIST_ITEM || located.parentId === null) {
+    return undefined
+  }
+  const list = locate(document, located.parentId)
+  if (list === undefined || list.parentId === null || list.parentType !== LIST_ITEM) {
+    return undefined
+  }
+  const owner = locate(document, list.parentId)
+  if (owner === undefined || owner.parentId === null) {
+    return undefined
+  }
+  const target = { parentId: owner.parentId, index: owner.index + 1 }
+  if (list.block.children.length > 1) {
+    return moveBlockTo(document, id, target)
+  }
+  // The only item: the nested list goes, and the item takes its place after its owner.
+  const without = replaceBlock(document, owner.block.id, (block) => ({ ...block, children: [] }))
+  return without === undefined ? undefined : insertBlock(without, target, located.block)
+}
+
+/** Removes several blocks in one change; undefined when one of them may not go. A block inside another one removed goes with it. */
+export function removeBlocks(document: BlockDocument, ids: readonly string[]): BlockDocument | undefined {
+  let next: BlockDocument | undefined = document
+  for (const id of ids) {
+    if (next === undefined) return undefined
+    if (findBlock(next, id) === undefined) continue
+    next = removeBlock(next, id)
+  }
+  return next
+}
+
+/** Puts several blocks at a place, in order, in one change; undefined when the place does not take one of them. */
+export function insertBlocks(
+  document: BlockDocument,
+  place: Place,
+  blocks: readonly Block[],
+): BlockDocument | undefined {
+  let next: BlockDocument | undefined = document
+  blocks.forEach((block, offset) => {
+    next =
+      next === undefined
+        ? undefined
+        : insertBlock(next, { parentId: place.parentId, index: place.index + offset }, block)
+  })
+  return next
+}
+
+/** The inline content of a text block (`[]` for anything else). */
 export function contentOf(block: Block): readonly InlineNode[] {
   const content = block.attrs['content']
   return Array.isArray(content) ? (content as InlineNode[]) : []

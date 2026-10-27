@@ -1,0 +1,23 @@
+{
+  "name": "core/list-item",
+  "version": 1,
+  "title": "List item",
+  "description": "An individual item within a list.",
+  "category": "text",
+  "icon": "i-lucide-dot",
+  "keywords": [],
+  "attributes": {
+    "content": {
+      "type": "rich-text",
+      "default": [],
+      "maxLength": 5000
+    }
+  },
+  "supports": {},
+  "parent": ["core/list"],
+  "allowedBlocks": ["core/list"],
+  "childCount": {
+    "min": 0,
+    "max": 1
+  }
+}

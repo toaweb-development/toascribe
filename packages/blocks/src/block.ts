@@ -3,7 +3,18 @@
 // top to the block that changed (tree.ts), so an unchanged block keeps its identity. That is what lets the editor's history keep a
 // whole document per step at the cost of one path, and what lets Vue skip the blocks that did not change.
 import { defaultAttrs } from './definition.ts'
-import { COLUMN, COLUMNS, PARAGRAPH, getBlockDefinition } from './registry.ts'
+import {
+  BUTTON,
+  BUTTONS,
+  COLUMN,
+  COLUMNS,
+  GROUP,
+  LIST,
+  LIST_ITEM,
+  PARAGRAPH,
+  QUOTE,
+  getBlockDefinition,
+} from './registry.ts'
 import type { InlineNode } from './inline.ts'
 
 export interface Block {
@@ -49,7 +60,32 @@ export function createColumn(): Block {
   return createBlock(COLUMN, {}, [createParagraph()])
 }
 
-/** What the inserter puts in for a type: columns come with two columns (each with an empty paragraph), as in Gutenberg's 50/50. */
+/**
+ * What the inserter puts in for a type: a container comes with what it needs to be valid and to have somewhere to type. Columns
+ * with two columns (Gutenberg's 50/50), a list with one item, a quote and a group with a paragraph, buttons with one button.
+ */
 export function createInsertable(type: string): Block {
-  return type === COLUMNS ? createBlock(COLUMNS, {}, [createColumn(), createColumn()]) : createBlock(type)
+  switch (type) {
+    case COLUMNS:
+      return createBlock(COLUMNS, {}, [createColumn(), createColumn()])
+    case LIST:
+      return createBlock(LIST, {}, [createBlock(LIST_ITEM)])
+    case QUOTE:
+    case GROUP:
+      return createBlock(type, {}, [createParagraph()])
+    case BUTTONS:
+      return createBlock(BUTTONS, {}, [createBlock(BUTTON)])
+    default:
+      return createBlock(type)
+  }
+}
+
+/** True for a block whose text is its `content` rich text (paragraph, heading, list item, preformatted): the keys of text apply. */
+export function isTextBlock(type: string): boolean {
+  return getBlockDefinition(type)?.attributes['content']?.type === 'rich-text'
+}
+
+/** A copy of a block and everything in it with new ids: what a paste puts in, so it never meets the ids it was copied from. */
+export function cloneWithNewIds(block: Block): Block {
+  return { ...block, id: newBlockId(), children: block.children.map(cloneWithNewIds) }
 }

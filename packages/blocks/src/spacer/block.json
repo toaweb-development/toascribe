@@ -1,0 +1,20 @@
+{
+  "name": "core/spacer",
+  "version": 1,
+  "title": "Spacer",
+  "description": "Add white space between blocks and customize its height.",
+  "category": "design",
+  "icon": "i-lucide-move-vertical",
+  "keywords": ["space", "gap"],
+  "attributes": {
+    "height": {
+      "type": "integer",
+      "default": 48,
+      "minimum": 8,
+      "maximum": 400
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

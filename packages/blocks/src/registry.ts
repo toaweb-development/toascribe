@@ -1,20 +1,71 @@
-// The core blocks of the prototype (M0.6): paragraph, image, columns and column. Each block's `block.json` is the one source; the
-// editor, the api and the view read it from here.
+// The core blocks (M0.6 prototype, M1.3 the basic set of PLAN «Standard blokksett»). Each block's `block.json` is the one source; the
+// editor, the api and the views read it from here. The order is the inserter's.
+import buttonJson from './button/block.json' with { type: 'json' }
+import buttonsJson from './buttons/block.json' with { type: 'json' }
+import codeJson from './code/block.json' with { type: 'json' }
 import columnJson from './column/block.json' with { type: 'json' }
 import columnsJson from './columns/block.json' with { type: 'json' }
+import galleryJson from './gallery/block.json' with { type: 'json' }
+import groupJson from './group/block.json' with { type: 'json' }
+import headingJson from './heading/block.json' with { type: 'json' }
+import htmlJson from './html/block.json' with { type: 'json' }
 import imageJson from './image/block.json' with { type: 'json' }
+import listJson from './list/block.json' with { type: 'json' }
+import listItemJson from './list-item/block.json' with { type: 'json' }
+import moreJson from './more/block.json' with { type: 'json' }
+import nextpageJson from './nextpage/block.json' with { type: 'json' }
 import paragraphJson from './paragraph/block.json' with { type: 'json' }
+import preformattedJson from './preformatted/block.json' with { type: 'json' }
+import quoteJson from './quote/block.json' with { type: 'json' }
+import separatorJson from './separator/block.json' with { type: 'json' }
+import spacerJson from './spacer/block.json' with { type: 'json' }
+import tableJson from './table/block.json' with { type: 'json' }
 import { BlockDefinition } from './definition.ts'
 
 export const PARAGRAPH = 'core/paragraph'
+export const HEADING = 'core/heading'
+export const LIST = 'core/list'
+export const LIST_ITEM = 'core/list-item'
+export const QUOTE = 'core/quote'
+export const CODE = 'core/code'
+export const PREFORMATTED = 'core/preformatted'
+export const TABLE = 'core/table'
 export const IMAGE = 'core/image'
+export const GALLERY = 'core/gallery'
+export const BUTTONS = 'core/buttons'
+export const BUTTON = 'core/button'
 export const COLUMNS = 'core/columns'
 export const COLUMN = 'core/column'
+export const GROUP = 'core/group'
+export const SEPARATOR = 'core/separator'
+export const SPACER = 'core/spacer'
+export const MORE = 'core/more'
+export const NEXTPAGE = 'core/nextpage'
+export const HTML = 'core/html'
 
 /** Parsed when the module loads: a block.json that does not fit the definition schema stops the api and the editor at once. */
-export const CORE_BLOCKS: readonly BlockDefinition[] = [paragraphJson, imageJson, columnsJson, columnJson].map((json) =>
-  BlockDefinition.parse(json),
-)
+export const CORE_BLOCKS: readonly BlockDefinition[] = [
+  paragraphJson,
+  headingJson,
+  listJson,
+  listItemJson,
+  quoteJson,
+  codeJson,
+  preformattedJson,
+  tableJson,
+  imageJson,
+  galleryJson,
+  buttonsJson,
+  buttonJson,
+  columnsJson,
+  columnJson,
+  groupJson,
+  separatorJson,
+  spacerJson,
+  moreJson,
+  nextpageJson,
+  htmlJson,
+].map((json) => BlockDefinition.parse(json))
 
 const BY_NAME = new Map(CORE_BLOCKS.map((definition) => [definition.name, definition]))
 

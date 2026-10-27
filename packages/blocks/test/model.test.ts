@@ -64,7 +64,7 @@ describe('the editor model: one history over every action', () => {
     expect(outline(model.document)).toBe('b_aaaa b_cols(b_col1(b_xxxx) b_col2(b_new2)) b_iiii')
     expect(undone?.selection).toEqual(sel('b_zzzz', 3))
     expect(redone?.selection).toEqual(sel('b_new2', 0))
-    expect(model.replace('b_xxxx', cols('b_bad1', col('b_bc1'), col('b_bc2')), sel('b_xxxx'))).toBeUndefined()
+    expect(model.replace('b_xxxx', col('b_bad1'), sel('b_xxxx'))).toBeUndefined()
   })
 
   it('move, into a column and out of it, one step each', () => {

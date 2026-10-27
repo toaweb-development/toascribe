@@ -14,6 +14,8 @@ function blockText(block: Block): string[] {
       const value = block.attrs[name]
       if (schema.type === 'rich-text' && Array.isArray(value)) {
         own.push(inlineText(value as InlineNode[]))
+      } else if (schema.type === 'table' && Array.isArray(value)) {
+        for (const row of value as InlineNode[][][]) for (const cell of row) own.push(inlineText(cell))
       } else if (
         schema.type === 'string' &&
         typeof value === 'string' &&

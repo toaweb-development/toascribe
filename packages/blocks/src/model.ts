@@ -3,7 +3,7 @@
 // the TipTap instances report their text changes to `setText` and never undo anything themselves. Undo and redo hand back the
 // selection to restore, so the editor can put the cursor back in the right block at the right place.
 import type { Block, BlockDocument } from './block.ts'
-import { createColumn, createParagraph } from './block.ts'
+import { createBlock, createColumn } from './block.ts'
 import type { HistoryOptions, HistoryRestore } from './history.ts'
 import { createHistory } from './history.ts'
 import type { InlineNode } from './inline.ts'
@@ -17,8 +17,12 @@ import {
   locate,
   mergeWithPrevious,
   moveBlock,
+  indentListItem,
+  insertBlocks,
+  outdentListItem,
   removeBlock,
-  splitParagraph,
+  removeBlocks,
+  splitText,
   updateAttrs,
 } from './tree.ts'
 
@@ -59,6 +63,20 @@ export interface EditorModel {
     cursor: EditorSelection,
   ): EditorSelection | undefined
   merge(id: string, cursor: EditorSelection): EditorSelection | undefined
+  /** Tab / Shift+Tab in a list item. */
+  indent(id: string, cursor: EditorSelection): EditorSelection | undefined
+  outdent(id: string, cursor: EditorSelection): EditorSelection | undefined
+  /** Several blocks out in one step (a multi-block selection deleted or cut). */
+  removeMany(ids: readonly string[], before: EditorSelection): EditorSelection | undefined
+  /** Several blocks in at a place in one step (a paste); the cursor goes to the last one. */
+  insertMany(place: Place, blocks: readonly Block[], before: EditorSelection): EditorSelection | undefined
+  /** Turns a text block into another (paragraph ↔ heading), keeping its text, in one step. */
+  transform(
+    id: string,
+    type: string,
+    attrs: Readonly<Record<string, unknown>>,
+    before: EditorSelection,
+  ): EditorSelection | undefined
   addColumn(columnsId: string, before: EditorSelection): EditorSelection | undefined
   removeColumn(columnsId: string, before: EditorSelection): EditorSelection | undefined
   undo(): HistoryRestore<BlockDocument, EditorSelection> | undefined
@@ -84,6 +102,12 @@ function firstLeaf(block: Block): Block {
   return block.type === COLUMNS
     ? (flatten([block]).find((inner) => inner.children.length === 0 && inner.type !== COLUMN) ?? block)
     : block
+}
+
+/** The block that takes the cursor at the end of something put in: its last leaf. */
+function lastLeaf(block: Block): Block {
+  const leaves = flatten([block]).filter((inner) => inner.children.length === 0)
+  return leaves.at(-1) ?? block
 }
 
 export function createEditorModel(initial: BlockDocument, options: HistoryOptions = {}): EditorModel {
@@ -149,7 +173,7 @@ export function createEditorModel(initial: BlockDocument, options: HistoryOption
       return commit(updateAttrs(history.present, id, attrs), before, before, group) !== undefined
     },
     split(id, before, after, cursor) {
-      const result = splitParagraph(history.present, id, before, after, createParagraph(after))
+      const result = splitText(history.present, id, before, after)
       return result === undefined ? undefined : commit(result.document, cursor, { blockId: result.newId, offset: 0 })
     },
     merge(id, cursor) {
@@ -157,6 +181,40 @@ export function createEditorModel(initial: BlockDocument, options: HistoryOption
       return result === undefined
         ? undefined
         : commit(result.document, cursor, { blockId: result.targetId, offset: result.offset })
+    },
+    indent(id, cursor) {
+      return commit(indentListItem(history.present, id), cursor, cursor)
+    },
+    outdent(id, cursor) {
+      return commit(outdentListItem(history.present, id), cursor, cursor)
+    },
+    removeMany(ids, before) {
+      const first = ids[0]
+      const focus =
+        first === undefined
+          ? null
+          : neighbourAfterRemoval(removeBlocks(history.present, ids.slice(1)) ?? history.present, first)
+      return commit(removeBlocks(history.present, ids), before, { blockId: focus })
+    },
+    insertMany(place, blocks, before) {
+      const last = blocks.at(-1)
+      return last === undefined
+        ? undefined
+        : commit(insertBlocks(history.present, place, blocks), before, {
+            blockId: lastLeaf(last).id,
+            offset: Number.MAX_SAFE_INTEGER,
+          })
+    },
+    transform(id, type, attrs, before) {
+      const located = locate(history.present, id)
+      if (located === undefined) return undefined
+      const block = createBlock(type, { ...attrs, content: located.block.attrs['content'] ?? [] }, [], id)
+      const removed = removeBlock(history.present, id)
+      const next =
+        removed === undefined
+          ? undefined
+          : insertBlock(removed, { parentId: located.parentId, index: located.index }, block)
+      return commit(next, before, { ...before, blockId: id })
     },
     addColumn(columnsId, before) {
       const columns = findBlock(history.present, columnsId)

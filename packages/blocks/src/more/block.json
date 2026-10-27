@@ -1,0 +1,24 @@
+{
+  "name": "core/more",
+  "version": 1,
+  "title": "More",
+  "description": "Content before this block will be shown in the excerpt on your archives page.",
+  "category": "design",
+  "icon": "i-lucide-scissors",
+  "keywords": ["read more"],
+  "attributes": {
+    "customText": {
+      "type": "string",
+      "default": "",
+      "maxLength": 200
+    },
+    "noTeaser": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": [],
+  "contentTypes": ["post"]
+}

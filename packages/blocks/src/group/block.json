@@ -1,0 +1,33 @@
+{
+  "name": "core/group",
+  "version": 1,
+  "title": "Group",
+  "description": "Gather blocks in a layout container.",
+  "category": "design",
+  "icon": "i-lucide-square-dashed",
+  "keywords": ["container", "wrapper", "section"],
+  "attributes": {},
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": [
+    "core/paragraph",
+    "core/heading",
+    "core/list",
+    "core/quote",
+    "core/image",
+    "core/gallery",
+    "core/buttons",
+    "core/columns",
+    "core/group",
+    "core/separator",
+    "core/spacer",
+    "core/code",
+    "core/preformatted",
+    "core/table",
+    "core/html"
+  ],
+  "childCount": {
+    "min": 1,
+    "max": 1000
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "core/separator",
+  "version": 1,
+  "title": "Separator",
+  "description": "Create a break between ideas or sections with a horizontal separator.",
+  "category": "design",
+  "icon": "i-lucide-minus",
+  "keywords": ["horizontal-line", "hr", "divider"],
+  "attributes": {},
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

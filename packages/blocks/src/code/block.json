@@ -1,0 +1,19 @@
+{
+  "name": "core/code",
+  "version": 1,
+  "title": "Code",
+  "description": "Display code snippets that respect your spacing and tabs.",
+  "category": "text",
+  "icon": "i-lucide-code-xml",
+  "keywords": ["code"],
+  "attributes": {
+    "content": {
+      "type": "string",
+      "default": "",
+      "maxLength": 100000
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

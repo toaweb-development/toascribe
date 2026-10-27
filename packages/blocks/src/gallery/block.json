@@ -1,0 +1,34 @@
+{
+  "name": "core/gallery",
+  "version": 1,
+  "title": "Gallery",
+  "description": "Display multiple images in a rich gallery.",
+  "category": "media",
+  "icon": "i-lucide-images",
+  "keywords": ["images", "photos"],
+  "attributes": {
+    "columns": {
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 8
+    },
+    "crop": {
+      "type": "boolean",
+      "default": true
+    },
+    "linkTo": {
+      "type": "string",
+      "default": "none",
+      "maxLength": 10,
+      "enum": ["none", "file"]
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": ["core/image"],
+  "childCount": {
+    "min": 0,
+    "max": 100
+  }
+}

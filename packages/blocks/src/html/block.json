@@ -1,0 +1,20 @@
+{
+  "name": "core/html",
+  "version": 1,
+  "title": "Custom HTML",
+  "description": "Add custom HTML code and preview it as you edit.",
+  "category": "widgets",
+  "icon": "i-lucide-code",
+  "keywords": ["embed"],
+  "attributes": {
+    "content": {
+      "type": "string",
+      "default": "",
+      "maxLength": 100000
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": [],
+  "capability": "unfiltered_html"
+}

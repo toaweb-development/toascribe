@@ -1,0 +1,31 @@
+{
+  "name": "core/button",
+  "version": 1,
+  "title": "Button",
+  "description": "Prompt visitors to take action with a button-style link.",
+  "category": "design",
+  "icon": "i-lucide-rectangle-horizontal",
+  "keywords": ["link"],
+  "attributes": {
+    "text": {
+      "type": "rich-text",
+      "default": [],
+      "maxLength": 200
+    },
+    "url": {
+      "type": "string",
+      "format": "href",
+      "default": "",
+      "maxLength": 2048
+    },
+    "variant": {
+      "type": "string",
+      "default": "fill",
+      "maxLength": 10,
+      "enum": ["fill", "outline"]
+    }
+  },
+  "supports": {},
+  "parent": ["core/buttons"],
+  "allowedBlocks": []
+}
