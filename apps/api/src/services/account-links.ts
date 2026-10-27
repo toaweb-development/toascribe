@@ -33,6 +33,7 @@ import {
 } from '../repositories/account-tokens.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import type { Executor } from '../repositories/executor.ts'
+import { findPublishedById, pagePaths } from '../repositories/public.ts'
 import { readSettings } from '../repositories/settings.ts'
 import { deleteAllSessions } from '../repositories/sessions.ts'
 import type { RateLimiter } from './rate-limit.ts'
@@ -72,7 +73,11 @@ export class WeakPasswordError extends AppError {
   }
 }
 
-const OptionsSettings = CoreSettings.pick({ users_can_register: true, blogname: true })
+const OptionsSettings = CoreSettings.pick({
+  users_can_register: true,
+  blogname: true,
+  wp_page_for_privacy_policy: true,
+})
 
 const RegistrationSettings = CoreSettings.pick({
   users_can_register: true,
@@ -281,7 +286,16 @@ export function createPublicFlows(options: {
 
     async options() {
       const settings = await readSettings(db, OptionsSettings, onInvalidSetting)
-      return { registrationOpen: settings.users_can_register, siteName: settings.blogname.trim() }
+      const privacyId = settings.wp_page_for_privacy_policy
+      const privacyPage = privacyId === null ? undefined : await findPublishedById(db, privacyId)
+      return {
+        registrationOpen: settings.users_can_register,
+        siteName: settings.blogname.trim(),
+        privacyPolicyPath:
+          privacyPage === undefined
+            ? null
+            : ((await pagePaths(db, [privacyPage.id])).get(privacyPage.id)?.path ?? null),
+      }
     },
 
     register(input, ctx) {

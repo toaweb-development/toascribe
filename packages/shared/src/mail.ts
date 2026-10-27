@@ -17,6 +17,7 @@ export const EMAIL_TEMPLATE = [
   'password_reset',
   'set_password',
   'email_change',
+  'admin_email_change',
   'admin_new_user',
   'admin_password_change',
   'account_exists',
@@ -106,6 +107,12 @@ function messages<S extends z.ZodType<string>>(secret: S) {
     // E-mail change: to the NEW address, so that opening the link proves it is the user's.
     z.strictObject({
       template: z.literal('email_change'),
+      to: Recipient,
+      data: z.strictObject({ username: Username, token: secret }),
+    }),
+    // A new administrator address for the site (K-192): to the NEW address, so that opening the link proves it can receive mail.
+    z.strictObject({
+      template: z.literal('admin_email_change'),
       to: Recipient,
       data: z.strictObject({ username: Username, token: secret }),
     }),

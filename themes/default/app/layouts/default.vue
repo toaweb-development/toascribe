@@ -24,6 +24,9 @@ const settings = useSettings()
     <footer class="theme-footer">
       <div class="theme-wrap">
         <p>{{ settings?.title ? t('theme.footer', { site: settings.title }) : t('theme.poweredBy') }}</p>
+        <p v-if="settings?.privacyPolicyPath">
+          <a :href="settings.privacyPolicyPath">{{ t('theme.privacy') }}</a>
+        </p>
       </div>
       <ScribeFooter />
     </footer>

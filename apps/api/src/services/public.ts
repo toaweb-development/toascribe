@@ -64,6 +64,8 @@ const SETTINGS = CoreSettings.pick({
   show_on_front: true,
   page_on_front: true,
   page_for_posts: true,
+  blog_public: true,
+  wp_page_for_privacy_policy: true,
 })
 type Settings = { readonly [K in keyof typeof SETTINGS.shape]: (typeof SETTINGS.shape)[K]['_output'] }
 
@@ -419,6 +421,10 @@ export function createPublicService(options: {
         settings.show_on_front === 'page' && settings.page_for_posts !== null
           ? await findPublishedById(db, settings.page_for_posts)
           : undefined
+      const privacyPage =
+        settings.wp_page_for_privacy_policy === null
+          ? undefined
+          : await findPublishedById(db, settings.wp_page_for_privacy_policy)
       return {
         title: settings.blogname,
         tagline: settings.blogdescription,
@@ -427,7 +433,15 @@ export function createPublicService(options: {
         postsPerPage: settings.posts_per_page,
         showOnFront: settings.show_on_front,
         postsPagePath: postsPage === undefined ? null : await pathOf(postsPage, settings),
-        cacheTags: ['settings', ...(postsPage === undefined ? [] : [`content:${postsPage.id}`])],
+        searchEngineVisible: settings.blog_public,
+        privacyPolicyPath: privacyPage === undefined ? null : await pathOf(privacyPage, settings),
+        // `list:page`: a chosen page that is published later (or unpublished) changes these addresses too.
+        cacheTags: [
+          'settings',
+          'list:page',
+          ...(postsPage === undefined ? [] : [`content:${postsPage.id}`]),
+          ...(privacyPage === undefined ? [] : [`content:${privacyPage.id}`]),
+        ],
       }
     },
 

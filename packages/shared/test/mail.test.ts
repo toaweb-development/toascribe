@@ -24,6 +24,7 @@ const SAMPLES: Record<EmailTemplate, unknown> = {
   password_reset: { template: 'password_reset', to: 'kari@example.no', data: { username: 'kari', token: TOKEN } },
   set_password: { template: 'set_password', to: 'kari@example.no', data: { username: 'kari', token: TOKEN } },
   email_change: { template: 'email_change', to: 'ny@example.no', data: { username: 'kari', token: TOKEN } },
+  admin_email_change: { template: 'admin_email_change', to: 'ny@example.no', data: { username: 'kari', token: TOKEN } },
   admin_new_user: {
     template: 'admin_new_user',
     to: 'admin@example.no',
@@ -152,6 +153,11 @@ describe('renderMail (bokmål)', () => {
   it.each([
     ['set_password', '[Bloggen min] Velkommen! Velg passord', 'Velkommen til Bloggen min!'],
     ['email_change', '[Bloggen min] Bekreft den nye e-postadressen', 'Du har bedt om å bruke denne e-postadressen'],
+    [
+      'admin_email_change',
+      '[Bloggen min] Bekreft den nye administrator-e-postadressen',
+      'som administratoradresse for Bloggen min',
+    ],
     ['admin_new_user', '[Bloggen min] Ny bruker: ola', 'E-post: ola@example.no'],
     ['admin_password_change', '[Bloggen min] Passordet til ola er endret', 'er endret.'],
     ['account_exists', '[Bloggen min] Du har allerede en konto', 'brukernavnet kari'],
@@ -193,7 +199,7 @@ describe('renderMail (bokmål)', () => {
   it('puts a link in exactly the templates that have one', () => {
     for (const template of EMAIL_TEMPLATE) {
       const mail = render(template)
-      const hasLink = ['password_reset', 'set_password', 'email_change'].includes(template)
+      const hasLink = ['password_reset', 'set_password', 'email_change', 'admin_email_change'].includes(template)
       expect(mail.text.includes('#token='), template).toBe(hasLink)
       expect(mail.html.includes('<a href='), template).toBe(hasLink)
     }

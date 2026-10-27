@@ -236,7 +236,8 @@
     "links": {
       "register": "Registrer",
       "lost": "Mistet passordet ditt?",
-      "login": "Logg inn"
+      "login": "Logg inn",
+      "privacy": "Personvernerklæring"
     },
     "notice": {
       "loggedOut": "Du er nå logget ut.",

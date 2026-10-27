@@ -22,6 +22,8 @@ import type { TermService } from './terms.ts'
 import { createMediaService } from './media.ts'
 import type { MediaService } from './media.ts'
 import { createPublicService } from './public.ts'
+import { createSettingsService } from './settings.ts'
+import type { SettingsService } from './settings.ts'
 import type { PublicService } from './public.ts'
 import type { DashboardService } from './dashboard.ts'
 import { createMeService } from './me.ts'
@@ -95,6 +97,8 @@ export interface Services {
   readonly terms: TermService
   /** The media library (M1.2). */
   readonly media: MediaService
+  /** Settings → General, Writing, Reading and Privacy (M1.5). */
+  readonly settings: SettingsService
   /** The public reading API of the site and its theme (M1.4). */
   readonly public: PublicService
   /** Second factor: enrolment, recovery codes, the second step of a login (K-023). */
@@ -195,6 +199,15 @@ export function createServices(deps: ServiceDeps): Services {
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     media,
+    settings: createSettingsService({
+      db,
+      clock,
+      audit,
+      mail,
+      limiter,
+      publicOrigin: deps.publicOrigin,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
     public: createPublicService({
       db,
       clock,

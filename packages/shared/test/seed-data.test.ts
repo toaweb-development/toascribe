@@ -256,8 +256,8 @@ describe('EncryptedValue', () => {
 })
 
 describe('one-time link purposes', () => {
-  it('are the three flows of M0.3', () => {
-    expect(ACCOUNT_TOKEN_PURPOSE).toEqual(['password_reset', 'set_password', 'email_change'])
+  it('are the three flows of M0.3 and the administrator address of M1.5 (K-192)', () => {
+    expect(ACCOUNT_TOKEN_PURPOSE).toEqual(['password_reset', 'set_password', 'email_change', 'admin_email_change'])
     expect(AccountTokenPurpose.safeParse('login').success).toBe(false)
   })
 })

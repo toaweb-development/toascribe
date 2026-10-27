@@ -28,6 +28,13 @@ async function onSent() {
       <AuthLink v-if="!closed" :to="{ path: '/login', query: { action: 'lostpassword' } }">{{
         $t('auth.links.lost')
       }}</AuthLink>
+      <!-- The privacy policy (K-199): a page on the site, outside the admin's address. -->
+      <a
+        v-if="options?.privacyPolicyPath"
+        :href="options.privacyPolicyPath"
+        class="text-sm text-primary underline underline-offset-2"
+        >{{ $t('auth.links.privacy') }}</a
+      >
     </template>
   </AuthShell>
 </template>

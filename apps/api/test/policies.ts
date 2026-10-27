@@ -83,6 +83,16 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'DELETE /api/v1/media-folders/:id': 'capability:edit_others_posts',
   'GET /api/v1/settings/media': 'capability:manage_options',
   'PATCH /api/v1/settings/media': 'capability:manage_options',
+  // The settings screens of M1.5.
+  'GET /api/v1/settings/general': 'capability:manage_options',
+  'PATCH /api/v1/settings/general': 'capability:manage_options',
+  'POST /api/v1/settings/general/admin-email/confirm': 'capability:manage_options',
+  'GET /api/v1/settings/writing': 'capability:manage_options',
+  'PATCH /api/v1/settings/writing': 'capability:manage_options',
+  'GET /api/v1/settings/reading': 'capability:manage_options',
+  'PATCH /api/v1/settings/reading': 'capability:manage_options',
+  'GET /api/v1/settings/privacy': 'capability:manage_options',
+  'PATCH /api/v1/settings/privacy': 'capability:manage_options',
   'GET /uploads/*': 'public',
   // The setup wizard (M0.4): open only until the site is installed, and then only with the one-time setup token.
   'GET /api/v1/setup/status': 'public',

@@ -57,6 +57,7 @@ const LINK_ACTIONS: Readonly<Partial<Record<EmailTemplate, string>>> = {
   password_reset: 'resetpass',
   set_password: 'setpassword',
   email_change: 'confirmemail',
+  admin_email_change: 'confirmadminemail',
 }
 
 /** The one-time link of a message, or undefined for a template without one. Built from the origin and the token only. */

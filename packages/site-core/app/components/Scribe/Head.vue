@@ -25,7 +25,12 @@ const description = computed(
   () => content.value?.seo.description ?? (content.value?.excerpt || settings.value?.tagline) ?? undefined,
 )
 const noindex = computed(
-  () => preview.value || kind.value === '404' || kind.value === 'search' || content.value?.seo.noindex === true,
+  () =>
+    settings.value?.searchEngineVisible === false ||
+    preview.value ||
+    kind.value === '404' ||
+    kind.value === 'search' ||
+    content.value?.seo.noindex === true,
 )
 
 useHead({

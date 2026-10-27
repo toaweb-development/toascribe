@@ -113,6 +113,8 @@ export const CoreSettings = z.object({
   // Settings → Writing
   /** The category a post gets when it has none (WordPress: «Ukategorisert», made by the installer). A term uuid. */
   default_category: z.uuid().nullable(),
+  /** The post format a new post starts with (WordPress' «Standard innleggsformat»). Only «Standard» until post formats come. */
+  default_post_format: z.enum(['standard']),
 
   // Settings → Reading
   show_on_front: z.enum(['posts', 'page']),
@@ -271,6 +273,7 @@ export const CORE_SETTINGS: CoreSettings = {
 
   // Writing
   default_category: null, // set by the install («Ukategorisert»)
+  default_post_format: 'standard',
 
   // Reading
   show_on_front: 'posts',

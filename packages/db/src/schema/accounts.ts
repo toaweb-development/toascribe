@@ -258,7 +258,10 @@ export const accountToken = pgTable(
     accountId: uuid('account_id').notNull(),
     purpose: text('purpose').notNull(),
     tokenHash: text('token_hash').notNull(),
-    /** email_change only: the address that replaces account.email when the link is opened. Null for every other purpose. */
+    /**
+     * email_change: the address that replaces account.email when the link is opened; admin_email_change (K-192): the address that
+     * becomes the site's admin_email. Null for every other purpose.
+     */
     newEmail: text('new_email'),
     expiresAt: timestamptz('expires_at').notNull(),
     /** When the link was opened and acted on; a used row never works again. */
@@ -268,8 +271,11 @@ export const accountToken = pgTable(
   (t): PgTableExtraConfigValue[] => [
     unique('uq_account_token_token_hash').on(t.tokenHash),
     check('ck_account_token_purpose', oneOf(t.purpose, ACCOUNT_TOKEN_PURPOSE)),
-    // The pending address belongs to an e-mail change, and an e-mail change cannot be without one.
-    check('ck_account_token_new_email', sql`(${t.purpose} = 'email_change') = (${t.newEmail} is not null)`),
+    // The pending address belongs to an e-mail change (an account's or the site's), and an e-mail change cannot be without one.
+    check(
+      'ck_account_token_new_email',
+      sql`(${t.purpose} in ('email_change', 'admin_email_change')) = (${t.newEmail} is not null)`,
+    ),
     // One-time links go with their account.
     foreignKey({ name: 'fk_account_token_account_id', columns: [t.accountId], foreignColumns: [account.id] }).onDelete(
       'cascade',

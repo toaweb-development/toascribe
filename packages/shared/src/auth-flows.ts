@@ -33,6 +33,8 @@ export const AuthOptionsResponse = z.object({
   registrationOpen: z.boolean(),
   /** The setting `blogname`, for the login screens (K-001). An empty string when it is not set: the screen falls back to its own name. */
   siteName: z.string(),
+  /** The address of the published privacy policy page (K-199), linked on the registration form; null without one. */
+  privacyPolicyPath: z.string().nullable(),
 })
 export type AuthOptionsResponse = z.infer<typeof AuthOptionsResponse>
 

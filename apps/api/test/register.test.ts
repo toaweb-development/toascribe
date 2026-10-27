@@ -71,10 +71,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
     it('says so on GET /auth/options, which anyone may read', async () => {
       const res = await env.client({ ip: ip() }).get('/api/v1/auth/options')
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ registrationOpen: false, siteName: '' })
+      expect(await res.json()).toEqual({ registrationOpen: false, siteName: '', privacyPolicyPath: null })
       await withRegistration(async () => {
         const open = await env.client({ ip: ip() }).get('/api/v1/auth/options')
-        expect(await open.json()).toEqual({ registrationOpen: true, siteName: '' })
+        expect(await open.json()).toEqual({ registrationOpen: true, siteName: '', privacyPolicyPath: null })
       })
     })
 

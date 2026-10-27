@@ -445,6 +445,29 @@ const CASES: readonly MatrixCase[] = [
     }),
     expected: { anonymous: 400, administrator: 400, editor: 400, author: 400, contributor: 400, subscriber: 400 },
   },
+  // The settings screens of M1.5: manage_options only. A PATCH that names nothing valid is a 400 for the administrator.
+  ...(['general', 'writing', 'reading', 'privacy'] as const).flatMap((group) => [
+    {
+      route: `GET /api/v1/settings/${group}`,
+      method: 'GET',
+      path: `/api/v1/settings/${group}`,
+      expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+    },
+    {
+      route: `PATCH /api/v1/settings/${group}`,
+      method: 'PATCH',
+      path: `/api/v1/settings/${group}`,
+      json: {},
+      expected: { ...ok, administrator: 400, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+    },
+  ]),
+  {
+    route: 'POST /api/v1/settings/general/admin-email/confirm',
+    method: 'POST',
+    path: '/api/v1/settings/general/admin-email/confirm',
+    json: { token: NOT_A_TOKEN },
+    expected: { ...ok, administrator: 400, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
   {
     route: 'GET /api/v1/media-folders',
     method: 'GET',

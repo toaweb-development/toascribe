@@ -52,6 +52,16 @@ export const MAIL_MESSAGES_NB: MailMessages = {
       action: 'Bekreft e-postadressen',
       outro: ['Var det ikke du som ba om dette, kan du se bort fra denne e-posten. Kontoen er ikke endret.'],
     },
+    admin_email_change: {
+      subject: '[{siteName}] Bekreft den nye administrator-e-postadressen',
+      greeting: 'Hei,',
+      intro: [
+        '{username} har bedt om å bruke denne e-postadressen som administratoradresse for {siteName}.',
+        'Bekreft med lenken under mens du er logget inn som administrator. Lenken gjelder i {hours} timer og kan bare brukes én gang.',
+      ],
+      action: 'Bekreft adressen',
+      outro: ['Venter du ikke denne e-posten, kan du se bort fra den. Administratoradressen er ikke endret.'],
+    },
     admin_new_user: {
       subject: '[{siteName}] Ny bruker: {username}',
       greeting: 'Hei,',

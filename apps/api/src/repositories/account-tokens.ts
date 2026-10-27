@@ -121,3 +121,24 @@ export async function findPendingEmailChange(
   const row = rows[0]
   return row?.email == null ? undefined : { email: row.email, expiresAt: row.expiresAt }
 }
+
+/** Uses up every unused link for a new administrator address, whoever asked for it: only the last request counts (K-192). */
+export async function invalidateAdminEmailTokens(db: Executor, now: Date): Promise<void> {
+  await db
+    .update(accountToken)
+    .set({ usedAt: now, modifiedAt: now })
+    .where(and(eq(accountToken.purpose, 'admin_email_change'), isNull(accountToken.usedAt)))
+}
+
+/** The administrator address waiting for its confirmation, if a link for one is still good. */
+export async function pendingAdminEmail(db: Executor, now: Date): Promise<string | undefined> {
+  const rows = await db
+    .select({ newEmail: accountToken.newEmail })
+    .from(accountToken)
+    .where(
+      and(eq(accountToken.purpose, 'admin_email_change'), isNull(accountToken.usedAt), gt(accountToken.expiresAt, now)),
+    )
+    .orderBy(desc(accountToken.createdAt))
+    .limit(1)
+  return rows[0]?.newEmail ?? undefined
+}
