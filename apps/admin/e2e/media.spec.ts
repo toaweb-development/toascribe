@@ -96,7 +96,7 @@ test('upload an image, describe it, crop it, and insert it in a post', async ({ 
   await picker.getByRole('button', { name: 'Velg', exact: true }).click()
   await expect(page.getByLabel('Alternativ tekst')).toHaveValue(`Blå flate ${word}`)
   await expect(page.getByRole('img', { name: `Blå flate ${word}` })).toBeVisible()
-  await page.getByLabel('Tittel').fill(`${word} med bilde`)
+  await page.getByRole('textbox', { name: 'Tittel', exact: true }).fill(`${word} med bilde`)
   await page.getByRole('button', { name: 'Lagre kladd' }).click()
   await expect(page.getByText('Lagret.').first()).toBeVisible()
 
