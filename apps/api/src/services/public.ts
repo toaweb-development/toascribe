@@ -999,7 +999,7 @@ export function createPublicService(options: {
       return {
         version: '1.0',
         type: 'link',
-        title: content.seo.title || content.title,
+        title: content.seo.title === undefined || content.seo.title === '' ? content.title : content.seo.title,
         ...(author === undefined ? {} : { author_name: author.displayName, author_url: absolute(author.path) }),
         provider_name: settings.blogname || address.hostname,
         provider_url: `${origin}/`,
