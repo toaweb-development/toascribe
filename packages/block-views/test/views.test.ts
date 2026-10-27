@@ -3,7 +3,8 @@
 // markup in the data stays text (a table cell, a caption, a button), and axe on the rendered HTML (WCAG 2.2 A and AA; colour contrast
 // cannot be measured in jsdom and is checked in the browser by the e2e suite).
 import axe from 'axe-core'
-import { createSSRApp, h } from 'vue'
+import { createSSRApp, defineComponent, h } from 'vue'
+import type { PropType } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 
@@ -184,6 +185,27 @@ describe('custom HTML', () => {
   it('is written as markup only when the caller asks for raw (the public site, M1.4)', async () => {
     const app = createSSRApp({ render: () => h(BlockDocument, { blocks: [block], html: 'raw' }) })
     expect(await renderToString(app)).toContain('<div class="block-html"><script>alert(1)</script>')
+  })
+})
+
+describe("a theme's own view (M1.4)", () => {
+  it('draws the block types it names with the theme component, and the rest with the core views', async () => {
+    const Quote = defineComponent({
+      props: { block: { type: Object as PropType<Block>, required: true }, context: { type: Object, required: true } },
+      setup: (props) => () => h('aside', { class: 'theme-quote' }, props.block.children.length),
+    })
+    const quote = createBlock('core/quote', {}, [createBlock('core/paragraph', { content: text('Sitat') })])
+    const app = createSSRApp({
+      render: () =>
+        h(BlockDocument, {
+          blocks: [quote, createBlock('core/paragraph', { content: text('Vanlig') })],
+          views: new Map([['core/quote', Quote]]),
+        }),
+    })
+    const html = await renderToString(app)
+    expect(html).toContain('<aside class="theme-quote">1</aside>')
+    expect(html).toContain('<p>Vanlig</p>')
+    expect(html).not.toContain('block-quote')
   })
 })
 
