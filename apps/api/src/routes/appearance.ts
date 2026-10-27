@@ -4,6 +4,8 @@ import {
   CreateGlobalSetRequest,
   CreateMenuRequest,
   CustomizeResponse,
+  EmbedPreviewRequest,
+  EmbedPreviewResponse,
   GlobalSetChoicesResponse,
   GlobalSetDetail,
   GlobalSetListResponse,
@@ -217,6 +219,20 @@ const publicSet = defineRoute({
   },
 })
 
+const embedPreview = defineRoute({
+  method: 'post',
+  path: '/oembed/preview',
+  tags: ['content'],
+  summary: 'What an «Innbygging» block shows for an address (K-225)',
+  description:
+    "The provider (from toascribe's fixed list), the title, the player's address and the thumbnail's, read by the server through " +
+    'safeFetch and kept for a day. An address of no known provider answers `provider: null`: the block is then a link. The save ' +
+    'reads it again, whatever the editor sends.',
+  policy: requireAnyCapability('edit_posts', 'edit_pages', 'edit_theme_options'),
+  request: { body: { required: true, content: { 'application/json': { schema: EmbedPreviewRequest } } } },
+  responses: { 200: json(EmbedPreviewResponse, 'What the block shows'), ...refused },
+})
+
 const setChoices = defineRoute({
   method: 'get',
   path: '/global-sets/choices',
@@ -290,6 +306,9 @@ export function createAppearanceApp(services: Services): OpenAPIHono<AppEnv> {
     .openapi(getLocations, async (c) => c.json(await appearance.locations(await requireSession(c)), 200))
     .openapi(putLocations, async (c) =>
       c.json(await appearance.updateLocations(await requireSession(c), c.req.valid('json'), context(c)), 200),
+    )
+    .openapi(embedPreview, async (c) =>
+      c.json(await services.embeds.preview(await requireSession(c), c.req.valid('json').url), 200),
     )
     .openapi(setChoices, async (c) => c.json(await appearance.globalSetChoices(await requireSession(c)), 200))
     .openapi(listSets, async (c) => c.json(await appearance.globalSets(await requireSession(c)), 200))

@@ -111,6 +111,7 @@ import {
 } from '../repositories/terms.ts'
 import type { ContentTermRow } from '../repositories/terms.ts'
 import type { Auditor, RequestContext } from './support.ts'
+import type { EmbedService } from './embeds.ts'
 import type { MediaService } from './media.ts'
 import { replaceLinkRefs, replaceMediaRefs } from '../repositories/media.ts'
 import { findPublishedById, pagePaths, publishedDescendantIds, rememberOldPaths } from '../repositories/public.ts'
@@ -349,9 +350,21 @@ export function createContentService(options: {
   readonly audit: Auditor
   /** The media library: the addresses of old image blocks, and the files a document uses. */
   readonly media: Pick<MediaService, 'contentRefs' | 'idsForUrls'>
+  /** «Innbygging» (M1.6): the server sets each embed block's fields from its address, before the save's transaction. */
+  readonly embeds: Pick<EmbedService, 'fill'>
   readonly onInvalidSetting?: (key: string) => void
 }): ContentService {
   const { db, clock, audit, media } = options
+
+  /** The request with its embed blocks filled by the server (asked outside any transaction: a provider may take seconds). */
+  async function withEmbeds<R extends { blocks?: unknown }>(
+    auth: SessionAuth,
+    request: R,
+    ctx: RequestContext,
+  ): Promise<R> {
+    if (request.blocks === undefined) return request
+    return { ...request, blocks: (await options.embeds.fill(auth, request.blocks, ctx)) as R['blocks'] }
+  }
 
   /** A stored or sent tree with every block upgraded to its current version (core/image: an address becomes a media id). */
   async function migrated(blocks: unknown): Promise<unknown> {
@@ -587,7 +600,8 @@ export function createContentService(options: {
     }
   }
 
-  async function create(auth: SessionAuth, request: CreateContentRequest, ctx: RequestContext): Promise<ContentItem> {
+  async function create(auth: SessionAuth, sent: CreateContentRequest, ctx: RequestContext): Promise<ContentItem> {
+    const request = await withEmbeds(auth, sent, ctx)
     const actor = actorOf(auth)
     const { type } = request
     if (!canEditType(actor, type)) {
@@ -1079,7 +1093,8 @@ export function createContentService(options: {
 
     create,
 
-    async update(auth, id, request, ctx) {
+    async update(auth, id, sent, ctx) {
+      const request = await withEmbeds(auth, sent, ctx)
       const passwordHash = await passwordHashOf(request.password)
       await inTransaction(db, (tx) => updateIn(tx, auth, id, request, passwordHash, ctx))
       return loadItem(db, actorOf(auth), id)

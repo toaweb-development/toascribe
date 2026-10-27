@@ -3,7 +3,7 @@
 // tree and upgrades every block it has a step for, before the tree is validated; it changes nothing it does not know. The context
 // gives what a step may need from outside (a media id for an address), so the steps stay pure TypeScript.
 import { migrateImageV1 } from './image/migrate.ts'
-import { IMAGE } from './registry.ts'
+import { EMBED, IMAGE } from './registry.ts'
 
 export interface MigrationContext {
   /** The media library's id of a file at this address, or undefined. */
@@ -78,7 +78,7 @@ export function legacyImageUrls(input: unknown): string[] {
   return [...new Set(urls.filter((url) => url !== ''))]
 }
 
-/** The media a document uses (image blocks with a chosen file), with the block that holds each: the «Brukes på» references. */
+/** The media a document uses (image blocks with a chosen file, an embed's thumbnail), with the block that holds each: the «Brukes på» references. */
 export function documentMediaRefs(
   blocks: readonly {
     id: string
@@ -97,6 +97,11 @@ export function documentMediaRefs(
     const mediaId = block.attrs['mediaId']
     if (block.type === IMAGE && typeof mediaId === 'string' && mediaId !== '') {
       refs.push({ mediaId, blockId: block.id })
+    }
+    // An embed's thumbnail (M1.6), stored in the media library when the post was saved.
+    const thumbnailId = block.attrs['thumbnailId']
+    if (block.type === EMBED && typeof thumbnailId === 'string' && thumbnailId !== '') {
+      refs.push({ mediaId: thumbnailId, blockId: block.id })
     }
     for (const child of block.children) visit(child as typeof block)
   }

@@ -205,6 +205,10 @@ export const CoreSettings = z.object({
   // Settings → Privacy
   /** The privacy policy page (WordPress: the draft «Personvernerklæring» the installer makes). A content uuid. */
   wp_page_for_privacy_policy: z.uuid().nullable(),
+  // «Innbygginger» on the same screen (M1.6, K-225): a player from another service is loaded only after a click (on by default),
+  // and the Mastodon instances whose posts may be embedded (they cannot be listed in advance).
+  embed_click_to_load: z.boolean(),
+  oembed_mastodon_instances: z.array(z.string().max(253)).max(50),
 
   // Installation (M0.4), read-only: see READ_ONLY_SETTING_KEYS
   /** True once the install transaction has committed. /setup and every setup endpoint answer 404 from then on. */
@@ -358,6 +362,8 @@ export const CORE_SETTINGS: CoreSettings = {
 
   // Privacy
   wp_page_for_privacy_policy: null, // set by the install (the draft privacy page)
+  embed_click_to_load: true,
+  oembed_mastodon_instances: [],
 
   // Installation
   installed: false,

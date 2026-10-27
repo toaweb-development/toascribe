@@ -23,7 +23,11 @@ import { createMediaService } from './media.ts'
 import type { MediaService } from './media.ts'
 import { createPublicService } from './public.ts'
 import { createSettingsService } from './settings.ts'
+import { safeFetch } from '@toascribe/http'
+
 import type { ActiveThemeSource } from './active-theme.ts'
+import { createEmbedService } from './embeds.ts'
+import type { EmbedFetch, EmbedService } from './embeds.ts'
 import { createAppearanceService } from './appearance.ts'
 import { createCustomizeService } from './customize.ts'
 import type { CustomizeService } from './customize.ts'
@@ -80,6 +84,8 @@ export interface ServiceDeps {
   readonly mediaJobs: MediaJobPort
   /** UPLOAD_MAX_SIZE_MB. */
   readonly uploadCapMb: number
+  /** How oEmbed providers are asked (safeFetch; tests pass stored answers). */
+  readonly embedFetch?: EmbedFetch
   /** The site's active theme (menu locations, «Tilpass»). */
   readonly activeTheme: ActiveThemeSource
 }
@@ -104,6 +110,8 @@ export interface Services {
   readonly terms: TermService
   /** The media library (M1.2). */
   readonly media: MediaService
+  /** «Innbygging» (M1.6): the oEmbed preview and the server's own fill of embed blocks. */
+  readonly embeds: EmbedService
   /** Appearance → Customize (M1.5). */
   readonly customize: CustomizeService
   /** Appearance → Menus and Global sets (M1.5). */
@@ -167,11 +175,19 @@ export function createServices(deps: ServiceDeps): Services {
     publicOrigin: deps.publicOrigin,
     ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
   })
+  const embeds = createEmbedService({
+    db,
+    clock,
+    fetch: deps.embedFetch ?? safeFetch,
+    media,
+    ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+  })
   const content = createContentService({
     db,
     clock,
     audit,
     media,
+    embeds,
     ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
   })
   const install = createInstallService({
@@ -218,8 +234,10 @@ export function createServices(deps: ServiceDeps): Services {
       media,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
+    embeds,
     appearance: createAppearanceService({
       db,
+      embeds,
       activeTheme: deps.activeTheme,
       clock,
       audit,

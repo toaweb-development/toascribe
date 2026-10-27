@@ -490,6 +490,13 @@ const CASES: readonly MatrixCase[] = [
     path: '/api/v1/global-sets/choices',
     expected: { ...ok, subscriber: 403 },
   },
+  {
+    route: 'POST /api/v1/oembed/preview',
+    method: 'POST',
+    path: '/api/v1/oembed/preview',
+    json: { url: 'https://example.com/' },
+    expected: { ...ok, subscriber: 403 },
+  },
   ...(
     [
       ['GET /api/v1/public/menus/:location', '/api/v1/public/menus/primary', 200],

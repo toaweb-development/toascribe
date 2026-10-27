@@ -48,6 +48,7 @@ import { inTransaction } from '../repositories/executor.ts'
 import { findPublishedByIds, pagePaths } from '../repositories/public.ts'
 import { readSettings, writeSettings } from '../repositories/settings.ts'
 import type { ActiveThemeSource } from './active-theme.ts'
+import type { EmbedService } from './embeds.ts'
 import type { MediaService } from './media.ts'
 import { loadLinks } from './permalinks.ts'
 import type { Auditor, RequestContext } from './support.ts'
@@ -133,6 +134,8 @@ export function createAppearanceService(options: {
   readonly audit: Auditor
   readonly media: Pick<MediaService, 'contentRefs'>
   readonly activeTheme: ActiveThemeSource
+  /** «Innbygging» (M1.6): a set's embed blocks are filled by the server, before the save's transaction. */
+  readonly embeds: Pick<EmbedService, 'fill'>
   readonly onInvalidSetting?: (key: string) => void
 }): AppearanceService {
   const { db, clock, audit, media } = options
@@ -402,10 +405,12 @@ export function createAppearanceService(options: {
 
     async updateGlobalSet(auth, id, request, ctx) {
       requireThemeOptions(auth)
+      const sentBlocks =
+        request.blocks === undefined ? undefined : ((await options.embeds.fill(auth, request.blocks, ctx)) as unknown[])
       await inTransaction(db, async (tx) => {
         const row = await findGlobalSet(tx, { id }, { forUpdate: true })
         if (row === undefined) throw new NotFoundError()
-        const blocks = request.blocks === undefined ? undefined : checkBlocks(auth, request.blocks, row.blocks)
+        const blocks = sentBlocks === undefined ? undefined : checkBlocks(auth, sentBlocks, row.blocks)
         await updateGlobalSet(
           tx,
           id,

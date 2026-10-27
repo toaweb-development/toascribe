@@ -15,6 +15,19 @@ import { pino } from 'pino'
 import { buildApp } from '../src/app.ts'
 import { fixedThemeSource } from '../src/services/active-theme.ts'
 import type { ActiveThemeSource } from '../src/services/active-theme.ts'
+import type { EmbedFetch } from '../src/services/embeds.ts'
+
+/** No provider answers: a test never fetches from the network (an embed is then a link). */
+const noProviders: EmbedFetch = (url) =>
+  Promise.resolve({
+    status: 404,
+    statusText: 'Not Found',
+    headers: new Headers(),
+    url,
+    redirected: false,
+    body: new Uint8Array(),
+    text: () => '',
+  })
 import { createTestDatabase } from './db.ts'
 import type { TestDatabase } from './db.ts'
 import type { MailPort } from '../src/ports/mail.ts'
@@ -225,6 +238,8 @@ export interface StartOptions {
   readonly publicOrigin?: string
   /** Which theme the site runs; default TEST_THEME. */
   readonly activeTheme?: ActiveThemeSource
+  /** How oEmbed providers are asked; default: every provider is away (a test never reaches the network). */
+  readonly embedFetch?: EmbedFetch
   /** How long the flows that hide whether an account exists take at least (ms). Default 0, so the tests are not slowed; the timing tests pass a real value. */
   readonly minimumResponseMs?: number
   /**
@@ -286,6 +301,7 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
       mediaJobs,
       ...(options.uploadCapMb === undefined ? {} : { uploadCapMb: options.uploadCapMb }),
       activeTheme: options.activeTheme ?? fixedThemeSource(TEST_THEME),
+      embedFetch: options.embedFetch ?? noProviders,
     })
 
     const roleIds = new Map<string, string>()

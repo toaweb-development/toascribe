@@ -2,8 +2,9 @@
 import { createSafeFetch } from './safe-fetch.ts'
 
 export { isPublicAddress } from './address.ts'
-export { SAFE_FETCH_ERROR_CODES, SafeFetchError } from './safe-fetch.ts'
-export type { SafeFetchErrorCode, SafeFetchOptions, SafeResponse } from './safe-fetch.ts'
+export { SAFE_FETCH_ERROR_CODES, SafeFetchError, createSafeFetch } from './safe-fetch.ts'
+// createSafeFetch: a client with a stub resolver, for tests that must reach a local server (the app uses `safeFetch` below).
+export type { SafeFetchErrorCode, SafeFetchInternals, SafeFetchOptions, SafeResponse } from './safe-fetch.ts'
 
 /**
  * Fetches `url` the way SECURITY §4 «SSRF» asks: only http and https on the allowed ports, only to public addresses

@@ -138,6 +138,7 @@ describe('the OpenAPI document', () => {
         '/api/v1/menus/{id}',
         '/api/v1/notices',
         '/api/v1/notices/{key}/dismiss',
+        '/api/v1/oembed/preview',
         '/api/v1/public/cache/changes',
         '/api/v1/public/customize',
         '/api/v1/public/feed',

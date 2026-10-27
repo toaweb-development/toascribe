@@ -4,6 +4,7 @@
 import { z } from 'zod'
 
 import { ContentMediaRef } from './content.ts'
+import { InstanceHost } from './oembed.ts'
 import { structureProblem } from './permalinks.ts'
 import { CoreSettings } from './settings.ts'
 
@@ -103,11 +104,21 @@ export const UpdateReadingSettingsRequest = ReadingSettings.extend({
 export type UpdateReadingSettingsRequest = z.infer<typeof UpdateReadingSettingsRequest>
 
 /** «Innstillinger → Personvern» (K-198). */
-export const PrivacySettings = CoreSettings.pick({ wp_page_for_privacy_policy: true })
+export const PrivacySettings = CoreSettings.pick({
+  wp_page_for_privacy_policy: true,
+  embed_click_to_load: true,
+  oembed_mastodon_instances: true,
+})
 export type PrivacySettings = z.infer<typeof PrivacySettings>
 export const PrivacySettingsResponse = z.object({ settings: PrivacySettings })
 export type PrivacySettingsResponse = z.infer<typeof PrivacySettingsResponse>
-export const UpdatePrivacySettingsRequest = PrivacySettings.extend({ wp_page_for_privacy_policy: id.nullable() })
+export const UpdatePrivacySettingsRequest = PrivacySettings.extend({
+  wp_page_for_privacy_policy: id.nullable(),
+  oembed_mastodon_instances: z
+    .array(InstanceHost)
+    .max(50)
+    .transform((hosts) => [...new Set(hosts)].sort()),
+})
   .partial()
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one field' })

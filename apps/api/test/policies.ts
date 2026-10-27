@@ -60,6 +60,7 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'PUT /api/v1/menu-locations': 'capability:edit_theme_options',
   'GET /api/v1/global-sets': 'capability:edit_theme_options',
   'GET /api/v1/global-sets/choices': 'capability:edit_posts|edit_pages|edit_theme_options',
+  'POST /api/v1/oembed/preview': 'capability:edit_posts|edit_pages|edit_theme_options',
   'POST /api/v1/global-sets': 'capability:edit_theme_options',
   'GET /api/v1/global-sets/:id': 'capability:edit_theme_options',
   'PATCH /api/v1/global-sets/:id': 'capability:edit_theme_options',
