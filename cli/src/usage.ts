@@ -70,6 +70,27 @@ export const MAINTENANCE_USAGE = `  maintenance on [--message <text>] [--retry-a
                          --message as its text; accounts with manage_options see the site, and the api answers, so an administrator
                          can sign in and turn it off. A restore and a migration turn it on and off by themselves. Needs DATABASE_URL.`
 
+export const BACKUP_USAGE = `  backup create [--include-secrets] [--format table|json]
+                         One file in the backups volume (BACKUPS_DIR): the database, the uploads and a manifest with a sha256 per
+                         file, mode 0600. The keys are left out; --include-secrets keeps them, encrypted with age to [backup]
+                         recipient in toascribe.toml (refused without one). Needs DATABASE_URL.
+  backup list [--format table|json]
+                         The backups in the volume, newest first.
+  backup verify <file> [--identity <age key file>]
+                         Reads the whole backup and checks it against its manifest. Changes nothing.
+  backup prune [--keep <n>]
+                         Deletes all but the newest n backups (default [backup] keep, 7).
+  backup restore <file> [--identity <age key file>] [--dry-run] [--yes]
+                         Replaces the database and the uploads with the backup, after checking it whole. Refuses a backup from a
+                         newer toascribe; an older one is migrated up. Maintenance mode is on meanwhile and off afterwards, also on a
+                         failure. Asks first (or --yes). Needs MIGRATION_DATABASE_URL: docker compose run --rm migrate toa backup restore …`
+
+export const DB_MIGRATE_USAGE = `  db migrate [--no-backup]
+  core update [--no-backup]
+                         Run the migrations of this build. When they change a site that has data, a backup is made first (a failed
+                         backup stops it) and maintenance mode is on while they run. --no-backup skips the backup, with a warning.
+                         The migrate service runs this at every start. Needs MIGRATION_DATABASE_URL.`
+
 export const USAGE = `Usage: toa <command>
 
 Commands:
@@ -86,6 +107,8 @@ ${USER_RESET_LOGIN_LIMIT_USAGE}
 ${USER_MFA_RESET_USAGE}
 ${MEDIA_REGENERATE_USAGE}
 ${MAINTENANCE_USAGE}
+${BACKUP_USAGE}
+${DB_MIGRATE_USAGE}
 
 ${EXIT_CODES_USAGE}
 `

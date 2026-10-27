@@ -112,3 +112,47 @@ export function keyRingOf(config: KeyedDatabaseConfig): Promise<KeyRing> {
 export function namesSet(names: readonly string[], env: EnvSource = process.env): string[] {
   return names.filter((name) => (env[name] ?? '').trim() !== '')
 }
+
+/** Where backups are made and read (M1.7): the volumes and toascribe.toml, with the paths compose uses as defaults. */
+const BackupPaths = {
+  UPLOADS_DIR: z.string().startsWith('/').max(500).default('/var/lib/toascribe/uploads'),
+  BACKUPS_DIR: z.string().startsWith('/').max(500).default('/var/lib/toascribe/backups'),
+  TOASCRIBE_CONFIG_FILE: z.string().startsWith('/').max(500).default('/etc/toascribe/toascribe.toml'),
+}
+
+/**
+ * The keys a backup keeps with --include-secrets, as they are set (only read on that path, and only into an encrypted backup): the
+ * encryption key, its version and the older keys, and the signing key.
+ */
+const SecretValues = {
+  TOASCRIBE_ENCRYPTION_KEY: z.string().default(''),
+  TOASCRIBE_ENCRYPTION_KEY_VERSION: z.string().default(''),
+  TOASCRIBE_ENCRYPTION_OLD_KEYS: z.string().default(''),
+  TOASCRIBE_SIGNING_KEY: z.string().default(''),
+}
+
+const BackupEnv = AppDatabaseEnv.extend(BackupPaths)
+export type BackupConfig = z.infer<typeof BackupEnv>
+
+/** `toa backup create|list|verify|prune`: the app role's URL and the paths. */
+export function loadBackupConfig(env: EnvSource = process.env): BackupConfig {
+  const parsed = BackupEnv.safeParse(env)
+  if (!parsed.success) throw new ConfigError(parsed.error.issues)
+  return parsed.data
+}
+
+const OwnerBackupEnv = DatabaseEnv.extend(BackupPaths)
+export type OwnerBackupConfig = z.infer<typeof OwnerBackupEnv>
+
+/** `toa backup restore`, `toa db migrate` and `toa core update`: the owner role's URL (the migrate service) and the paths. */
+export function loadOwnerBackupConfig(env: EnvSource = process.env): OwnerBackupConfig {
+  const parsed = OwnerBackupEnv.safeParse(env)
+  if (!parsed.success) throw new ConfigError(parsed.error.issues)
+  return parsed.data
+}
+
+/** The keys for --include-secrets, as set; the empty ones left out. */
+export function loadSecretValues(env: EnvSource = process.env): Record<string, string> {
+  const parsed = z.object(SecretValues).parse(env)
+  return Object.fromEntries(Object.entries(parsed).filter(([, value]) => value !== ''))
+}

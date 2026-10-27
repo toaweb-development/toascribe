@@ -88,6 +88,17 @@ const urlBase = z
   .regex(/^[^\s?#]*$/)
   .max(200)
 
+/** The last backup (M1.7, K-292), for Nettstedshelse: when, which file, how big, and whether it worked (with the reason, no path). */
+export const LastBackupStatus = z.object({
+  at: z.iso.datetime(),
+  ok: z.boolean(),
+  file: z.string().max(200).nullable(),
+  size: z.int().nonnegative().nullable(),
+  error: z.string().max(500).nullable(),
+  scheduled: z.boolean(),
+})
+export type LastBackupStatus = z.infer<typeof LastBackupStatus>
+
 /** Maintenance mode as stored (K-288): on or off, the message for visitors, how long to wait (seconds), and since when. */
 export const MaintenanceMode = z.object({
   enabled: z.boolean(),
@@ -152,6 +163,8 @@ export const CoreSettings = z.object({
    * the site. Set by `toa maintenance`, and by a restore or a migration while it runs.
    */
   maintenance_mode: MaintenanceMode,
+  /** The last backup made (M1.7): the CLI and the worker write it; Nettstedshelse shows it. */
+  backup_status: LastBackupStatus.nullable(),
 
   // Settings → Discussion
   default_comment_status: z.enum(COMMENT_STATUS),
@@ -332,6 +345,7 @@ export const CORE_SETTINGS: CoreSettings = {
   seo_publisher_person: null,
 
   maintenance_mode: { enabled: false, message: '', retryAfter: 600, since: null },
+  backup_status: null,
 
   // Discussion
   default_comment_status: 'open', // Tor and WordPress

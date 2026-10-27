@@ -2,6 +2,7 @@
 // set (docs/PLAN.md, «toa-CLI») grows with the features it operates on.
 import { coreGenEnv, coreInstall, coreIsInstalled, coreSetupToken } from './commands/core.ts'
 import { devSeedTom } from './commands/dev-seed.ts'
+import { backup, dbMigrate } from './commands/backup.ts'
 import { maintenance } from './commands/maintenance.ts'
 import { mediaRegenerate } from './commands/media.ts'
 import { userCreate, userMfaReset, userResetLoginLimit, userResetPassword } from './commands/user.ts'
@@ -41,6 +42,15 @@ export async function run(argv: readonly string[], version: string, options: Com
   }
   if (command === 'core' && rest[0] === 'install') {
     return await coreInstall(rest.slice(1), options)
+  }
+  if (command === 'backup') {
+    return await backup(rest, options)
+  }
+  if (command === 'db' && rest[0] === 'migrate') {
+    return await dbMigrate(rest.slice(1), options)
+  }
+  if (command === 'core' && rest[0] === 'update') {
+    return await dbMigrate(rest.slice(1), options, 'core update')
   }
   if (command === 'maintenance') {
     return await maintenance(rest, options)

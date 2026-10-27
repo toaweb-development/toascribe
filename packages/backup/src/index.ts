@@ -9,3 +9,4 @@ export { ARCHIVE_NAME, Manifest, archiveName, compareVersions, isArchivePath } f
 export { APP_ROLE, checkBackup, discardChecked, restoreBackup } from './restore.ts'
 export type { CheckedBackup, RestoreOptions, RestoredBackup } from './restore.ts'
 export { ToolError } from './tools.ts'
+export { recordBackupStatus, statusReason } from './status.ts'
