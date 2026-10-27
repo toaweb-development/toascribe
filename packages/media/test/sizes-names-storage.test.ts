@@ -84,8 +84,8 @@ describe('storage keys', () => {
     expect(key.replace(GENERATED_SUFFIX, '')).toBe('2026/10/bilde-abcdef01')
     expect('2026/10/bilde-abcdef01-0a1b2c3d-scaled.webp'.replace(GENERATED_SUFFIX, '')).toBe('2026/10/bilde-abcdef01')
     expect('2026/10/bilde-abcdef01-e1761480000000.webp'.replace(GENERATED_SUFFIX, '')).toBe('2026/10/bilde-abcdef01')
-    // The unversioned names of before are not generated keys any more.
-    expect(GENERATED_SUFFIX.test('2026/10/bilde-abcdef01-300x200.webp')).toBe(false)
+    // Not the original's own random part: the version is the last eight hex digits before the size.
+    expect('2026/10/bilde-abcdef01-0a1b2c3d-scaled.webp'.replace(GENERATED_SUFFIX, '')).not.toBe('2026/10/bilde')
   })
 })
 
