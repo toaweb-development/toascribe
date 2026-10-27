@@ -358,7 +358,7 @@ export function createSettingsService(options: {
         const [ref] = await options.media.contentRefs({ id: auth.account.id, capabilities: auth.capabilities }, [
           imageId,
         ])
-        if (ref === undefined || !ref.mime.startsWith('image/')) throw invalid(key, 'an image from the media library')
+        if (ref?.mime.startsWith('image/') !== true) throw invalid(key, 'an image from the media library')
       }
       if (
         request.seo_publisher_person !== undefined &&
