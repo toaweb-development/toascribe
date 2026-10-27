@@ -788,7 +788,8 @@
     "spacer": "Mellomrom",
     "more": "Les mer",
     "nextpage": "Sideskift",
-    "html": "Egendefinert HTML"
+    "html": "Egendefinert HTML",
+    "query": "Query Loop"
   },
   "content": {
     "posts": {
@@ -1273,6 +1274,7 @@
     "sidebar": "Innstillinger",
     "unknownBlock": "Blokken «{name}» kan ikke redigeres her.",
     "previewSaveFirst": "Forhåndsvisningen viser den lagrede versjonen. Oppdater for å se endringene.",
+    "previewFailed": "Fikk ikke laget forhåndsvisningen. Prøv igjen.",
     "trashConfirm": "Innholdet flyttes til papirkurven. Du kan gjenopprette det derfra.",
     "actions": {
       "schedule": "Planlegg",
@@ -1439,6 +1441,33 @@
       "slash": "Velg blokk i et tomt avsnitt",
       "lineBreak": "Linjeskift",
       "indent": "Rykk inn eller ut i en liste"
+    },
+    "query": {
+      "posts": "{n} innlegg",
+      "pages": "{n} sider",
+      "newest": "De nyeste:",
+      "oldest": "De eldste:",
+      "byTitle": "Etter tittel:",
+      "inCategory": "i kategorien «{slug}»",
+      "withTag": "med stikkordet «{slug}»",
+      "empty": "Ingenting publisert å vise ennå.",
+      "failed": "Fikk ikke hentet innleggene. Nettstedet viser dem likevel.",
+      "untitled": "(uten tittel)",
+      "type": "Innholdstype",
+      "perPage": "Antall",
+      "category": "Kategori",
+      "allCategories": "Alle kategorier",
+      "tag": "Stikkord (kortnavn)",
+      "order": "Rekkefølge",
+      "orderNewest": "Nyeste først",
+      "orderOldest": "Eldste først",
+      "orderTitle": "Tittel A–Å",
+      "sticky": "Klistrede innlegg",
+      "stickyInclude": "Ta med",
+      "stickyExclude": "Utelat",
+      "stickyFirst": "Først",
+      "showDate": "Vis dato",
+      "showExcerpt": "Vis utdrag"
     }
   }
 }

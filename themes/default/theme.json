@@ -1,0 +1,13 @@
+{
+  "$schema": "https://toascribe.dev/schema/theme.json",
+  "name": "toascribe standard",
+  "slug": "default",
+  "version": "0.6.0",
+  "description": "Standardtemaet: lett å lese, WCAG 2.2 AA, med innleggsliste, enkeltinnlegg, sider, arkiver, søk og 404.",
+  "author": "toascribe",
+  "license": "MIT",
+  "requires": { "themeApi": 1 },
+  "menus": { "primary": "Hovedmeny", "footer": "Bunnmeny" },
+  "supports": { "headingLevels": [2, 3, 4, 5, 6], "featuredImage": true },
+  "templates": [{ "slug": "full-width", "name": "Full bredde", "types": ["page"] }]
+}

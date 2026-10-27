@@ -1,3 +1,4 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 @import './tokens/colors.css';
+@import './site.css';

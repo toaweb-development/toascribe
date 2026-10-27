@@ -1,0 +1,236 @@
+/*
+ * The default theme's look (M1.4): the frame, the lists, the core components (scribe-*) and, through the block views' own
+ * stylesheet, every core block. Plain CSS on the class contract of themeApi 1, with Nuxt UI's colour tokens (no colours of its
+ * own), so text keeps 4.5:1 and a focus ring is always visible (WCAG 2.2 AA: 1.4.3, 2.4.7, 2.4.11; targets 2.5.8).
+ */
+.theme-site {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+.theme-wrap {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+.theme-main {
+  flex: 1;
+  padding-block: 2rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+.theme-main:focus {
+  outline: none;
+}
+.theme-site a {
+  color: var(--ui-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+.theme-site :focus-visible {
+  outline: 2px solid var(--ui-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.theme-skip {
+  position: absolute;
+  left: 0.5rem;
+  top: -10rem;
+  z-index: 50;
+  padding: 0.5rem 1rem;
+  background: var(--ui-bg);
+  border: 2px solid var(--ui-primary);
+}
+.theme-skip:focus {
+  top: 0.5rem;
+}
+.theme-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.theme-header {
+  border-bottom: 1px solid var(--ui-border);
+  padding-block: 1.25rem;
+}
+.theme-header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.theme-site a.theme-site-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ui-text-highlighted);
+  text-decoration: none;
+}
+.theme-tagline,
+.theme-meta,
+.theme-note,
+.theme-tags {
+  color: var(--ui-text-muted);
+}
+.theme-meta,
+.theme-tags {
+  font-size: 0.9rem;
+}
+.theme-footer {
+  border-top: 1px solid var(--ui-border);
+  padding-block: 1.5rem;
+  color: var(--ui-text-muted);
+  font-size: 0.9rem;
+}
+.theme-entry,
+.theme-listing,
+.theme-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.theme-listing {
+  gap: 2.5rem;
+}
+.theme-entry-title {
+  font-size: clamp(1.75rem, 1.2rem + 2.5vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ui-text-highlighted);
+}
+.theme-summary-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.theme-preview {
+  align-self: flex-start;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--ui-border-accented);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+/* The core components (site-core). */
+.scribe-toolbar {
+  background: var(--ui-bg-inverted);
+  color: var(--ui-text-inverted);
+  font-size: 0.9rem;
+}
+.scribe-toolbar ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  max-width: 64rem;
+  margin-inline: auto;
+  padding: 0.25rem 1rem;
+}
+.scribe-toolbar li {
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+}
+.theme-site .scribe-toolbar a {
+  color: inherit;
+}
+.scribe-toolbar-account {
+  margin-inline-start: auto;
+}
+.scribe-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.scribe-search label,
+.scribe-password label {
+  font-weight: 600;
+}
+.scribe-search input,
+.scribe-password input {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ui-border-accented);
+  border-radius: 0.375rem;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+.scribe-search button,
+.scribe-password button {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background: var(--ui-primary);
+  color: var(--ui-bg);
+  font-weight: 600;
+  cursor: pointer;
+}
+.scribe-password {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.5rem;
+}
+.scribe-password-message:empty {
+  display: none;
+}
+.scribe-pagination,
+.scribe-page-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.scribe-pagination ul,
+.scribe-page-links ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.scribe-pagination :where(a, span),
+.scribe-page-links :where(a, span) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: 0.5rem;
+}
+.scribe-pagination [aria-current],
+.scribe-page-links [aria-current] {
+  font-weight: 700;
+}
+
+/* «Full bredde»: the blocks may use the screen's width. */
+.theme-entry.is-wide .blocks {
+  width: min(64rem, calc(100vw - 2rem));
+  margin-inline: calc((min(64rem, calc(100vw - 2rem)) - 100%) / -2);
+}
+
+/* The Query Loop (K-085): a list of items with their dates and excerpts. */
+.block-query {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.block-query-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.block-query-title {
+  font-weight: 600;
+}
+.block-query time,
+.block-query.is-empty {
+  color: var(--ui-text-muted);
+  font-size: 0.9rem;
+}

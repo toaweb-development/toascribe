@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { BlockDefinition, CORE_BLOCKS, canContain, getBlockDefinition, insertableBlocks } from '../src/index.ts'
 
 describe('the core block.json files', () => {
-  it('are the basic set of M1.3, each valid against the definition schema', () => {
+  it('are the basic set of M1.3 and the Query Loop of M1.4, each valid against the definition schema', () => {
     expect(CORE_BLOCKS.map((block) => block.name)).toEqual([
       'core/paragraph',
       'core/heading',
@@ -25,6 +25,7 @@ describe('the core block.json files', () => {
       'core/more',
       'core/nextpage',
       'core/html',
+      'core/query',
     ])
     for (const block of CORE_BLOCKS) {
       expect(BlockDefinition.safeParse(block).success).toBe(true)

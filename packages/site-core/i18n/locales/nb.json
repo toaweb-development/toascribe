@@ -1,0 +1,42 @@
+{
+  "scribe": {
+    "head": {
+      "date": "Arkiv: {date}",
+      "search": "Søk etter «{query}»",
+      "notFound": "Fant ikke siden"
+    },
+    "toolbar": {
+      "label": "Verktøylinje",
+      "dashboard": "Kontrollpanel",
+      "edit": "Rediger",
+      "logout": "Logg ut"
+    },
+    "pagination": {
+      "label": "Sider",
+      "previous": "Forrige",
+      "next": "Neste",
+      "page": "Side {page}"
+    },
+    "pages": {
+      "label": "Sider i innlegget"
+    },
+    "search": {
+      "label": "Søk",
+      "submit": "Søk"
+    },
+    "more": "Les mer",
+    "password": {
+      "intro": "Dette innholdet er passordbeskyttet. Skriv inn passordet for å se det.",
+      "label": "Passord",
+      "submit": "Åpne",
+      "wrong": "Passordet er feil.",
+      "wait": "For mange forsøk. Vent litt og prøv igjen.",
+      "failed": "Fikk ikke kontakt. Prøv igjen."
+    },
+    "preview": "Forhåndsvisning",
+    "query": {
+      "untitled": "(uten tittel)",
+      "empty": "Ingen innlegg å vise."
+    }
+  }
+}

@@ -8,7 +8,7 @@
 // and the site load without a Vue compiler, and each function is tested on its own with the server renderer (test/views.test.ts).
 // A theme overrides a block's view in M1.4 (PLAN «Regler for blokker» 6); the class names here are the contract it styles.
 import { h } from 'vue'
-import type { VNode, VNodeChild } from 'vue'
+import type { Component, VNode, VNodeChild } from 'vue'
 
 import type { Block, InlineMark, InlineNode } from '@toascribe/blocks'
 import {
@@ -27,6 +27,7 @@ import {
   MORE,
   NEXTPAGE,
   PARAGRAPH,
+  QUERY,
   PREFORMATTED,
   QUOTE,
   SEPARATOR,
@@ -48,6 +49,18 @@ export interface ViewContext {
    * be every signed-in viewer's session; it never asks for `raw`.
    */
   readonly html?: 'raw' | 'source'
+  /**
+   * A theme's own views (M1.4, Tor's decision): `blocks/<name>/View.vue` of the theme, by block type. Each gets the props
+   * `block` and `context` (this object) and draws the block itself; it may call renderBlock for the children. A block without one
+   * is drawn by the core view below, whose class names are the contract under `themeApi: 1`.
+   */
+  readonly views?: ReadonlyMap<string, Component>
+}
+
+/** The props a theme's block view gets. */
+export interface BlockViewProps {
+  readonly block: Block
+  readonly context: ViewContext
 }
 
 function text(block: Block, key: string): string {
@@ -199,6 +212,10 @@ function buttonView(block: Block): VNode {
 
 /** One block as HTML, or null for a block that shows nothing here (an image without a file, «Les mer», a page break). */
 export function renderBlock(block: Block, context: ViewContext): VNode | null {
+  const own = context.views?.get(block.type)
+  if (own !== undefined) {
+    return h(own, { key: block.id, block, context } satisfies BlockViewProps & { key: string })
+  }
   switch (block.type) {
     case PARAGRAPH:
       return h('p', null, renderInline(inline(block, 'content')))
@@ -258,6 +275,10 @@ export function renderBlock(block: Block, context: ViewContext): VNode | null {
     case NEXTPAGE:
       // «Les mer» marks where an archive's excerpt ends and a page break where a page ends (K-107, K-227): the site uses them when
       // it lists or pages a post (M1.4). In the whole post they show nothing.
+      return null
+    case QUERY:
+      // The Query Loop (K-085) lists what is published when the page is shown: the site draws it with its view, which reads the items
+      // (site-core). Without them there is nothing to draw.
       return null
     case HTML:
       if (context.html !== 'raw') {

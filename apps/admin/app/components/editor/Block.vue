@@ -18,6 +18,7 @@ import {
   EditorBlocksNextpage,
   EditorBlocksParagraph,
   EditorBlocksPreformatted,
+  EditorBlocksQuery,
   EditorBlocksQuote,
   EditorBlocksSeparator,
   EditorBlocksSpacer,
@@ -50,6 +51,7 @@ const EDIT: Readonly<Record<string, Component>> = {
   'core/more': EditorBlocksMore,
   'core/nextpage': EditorBlocksNextpage,
   'core/html': EditorBlocksHtml,
+  'core/query': EditorBlocksQuery,
 }
 
 const editor = useBlockEditorContext()

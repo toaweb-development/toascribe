@@ -28,6 +28,7 @@ export function useBlockText() {
     'core/more': () => t('blocks.more'),
     'core/nextpage': () => t('blocks.nextpage'),
     'core/html': () => t('blocks.html'),
+    'core/query': () => t('blocks.query'),
   }
 
   const issues: Readonly<Record<ValidationIssue['code'] | PermissionIssueCode, () => string>> = {

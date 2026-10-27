@@ -16,6 +16,7 @@ import moreJson from './more/block.json' with { type: 'json' }
 import nextpageJson from './nextpage/block.json' with { type: 'json' }
 import paragraphJson from './paragraph/block.json' with { type: 'json' }
 import preformattedJson from './preformatted/block.json' with { type: 'json' }
+import queryJson from './query/block.json' with { type: 'json' }
 import quoteJson from './quote/block.json' with { type: 'json' }
 import separatorJson from './separator/block.json' with { type: 'json' }
 import spacerJson from './spacer/block.json' with { type: 'json' }
@@ -42,6 +43,7 @@ export const SPACER = 'core/spacer'
 export const MORE = 'core/more'
 export const NEXTPAGE = 'core/nextpage'
 export const HTML = 'core/html'
+export const QUERY = 'core/query'
 
 /** Parsed when the module loads: a block.json that does not fit the definition schema stops the api and the editor at once. */
 export const CORE_BLOCKS: readonly BlockDefinition[] = [
@@ -65,6 +67,7 @@ export const CORE_BLOCKS: readonly BlockDefinition[] = [
   moreJson,
   nextpageJson,
   htmlJson,
+  queryJson,
 ].map((json) => BlockDefinition.parse(json))
 
 const BY_NAME = new Map(CORE_BLOCKS.map((definition) => [definition.name, definition]))

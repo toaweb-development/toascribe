@@ -1,0 +1,9 @@
+{
+  "name": "Forelder",
+  "slug": "forelder",
+  "version": "1.0.0",
+  "requires": { "themeApi": 1 },
+  "supports": { "headingLevels": [2, 3, 4] },
+  "menus": { "primary": "Hovedmeny" },
+  "templates": [{ "slug": "full-width", "name": "Full bredde", "types": ["page"] }]
+}

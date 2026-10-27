@@ -101,11 +101,14 @@ services:
     environment:
       # Where server-side rendering reaches the api (runtimeConfig.apiUrlInternal).
       NUXT_API_URL_INTERNAL: http://api:3001
+      # The shared data cache in Valkey (the `valkey` profile), e.g. redis://valkey:6379. Empty: the site caches in its own memory.
+      NUXT_CACHE_VALKEY_URL: ${TOASCRIBE_CACHE_VALKEY_URL:-}
     read_only: true
     tmpfs:
       - /tmp
     networks:
       - internal
+      - cache
     depends_on:
       api:
         condition: service_healthy
@@ -326,8 +329,8 @@ services:
         limits:
           memory: 1G
 
-  # Optional cache and queue backend. Off by default and not used by the apps yet:
-  #   docker compose --profile valkey up -d      (or COMPOSE_PROFILES=valkey in .env)
+  # Optional shared cache of the site's data (M1.4), for several site instances. Off by default; one instance caches in memory:
+  #   docker compose --profile valkey up -d      (or COMPOSE_PROFILES=valkey in .env), with TOASCRIBE_CACHE_VALKEY_URL set
   valkey:
     <<: *hardened
     profiles:
@@ -335,12 +338,26 @@ services:
     image: valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
     # Start as the valkey user (uid 999) so the entrypoint needs no capabilities. A cache: nothing is saved to disk.
     user: '999:1000'
-    command: ['valkey-server', '--save', '', '--appendonly', 'no']
+    # A memory cap below the container's limit, and eviction of entries only: they have a lifetime, the tag versions have none. Losing a
+    # tag version would turn it back to its first value and make an older entry look current (site-core server/utils/data-cache.ts).
+    command:
+      [
+        'valkey-server',
+        '--save',
+        '',
+        '--appendonly',
+        'no',
+        '--maxmemory',
+        '200mb',
+        '--maxmemory-policy',
+        'volatile-lru',
+      ]
     read_only: true
     tmpfs:
       - /data
+    # Only the site reaches it (the `cache` network); it has no password, so it is on no network the other apps share.
     networks:
-      - db
+      - cache
     healthcheck:
       test: ['CMD', 'valkey-cli', 'ping']
       interval: 10s
@@ -401,8 +418,11 @@ networks:
         - subnet: ${TOASCRIBE_EDGE_SUBNET:-10.231.97.0/24}
   # The apps talk to each other here.
   internal: {}
-  # Postgres and valkey live here and nowhere else. `internal: true`: no route out of the network.
+  # Postgres lives here and nowhere else. `internal: true`: no route out of the network.
   db:
+    internal: true
+  # The site and its optional Valkey cache.
+  cache:
     internal: true
 
 volumes:

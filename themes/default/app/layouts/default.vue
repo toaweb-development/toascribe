@@ -1,0 +1,31 @@
+<script setup lang="ts">
+// The frame around every template: a skip link, the core's head (ScribeHead: title, description, the toolbar), the site's name and
+// tagline, the search, the content, and the core's footer (ScribeFooter). Landmarks: banner, main, contentinfo (WCAG 1.3.1, 2.4.1).
+const { t } = useI18n()
+const settings = useSettings()
+</script>
+
+<template>
+  <div class="theme-site">
+    <a href="#innhold" class="theme-skip">{{ t('theme.skip') }}</a>
+    <ScribeHead />
+    <header class="theme-header">
+      <div class="theme-wrap theme-header-inner">
+        <div>
+          <a href="/" class="theme-site-title">{{ settings?.title || t('brand.name') }}</a>
+          <p v-if="settings?.tagline" class="theme-tagline">{{ settings.tagline }}</p>
+        </div>
+        <ScribeSearchForm />
+      </div>
+    </header>
+    <main id="innhold" class="theme-wrap theme-main" tabindex="-1">
+      <slot />
+    </main>
+    <footer class="theme-footer">
+      <div class="theme-wrap">
+        <p>{{ settings?.title ? t('theme.footer', { site: settings.title }) : t('theme.poweredBy') }}</p>
+      </div>
+      <ScribeFooter />
+    </footer>
+  </div>
+</template>

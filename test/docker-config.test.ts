@@ -305,6 +305,17 @@ describe('docker/.env.example', () => {
   })
 })
 
+describe('the valkey cache (M1.4)', () => {
+  it('caps its memory and evicts only entries with a lifetime, never the tag versions', () => {
+    const service = compose.slice(compose.indexOf('\n  valkey:'), compose.indexOf('\n  valkey:') + 5000)
+    const command = /command:\s*\[([^\]]*)\]/.exec(service)?.[1] ?? ''
+    const args = [...command.matchAll(/'([^']*)'/g)].map((match) => match[1])
+    expect(args[args.indexOf('--maxmemory') + 1]).toMatch(/^\d+mb$/)
+    expect(args[args.indexOf('--maxmemory-policy') + 1]).toBe('volatile-lru')
+    expect(service).not.toMatch(/allkeys-/)
+  })
+})
+
 describe('docker/proxy/Caddyfile', () => {
   it('writes each handle block on several lines', () => {
     // `handle /x { reverse_proxy … }` on one line does not parse (caddy validate: "Unexpected next token after '{'").

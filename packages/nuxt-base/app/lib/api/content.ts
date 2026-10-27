@@ -1,4 +1,10 @@
-import { ContentAuthorsResponse, ContentBulkResponse, ContentItem, ContentListResponse } from '@toascribe/shared'
+import {
+  ContentAuthorsResponse,
+  ContentBulkResponse,
+  ContentItem,
+  ContentListResponse,
+  PreviewLinkResponse,
+} from '@toascribe/shared'
 import type {
   ContentBulkRequest,
   ContentListQueryInput,
@@ -68,6 +74,9 @@ export function createContentApi(api: ApiCall) {
     publish: async (id: string) => ContentItem.parse(await api(`${item(id)}/publish`, { method: 'POST' })),
     trash: async (id: string) => ContentItem.parse(await api(`${item(id)}/trash`, { method: 'POST' })),
     restore: async (id: string) => ContentItem.parse(await api(`${item(id)}/restore`, { method: 'POST' })),
+    /** A signed address on the site that shows the item as stored, for a while (K-071). */
+    previewLink: async (id: string) =>
+      PreviewLinkResponse.parse(await api(`${item(id)}/preview-link`, { method: 'POST' })),
     /** Deletes a trashed item for good. */
     remove: async (id: string) => {
       await api(item(id), { method: 'DELETE' })

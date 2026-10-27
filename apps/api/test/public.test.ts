@@ -404,6 +404,30 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the public API (needs TEST_DAT
     })
   })
 
+  describe('the link references (content_ref)', () => {
+    it('are written on save and replaced when the links change', async () => {
+      const linked = (href: string) =>
+        createBlock('core/paragraph', {
+          content: [{ type: 'text', text: 'lenke', marks: [{ type: 'link', attrs: { href } }] }],
+        })
+      const post = await create(author, {
+        type: 'post',
+        title: 'Med lenker',
+        blocks: [linked('/hei/'), linked('https://example.no/')],
+      })
+      const refs = async () =>
+        (
+          await env.query<{ target_url: string }>(
+            `select target_url from content_ref where content_id = $1 and kind = 'link' order by target_url`,
+            [post.id],
+          )
+        ).map((row) => row.target_url)
+      expect(await refs()).toEqual(['/hei/', 'https://example.no/'])
+      expect((await author.patch(`/api/v1/content/${post.id}`, { blocks: [linked('/om/')] })).status).toBe(200)
+      expect(await refs()).toEqual(['/om/'])
+    })
+  })
+
   describe('the cache changes', () => {
     async function changes(since?: string): Promise<CacheChanges> {
       const query = since === undefined ? '' : `?since=${since}`

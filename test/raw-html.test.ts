@@ -14,6 +14,7 @@ const DIRS = [
   'apps/site/app',
   'apps/admin/app',
   'themes/default/app',
+  'packages/site-core/app',
   'packages/block-views/src',
 ]
 

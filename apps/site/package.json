@@ -3,7 +3,7 @@
   "version": "0.6.0",
   "private": true,
   "type": "module",
-  "description": "The public site: a Nuxt 4 app that renders content through the active theme layer.",
+  "description": "The public site: a Nuxt 4 app that extends the theme chosen in toascribe.toml (a theme layer on @toascribe/site-core).",
   "scripts": {
     "dev": "nuxt dev --port 3000",
     "start": "node .output/server/index.mjs",
@@ -22,6 +22,7 @@
   "devDependencies": {
     "@nuxt/eslint": "catalog:",
     "eslint": "catalog:",
+    "smol-toml": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:"

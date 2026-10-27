@@ -1,0 +1,29 @@
+{
+  "theme": {
+    "skip": "Hopp til innholdet",
+    "footer": "{site} · drevet av toascribe",
+    "poweredBy": "Drevet av toascribe",
+    "by": "av",
+    "in": "i",
+    "tags": "Stikkord:",
+    "untitled": "(uten tittel)",
+    "protected": "Dette innholdet er passordbeskyttet.",
+    "latest": "Siste innlegg",
+    "empty": "Ingen innlegg her ennå.",
+    "archive": {
+      "category": "Kategori: {name}",
+      "tag": "Stikkord: {name}",
+      "author": "Forfatter: {name}",
+      "date": "Arkiv: {date}"
+    },
+    "search": {
+      "heading": "Søk etter «{query}»",
+      "count": "Ingen treff | Ett treff | {count} treff"
+    },
+    "notFound": {
+      "heading": "Fant ikke siden",
+      "text": "Adressen finnes ikke, eller innholdet er flyttet. Prøv et søk.",
+      "home": "Til forsiden"
+    }
+  }
+}

@@ -1,12 +1,41 @@
-// The default theme is a Nuxt layer. It brings the global stylesheet and the components of the public pages, and it
-// extends @toascribe/nuxt-base, which holds what the site shares with the admin (Nuxt UI, i18n, the API layer,
-// runtime config, head basics). Layers listed first win, so an app setting beats the theme and the theme beats the base.
-export default defineNuxtConfig({
-  extends: ['@toascribe/theme-default'],
+// The public site (M1.4). It extends the theme chosen in toascribe.toml (`[site] theme`), a folder under themes/ with a theme.json;
+// the theme extends @toascribe/site-core (the theme SDK and the catch-all route), which extends @toascribe/nuxt-base. A child theme
+// extends its parent's folder itself. Layers listed first win, so a setting here beats the theme and the theme beats the core.
+import { existsSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
-  // The app's own messages (i18n/locales/nb.json): a layer's messages are only read when the layer lists the file. The
-  // first layer's `language` wins when the module merges the entries of one code, so it is repeated here.
-  i18n: { locales: [{ code: 'nb', language: 'nb', file: 'nb.json' }] },
+import { parse } from 'smol-toml'
+
+const ROOT = new URL('../../', import.meta.url)
+
+/** The theme's folder from toascribe.toml; the build stops with a message when it is missing or names no theme. */
+function chosenTheme(): string {
+  const file = fileURLToPath(new URL('toascribe.toml', ROOT))
+  const config = existsSync(file) ? parse(readFileSync(file, 'utf8')) : {}
+  const site = config['site']
+  const slug = typeof site === 'object' && site !== null && 'theme' in site ? site.theme : 'default'
+  if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) {
+    throw new Error(
+      `toascribe.toml: [site] theme must be the slug of a folder under themes/ (got ${JSON.stringify(slug)})`,
+    )
+  }
+  const folder = fileURLToPath(new URL(`themes/${slug}`, ROOT))
+  if (!existsSync(`${folder}/theme.json`)) {
+    throw new Error(`toascribe.toml: the theme «${slug}» has no themes/${slug}/theme.json`)
+  }
+  // The image installs only what the site depends on, so the theme must be one of its dependencies.
+  const manifest = JSON.parse(readFileSync(fileURLToPath(new URL('package.json', import.meta.url)), 'utf8')) as {
+    dependencies?: Record<string, string>
+  }
+  const name = (JSON.parse(readFileSync(`${folder}/package.json`, 'utf8')) as { name?: string }).name ?? ''
+  if (manifest.dependencies?.[name] === undefined) {
+    throw new Error(`toascribe.toml: the theme «${slug}» (${name}) must be a dependency of apps/site (package.json)`)
+  }
+  return folder
+}
+
+export default defineNuxtConfig({
+  extends: [chosenTheme()],
 
   // The site's part of the security headers (K-314); the nonce CSP and the rest are in nuxt-base. What is different here:
   // - `img-src` takes any https image: themes and posts show pictures from other hosts (an avatar, an embedded post's
@@ -15,6 +44,7 @@ export default defineNuxtConfig({
   // - `frame-ancestors 'none'`: nobody frames the site, the admin included, until the live preview of «Tilpass» (PLAN, phase 3)
   //   needs it (Tor's decision, M0.4). Then it becomes 'self' (admin and site share one origin behind Caddy) together with
   //   `X-Frame-Options: SAMEORIGIN`, and the site e2e changes with it. `X-Frame-Options: DENY` says the same to old browsers.
+  // - The custom HTML block is written as markup on the site (Tor's decision, M1.4; SECURITY.md): only unfiltered_html writes one.
   security: {
     headers: {
       contentSecurityPolicy: {
