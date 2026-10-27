@@ -20,6 +20,13 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- Updates (K-290): «Kontrollpanel → Oppdateringer» shows the version that runs, the newest release and a link to what is new, and
+  the command to update on the host (the admin cannot update containers). The worker looks once a day (`toa check-update` at once):
+  a plain GET of the public image tags on ghcr.io with `User-Agent: toascribe`, nothing about the site. Off on the page, or on the
+  server with the new `TOASCRIBE_UPDATE_CHECK=off`.
+- «Verktøy → Nettstedshelse → Info» (K-203): the version and last migration, the server, the database, the cache, the worker and its
+  queues, the site, the media library, the last backup and the update check, with «Kopier til utklippstavlen» for support (e-mail
+  addresses, addresses, paths and anything that looks like a key are replaced by `[skjult]`).
 - Backups (K-292, K-293): `toa backup create|list|verify|prune|restore`. A backup is one `.tar.zst` file with the database, the
   uploads and a manifest with a sha256 per part, mode 0600, in the new `backups` volume. Secrets are left out unless
   `--include-secrets`, which needs an age public key in `toascribe.toml` and encrypts the file; `encrypt = true` encrypts every

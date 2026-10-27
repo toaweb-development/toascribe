@@ -119,7 +119,9 @@ docker compose up -d
   An encrypted backup is read with `--identity <file>` (the age private key, mounted into the container).
 - **A restore** checks every sha256 and the manifest before anything changes, refuses a backup from a newer version, migrates
   an older one up, keeps the site in maintenance mode while it runs and turns it back off after, also when it fails.
-- **Updates.** `migrate` runs `toa db migrate`: when a migration is pending on a site with content, it makes a backup first
+- **Updates.** «Kontrollpanel → Oppdateringer» says when a new release is out (the worker asks ghcr.io once a day for the public
+  image tags, sending nothing about the site; `TOASCRIBE_UPDATE_CHECK=off` stops it). Update on the host with
+  `docker compose pull && docker compose up -d`. `migrate` runs `toa db migrate`: when a migration is pending on a site with content, it makes a backup first
   and stops if that fails. `toa db migrate --no-backup` (or `toa core update --no-backup`) skips it, with a warning.
 
 ## Installer uten å klone repoet
