@@ -32,6 +32,7 @@
   "devDependencies": {
     "@nuxt/eslint": "catalog:",
     "eslint": "catalog:",
+    "jsdom": "catalog:",
     "nuxt": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",

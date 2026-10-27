@@ -571,6 +571,7 @@ export function createPublicService(options: {
         postsPagePath: postsPage === undefined ? null : await pathOf(postsPage, settings),
         searchEngineVisible: settings.blog_public,
         privacyPolicyPath: privacyPage === undefined ? null : await pathOf(privacyPage, settings),
+        origin: options.publicOrigin.replace(/\/+$/, ''),
         // `list:page`: a chosen page that is published later (or unpublished) changes these addresses too.
         cacheTags: [
           'settings',

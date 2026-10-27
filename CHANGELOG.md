@@ -20,6 +20,15 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- RSS 2.0 as in WordPress (K-222): the site's `/feed/`, and a feed under every category (with its parents), tag and author
+  address (`/category/<sti>/feed/`, `/tag/<slug>/feed/`, `/author/<navn>/feed/`, following the permalink bases). The number of
+  items and the whole text or the excerpt come from «Lesing». A password-protected post has its title and link only; private,
+  draft and scheduled posts are never in a feed. Each page names its feeds in its head.
+- `/sitemap.xml` (K-223): an index of the posts, pages, categories, tags and authors, 2000 addresses to a file, without
+  password-protected or «noindex» content and without empty terms; it is not there when the site asks search engines not to
+  index it.
+- `/robots.txt` (K-223): keeps crawlers out of `/admin/` and names the sitemap, or shuts everything when the site asks not to be
+  indexed, as WordPress does.
 - «Utseende → Tilpass» (K-150, K-151), as WordPress' Customizer: the site's title, tagline, logo and icon, the active theme's
   colours and fonts (each theme keeps its own), the front page and «Ekstra CSS», with a preview of the site beside the panel that
   shows the choices before they are published. «Ekstra CSS» is for administrators only, and CSS that could break out of the page's

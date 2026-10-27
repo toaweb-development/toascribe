@@ -3,7 +3,9 @@
     "head": {
       "date": "Arkiv: {date}",
       "search": "Søk etter «{query}»",
-      "notFound": "Fant ikke siden"
+      "notFound": "Fant ikke siden",
+      "feed": "{site} » Strøm",
+      "archiveFeed": "{site} » {name} Strøm"
     },
     "toolbar": {
       "label": "Verktøylinje",

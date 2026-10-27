@@ -178,6 +178,8 @@ export const PublicSettings = z.object({
   searchEngineVisible: z.boolean(),
   /** The address of the published privacy policy page (K-198, K-199); null without one. */
   privacyPolicyPath: z.string().nullable(),
+  /** PUBLIC_ORIGIN (M1.6): absolute addresses (canonical, Open Graph, robots.txt) are built on it, never on a request's Host. */
+  origin: z.url({ protocol: /^https?$/ }),
   cacheTags: CacheTags,
 })
 export type PublicSettings = z.infer<typeof PublicSettings>

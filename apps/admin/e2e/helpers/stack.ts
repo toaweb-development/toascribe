@@ -236,7 +236,8 @@ export async function createUser(role: string, prefix = 'user', password = PASSW
 /** Writes a site setting straight into the database (there is no settings screen yet). The key and value are ours, not input. */
 export async function setSetting(key: string, value: unknown): Promise<void> {
   const json = JSON.stringify(value).replaceAll("'", "''")
-  const sql = `insert into setting (key, value) values ('${key}', '${json}'::jsonb) on conflict (key) do update set value = excluded.value`
+  // With the cache change the api records for a setting (`*`), so the site does not answer from its cache by tag.
+  const sql = `insert into setting (key, value) values ('${key}', '${json}'::jsonb) on conflict (key) do update set value = excluded.value; insert into cache_invalidation (tag, changed_at) values ('*', now())`
   await compose([
     'exec',
     '-T',

@@ -37,6 +37,30 @@ const noindex = computed(
     content.value?.seo.noindex === true,
 )
 
+// The feeds (K-222): the site's, and the archive's own on a category, tag or author archive, as WordPress' feed_links_extra().
+const feedLinks = computed(() => {
+  const found = archive.value
+  const own =
+    found?.type === 'category' || found?.type === 'tag'
+      ? { name: found.term.name, path: found.term.path }
+      : found?.type === 'author'
+        ? { name: found.author.displayName, path: found.author.path }
+        : undefined
+  return [
+    { key: 'scribe-feed', title: t('scribe.head.feed', { site: siteTitle.value }), href: '/feed/' },
+    ...(own === undefined
+      ? []
+      : [
+          {
+            key: 'scribe-archive-feed',
+            title: t('scribe.head.archiveFeed', { site: siteTitle.value, name: own.name }),
+            href: `${own.path}feed/`,
+          },
+        ]),
+  ].map((link) => ({ ...link, rel: 'alternate' as const, type: 'application/rss+xml' }))
+})
+useHead({ link: feedLinks })
+
 useHead({
   title: () => [pageTitle.value, siteTitle.value].filter((part) => part !== '').join(' – '),
   meta: [
