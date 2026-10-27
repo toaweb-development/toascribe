@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto'
 
 import { hashPassword } from '@toascribe/auth'
 import {
+  documentLinkRefs,
   documentMediaRefs,
   documentText,
   legacyImageUrls,
@@ -111,7 +112,7 @@ import {
 import type { ContentTermRow } from '../repositories/terms.ts'
 import type { Auditor, RequestContext } from './support.ts'
 import type { MediaService } from './media.ts'
-import { replaceMediaRefs } from '../repositories/media.ts'
+import { replaceLinkRefs, replaceMediaRefs } from '../repositories/media.ts'
 
 export interface ContentService {
   list: (auth: SessionAuth, query: ContentListQuery) => Promise<ContentListResponse>
@@ -375,7 +376,12 @@ export function createContentService(options: {
     if (refused.length > 0) {
       throw new InvalidBlocksError(refused.map((issue) => ({ ...issue, path: [...issue.path] })))
     }
-    return { stored: toJson(result.blocks), text: documentText(result.blocks), refs: documentMediaRefs(result.blocks) }
+    return {
+      stored: toJson(result.blocks),
+      text: documentText(result.blocks),
+      refs: documentMediaRefs(result.blocks),
+      links: documentLinkRefs(result.blocks),
+    }
   }
 
   const settingsOf = (executor: Executor) => readSettings(executor, SETTINGS, options.onInvalidSetting)
@@ -611,7 +617,7 @@ export function createContentService(options: {
     )
     const blocks =
       request.blocks === undefined
-        ? { stored: [], text: '', refs: [] }
+        ? { stored: [], text: '', refs: [], links: [] }
         : await checkSent(request.blocks, actor, type, [])
     const passwordHash =
       request.password === undefined || request.password === null ? null : await hashPassword(request.password)
@@ -655,6 +661,7 @@ export function createContentService(options: {
       }
       await replaceAuthors(tx, inserted.id, authors, now)
       await replaceMediaRefs(tx, inserted.id, blocks.refs, now)
+      await replaceLinkRefs(tx, inserted.id, blocks.links, now)
       await applyTerms(tx, { id: inserted.id, type }, request, true, now)
       await audit(tx, ctx, {
         actor: { id: actor.id, username: auth.account.username },
@@ -839,6 +846,7 @@ export function createContentService(options: {
     await updateContent(tx, row.id, changes, now, search)
     if (changes.blocks !== undefined && blocks !== undefined) {
       await replaceMediaRefs(tx, row.id, blocks.refs, now)
+      await replaceLinkRefs(tx, row.id, blocks.links, now)
     }
     if (authorsChanged) {
       await replaceAuthors(tx, row.id, nextAuthors, now)

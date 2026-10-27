@@ -325,6 +325,23 @@ export async function replaceMediaRefs(
   }
 }
 
+/**
+ * Replaces the link references of a content item (M1.4; derived from its blocks on every save): one row per address and block, kind
+ * `link`, the address as written. Broken-link checks and «brukes på» for content read them later (PLAN «Cache og invalidering»).
+ */
+export async function replaceLinkRefs(
+  db: Executor,
+  contentId: string,
+  refs: readonly { readonly href: string; readonly blockId: string }[],
+  at: Date,
+): Promise<void> {
+  await db.delete(contentRef).where(and(eq(contentRef.contentId, contentId), eq(contentRef.kind, 'link')))
+  if (refs.length === 0) return
+  await db
+    .insert(contentRef)
+    .values(refs.map((ref) => ({ contentId, kind: 'link', targetUrl: ref.href, blockId: ref.blockId, createdAt: at })))
+}
+
 // --- Folders ---------------------------------------------------------------------------------------------------------------------
 
 export interface FolderRow {

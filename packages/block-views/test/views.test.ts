@@ -134,6 +134,8 @@ const CASES: [string, Block, RegExp][] = [
   ],
   ['more', createBlock('core/more'), /^$/],
   ['nextpage', createBlock('core/nextpage'), /^$/],
+  // The site draws it with the items it reads (site-core's view, M1.4); here, without data, it shows nothing.
+  ['query', createBlock('core/query'), /^$/],
   [
     'html',
     createBlock('core/html', { content: '<p class="egen">Rå</p>' }),

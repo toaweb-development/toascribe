@@ -1,0 +1,23 @@
+{
+  "name": "core/query",
+  "version": 1,
+  "title": "Query Loop",
+  "description": "A list of published posts or pages chosen by type, category, tag and order, drawn by the site as it is shown.",
+  "category": "widgets",
+  "icon": "i-lucide-list-ordered",
+  "keywords": ["posts", "list", "latest", "loop"],
+  "attributes": {
+    "postType": { "type": "string", "default": "post", "maxLength": 10, "enum": ["post", "page"] },
+    "perPage": { "type": "integer", "default": 5, "minimum": 1, "maximum": 50 },
+    "category": { "type": "string", "default": "", "maxLength": 200 },
+    "tag": { "type": "string", "default": "", "maxLength": 200 },
+    "orderBy": { "type": "string", "default": "date", "maxLength": 10, "enum": ["date", "title"] },
+    "order": { "type": "string", "default": "desc", "maxLength": 4, "enum": ["desc", "asc"] },
+    "sticky": { "type": "string", "default": "include", "maxLength": 10, "enum": ["include", "exclude", "first"] },
+    "showExcerpt": { "type": "boolean", "default": true },
+    "showDate": { "type": "boolean", "default": true }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}
