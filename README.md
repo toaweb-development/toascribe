@@ -101,11 +101,13 @@ Use `toascribe_owner` for the owner password, and `postgres` for `POSTGRES_PASSW
 ## Installer uten å klone repoet
 
 The images are published to `ghcr.io/toaweb-development/toascribe-*` at each release, so a server needs only `compose.yaml` and `.env`
-(Docker with Compose v2):
+(Docker with Compose v2). Take `compose.yaml` from the release tag you want (the newest is at the top of
+[the tags](https://github.com/toaweb-development/toascribe/tags)); it starts the images of that version:
 
 ```sh
 mkdir toascribe && cd toascribe
-curl -fsSLO https://github.com/toaweb-development/toascribe/releases/latest/download/compose.yaml
+version=X.Y.Z   # the release you install, e.g. 0.6.0
+curl -fsSLO "https://raw.githubusercontent.com/toaweb-development/toascribe/v${version}/docker/compose.yaml"
 docker compose pull                                                # first: see below
 docker compose run --rm --no-deps -T api toa core gen-env >> .env  # the passwords and keys, once
 echo 'PUBLIC_ORIGIN=https://example.com' >> .env                   # the address visitors use; default http://localhost:8080
@@ -115,13 +117,12 @@ docker compose logs api | grep -o 'https\?://[^ ]*/admin/setup#token=[A-Za-z0-9_
 
 Open the address the last command prints: `/admin/setup#token=...` is the setup wizard, and the token in it is good for
 that one setup. A new one is made at the next start of the API, or with `docker compose exec api toa core setup-token`.
-Add `TOASCRIBE_HTTP_PORT=...` (and the other settings in [docker/.env.example](docker/.env.example), also attached to each
-release as `env.example`) to `.env` the same way.
+Add `TOASCRIBE_HTTP_PORT=...` (and the other settings in [docker/.env.example](docker/.env.example), at the same address as
+`compose.yaml` in the tag) to `.env` the same way.
 
 - **Pull first.** `compose.yaml` also carries the build instructions of a clone. In a folder with no sources, `run` or `up`
   with an image missing would try to build and fail; `docker compose pull` fetches the images and nothing builds.
-- **A specific version** instead of the newest: use `releases/download/v<version>/compose.yaml`, or set
-  `TOASCRIBE_VERSION=<version>` in `.env`.
+- **Another version:** take `compose.yaml` from that tag, or set `TOASCRIBE_VERSION=<version>` in `.env`.
 - **Behind Traefik or nginx:** see the next section; `PUBLIC_ORIGIN`, `TOASCRIBE_HTTP_BIND` and `TOASCRIBE_TRUSTED_PROXY`
   go in `.env` as above.
 
@@ -224,7 +225,7 @@ in `package.json`; `corepack enable` picks it up.
 
 ```sh
 pnpm install
-pnpm exec lefthook install   # git hooks: commit message check, lint and typecheck before commit, pnpm check and protect main before push
+pnpm exec lefthook install   # optional: the pre-push hook that refuses a force push to main and a moved v* tag
 ```
 
 **The checks.** One command runs format check, lint, typecheck, test and build for every workspace package and for the
@@ -234,7 +235,8 @@ root files (`eslint`, `tsc` and the `root` Vitest project):
 pnpm check
 ```
 
-The `pre-push` hook runs it, so red code is not pushed. A push is only a backup: no workflow runs on a push or a pull request.
+Run it before you merge into `main`. No hook is required and nothing is pushed between releases: `scripts/release.sh` is the
+gate, and no workflow runs on a push or a pull request.
 
 Lint, typecheck and the tests read the workspace libraries from `src/` (the `source` export condition), so nothing needs
 building first. Node and the images still run the compiled `dist/`. The `dev` scripts of the api and worker build the
@@ -267,8 +269,8 @@ apps/admin/e2e/stack.sh down
 
 [apps/admin/e2e/README.md](apps/admin/e2e/README.md) has the details.
 
-**Before a release: `pnpm release:check`.** One command does on this machine what CI used to do, from a clean working tree
-(it refuses a dirty one): `actionlint`, the dependency audit, `pnpm check` with a throwaway PostgreSQL 18 and Mailpit (so the
+**The release check: `pnpm release:check`.** `scripts/release.sh` runs it (see «Release»), and it can run on its own. One
+command does on this machine what CI used to do, from a clean working tree (it refuses a dirty one): `actionlint`, `pnpm check` with a throwaway PostgreSQL 18 and Mailpit (so the
 database and e-mail tests run), every image built with provenance and SBOM attestations into a throwaway registry, a Trivy
 scan of each one (Critical and High with a known fix fail), the stack started from the scanned images with the route checks
 before, during and after `toa core install`, a dry run of the publishing into a second throwaway registry, and the full
@@ -317,22 +319,24 @@ trivy --version && actionlint -version
 ### Release
 
 Changes are written under `## [Unreleased]` in `CHANGELOG.md` as they land; there is no bump per task. When a batch is ready
-on `main`:
+on `main` (a clean tree):
 
 ```sh
-pnpm release:check
-git cliff --unreleased --bump --strip header   # a draft of the CHANGELOG text; edit it for people
-# bump the root package.json and its mirrors (a test lists them), rename [Unreleased] to [X.Y.Z] - YYYY-MM-DD
-git commit -m "chore(release): vX.Y.Z"
-scripts/check-release-tag.sh vX.Y.Z           # the same check the release workflow starts with
-git tag -a vX.Y.Z -m vX.Y.Z
-git push --follow-tags
+git cliff --unreleased --strip header   # a draft of the CHANGELOG text; edit it for people
+# turn ## [Unreleased] into ## X.Y.Z — YYYY-MM-DD (long dash, ISO date) and commit it
+scripts/release.sh --dry-run X.Y.Z      # the checks, pnpm release:check and the audit; changes and pushes nothing
+scripts/release.sh X.Y.Z                # the release
 ```
 
-The tag starts `.github/workflows/release.yml`: it builds and scans the images (no write access), publishes the scanned images
-by digest to `ghcr.io/toaweb-development/toascribe-*` (the only job that can write packages), and creates the GitHub Release
-from the CHANGELOG section. A tag is never moved; a run that failed outside the code is run again with «Run workflow» and the
-same tag.
+`scripts/release.sh` (VERSIONING_STANDARD_2026 §4.1) refuses unless it is on a clean `main` with a higher version and the
+CHANGELOG section. It runs `pnpm release:check` and the audit (`scripts/audit.sh`), writes the version into the root
+`package.json` and its mirrors, commits `release: vX.Y.Z`, makes the annotated tag and pushes `main` and the tag in one atomic
+push. If anything fails, nothing is pushed. `X.Y.Z-rc.N` makes a prerelease without a CHANGELOG section.
+
+The tag starts `.github/workflows/release.yml`, the only workflow: it builds and scans the images (no write access) and
+publishes the scanned images by digest to `ghcr.io/toaweb-development/toascribe-*` (the only job that can write packages).
+There is no GitHub Release: the release is the tag, and its text is the tag's `CHANGELOG.md`. A tag is never moved; a run
+that failed outside the code is run again with «Run workflow» and the same tag.
 
 ## Layout
 
@@ -349,7 +353,7 @@ same tag.
 | `themes/default`               | the default theme, a Nuxt layer                                            |
 | `cli`                          | the `toa` command                                                          |
 | `docker`                       | Dockerfiles, `compose.yaml`, `.env.example`, the Caddyfile, database roles |
-| `scripts`                      | `release:check`, the tag check, the release notes, the image copy, tools   |
+| `scripts`                      | `release.sh`, `release:check`, the audit, the image copy, tools            |
 
 ## More
 

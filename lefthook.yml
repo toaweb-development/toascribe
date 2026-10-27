@@ -1,22 +1,8 @@
-# GIT_STANDARD_2026 "Enforcement". Install once per clone: pnpm exec lefthook install
-commit-msg:
-  commands:
-    commitlint:
-      run: pnpm exec commitlint --edit {1}
-
-# One command, not two in parallel: the lint and typecheck scripts of a Nuxt package both run `nuxt prepare`, which writes
-# that package's .nuxt folder, and two at once would write the same files.
-pre-commit:
-  commands:
-    lint-and-typecheck:
-      run: pnpm lint && pnpm typecheck
-
-# The local gate before a push (GIT_STANDARD_2026): push is only a backup and starts no workflow, so `pnpm check` runs here.
+# Optional (GIT_STANDARD_2026 «Hooks — ingen påkrevd»): no hook is required, scripts/release.sh is the gate. Install once per
+# clone if you want it: pnpm exec lefthook install
+#
 # protect-main.sh refuses a force push to main, deleting main, and moving or deleting a v* tag.
 pre-push:
-  commands:
-    check:
-      run: pnpm check # format check, lint, typecheck, full test suite, build
   scripts:
     'protect-main.sh':
       runner: bash

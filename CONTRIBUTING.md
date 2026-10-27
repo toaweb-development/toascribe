@@ -7,18 +7,15 @@ and [README.md](README.md) has the commands to run the stack and the checks.
 
 ```sh
 pnpm install
-pnpm exec lefthook install
+pnpm exec lefthook install   # optional
 ```
 
-`lefthook install` sets up the git hooks, once per clone:
-
-- `commit-msg` checks the commit message (Conventional Commits, below);
-- `pre-commit` runs `pnpm lint` and then `pnpm typecheck` (one after the other, not in parallel);
-- `pre-push` runs `pnpm check`, and refuses a force push to `main`, deleting `main`, and moving or deleting a `v*` tag.
+No git hook is required: `scripts/release.sh` is the gate. The one optional hook, `pre-push`, refuses a force push to `main`,
+deleting `main`, and moving or deleting a `v*` tag. Run `pnpm check` yourself before you merge.
 
 ## Commits
 
-Every commit message follows [Conventional Commits](https://www.conventionalcommits.org/):
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (recommended, not enforced by a hook):
 
 ```
 <type>(<scope>): <description>
@@ -31,8 +28,9 @@ Every commit message follows [Conventional Commits](https://www.conventionalcomm
 ## Branches
 
 Work is local first and trunk-based: branch from `main`, keep the branch short-lived, one branch for one task, commit per
-step, run `pnpm check`, and merge back into `main` locally (`--ff-only`, or `--no-ff` when `main` moved). Then push `main`:
-the push is a backup and starts no workflow. A pull request is only for when someone else should read the code first. Name branches `<type>/<short-description>` in lower case with hyphens, for example
+step, run `pnpm check`, and merge back into `main` locally (`--ff-only`, or `--no-ff` when `main` moved). Nothing is pushed
+between releases: `scripts/release.sh` pushes `main` and the tag together. A pull request is only for when someone else should
+read the code first. Name branches `<type>/<short-description>` in lower case with hyphens, for example
 `feat/post-routing` or `fix/ready-timeout`. Never commit to `main` directly and never force-push it.
 
 ## The four scripts
@@ -51,10 +49,10 @@ Tests use Vitest and live in a `test/` folder next to `src/` in each package. Th
 PostgreSQL 18: see "A database for the tests" in the README, and set `TEST_DATABASE_URL`. Without it they skip and say
 so, so a green run without the variable has not run them. A bug fix comes with a test that fails without the fix.
 
-`pnpm check` (format check, lint, typecheck, test and build, for every package and the root files) runs in the `pre-push`
-hook. Run `docker compose -f docker/compose.yaml up -d --build` if you touched anything under `docker/`. There is no CI on a
-push or a pull request: before a release, `pnpm release:check` builds every image, scans them, starts the stack, runs the
-end-to-end suite and the rest of what CI used to do (README, «Before a release»).
+Run `pnpm check` (format check, lint, typecheck, test and build, for every package and the root files) before you merge.
+Run `docker compose -f docker/compose.yaml up -d --build` if you touched anything under `docker/`. There is no CI on a push or
+a pull request: `scripts/release.sh` runs `pnpm release:check`, which builds every image, scans them, starts the stack, runs
+the end-to-end suite and the rest of what CI used to do (README, «Release»).
 
 ## Versions and the CHANGELOG
 
@@ -62,14 +60,14 @@ There is no version bump per change. Write what changes for people under `## [Un
 branch as the change, not which commit (`git cliff --unreleased --strip header` gives a draft). Tests, docs and workflow
 changes alone need no entry.
 
-The version is raised once per release, in the `chore(release): vX.Y.Z` commit on `main`, after `pnpm release:check`:
+The version is raised once per release, by `scripts/release.sh X.Y.Z` on `main` (the maintainer runs it):
 
-1. Bump `version` in the root `package.json` and in every workspace `package.json` (a test checks they match), and the
-   default of `TOASCRIBE_VERSION` in `docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example` (a test checks that too).
-2. Rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`, add an empty `## [Unreleased]` above it, and the compare links at
-   the bottom. `scripts/check-release-tag.sh vX.Y.Z` must pass.
-3. The maintainer tags it (`git tag -a vX.Y.Z -m vX.Y.Z`, `git push --follow-tags`). The tag builds, scans and publishes the
-   images and creates the GitHub Release. Do not create a tag or a release otherwise.
+1. Turn the notes under `## [Unreleased]` into `## X.Y.Z — YYYY-MM-DD` (long dash, ISO date) and commit that.
+2. `scripts/release.sh --dry-run X.Y.Z` runs the checks only. `scripts/release.sh X.Y.Z` runs `pnpm release:check` and the
+   audit, writes the version into the root `package.json` and its mirrors (every workspace `package.json` and the default of
+   `TOASCRIBE_VERSION` in `docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example`), commits
+   `release: vX.Y.Z`, tags it and pushes `main` and the tag in one atomic push. If anything fails, nothing is pushed.
+3. The tag builds, scans and publishes the images. Do not create a tag otherwise.
 
 ## Security
 

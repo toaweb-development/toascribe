@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The dependency audit (SECURITY_STANDARD_2026 §9): a gate before every release, run by `pnpm release:check`, and weekly by
-# .github/workflows/audit.yml for new advisories in what is already out.
+# The dependency audit (SECURITY_STANDARD_2026 §9): a gate before every release, run by scripts/release.sh (AUDIT_CMD). Run it
+# by hand to look for new advisories in what is already out.
 #
 # The documented exceptions in pnpm-workspace.yaml (auditConfig.ignoreGhsas) are not a silent switch-off: they carry a review
 # date, and this fails when it has passed.

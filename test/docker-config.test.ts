@@ -20,7 +20,6 @@ const caddyfile = read('docker/proxy/Caddyfile')
 const readme = read('README.md')
 const composeBuild = read('docker/compose.build.yaml')
 const releaseWorkflow = read('.github/workflows/release.yml')
-const auditWorkflow = read('.github/workflows/audit.yml')
 const releaseCheck = read('scripts/release-check.sh')
 const exportImagesScript = read('scripts/export-images.sh')
 const digestsScript = read('scripts/image-digests.sh')
@@ -540,22 +539,19 @@ describe('docker/postgres/entrypoint.sh', () => {
 describe('the release workflow', () => {
   const build = job(releaseWorkflow, 'build')
   const publish = job(releaseWorkflow, 'publish')
-  const release = job(releaseWorkflow, 'release')
-  const workflows = [releaseWorkflow, auditWorkflow]
+  const workflows = [releaseWorkflow]
 
-  it('runs on a v* tag and on a manual run with a tag, never on a branch push or a pull request', () => {
+  it('runs on a v* tag and on a manual run with a tag, never on a branch push, a pull request or a schedule', () => {
     expect(releaseWorkflow).toMatch(/^on:\n {2}push:\n {4}tags: \['v\*'\]\n {2}workflow_dispatch:\n/m)
     expect(releaseWorkflow).toMatch(/inputs:\n\s+tag:\n/)
-    for (const workflow of workflows) {
-      expect(withoutComments(workflow)).not.toMatch(/^\s+branches:/m)
-      expect(withoutComments(workflow)).not.toMatch(/pull_request|workflow_run|workflow_call/)
-    }
-    expect(auditWorkflow).toMatch(/^on:\n {2}schedule:\n[^\n]+\n {2}workflow_dispatch:\n\n/m)
+    expect(withoutComments(releaseWorkflow)).not.toMatch(/^\s+branches:/m)
+    expect(withoutComments(releaseWorkflow)).not.toMatch(/pull_request|workflow_run|workflow_call|schedule:/)
   })
 
-  it('has no other workflows: the checks before a tag are local', () => {
+  it('has no other workflow and no Dependabot: the checks before a tag are local (scripts/release.sh)', () => {
     const dir = fileURLToPath(new URL('.github/workflows/', ROOT))
-    expect(readdirSync(dir).sort()).toEqual(['audit.yml', 'release.yml'])
+    expect(readdirSync(dir).sort()).toEqual(['release.yml'])
+    expect(readdirSync(fileURLToPath(new URL('.github/', ROOT))).sort()).toEqual(['workflows'])
   })
 
   it('runs every job on GitHub runners, written out, never a self-hosted runner variable', () => {
@@ -568,19 +564,17 @@ describe('the release workflow', () => {
     }
   })
 
-  it('gives packages: write to publish only and contents: write to release only', () => {
+  it('gives packages: write to publish only, and makes no GitHub Release', () => {
     expect(releaseWorkflow).toMatch(/^permissions:\n {2}contents: read\n/m)
-    expect(auditWorkflow).toMatch(/^permissions:\n {2}contents: read\n/m)
     expect(withoutComments(releaseWorkflow).match(/packages: write/g)).toHaveLength(1)
-    expect(withoutComments(releaseWorkflow).match(/contents: write/g)).toHaveLength(1)
-    expect(withoutComments(auditWorkflow)).not.toContain('write')
+    expect(withoutComments(releaseWorkflow)).not.toContain('contents: write')
+    expect(withoutComments(releaseWorkflow)).not.toMatch(/gh release|\n {2}release:\n/)
     expect(publish).toContain('packages: write')
-    expect(release).toContain('contents: write')
     expect(withoutComments(build)).not.toContain('write')
   })
 
   it('runs no third-party code where a token can write', () => {
-    for (const text of [publish, release]) {
+    for (const text of [publish]) {
       const uses = [...text.matchAll(/^\s+(?:- )?uses: (\S+)/gm)].map((match) => match[1] ?? '')
       for (const action of uses) expect(action).toMatch(/^actions\/(checkout|download-artifact)@[0-9a-f]{40}$/)
       expect(text).not.toMatch(/pnpm|npm |npx|docker (run|build|compose)|bake/)
@@ -590,12 +584,9 @@ describe('the release workflow', () => {
     expect(publish).toContain('docker login ghcr.io --username "${ACTOR}" --password-stdin')
   })
 
-  it('checks the tag before it builds, and checks out the tag', () => {
+  it('checks the form of the tag before it builds, and checks out the tag', () => {
     expect(build).toContain('^v[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?$')
     expect(build).toContain('ref: refs/tags/${{ steps.tag.outputs.tag }}')
-    expect(build).toContain('VERSION_FILE: package.json')
-    expect(build.indexOf('scripts/check-release-tag.sh')).toBeGreaterThan(-1)
-    expect(build.indexOf('scripts/check-release-tag.sh')).toBeLessThan(build.indexOf('uses: docker/'))
   })
 
   it('scans every digest, then writes the layout right before the upload', () => {
@@ -676,13 +667,6 @@ describe('the release workflow', () => {
     }
   })
 
-  it('makes the GitHub Release after the images, not for an -rc tag, with the CHANGELOG section', () => {
-    expect(release).toContain('needs: [build, publish]')
-    expect(release).toContain("if: ${{ !contains(needs.build.outputs.tag, '-rc.') }}")
-    expect(release).toContain('scripts/release-notes.sh "${TAG}"')
-    expect(release).toContain('gh release create "${TAG}" --verify-tag')
-  })
-
   it('does not leave the token in a checkout', () => {
     for (const workflow of workflows) {
       const checkouts = [
@@ -728,7 +712,6 @@ describe('the local release gate', () => {
   it('does everything the old CI did', () => {
     for (const part of [
       'actionlint',
-      'scripts/audit.sh',
       'TEST_DATABASE_URL=',
       'MAILPIT_URL=',
       'pnpm check',

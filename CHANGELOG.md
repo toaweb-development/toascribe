@@ -70,6 +70,10 @@ worker only), `file-type` and `image-size`.
 - Content routes check the right of the type: a role with only `edit_pages` can work with pages (M1.2).
 - Words of the admin now follow WordPress' Norwegian translation (nb_NO), among them «Kladd», «Hurtigrediger»,
   «Visningsinnstillinger», «Identifikator», «Masserediger», «Gjør om» and «Vis nettsted».
+- Releases follow toa-rules 5.0 (release-only): `scripts/release.sh X.Y.Z` runs `pnpm release:check` and the audit, writes the
+  version, tags and pushes `main` and the tag in one push. The tag only builds, scans and publishes the images: there is no
+  GitHub Release any more, so an installation without a clone takes `docker/compose.yaml` from the release tag (README,
+  «Installer uten å klone repoet»). No git hook is required; the weekly audit workflow, Dependabot and commitlint are gone.
 
 ### Removed
 
