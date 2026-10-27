@@ -3,7 +3,7 @@
 // of a protected item, the preview link, and the cache tags a change touched. Only content that is published and public is read
 // (repositories/public.ts); a password-protected item is named, but its text, its excerpt and its blocks stay out until the visitor
 // has the item's password cookie. A preview link shows any item, for a while, to the account and the session that made it.
-import { createHmac } from 'node:crypto'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 
 import { dummyPasswordHash, verifyPassword } from '@toascribe/auth'
 import type { Block } from '@toascribe/blocks'
@@ -161,7 +161,7 @@ export function createPublicService(options: {
 
   function isUnlocked(row: PublicRow, visitor: Visitor): boolean {
     if (row.passwordHash === null) return true
-    return visitor.postPass !== undefined && visitor.postPass === passCookieFor(row.passwordHash)
+    return visitor.postPass !== undefined && sameSecret(visitor.postPass, passCookieFor(row.passwordHash))
   }
 
   async function pathsOf(rows: readonly PublicRow[]): Promise<Map<string, { path: string; ancestors: string[] }>> {
@@ -251,7 +251,10 @@ export function createPublicService(options: {
     const blocks = unlocked ? blocksOf(row) : []
     const pages = unlocked ? pageCount(blocks) : 1
     if (page > pages) return undefined
-    const seo = ContentSeo.catch({}).parse(row.seo)
+    const stored = ContentSeo.catch({}).parse(row.seo)
+    // A locked item's description is about its hidden text, as its excerpt is: it stays out until the password is given.
+    const seo: ContentSeo = { ...stored }
+    if (!unlocked) delete seo.description
     const mediaIds = [
       ...documentMediaRefs(blocks).map((ref) => ref.mediaId),
       ...(row.featuredMediaId === null ? [] : [row.featuredMediaId]),
@@ -582,7 +585,9 @@ export function createPublicService(options: {
       }
       // An address without the closing slash goes to the one with it (WordPress' canonical redirect).
       if (!url.pathname.endsWith('/')) {
-        return { kind: 'redirect', status: 301, location: `${url.pathname}/`, cacheTags: [`content:${row.id}`] }
+        // Built from the decoded segments, never from the raw path: `/.//host` would otherwise become `//host/`, another site.
+        const canonical = `/${[...itemSegments, ...(pageNumber > 1 ? [String(pageNumber)] : [])].map(encodeURIComponent).join('/')}/`
+        return { kind: 'redirect', status: 301, location: canonical, cacheTags: [`content:${row.id}`] }
       }
       return single(row, visitor, settings, pageNumber)
     },
@@ -650,7 +655,7 @@ export function createPublicService(options: {
       if (match === null) throw new NotFoundError()
       const [, payload = '', signature = ''] = match
       const expected = base64url(createHmac('sha256', signingKey).update(`toascribe:preview\0${payload}`).digest())
-      if (expected.length !== signature.length || !timingSafe(expected, signature)) throw new NotFoundError()
+      if (!sameSecret(expected, signature)) throw new NotFoundError()
       let claims: unknown
       try {
         claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))
@@ -711,8 +716,9 @@ export function createPublicService(options: {
   return service
 }
 
-function timingSafe(a: string, b: string): boolean {
-  let diff = 0
-  for (let index = 0; index < a.length; index += 1) diff |= a.charCodeAt(index) ^ b.charCodeAt(index)
-  return diff === 0
+/** Two secrets compared in constant time (a different length is no match). */
+function sameSecret(a: string, b: string): boolean {
+  const left = Buffer.from(a)
+  const right = Buffer.from(b)
+  return left.length === right.length && timingSafeEqual(left, right)
 }

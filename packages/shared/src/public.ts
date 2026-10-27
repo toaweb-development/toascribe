@@ -183,7 +183,7 @@ export type PublicPasswordRequest = z.infer<typeof PublicPasswordRequest>
  * A place in the log of cache changes: the oldest transaction still running when the site looked, and when (ms since 1970). The site
  * sends it back as `since`; it is opaque to the site.
  */
-export const CacheCursor = z.string().regex(/^\d{1,20}\.\d{1,15}$/)
+export const CacheCursor = z.string().regex(/^\d{1,19}\.\d{1,15}$/)
 
 /** GET /public/cache/changes?since= : the tags changed since then, or `all` when it is too long ago (or the first look). */
 export const CacheChanges = z.object({

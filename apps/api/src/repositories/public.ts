@@ -192,7 +192,15 @@ export async function findAuthorByNicename(db: Executor, nicename: string): Prom
     await db
       .select({ id: account.id, displayName: account.displayName, nicename: account.nicename })
       .from(account)
-      .where(sql`lower(${account.nicename}) = lower(${nicename})`)
+      // Only an active account with something published has an archive, so the address does not confirm other usernames.
+      .where(
+        and(
+          sql`lower(${account.nicename}) = lower(${nicename})`,
+          eq(account.status, 'active'),
+          sql`exists (select 1 from content_author join content on content.id = content_author.content_id
+            where content_author.account_id = ${account.id} and ${visible})`,
+        ),
+      )
       .limit(1),
   )
 }
@@ -257,6 +265,9 @@ function listCondition(filter: PublicListFilter): SQL {
   }
   if (filter.excludeSticky === true) conditions.push(sql`not ${content.sticky}`)
   if (filter.search !== undefined && filter.search !== '') {
+    // A password-protected item is left out of a search, as WordPress leaves it out of a visitor's: its stored search text holds
+    // its hidden body and excerpt, and a match would tell which words are in them.
+    conditions.push(sql`${content.passwordHash} is null`)
     const title = sql`${content.title} ilike ${`%${escapeLike(filter.search)}%`}`
     const query = prefixQuery(filter.search)
     conditions.push(

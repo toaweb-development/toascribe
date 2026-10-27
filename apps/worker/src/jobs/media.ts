@@ -27,7 +27,7 @@ import sharp from 'sharp'
 import { summarizeError } from '../lib/redact.ts'
 import { readSettings } from '../repositories/settings.ts'
 
-const { media } = schema
+const { cacheInvalidation, media } = schema
 
 // No cache of decoded images between jobs: each job is one image, and the memory is the worker's only limit.
 sharp.cache(false)
@@ -263,6 +263,8 @@ export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<v
           modifiedAt: now,
         })
         .where(eq(media.id, row.id))
+      // The site drops what it cached with the old sizes' addresses, whose files go below (M1.4).
+      await tx.insert(cacheInvalidation).values({ tag: `media:${row.id}`, changedAt: now })
       const kept = new Set(allKeys(variants))
       return allKeys(before).filter((key) => !kept.has(key))
     })

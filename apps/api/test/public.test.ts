@@ -97,7 +97,9 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the public API (needs TEST_DAT
         slug: key,
         status,
         ...extra,
-        ...(key === 'locked' ? { excerpt: `Utdrag ${secret}` } : {}),
+        ...(key === 'locked'
+          ? { excerpt: `Utdrag ${secret}`, seo: { title: 'Låst', description: `Beskrivelse ${secret}` } }
+          : {}),
         blocks: [paragraph(`Teksten ${secret}`)],
       })
       ids[key] = item.id
@@ -233,6 +235,44 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the public API (needs TEST_DAT
   })
 
   describe('what is never shown', () => {
+    it('leaves a protected item out of a search, so a match tells nothing about its hidden words', async () => {
+      for (const word of ['PASSORDHEMMELIG', 'Teksten', 'Utdrag', 'Beskrivelse', 'Låst']) {
+        const found = await resolve(`/?s=${word}`)
+        if (found.kind !== 'search') throw new Error('not a search')
+        expect(
+          found.list.items.map((item) => item.id),
+          word,
+        ).not.toContain(ids['locked'])
+        const listed = PublicListResponse.parse(await (await visitor.get(`/api/v1/public/query?search=${word}`)).json())
+        expect(
+          listed.items.map((item) => item.id),
+          word,
+        ).not.toContain(ids['locked'])
+      }
+    })
+
+    it('has an author archive only for an active account with something published', async () => {
+      await env.createAccount({ username: 'pub-quiet', role: 'author' })
+      const quiet =
+        (await env.query<{ nicename: string }>(`select nicename from account where username = 'pub-quiet'`))[0]
+          ?.nicename ?? ''
+      expect((await resolve(`/author/${quiet}/`)).kind).toBe('404')
+    })
+
+    it('redirects to an address on the site only, built from the path it read', async () => {
+      expect(await resolve('/.//hei')).toMatchObject({ kind: 'redirect', location: '/hei/' })
+      expect(await resolve('/hei/2')).toMatchObject({ kind: 'redirect', location: '/hei/2/' })
+    })
+
+    it('marks every public answer no-store, an error included', async () => {
+      const bad = await visitor.get('/api/v1/public/resolve')
+      expect(bad.status).toBe(400)
+      expect(bad.headers.get('cache-control')).toBe('no-store')
+      const wrong = await visitor.post('/api/v1/public/unlock', { contentId: ids['locked'], password: 'feil-nr-1' })
+      expect(wrong.headers.get('cache-control')).toBe('no-store')
+      expect((await visitor.get(`/api/v1/public/cache/changes?since=${'9'.repeat(20)}.1`)).status).toBe(400)
+    })
+
     it('answers 404 for drafts, private, scheduled and trashed items, by path and by `?p=`', async () => {
       for (const key of ['draft', 'private', 'future', 'trashed']) {
         expect((await resolve(`/${key}/`)).kind, key).toBe('404')
@@ -271,6 +311,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the public API (needs TEST_DAT
       const locked = await resolve('/locked/')
       if (locked.kind !== 'single') throw new Error('not single')
       expect(locked.content).toMatchObject({ protected: true, locked: true, blocks: [], excerpt: '', teaser: null })
+      expect(locked.content.seo).toEqual({ title: 'Låst' })
       const listed = PublicListResponse.parse(await (await visitor.get('/api/v1/public/query')).json())
       expect(listed.items.find((item) => item.id === ids['locked'])).toMatchObject({ locked: true, excerpt: '' })
     })

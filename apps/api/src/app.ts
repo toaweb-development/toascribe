@@ -188,6 +188,8 @@ export function buildApp(deps: AppDeps) {
   app.use('/api/v1/me', noStore)
   app.use('/api/v1/me/*', noStore)
   app.use('/api/v1/system/*', noStore)
+  // The public reading API (M1.4): the site keeps its own cache by tag; an answer may hold an item its password opened.
+  app.use('/api/v1/public/*', noStore)
   // Whether the site is installed is the one answer that must never come from a cache (the Nuxt apps' middleware and the wizard
   // read it), and the setup steps are as private as the pages they serve.
   app.use('/api/v1/setup/*', noStore)

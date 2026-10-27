@@ -26,8 +26,8 @@ import type { Services } from '../services/index.ts'
 
 // The public reading API (M1.4): what the site and its theme read. Open to anyone, and it only ever shows what is published and
 // public; a password-protected item's text comes only with its password cookie, and a preview only with a signed link. Every answer
-// carries the cache tags that a change clears on the site (`cacheTags`). The answers are `Cache-Control: no-store`: the site keeps
-// its own cache by tag and asks /public/cache/changes what to drop.
+// carries the cache tags that a change clears on the site (`cacheTags`). The answers are `Cache-Control: no-store` (app.ts, errors included):
+// the site keeps its own cache by tag and asks /public/cache/changes what to drop.
 
 const errorResponse = (description: string) => ({
   content: { 'application/json': { schema: ApiError } },
@@ -82,8 +82,8 @@ const unlockRoute = defineRoute({
   tags: [TAG],
   summary: 'Open a protected item with its password',
   description:
-    `Sets the post password cookie (HttpOnly, ${String(POST_PASSWORD_COOKIE_DAYS)} days, K-067); it opens every item with the ` +
-    'same password, and the last password typed replaces it, as in WordPress. Guesses are limited per address and per item. ' +
+    `Sets the post password cookie (HttpOnly, ${String(POST_PASSWORD_COOKIE_DAYS)} days, K-067). It opens the item whose ` +
+    'password it was, and the last password typed replaces it, as in WordPress. Guesses are limited per address and per item. ' +
     'A same-origin request with an application/json body.',
   policy: PUBLIC,
   request: { body: { required: true, content: { 'application/json': { schema: PublicPasswordRequest } } } },
@@ -144,21 +144,14 @@ const previewLinkRoute = defineRoute({
 
 export function createPublicApp(services: Services): OpenAPIHono<AppEnv> {
   const visitor = (c: Parameters<typeof readPostPassCookie>[0]) => ({ postPass: readPostPassCookie(c) })
-  // The site caches by tag itself; nothing between it and the api keeps an answer.
-  const noStore = (c: Parameters<typeof readPostPassCookie>[0]) => {
-    c.header('Cache-Control', 'no-store')
-  }
   return new OpenAPIHono<AppEnv>()
     .openapi(settingsRoute, async (c) => {
-      noStore(c)
       return c.json(await services.public.settings(), 200)
     })
     .openapi(resolveRoute, async (c) => {
-      noStore(c)
       return c.json(await services.public.resolve(c.req.valid('query').path, visitor(c)), 200)
     })
     .openapi(queryRoute, async (c) => {
-      noStore(c)
       return c.json(await services.public.query(c.req.valid('query'), visitor(c)), 200)
     })
     .openapi(unlockRoute, async (c) => {
@@ -170,16 +163,13 @@ export function createPublicApp(services: Services): OpenAPIHono<AppEnv> {
     })
     .openapi(previewRoute, async (c) => {
       const { token, page } = c.req.valid('query')
-      noStore(c)
       return c.json(await services.public.preview(token, page), 200)
     })
     .openapi(changesRoute, async (c) => {
-      noStore(c)
       return c.json(await services.public.changes(c.req.valid('query').since), 200)
     })
     .openapi(previewLinkRoute, async (c) => {
       const auth = await requireSession(c)
-      noStore(c)
       return c.json(await services.public.previewLink(auth, c.req.valid('param').id), 200)
     })
 }

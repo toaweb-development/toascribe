@@ -169,6 +169,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('media jobs (needs TEST_DATABAS
       ...(variants.edited === undefined ? [] : [variants.edited.key]),
     ]
     const first = keysOf((await variantsOf(id)).variants)
+    // The site drops what it cached with the old addresses (M1.4).
+    expect(await env.query(`select 1 from cache_invalidation where tag = $1`, [`media:${id}`])).not.toHaveLength(0)
     // Same settings, same pixels: still new addresses, so nothing cached `immutable` is ever served for other pixels.
     await runMediaJob(deps(), { kind: 'regenerate', mediaId: id })
     const second = keysOf((await variantsOf(id)).variants)

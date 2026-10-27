@@ -157,6 +157,12 @@
 		}
 	}
 
+	# The log of cache changes (M1.4) is for the site, which reads it on the internal network: it names the ids of drafts and
+	# private files as they change, so it is not served to the world.
+	handle /api/v1/public/cache/* {
+		respond 404
+	}
+
 	handle /api/* {
 		reverse_proxy api:3001 {
 			header_up X-Real-IP {client_ip}
