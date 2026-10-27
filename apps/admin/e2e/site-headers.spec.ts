@@ -98,7 +98,8 @@ test('the built files of the site keep their long cache, and the admin keeps its
 test('the home page runs under the CSP with a clean console, and passes axe', async ({ page }) => {
   // The fixture fails the test on a CSP violation, a console error or warning (a hydration mismatch is one).
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: 'toascribe' })).toBeVisible()
+  // The default theme's front page: the latest posts, under a heading for screen readers (M1.4).
+  await expect(page.getByRole('heading', { level: 1, name: 'Siste innlegg' })).toBeAttached()
   await expect(page.getByRole('main')).toBeVisible()
   // Wait for the scripts to finish loading, so a blocked one would have been reported before the console is checked.
   await page.waitForLoadState('networkidle')

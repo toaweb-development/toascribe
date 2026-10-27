@@ -11,7 +11,10 @@ export function useActiveTheme() {
     if (asked.value) return
     asked.value = true
     try {
-      theme.value = ActiveTheme.parse(await $fetch('/_toascribe/theme', { timeout: 3000, retry: 0 }))
+      // The site's address, not the admin's: Nuxt's $fetch would put the admin's /admin in front.
+      theme.value = ActiveTheme.parse(
+        await $fetch('/_toascribe/theme', { baseURL: window.location.origin, timeout: 3000, retry: 0 }),
+      )
     } catch {
       theme.value = null
     }
