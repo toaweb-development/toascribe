@@ -62,6 +62,17 @@ export const MAIL_MESSAGES_NB: MailMessages = {
       action: 'Bekreft adressen',
       outro: ['Venter du ikke denne e-posten, kan du se bort fra den. Administratoradressen er ikke endret.'],
     },
+    admin_email_changed: {
+      subject: '[{siteName}] Administratoradressen er endret',
+      greeting: 'Hei,',
+      intro: [
+        'Administratoradressen for {siteName} er endret. Den nye adressen er {newEmail}.',
+        'Varsler til administrator går dit fra nå av. Denne meldingen er sendt til den gamle adressen.',
+      ],
+      outro: [
+        'Var dette ikke meningen, bør en administrator logge inn og sjekke «Innstillinger → Generelt» med en gang.',
+      ],
+    },
     admin_new_user: {
       subject: '[{siteName}] Ny bruker: {username}',
       greeting: 'Hei,',

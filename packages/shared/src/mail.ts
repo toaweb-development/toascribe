@@ -18,6 +18,7 @@ export const EMAIL_TEMPLATE = [
   'set_password',
   'email_change',
   'admin_email_change',
+  'admin_email_changed',
   'admin_new_user',
   'admin_password_change',
   'account_exists',
@@ -115,6 +116,13 @@ function messages<S extends z.ZodType<string>>(secret: S) {
       template: z.literal('admin_email_change'),
       to: Recipient,
       data: z.strictObject({ username: Username, token: secret }),
+    }),
+    // To the OLD administrator address once a new one is confirmed (K-192; WordPress' «Admin Email Changed»): whoever reads the
+    // old address learns where the site's notices go now. It holds nothing secret.
+    z.strictObject({
+      template: z.literal('admin_email_changed'),
+      to: Recipient,
+      data: z.strictObject({ newEmail: Recipient }),
     }),
     // Notice to an administrator (K-017): a user was registered or made.
     z.strictObject({

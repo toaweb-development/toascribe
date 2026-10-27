@@ -269,9 +269,10 @@ export function createSettingsService(options: {
       // Counted like any guess at a token (as the account's e-mail change).
       const ticket = await options.limiter.begin('password_lost', { ip: ctx.ip })
       assertNotDelayed(ticket.status, clock())
-      return inTransaction(db, async (tx) => {
+      const changed = await inTransaction(db, async (tx) => {
         const now = clock()
         await lockAdminEmail(tx)
+        const { admin_email: oldEmail } = await readSettings(tx, ADMIN_EMAIL)
         const found = await findTokenForUpdate(tx, hashToken(token))
         if (
           found?.purpose !== 'admin_email_change' ||
@@ -291,8 +292,13 @@ export function createSettingsService(options: {
           objectId: 'general',
           newValue: { keys: ['admin_email'] },
         })
-        return found.newEmail
+        return { oldEmail, newEmail: found.newEmail }
       })
+      // To the OLD address, after the commit (WordPress' wp_site_admin_email_change_notification), unless it is the same.
+      if (changed.oldEmail !== null && changed.oldEmail.toLowerCase() !== changed.newEmail.toLowerCase()) {
+        await mail({ template: 'admin_email_changed', to: changed.oldEmail, data: { newEmail: changed.newEmail } })
+      }
+      return changed.newEmail
     },
 
     async writing(auth) {

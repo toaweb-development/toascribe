@@ -25,6 +25,11 @@ const SAMPLES: Record<EmailTemplate, unknown> = {
   set_password: { template: 'set_password', to: 'kari@example.no', data: { username: 'kari', token: TOKEN } },
   email_change: { template: 'email_change', to: 'ny@example.no', data: { username: 'kari', token: TOKEN } },
   admin_email_change: { template: 'admin_email_change', to: 'ny@example.no', data: { username: 'kari', token: TOKEN } },
+  admin_email_changed: {
+    template: 'admin_email_changed',
+    to: 'gammel@example.no',
+    data: { newEmail: 'ny@example.no' },
+  },
   admin_new_user: {
     template: 'admin_new_user',
     to: 'admin@example.no',

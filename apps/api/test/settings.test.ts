@@ -96,6 +96,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the settings screens (needs TE
 
   describe('the administrator address (K-192)', () => {
     it('changes only once the link sent to the new address is opened, by someone with manage_options', async () => {
+      await env.query(
+        `insert into setting (key, value) values ('admin_email', '"gammel-admin@example.no"'::jsonb)
+         on conflict (key) do update set value = excluded.value`,
+      )
       const before = GeneralSettingsResponse.parse(await (await admin.get('/api/v1/settings/general')).json())
       const sentBefore = env.mail.sent.length
       const res = await admin.patch('/api/v1/settings/general', { new_admin_email: 'ny-admin@example.no' })
@@ -113,6 +117,11 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the settings screens (needs TE
       )
       const confirmed = await otherAdmin.post('/api/v1/settings/general/admin-email/confirm', { token })
       expect(confirmed.status).toBe(200)
+      // The old address hears where the notices go now (WordPress' «Admin Email Changed»), only after the confirmation.
+      const notices = env.mail.sent.slice(sentBefore).filter((sent) => sent.template === 'admin_email_changed')
+      expect(notices).toEqual([
+        expect.objectContaining({ to: before.settings.admin_email, data: { newEmail: 'ny-admin@example.no' } }),
+      ])
       expect(await confirmed.json()).toEqual({ adminEmail: 'ny-admin@example.no' })
       const after = GeneralSettingsResponse.parse(await (await admin.get('/api/v1/settings/general')).json())
       expect(after.settings.admin_email).toBe('ny-admin@example.no')
