@@ -3,6 +3,7 @@
 // with the fields in WordPress' order; an answer adds what the screen shows but cannot change.
 import { z } from 'zod'
 
+import { ContentMediaRef } from './content.ts'
 import { structureProblem } from './permalinks.ts'
 import { CoreSettings } from './settings.ts'
 
@@ -71,15 +72,30 @@ export const ReadingSettings = CoreSettings.pick({
   posts_per_rss: true,
   rss_use_excerpt: true,
   blog_public: true,
+  seo_default_image: true,
+  seo_publisher_type: true,
+  seo_publisher_name: true,
+  seo_publisher_logo: true,
+  seo_publisher_person: true,
 })
 export type ReadingSettings = z.infer<typeof ReadingSettings>
-export const ReadingSettingsResponse = z.object({ settings: ReadingSettings })
+export const ReadingSettingsResponse = z.object({
+  settings: ReadingSettings,
+  /** The chosen images (sharing image, organisation logo), for the screen to show. */
+  media: z.array(ContentMediaRef),
+  /** Who can be the publishing person: active accounts with something published (their author page is the person's address). */
+  people: z.array(z.object({ id: z.uuid(), displayName: z.string() })),
+})
 export type ReadingSettingsResponse = z.infer<typeof ReadingSettingsResponse>
 export const UpdateReadingSettingsRequest = ReadingSettings.extend({
   page_on_front: id.nullable(),
   page_for_posts: id.nullable(),
   posts_per_page: z.int().min(1).max(100),
   posts_per_rss: z.int().min(1).max(100),
+  seo_default_image: id.nullable(),
+  seo_publisher_logo: id.nullable(),
+  seo_publisher_person: id.nullable(),
+  seo_publisher_name: z.string().trim().max(200),
 })
   .partial()
   .strict()

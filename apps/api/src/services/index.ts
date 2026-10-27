@@ -233,6 +233,7 @@ export function createServices(deps: ServiceDeps): Services {
       mail,
       limiter,
       publicOrigin: deps.publicOrigin,
+      media,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     public: createPublicService({

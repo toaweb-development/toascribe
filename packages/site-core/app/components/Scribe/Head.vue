@@ -1,41 +1,41 @@
 <script setup lang="ts">
+import { jsonLdText, seoHead } from '../../../lib/seo'
+
 // The core's part of every page's head (PLAN «Regler et tema må følge» 2, WordPress' wp_head()): the title after the site's name,
 // the description, and no indexing of a search, a 404 or a preview. The toolbar for a signed-in person comes here too (K-032).
 // «Tilpass» (M1.5): the site icon, and one `<style>` with the theme's colours and fonts and «Ekstra CSS». The style is always written,
 // empty or not, so it carries the response's nonce and the admin's preview can change its text (a style element made later would
 // have none, and the CSP would refuse it). Its text never holds `<` (customCssProblem, SiteCustomization).
-// SEO in full (canonical, Open Graph, structured data) is M1.6.
+// SEO (M1.6, K-224): canonical, Open Graph, Twitter, rel prev/next and JSON-LD, built by lib/seo.ts from what the page resolved.
 const { t } = useI18n()
 const settings = useSettings()
 const customize = useCustomize()
 const { kind, content, archive, preview } = useContent()
 
-const pageTitle = computed(() => {
-  const found = archive.value
-  if (content.value !== undefined) return content.value.seo.title ?? content.value.title
-  if (found?.type === 'category' || found?.type === 'tag') return found.term.name
-  if (found?.type === 'author') return found.author.displayName
-  if (found?.type === 'date')
-    return t('scribe.head.date', {
-      date: [found.year, found.month, found.day].filter((part) => part !== null).join('-'),
-    })
-  if (found?.type === 'search') return t('scribe.head.search', { query: found.query })
-  if (kind.value === '404') return t('scribe.head.notFound')
-  return ''
-})
+const route = useRoute()
+const { list } = useContent()
+// The whole head of the page (lib/seo.ts): title, description, canonical, prev/next, Open Graph, Twitter and JSON-LD.
+const head = computed(() =>
+  settings.value === null
+    ? undefined
+    : seoHead({
+        settings: settings.value,
+        path: route.path,
+        kind: kind.value,
+        content: content.value,
+        archive: archive.value,
+        list: list.value,
+        preview: preview.value,
+        labels: {
+          siteFallback: t('brand.name'),
+          date: (date) => t('scribe.head.date', { date }),
+          search: (query) => t('scribe.head.search', { query }),
+          notFound: t('scribe.head.notFound'),
+        },
+      }),
+)
 // A site without a name (it has not been given one) is called by the product's name, so no page is without a title (WCAG 2.4.2).
 const siteTitle = computed(() => settings.value?.title || t('brand.name'))
-const description = computed(
-  () => content.value?.seo.description ?? (content.value?.excerpt || settings.value?.tagline) ?? undefined,
-)
-const noindex = computed(
-  () =>
-    settings.value?.searchEngineVisible === false ||
-    preview.value ||
-    kind.value === '404' ||
-    kind.value === 'search' ||
-    content.value?.seo.noindex === true,
-)
 
 // The feeds (K-222): the site's, and the archive's own on a category, tag or author archive, as WordPress' feed_links_extra().
 const feedLinks = computed(() => {
@@ -61,15 +61,37 @@ const feedLinks = computed(() => {
 })
 useHead({ link: feedLinks })
 
+const metaTags = computed(() => [
+  ...(head.value?.description === undefined ? [] : [{ name: 'description', content: head.value.description }]),
+  ...(head.value?.noindex === true ? [{ name: 'robots', content: 'noindex' }] : []),
+  ...(head.value?.meta ?? []).map((tag) =>
+    tag.property === undefined
+      ? { key: tag.name ?? '', name: tag.name ?? '', content: tag.content }
+      : { key: tag.property, property: tag.property, content: tag.content },
+  ),
+])
+const linkTags = computed(() =>
+  (head.value?.links ?? []).map((link) =>
+    link.rel === 'canonical'
+      ? { key: 'scribe-canonical', rel: 'canonical' as const, href: link.href }
+      : link.rel === 'prev'
+        ? { key: 'scribe-prev', rel: 'prev' as const, href: link.href }
+        : { key: 'scribe-next', rel: 'next' as const, href: link.href },
+  ),
+)
+const scriptTags = computed(() =>
+  head.value?.jsonLd == null
+    ? []
+    : [{ key: 'scribe-jsonld', type: 'application/ld+json' as const, innerHTML: jsonLdText(head.value.jsonLd) }],
+)
 useHead({
-  title: () => [pageTitle.value, siteTitle.value].filter((part) => part !== '').join(' – '),
-  meta: [
-    { name: 'description', content: () => description.value },
-    { name: 'robots', content: () => (noindex.value ? 'noindex' : undefined) },
-  ],
+  title: () => head.value?.title ?? siteTitle.value,
+  meta: metaTags,
   link: [{ key: 'scribe-icon', rel: 'icon', href: () => customize.value.icon?.url }],
+  script: scriptTags,
   style: [{ key: 'scribe-customize', id: 'scribe-customize', textContent: () => customize.value.css }],
 })
+useHead({ link: linkTags })
 </script>
 
 <template>

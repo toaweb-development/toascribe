@@ -56,6 +56,8 @@ export const PublicContent = PublicSummary.extend({
   /** The media the blocks, the featured image and the sharing image use (public files only). */
   media: z.array(ContentMediaRef),
   seo: ContentSeo,
+  /** A page's published parents, from the top (breadcrumbs, M1.6); a parent that is not published is left out. */
+  ancestors: z.array(z.object({ title: z.string(), path: z.string() })),
   template: z.string().nullable(),
   parentId: z.uuid().nullable(),
   commentStatus: z.enum(['open', 'closed']),
@@ -180,6 +182,16 @@ export const PublicSettings = z.object({
   privacyPolicyPath: z.string().nullable(),
   /** PUBLIC_ORIGIN (M1.6): absolute addresses (canonical, Open Graph, robots.txt) are built on it, never on a request's Host. */
   origin: z.url({ protocol: /^https?$/ }),
+  /** «Deling og søkemotorer» (M1.6, K-224): the sharing image of last resort, and who publishes the site (null: nobody named). */
+  seo: z.object({
+    defaultImage: ContentMediaRef.nullable(),
+    publisher: z
+      .discriminatedUnion('type', [
+        z.object({ type: z.literal('organization'), name: z.string(), logo: ContentMediaRef.nullable() }),
+        z.object({ type: z.literal('person'), name: z.string(), path: z.string() }),
+      ])
+      .nullable(),
+  }),
   cacheTags: CacheTags,
 })
 export type PublicSettings = z.infer<typeof PublicSettings>

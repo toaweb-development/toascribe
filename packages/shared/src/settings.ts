@@ -127,6 +127,16 @@ export const CoreSettings = z.object({
   rss_use_excerpt: z.boolean(),
   /** False asks search engines not to index the site. */
   blog_public: z.boolean(),
+  // «Deling og søkemotorer» (M1.6, K-224), on the same screen: the sharing image when an item has neither its own nor a featured
+  // image, and who publishes the site in its structured data (an organisation with a name and logo, or one person).
+  seo_default_image: z.uuid().nullable(),
+  seo_publisher_type: z.enum(['organization', 'person']),
+  /** The organisation's name; empty: the site's title. */
+  seo_publisher_name: z.string().max(200),
+  /** The organisation's logo; null: the logo from «Tilpass». */
+  seo_publisher_logo: z.uuid().nullable(),
+  /** The person (an account); null with `person`: no publisher is named. */
+  seo_publisher_person: z.uuid().nullable(),
 
   // Settings → Discussion
   default_comment_status: z.enum(COMMENT_STATUS),
@@ -296,6 +306,11 @@ export const CORE_SETTINGS: CoreSettings = {
   posts_per_rss: 10,
   rss_use_excerpt: false,
   blog_public: true,
+  seo_default_image: null,
+  seo_publisher_type: 'organization',
+  seo_publisher_name: '',
+  seo_publisher_logo: null,
+  seo_publisher_person: null,
 
   // Discussion
   default_comment_status: 'open', // Tor and WordPress

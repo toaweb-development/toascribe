@@ -43,11 +43,13 @@ import {
   pendingAdminEmail,
 } from '../repositories/account-tokens.ts'
 import { findContent } from '../repositories/content.ts'
+import { publishingPeople } from '../repositories/public.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import type { Executor } from '../repositories/executor.ts'
 import { readSettings, writeSettings } from '../repositories/settings.ts'
 import { findTaxonomy, findTerm } from '../repositories/terms.ts'
 import { findRoleBySlug } from '../repositories/users.ts'
+import type { MediaService } from './media.ts'
 import type { RateLimiter } from './rate-limit.ts'
 import { assertNotDelayed } from './support.ts'
 import type { Auditor, RequestContext, SafeMail } from './support.ts'
@@ -150,6 +152,7 @@ export function createSettingsService(options: {
   readonly mail: SafeMail
   readonly limiter: Pick<RateLimiter, 'begin'>
   readonly publicOrigin: string
+  readonly media: Pick<MediaService, 'contentRefs'>
   readonly onInvalidSetting?: (key: string) => void
 }): SettingsService {
   const { db, clock, audit, mail } = options
@@ -321,7 +324,21 @@ export function createSettingsService(options: {
 
     async reading(auth) {
       requireManage(auth)
-      return { settings: await read(ReadingSettings) }
+      const settings = await read(ReadingSettings)
+      const imageIds = [settings.seo_default_image, settings.seo_publisher_logo].filter(
+        (id): id is string => id !== null,
+      )
+      const [media, people] = await Promise.all([
+        imageIds.length === 0
+          ? []
+          : options.media.contentRefs({ id: auth.account.id, capabilities: auth.capabilities }, imageIds),
+        publishingPeople(db),
+      ])
+      return {
+        settings,
+        media,
+        people: people.map((person) => ({ id: person.id, displayName: person.displayName })),
+      }
     },
 
     async updateReading(auth, request, ctx) {
@@ -334,6 +351,22 @@ export function createSettingsService(options: {
       }
       await checkPage('page_on_front', request.page_on_front, true)
       await checkPage('page_for_posts', request.page_for_posts, true)
+      // «Deling og søkemotorer»: images from the media library, and a person who has something published.
+      for (const key of ['seo_default_image', 'seo_publisher_logo'] as const) {
+        const imageId = request[key]
+        if (imageId === undefined || imageId === null) continue
+        const [ref] = await options.media.contentRefs({ id: auth.account.id, capabilities: auth.capabilities }, [
+          imageId,
+        ])
+        if (ref === undefined || !ref.mime.startsWith('image/')) throw invalid(key, 'an image from the media library')
+      }
+      if (
+        request.seo_publisher_person !== undefined &&
+        request.seo_publisher_person !== null &&
+        !(await publishingPeople(db)).some((person) => person.id === request.seo_publisher_person)
+      ) {
+        throw invalid('seo_publisher_person', 'an active account with something published')
+      }
       if (next.show_on_front === 'page' && next.page_on_front === null) {
         throw invalid('page_on_front', 'a static front page needs a page')
       }

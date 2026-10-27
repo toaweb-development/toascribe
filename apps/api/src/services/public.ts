@@ -53,6 +53,7 @@ import {
   findPublishedById,
   findPublishedByIds,
   countIndexable,
+  publishingPeople,
   countIndexableAuthors,
   countIndexableTerms,
   listIndexable,
@@ -95,6 +96,12 @@ const SETTINGS = CoreSettings.pick({
   page_for_posts: true,
   blog_public: true,
   wp_page_for_privacy_policy: true,
+  site_logo: true,
+  seo_default_image: true,
+  seo_publisher_type: true,
+  seo_publisher_name: true,
+  seo_publisher_logo: true,
+  seo_publisher_person: true,
 })
 type StoredSettings = { readonly [K in keyof typeof SETTINGS.shape]: (typeof SETTINGS.shape)[K]['_output'] }
 /**
@@ -317,12 +324,22 @@ export function createPublicService(options: {
     const mediaRefs: ContentMediaRef[] =
       mediaIds.length === 0 ? [] : await media.contentRefs(VISITOR, [...new Set(mediaIds)])
     const ancestors = (await pagePaths(db, row.type === 'page' ? [row.id] : [])).get(row.id)?.ancestors ?? []
+    // Only the published ones are named (a draft parent's title stays private); the shortest address is the top.
+    const parents = ancestors.length === 0 ? [] : await findPublishedByIds(db, ancestors)
+    const parentPaths = await pathsOf(parents, settings)
+    const crumbs = parents
+      .map((parent) => ({
+        title: parent.title,
+        path: frontPath(parent, settings) ?? parentPaths.get(parent.id)?.path ?? '/',
+      }))
+      .sort((a, b) => a.path.length - b.path.length)
     return {
       content: {
         ...summary,
         blocks: asJson(blocks),
         media: mediaRefs,
         seo,
+        ancestors: crumbs,
         template: row.template,
         parentId: row.parentId,
         commentStatus: row.commentStatus,
@@ -570,6 +587,30 @@ export function createPublicService(options: {
         settings.show_on_front === 'page' && settings.page_for_posts !== null
           ? await findPublishedById(db, settings.page_for_posts)
           : undefined
+      // The sharing image of last resort and the publisher (public files only; a person with something published).
+      const logoId = settings.seo_publisher_logo ?? settings.site_logo
+      const imageIds = [settings.seo_default_image, logoId].filter((id): id is string => id !== null)
+      const images = new Map(
+        (imageIds.length === 0 ? [] : await media.contentRefs(VISITOR, imageIds)).map((ref) => [ref.id, ref]),
+      )
+      const person =
+        settings.seo_publisher_type === 'person' && settings.seo_publisher_person !== null
+          ? (await publishingPeople(db)).find((entry) => entry.id === settings.seo_publisher_person)
+          : undefined
+      const seo: PublicSettings['seo'] = {
+        defaultImage: settings.seo_default_image === null ? null : (images.get(settings.seo_default_image) ?? null),
+        publisher:
+          settings.seo_publisher_type === 'organization'
+            ? {
+                type: 'organization',
+                name: settings.seo_publisher_name === '' ? settings.blogname : settings.seo_publisher_name,
+                logo: logoId === null ? null : (images.get(logoId) ?? null),
+              }
+            : person === undefined
+              ? null
+              : { type: 'person', name: person.displayName, path: settings.links.authorPath(person.nicename) },
+      }
+      const seoTags = [...[...images.keys()].map((id) => `media:${id}`), ...(person === undefined ? [] : ['list:post'])]
       const privacyPage =
         settings.wp_page_for_privacy_policy === null
           ? undefined
@@ -585,12 +626,14 @@ export function createPublicService(options: {
         searchEngineVisible: settings.blog_public,
         privacyPolicyPath: privacyPage === undefined ? null : await pathOf(privacyPage, settings),
         origin: options.publicOrigin.replace(/\/+$/, ''),
+        seo,
         // `list:page`: a chosen page that is published later (or unpublished) changes these addresses too.
         cacheTags: [
           'settings',
           'list:page',
           ...(postsPage === undefined ? [] : [`content:${postsPage.id}`]),
           ...(privacyPage === undefined ? [] : [`content:${privacyPage.id}`]),
+          ...seoTags,
         ],
       }
     },

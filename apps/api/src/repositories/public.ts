@@ -562,3 +562,18 @@ export async function listIndexableAuthors(
     .limit(limit)
     .offset(offset)
 }
+
+/** Active accounts with something published: who can be the site's publishing person (their author page is the address). */
+export async function publishingPeople(db: Executor): Promise<{ id: string; displayName: string; nicename: string }[]> {
+  return db
+    .select({ id: account.id, displayName: account.displayName, nicename: account.nicename })
+    .from(account)
+    .where(
+      and(
+        eq(account.status, 'active'),
+        sql`exists (select 1 from content_author join content on content.id = content_author.content_id
+          where content_author.account_id = ${account.id} and ${visible})`,
+      ),
+    )
+    .orderBy(asc(account.displayName), asc(account.id))
+}
