@@ -5,6 +5,7 @@
 // it; until then the old one stays.
 import { generateToken, hashToken } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
+import { sql } from 'drizzle-orm'
 import {
   CoreSettings,
   GeneralSettings,
@@ -37,6 +38,7 @@ import {
 } from '../repositories/account-tokens.ts'
 import { findContent } from '../repositories/content.ts'
 import { inTransaction } from '../repositories/executor.ts'
+import type { Executor } from '../repositories/executor.ts'
 import { readSettings, writeSettings } from '../repositories/settings.ts'
 import { findTaxonomy, findTerm } from '../repositories/terms.ts'
 import { findRoleBySlug } from '../repositories/users.ts'
@@ -84,6 +86,14 @@ function knownTimeZone(zone: string): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * One change of the administrator address at a time: a request and a confirmation wait for each other, so «the last request wins»
+ * holds when two arrive together (each voids the links committed before it).
+ */
+async function lockAdminEmail(tx: Executor): Promise<void> {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended('toascribe:admin-email', 0))`)
 }
 
 function invalid(field: string, message: string): AppError {
@@ -154,16 +164,35 @@ export function createSettingsService(options: {
       if (values.timezone_string !== undefined && !knownTimeZone(values.timezone_string)) {
         throw invalid('timezone_string', 'not a time zone')
       }
-      await save(auth, 'general', values, ctx)
-
       if (newAdminEmail !== undefined) {
         const current = (await read(ADMIN_EMAIL)).admin_email
         if (current !== null && current.toLowerCase() === newAdminEmail.toLowerCase()) {
           throw new AppError(400, 'same_email', 'That is already the administrator address')
         }
-        const token = generateToken()
-        await inTransaction(db, async (tx) => {
-          const now = clock()
+        // Each request mails an address: a few per account in a window, as the flows that mail (security §5).
+        const ticket = await options.limiter.begin('password_lost', {
+          ip: ctx.ip,
+          login: `admin-email:${auth.account.id}`,
+        })
+        assertNotDelayed(ticket.status, clock())
+      }
+      const changed = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined))
+      const token = newAdminEmail === undefined ? undefined : generateToken()
+      // One transaction: the settings, the link and their audit entries are all written, or none of them.
+      await inTransaction(db, async (tx) => {
+        const now = clock()
+        await lockAdminEmail(tx)
+        if (Object.keys(changed).length > 0) {
+          await writeSettings(tx, changed)
+          await audit(tx, ctx, {
+            actor: { id: auth.account.id, username: auth.account.username },
+            action: 'settings.updated',
+            objectType: 'settings',
+            objectId: 'general',
+            newValue: { keys: Object.keys(changed).sort() },
+          })
+        }
+        if (newAdminEmail !== undefined && token !== undefined) {
           await invalidateAdminEmailTokens(tx, now)
           await insertAccountToken(tx, {
             accountId: auth.account.id,
@@ -179,8 +208,10 @@ export function createSettingsService(options: {
             objectType: 'site',
             reason: 'pending confirmation',
           })
-        })
-        // To the NEW address: opening the link proves it receives mail (WordPress' new_admin_email).
+        }
+      })
+      if (newAdminEmail !== undefined && token !== undefined) {
+        // To the NEW address, after the commit: opening the link proves it receives mail (WordPress' new_admin_email).
         await mail({
           template: 'admin_email_change',
           to: newAdminEmail,
@@ -197,6 +228,7 @@ export function createSettingsService(options: {
       assertNotDelayed(ticket.status, clock())
       return inTransaction(db, async (tx) => {
         const now = clock()
+        await lockAdminEmail(tx)
         const found = await findTokenForUpdate(tx, hashToken(token))
         if (
           found?.purpose !== 'admin_email_change' ||
@@ -245,13 +277,18 @@ export function createSettingsService(options: {
 
     async updateReading(auth, request, ctx) {
       requireManage(auth)
-      const next = { ...(await read(ReadingSettings)), ...request }
+      const stored = await read(ReadingSettings)
+      const next = {
+        show_on_front: request.show_on_front ?? stored.show_on_front,
+        page_on_front: request.page_on_front === undefined ? stored.page_on_front : request.page_on_front,
+        page_for_posts: request.page_for_posts === undefined ? stored.page_for_posts : request.page_for_posts,
+      }
       await checkPage('page_on_front', request.page_on_front, true)
       await checkPage('page_for_posts', request.page_for_posts, true)
       if (next.show_on_front === 'page' && next.page_on_front === null) {
         throw invalid('page_on_front', 'a static front page needs a page')
       }
-      if (next.page_on_front !== null && next.page_on_front === next.page_for_posts) {
+      if (next.page_on_front !== null && next.page_on_front.toLowerCase() === next.page_for_posts?.toLowerCase()) {
         throw invalid('page_for_posts', 'the front page cannot also be the posts page')
       }
       await save(auth, 'reading', request, ctx)

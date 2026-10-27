@@ -5,6 +5,9 @@ import { z } from 'zod'
 
 import { CoreSettings } from './settings.ts'
 
+/** An id in a request, lower-cased: PostgreSQL reads `ABC…` and `abc…` as the same uuid, and the site compares them as text. */
+const id = z.uuid().transform((value) => value.toLowerCase())
+
 /** «Innstillinger → Generelt» (K-191). The administrator's address is changed through a confirmation (K-192), not here. */
 export const GeneralSettings = CoreSettings.pick({
   blogname: true,
@@ -52,7 +55,8 @@ export const WritingSettings = CoreSettings.pick({ default_category: true, defau
 export type WritingSettings = z.infer<typeof WritingSettings>
 export const WritingSettingsResponse = z.object({ settings: WritingSettings })
 export type WritingSettingsResponse = z.infer<typeof WritingSettingsResponse>
-export const UpdateWritingSettingsRequest = WritingSettings.partial()
+export const UpdateWritingSettingsRequest = WritingSettings.extend({ default_category: id.nullable() })
+  .partial()
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one field' })
 export type UpdateWritingSettingsRequest = z.infer<typeof UpdateWritingSettingsRequest>
@@ -71,6 +75,8 @@ export type ReadingSettings = z.infer<typeof ReadingSettings>
 export const ReadingSettingsResponse = z.object({ settings: ReadingSettings })
 export type ReadingSettingsResponse = z.infer<typeof ReadingSettingsResponse>
 export const UpdateReadingSettingsRequest = ReadingSettings.extend({
+  page_on_front: id.nullable(),
+  page_for_posts: id.nullable(),
   posts_per_page: z.int().min(1).max(100),
   posts_per_rss: z.int().min(1).max(100),
 })
@@ -84,7 +90,8 @@ export const PrivacySettings = CoreSettings.pick({ wp_page_for_privacy_policy: t
 export type PrivacySettings = z.infer<typeof PrivacySettings>
 export const PrivacySettingsResponse = z.object({ settings: PrivacySettings })
 export type PrivacySettingsResponse = z.infer<typeof PrivacySettingsResponse>
-export const UpdatePrivacySettingsRequest = PrivacySettings.partial()
+export const UpdatePrivacySettingsRequest = PrivacySettings.extend({ wp_page_for_privacy_policy: id.nullable() })
+  .partial()
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one field' })
 export type UpdatePrivacySettingsRequest = z.infer<typeof UpdatePrivacySettingsRequest>

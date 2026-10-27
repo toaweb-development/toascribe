@@ -139,6 +139,34 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the settings screens (needs TE
     })
   })
 
+  describe('a request that is refused writes nothing', () => {
+    it('keeps the title when the new address is the one there is', async () => {
+      const before = GeneralSettingsResponse.parse(await (await admin.get('/api/v1/settings/general')).json())
+      const current = before.settings.admin_email ?? ''
+      const res = await admin.patch('/api/v1/settings/general', {
+        blogname: 'Skal ikke lagres',
+        new_admin_email: current.toUpperCase(),
+      })
+      expect(res.status).toBe(400)
+      const after = GeneralSettingsResponse.parse(await (await admin.get('/api/v1/settings/general')).json())
+      expect(after.settings.blogname).toBe(before.settings.blogname)
+    })
+
+    it('mails a new address a few times per account, then asks it to wait', async () => {
+      const asker = env.client({ ip: '203.0.113.84' })
+      await env.createAccount({ username: 'set-admin3', role: 'administrator' })
+      expect((await asker.login('set-admin3', TEST_PASSWORD)).status).toBe(200)
+      const statuses: number[] = []
+      for (let attempt = 0; attempt < 7; attempt += 1) {
+        statuses.push(
+          (await asker.patch('/api/v1/settings/general', { new_admin_email: `n${String(attempt)}@example.no` })).status,
+        )
+      }
+      expect(statuses.slice(0, 5).every((status) => status === 200)).toBe(true)
+      expect(statuses.at(-1)).toBe(429)
+    })
+  })
+
   describe('Skriving and Lesing (K-193, K-194, K-226)', () => {
     it('keeps the default category to a category that exists', async () => {
       expect((await admin.patch('/api/v1/settings/writing', { default_category: crypto.randomUUID() })).status).toBe(
@@ -157,6 +185,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the settings screens (needs TE
       expect((await set({ show_on_front: 'page', page_on_front: pages['draft'] })).status).toBe(400)
       expect(
         (await set({ show_on_front: 'page', page_on_front: pages['front'], page_for_posts: pages['front'] })).status,
+      ).toBe(400)
+      // The same page written in capitals is the same page.
+      expect(
+        (
+          await set({
+            show_on_front: 'page',
+            page_on_front: pages['front'],
+            page_for_posts: (pages['front'] ?? '').toUpperCase(),
+          })
+        ).status,
       ).toBe(400)
       expect((await set({ posts_per_page: 0 })).status).toBe(400)
       const ok = await set({ show_on_front: 'page', page_on_front: pages['front'], page_for_posts: pages['posts'] })

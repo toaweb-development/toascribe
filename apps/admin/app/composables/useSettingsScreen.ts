@@ -18,9 +18,8 @@ export async function useSettingsScreen<S extends Record<string, unknown>, A ext
     if (event) setResponseStatus(event, 403)
   }
   // Awaited, so the server draws the form with its values and the browser takes the same page over.
-  const { data, error, refresh } = await useAsyncData(options.key, async () =>
-    mayManage.value ? options.load() : null,
-  )
+  // `enabled` follows the session: an account without the right asks nothing.
+  const { data, error, refresh } = await useAsyncData(options.key, options.load, { enabled: mayManage })
   const form = ref({}) as Ref<S>
   watch(
     data,
