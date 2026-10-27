@@ -75,6 +75,56 @@ export const CHECK_UPDATE_USAGE = `  check-update [--format table|json]     (als
                          stores the answer for «Oppdateringer». Off with TOASCRIBE_UPDATE_CHECK=off or the update_check setting
                          (exit 1, nothing asked). Needs DATABASE_URL.`
 
+const AS_USER = `--user <username or e-mail> is the account whose rights the command uses (as WP-CLI); the audit log names
+                         «cli» with that account.`
+
+export const POST_USAGE = `  post list [--type post|page] [--status <status>] [--search <text>] [--page n] [--per-page n] --user <login>
+  post get <id> --user <login>
+  post create [--type post|page] --title <text> [--content <text> | --blocks <json>] [--status draft|publish|...]
+              [--slug <slug>] [--excerpt <text>] --user <login>
+  post update <id> [--title] [--content | --blocks] [--status] [--slug] [--excerpt] --user <login>
+  post delete <id> [--force] --user <login>
+                         Posts and pages through the api's own service and checks. --content is plain text (an empty line
+                         starts a paragraph). delete moves to the trash; --force deletes for good. ${AS_USER}
+                         All take --format table|json. Needs DATABASE_URL, TOASCRIBE_ENCRYPTION_KEY and PUBLIC_ORIGIN.`
+
+export const TERM_USAGE = `  term list <category|post_tag> [--search <text>] [--page n] [--per-page n] --user <login>
+  term get <taxonomy> <id> --user <login>
+  term create <taxonomy> --name <text> [--slug] [--parent <id>] [--description] --user <login>
+  term update <taxonomy> <id> [--name] [--slug] [--parent] [--description] --user <login>
+  term delete <taxonomy> <id> --user <login>
+                         Categories and tags, as «Kategorier» and «Stikkord». All take --format table|json.`
+
+export const MENU_USAGE = `  menu list | get <id> | create --name <text> | update <id> [--name] [--items <json>] | delete <id>   --user <login>
+                         Menus, as «Utseende → Menyer» (items as the api's JSON). All take --format table|json.`
+
+export const OPTION_USAGE = `  option list [--search <text>] | get <key> | update <key> <value>   --user <login>
+                         The settings, through the screen each belongs to and its checks. <value> is read as JSON when it is
+                         JSON (true, 42, "text", ["a"]), else as text. Settings are a fixed set: add and delete are refused.
+                         The SMTP password is shown as [encrypted], never its value.`
+
+export const CACHE_USAGE = `  cache flush [--tag <tag>]
+                         The site drops its cached answers at its next request: all of them, or those under --tag
+                         (list:post, content:<id>, menus). Needs DATABASE_URL.`
+
+export const JOBS_USAGE = `  jobs list [--queue <name>] [--state created|retry|active|completed|cancelled|failed] [--limit n] [--format table|json]
+  jobs retry <id> | jobs cancel <id>
+                         The job queue (pg-boss): what is queued, running, done or failed, without the jobs' data; a failed
+                         job queued again, or a waiting one cancelled. Needs DATABASE_URL.`
+
+export const SECRETS_USAGE = `  secrets list [--format table|json]
+                         The install's secrets by name and where they are (the environment, the database), and which key
+                         version sealed the stored ones. Never a value.
+  secrets rotate --new-key
+                         A new encryption key and the steps to put it in .env (the current key is not printed).
+  secrets rotate [--yes]
+                         Seal every stored secret again with the current key, after the steps above. Asks first (type
+                         «roter»), with a warning: keep the older keys until it has run. Needs TOASCRIBE_ENCRYPTION_KEY.`
+
+export const SHELL_USAGE = `  shell
+                         A Node REPL with db, schema, sql, the api's services and actAs(login), in the container only and at
+                         a terminal (docker compose exec api toa shell). Everything typed runs for real; a warning says so.`
+
 export const BACKUP_USAGE = `  backup create [--include-secrets] [--format table|json]
                          One file in the backups volume (BACKUPS_DIR): the database, the uploads and a manifest with a sha256 per
                          file, mode 0600. The keys are left out; --include-secrets keeps them, encrypted with age to [backup]
@@ -114,6 +164,14 @@ ${MEDIA_REGENERATE_USAGE}
 ${MAINTENANCE_USAGE}
 ${BACKUP_USAGE}
 ${CHECK_UPDATE_USAGE}
+${POST_USAGE}
+${TERM_USAGE}
+${MENU_USAGE}
+${OPTION_USAGE}
+${CACHE_USAGE}
+${JOBS_USAGE}
+${SECRETS_USAGE}
+${SHELL_USAGE}
 ${DB_MIGRATE_USAGE}
 
 ${EXIT_CODES_USAGE}

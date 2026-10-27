@@ -100,12 +100,43 @@ export function loadKeyedDatabaseConfig(env: EnvSource = process.env): KeyedData
   return parsed.data
 }
 
+/**
+ * `toa post|term|menu|option` (M1.7): the api's services in the cli, so the api container's environment: the app role, the key ring
+ * (a post may queue a mail), the site's address, the uploads (a featured image) and where the site answers (menu locations).
+ */
+const ServiceEnv = KeyedDatabaseEnv.extend({
+  PUBLIC_ORIGIN: z.url({ protocol: /^https?$/ }),
+  UPLOADS_DIR: z.string().startsWith('/').max(500).default('/var/lib/toascribe/uploads'),
+  UPLOAD_MAX_SIZE_MB: z.coerce.number().int().min(1).max(4096).default(64),
+  SITE_URL_INTERNAL: z.url({ protocol: /^https?$/ }).default('http://site:3000'),
+})
+
+export type ServiceConfig = z.infer<typeof ServiceEnv> & { keyRing: () => Promise<KeyRing> }
+
+export function loadServiceConfig(env: EnvSource = process.env): ServiceConfig {
+  const parsed = ServiceEnv.safeParse(env)
+  if (!parsed.success) throw new ConfigError(parsed.error.issues)
+  const config = parsed.data
+  return { ...config, keyRing: () => keyRingOf(config) }
+}
+
 /** The key ring of a keyed config, as the api and the worker build theirs. */
 export function keyRingOf(config: KeyedDatabaseConfig): Promise<KeyRing> {
   return createKeyRing(
     { version: config.TOASCRIBE_ENCRYPTION_KEY_VERSION, key: config.TOASCRIBE_ENCRYPTION_KEY },
     config.TOASCRIBE_ENCRYPTION_OLD_KEYS,
   )
+}
+
+/** TOASCRIBE_ENCRYPTION_KEY_VERSION as set (1 when it is not), for `toa secrets rotate --new-key`. */
+export function currentKeyVersion(env: EnvSource = process.env): number {
+  const parsed = z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(9999)
+    .safeParse(env['TOASCRIBE_ENCRYPTION_KEY_VERSION'] ?? '1')
+  return parsed.success ? parsed.data : 1
 }
 
 /** Which of `names` are set (not empty) in the environment. Names only: `core gen-env` must not touch the values. */

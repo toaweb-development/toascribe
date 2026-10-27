@@ -17,14 +17,17 @@
     "build": "tsc -p tsconfig.build.json && chmod +x dist/index.js"
   },
   "dependencies": {
+    "@toascribe/api": "workspace:*",
     "@toascribe/auth": "workspace:*",
     "@toascribe/backup": "workspace:*",
+    "@toascribe/blocks": "workspace:*",
     "@toascribe/db": "workspace:*",
     "@toascribe/install": "workspace:*",
     "@toascribe/media": "workspace:*",
     "@toascribe/shared": "workspace:*",
     "@toascribe/updates": "workspace:*",
     "drizzle-orm": "catalog:",
+    "pg-boss": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
   },

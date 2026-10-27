@@ -4,6 +4,10 @@ import { coreGenEnv, coreInstall, coreIsInstalled, coreSetupToken } from './comm
 import { devSeedTom } from './commands/dev-seed.ts'
 import { backup, dbMigrate } from './commands/backup.ts'
 import { checkUpdate } from './commands/check-update.ts'
+import { menu, post, term } from './commands/content.ts'
+import { option } from './commands/option.ts'
+import { cache, jobs, secrets } from './commands/ops.ts'
+import { shell } from './commands/shell.ts'
 import { maintenance } from './commands/maintenance.ts'
 import { mediaRegenerate } from './commands/media.ts'
 import { userCreate, userMfaReset, userResetLoginLimit, userResetPassword } from './commands/user.ts'
@@ -20,7 +24,10 @@ const FUTURE_FIXTURES = ['blogg', 'stor', 'butikk'] as const
 
 export async function run(argv: readonly string[], version: string, options: CommandOptions = {}): Promise<CliResult> {
   const [command, ...rest] = argv
-  if ((command === 'version' || command === '--version') && rest.length === 0) {
+  if (
+    ((command === 'version' || command === '--version') && rest.length === 0) ||
+    (command === 'core' && rest[0] === 'version' && rest.length === 1)
+  ) {
     return { code: 0, stdout: `${version}\n`, stderr: '' }
   }
   if (command === 'dev' && rest[0] === 'seed' && rest.length === 2) {
@@ -59,6 +66,15 @@ export async function run(argv: readonly string[], version: string, options: Com
   if (command === 'core' && rest[0] === 'check-update') {
     return await checkUpdate(rest.slice(1), version, options)
   }
+  const withVersion = { ...options, version }
+  if (command === 'post') return await post(rest, withVersion)
+  if (command === 'term') return await term(rest, withVersion)
+  if (command === 'menu') return await menu(rest, withVersion)
+  if (command === 'option') return await option(rest, withVersion)
+  if (command === 'cache') return await cache(rest, options)
+  if (command === 'jobs') return await jobs(rest, options)
+  if (command === 'secrets') return await secrets(rest, options)
+  if (command === 'shell') return await shell(rest, withVersion)
   if (command === 'maintenance') {
     return await maintenance(rest, options)
   }

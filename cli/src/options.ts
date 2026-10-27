@@ -1,4 +1,5 @@
 import type { MailProducer } from '@toascribe/db'
+import type { ActiveThemeSource, EmbedFetch } from '@toascribe/api/cli'
 import type { UpdateSource } from '@toascribe/updates'
 import type { Logger } from 'pino'
 
@@ -19,4 +20,10 @@ export interface CommandOptions {
   readonly mail?: MailProducer
   /** Where `check-update` looks for releases. Defaults to ghcr.io; tests pass stored answers. */
   readonly updateSource?: UpdateSource
+  /** The version that runs (run() passes it to the commands that need it). */
+  readonly version?: string
+  /** For `toa post|term|menu`: the site's active theme and the oEmbed fetch; tests pass their own, never the network. */
+  /** For `toa shell`: whether this runs in a container (default: /.dockerenv or /run/.containerenv exists). */
+  readonly inContainer?: boolean
+  readonly serviceOverrides?: { readonly activeTheme?: ActiveThemeSource; readonly embedFetch?: EmbedFetch }
 }
