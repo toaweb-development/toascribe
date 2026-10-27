@@ -47,6 +47,7 @@ const screen = computed(() => {
     case 'setpassword':
       return 'set'
     case 'confirmemail':
+    case 'confirmadminemail':
       return 'confirm'
     default:
       return step.value
@@ -102,7 +103,9 @@ async function onConfirmNeedsLogin() {
   // Back here after the login. The token stays in the fragment of the address for the trip.
   await navigateTo({
     path: '/login',
-    query: { redirectTo: `${baseURL.replace(/\/+$/, '')}/login?action=confirmemail` },
+    query: {
+      redirectTo: `${baseURL.replace(/\/+$/, '')}/login?action=${action.value === 'confirmadminemail' ? 'confirmadminemail' : 'confirmemail'}`,
+    },
     hash: route.hash,
   })
 }
@@ -148,7 +151,11 @@ const noticeKind = computed(() =>
     <AuthLostPassword v-else-if="screen === 'lost'" @sent="onLostSent" />
     <AuthChoosePassword v-else-if="screen === 'reset'" mode="reset" @done="onPasswordChosen" />
     <AuthChoosePassword v-else-if="screen === 'set'" mode="set" @done="onPasswordChosen" />
-    <AuthConfirmEmail v-else-if="screen === 'confirm'" @needs-login="onConfirmNeedsLogin" />
+    <AuthConfirmEmail
+      v-else-if="screen === 'confirm'"
+      :kind="action === 'confirmadminemail' ? 'admin' : 'account'"
+      @needs-login="onConfirmNeedsLogin"
+    />
 
     <template #links>
       <template v-if="screen === 'password'">

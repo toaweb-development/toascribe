@@ -3,7 +3,7 @@
 // in mails keep working. Anything else is the login form.
 
 export type LoginAction =
-  'login' | 'lostpassword' | 'resetpass' | 'setpassword' | 'confirmemail' | 'register' | 'logout'
+  'login' | 'lostpassword' | 'resetpass' | 'setpassword' | 'confirmemail' | 'confirmadminemail' | 'register' | 'logout'
 
 // A Map, not an object: `action=constructor` must not find Object's own properties.
 const ACTIONS: ReadonlyMap<string, LoginAction> = new Map<string, LoginAction>([
@@ -14,6 +14,7 @@ const ACTIONS: ReadonlyMap<string, LoginAction> = new Map<string, LoginAction>([
   ['rp', 'resetpass'], // `wp-login.php?action=rp`
   ['setpassword', 'setpassword'],
   ['confirmemail', 'confirmemail'],
+  ['confirmadminemail', 'confirmadminemail'], // the site's new administrator address (K-192)
   ['register', 'register'],
   ['logout', 'logout'],
 ])

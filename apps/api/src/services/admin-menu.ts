@@ -73,16 +73,40 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     ],
   },
   {
-    // WordPress' «Innstillinger» (position 80). Only «Media» works so far; «Generelt», «Skriving», «Lesing» and the rest come with
-    // the tasks that build them.
+    // WordPress' «Innstillinger» (position 80), in its order. «Diskusjon» comes with the comments (phase 3), «Permalenker» with M1.5's
+    // permalinks.
     id: 'settings',
     labelKey: 'menu.settings',
     icon: 'i-lucide-settings',
     position: 80,
     capability: 'manage_options',
-    to: '/settings/media',
+    to: '/settings/general',
     children: [
+      {
+        id: 'settings.general',
+        labelKey: 'menu.settingsGeneral',
+        capability: 'manage_options',
+        to: '/settings/general',
+      },
+      {
+        id: 'settings.writing',
+        labelKey: 'menu.settingsWriting',
+        capability: 'manage_options',
+        to: '/settings/writing',
+      },
+      {
+        id: 'settings.reading',
+        labelKey: 'menu.settingsReading',
+        capability: 'manage_options',
+        to: '/settings/reading',
+      },
       { id: 'settings.media', labelKey: 'menu.settingsMedia', capability: 'manage_options', to: '/settings/media' },
+      {
+        id: 'settings.privacy',
+        labelKey: 'menu.settingsPrivacy',
+        capability: 'manage_options',
+        to: '/settings/privacy',
+      },
     ],
   },
   {

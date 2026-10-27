@@ -337,7 +337,8 @@
       "heading": "Bekreft e-postadressen",
       "working": "Bekrefter den nye e-postadressen …",
       "done": "E-postadressen er bekreftet. Kontoen bruker nå {email}.",
-      "continue": "Gå til administrasjonen"
+      "continue": "Gå til administrasjonen",
+      "adminDone": "Administrator-e-postadressen for nettstedet er nå {email}."
     },
     "logout": {
       "heading": "Logg ut",
@@ -392,7 +393,11 @@
     "mediaLibrary": "Bibliotek",
     "mediaNew": "Legg til ny",
     "settings": "Innstillinger",
-    "settingsMedia": "Media"
+    "settingsMedia": "Media",
+    "settingsGeneral": "Generelt",
+    "settingsWriting": "Skriving",
+    "settingsReading": "Lesing",
+    "settingsPrivacy": "Personvern"
   },
   "notices": {
     "emailNotVerified": "E-post fra nettstedet er ikke testet. Passordlenker og bekreftelser kommer kanskje ikke fram før en testmelding har gått gjennom. Innstillingene for e-post kommer i en senere versjon.",
@@ -1469,6 +1474,65 @@
       "stickyFirst": "Først",
       "showDate": "Vis dato",
       "showExcerpt": "Vis utdrag"
+    }
+  },
+  "settings": {
+    "saved": "Innstillingene er lagret.",
+    "save": "Lagre endringer",
+    "denied": "Du har ikke tilgang til innstillingene",
+    "loadFailed": "Fikk ikke hentet innstillingene.",
+    "saveFailed": "Innstillingene ble ikke lagret",
+    "general": {
+      "title": "Generelle innstillinger",
+      "blogname": "Nettstedstittel",
+      "tagline": "Slagord",
+      "taglineHelp": "Forklar med noen få ord hva nettstedet handler om.",
+      "siteUrl": "Nettstedsadresse (URL)",
+      "siteUrlHelp": "Adressen settes med PUBLIC_ORIGIN i docker/.env.",
+      "adminEmail": "Ny administrator-e-postadresse",
+      "adminEmailHelp": "Adressen nå er {email}. Den brukes til administrasjon. Endrer du den, sender vi en e-post til den nye adressen, og den nye adressen gjelder først når den er bekreftet.",
+      "adminEmailPending": "Venter på bekreftelse av {email}. Lenken er sendt dit.",
+      "membership": "Medlemskap",
+      "anyoneCanRegister": "Hvem som helst kan registrere seg",
+      "defaultRole": "Standard rolle for nye brukere",
+      "locale": "Nettstedsspråk",
+      "timezone": "Tidssone",
+      "dateFormat": "Datoformat",
+      "dateFormatHelp": "Som i WordPress, for eksempel j. F Y (27. oktober 2026) eller Y-m-d (2026-10-27).",
+      "timeFormat": "Tidsformat",
+      "timeFormatHelp": "Som i WordPress, for eksempel H:i (14:30).",
+      "startOfWeek": "Uken starter"
+    },
+    "writing": {
+      "title": "Skriveinnstillinger",
+      "defaultCategory": "Standard innleggskategori",
+      "defaultFormat": "Standard innleggsformat",
+      "formatStandard": "Standard"
+    },
+    "reading": {
+      "title": "Leseinnstillinger",
+      "frontShows": "Forsiden viser",
+      "latestPosts": "Dine siste innlegg",
+      "staticPage": "En statisk side",
+      "frontPage": "Forside",
+      "postsPage": "Innleggsside",
+      "choose": "— Velg —",
+      "postsPerPage": "Antall innlegg per side",
+      "postsPerRss": "Antall nyeste elementer i RSS-strømmen",
+      "feedShows": "For hvert innlegg i strømmen vises",
+      "feedFull": "Hele teksten",
+      "feedExcerpt": "Utdrag",
+      "visibility": "Søkemotorsynlighet",
+      "discourage": "Be søkemotorer om ikke å indeksere dette nettstedet",
+      "discourageHelp": "Det er opp til søkemotorene å følge forespørselen."
+    },
+    "privacy": {
+      "title": "Personvern",
+      "intro": "Velg siden som er personvernerklæringen for nettstedet. Den lenkes i bunnteksten og på registreringsskjemaet når den er publisert.",
+      "page": "Personvernside",
+      "pageHelp": "En side som ikke er publisert, lenkes ikke før den er publisert.",
+      "create": "Opprett ny personvernside",
+      "newTitle": "Personvernerklæring"
     }
   }
 }

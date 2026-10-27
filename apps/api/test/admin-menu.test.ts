@@ -33,7 +33,11 @@ describe('the core menu', () => {
       { id: 'media', to: '/media', children: ['media.library', 'media.new'] },
       { id: 'pages', to: '/pages', children: ['pages.all', 'pages.new'] },
       { id: 'users', to: '/users', children: ['users.all', 'users.profile'] },
-      { id: 'settings', to: '/settings/media', children: ['settings.media'] },
+      {
+        id: 'settings',
+        to: '/settings/general',
+        children: ['settings.general', 'settings.writing', 'settings.reading', 'settings.media', 'settings.privacy'],
+      },
     ])
   })
 
@@ -119,7 +123,11 @@ describe('the core menu', () => {
       'pages.new',
       'users.all',
       'users.profile',
+      'settings.general',
+      'settings.writing',
+      'settings.reading',
       'settings.media',
+      'settings.privacy',
     ])
   })
 })
