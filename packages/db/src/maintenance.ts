@@ -2,7 +2,7 @@
 // maintenance`, a restore, a migration) with a cache change for every tag (`*`), so the site sees it on its next request.
 import { CoreSettings } from '@toascribe/shared'
 import type { MaintenanceMode } from '@toascribe/shared'
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 import type { DbExecutor } from './executor.ts'
 import { writeSetting } from './install.ts'
