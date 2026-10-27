@@ -7,7 +7,7 @@
 // - When it is dropped: before each answer the site asks the api which tags changed since it last asked
 //   (/public/cache/changes, on the internal network); a changed tag gets a new version, and an entry made under an older version of
 //   any of its tags is not used. `all` (the first look, a look too long ago, a setting, an unknown dependency) changes every entry.
-//   So a change shows on the next request, and nothing waits for a time to run out.
+//   So a change shows on the next request that begins after it, and nothing waits for a time to run out.
 // - What is never cached: a request with the session cookie or a post password cookie, and a preview (the routes check it), and an
 //   answer when the change log could not be read.
 import { randomUUID } from 'node:crypto'
@@ -106,6 +106,13 @@ export interface DataCache {
   ): Promise<{ value: unknown; hit: boolean }>
 }
 
+/** The answer itself failed: that is the request's error, not the cache's. */
+class FetchFailed extends Error {
+  constructor(readonly original: unknown) {
+    super('fetch failed')
+  }
+}
+
 export function createDataCache(options: {
   readonly store: Store
   /** Asks the api for the tags changed since `since` (its cursor), undefined on the first look. */
@@ -113,7 +120,8 @@ export function createDataCache(options: {
 }): DataCache {
   const { store } = options
   let cursor: string | undefined
-  let pending: Promise<boolean> | undefined
+  let pending: { readonly started: number; readonly done: Promise<boolean> } | undefined
+  let tick = 0
 
   /** Brings the tag versions up to date with the change log. False when it could not be read: then nothing is cached. */
   async function catchUp(): Promise<boolean> {
@@ -121,6 +129,7 @@ export function createDataCache(options: {
       const answer = await options.changes(cursor)
       const version = randomUUID()
       const tags = answer.all ? [EVERYTHING] : answer.tags
+      // The counter first, then the versions: a read that sees the old versions also sees the counter move, and keeps nothing.
       if (tags.length > 0) await store.increment(CHANGES_KEY)
       for (const tag of tags) await store.set(versionKey(tag), version)
       cursor = answer.cursor
@@ -130,12 +139,21 @@ export function createDataCache(options: {
     }
   }
 
-  /** One look at the change log for all the requests waiting at the same moment. */
-  function current(): Promise<boolean> {
-    pending ??= catchUp().finally(() => {
-      pending = undefined
-    })
-    return pending
+  /**
+   * A look at the change log that began after this request arrived, shared by the requests that arrive while it runs. A look already
+   * on its way may have read the log before a change this request must see: then the next one is waited for.
+   */
+  async function current(): Promise<boolean> {
+    const arrived = (tick += 1)
+    while (pending !== undefined && pending.started < arrived) await pending.done
+    if (pending === undefined) {
+      const look = { started: (tick += 1), done: catchUp() }
+      pending = look
+      void look.done.then(() => {
+        if (pending === look) pending = undefined
+      })
+    }
+    return pending.done
   }
 
   async function versionsOf(tags: readonly string[]): Promise<Record<string, string>> {
@@ -144,28 +162,45 @@ export function createDataCache(options: {
     return Object.fromEntries(all.map((tag, index) => [tag, found[index] ?? '0']))
   }
 
+  async function cachedRead(
+    path: string,
+    fetch: () => Promise<unknown>,
+    tagsOf: (value: unknown) => readonly string[],
+  ): Promise<{ value: unknown; hit: boolean }> {
+    const stored = await store.get(entryKey(path))
+    if (stored !== undefined) {
+      const entry = JSON.parse(stored) as Entry
+      const now = await versionsOf(Object.keys(entry.versions).filter((tag) => tag !== EVERYTHING))
+      if (Object.entries(entry.versions).every(([tag, version]) => now[tag] === version)) {
+        return { value: entry.value, hit: true }
+      }
+    }
+    // An answer is kept only when no tag changed while it was fetched: it may have been read before that change was made, and the
+    // versions read after it would call it current.
+    const changesBefore = await store.get(CHANGES_KEY)
+    let value: unknown
+    try {
+      value = await fetch()
+    } catch (error) {
+      throw new FetchFailed(error)
+    }
+    const versions = await versionsOf([...new Set(tagsOf(value))])
+    if ((await store.get(CHANGES_KEY)) === changesBefore) {
+      await store.set(entryKey(path), JSON.stringify({ value, versions } satisfies Entry), ENTRY_TTL_SECONDS)
+    }
+    return { value, hit: false }
+  }
+
   return {
     async read(path, fetch, tagsOf, cacheable) {
       if (!cacheable || !(await current())) return { value: await fetch(), hit: false }
-      const stored = await store.get(entryKey(path)).catch(() => undefined)
-      if (stored !== undefined) {
-        const entry = JSON.parse(stored) as Entry
-        const now = await versionsOf(Object.keys(entry.versions).filter((tag) => tag !== EVERYTHING))
-        if (Object.entries(entry.versions).every(([tag, version]) => now[tag] === version)) {
-          return { value: entry.value, hit: true }
-        }
+      try {
+        return await cachedRead(path, fetch, tagsOf)
+      } catch (error) {
+        if (error instanceof FetchFailed) throw error.original
+        // The store went away or held a damaged entry: that costs the cache, not the request.
+        return { value: await fetch(), hit: false }
       }
-      // An answer is kept only when no tag changed while it was fetched: it may have been read before that change was made, and
-      // the versions read after it would call it current.
-      const changesBefore = await store.get(CHANGES_KEY)
-      const value = await fetch()
-      const versions = await versionsOf([...new Set(tagsOf(value))])
-      if ((await store.get(CHANGES_KEY)) === changesBefore) {
-        await store
-          .set(entryKey(path), JSON.stringify({ value, versions } satisfies Entry), ENTRY_TTL_SECONDS)
-          .catch(() => undefined)
-      }
-      return { value, hit: false }
     },
   }
 }
@@ -178,17 +213,17 @@ export function cacheable(event: H3Event): boolean {
 
 let shared: DataCache | undefined
 
-/** The process's cache, made on first use from the runtime config. */
-export function useDataCache(event: H3Event): DataCache {
+/**
+ * The process's cache, made on first use from the runtime config. It holds no request: the change log is read for the process, on
+ * the internal address, with nobody's cookie.
+ */
+export function useDataCache(): DataCache {
   if (shared !== undefined) return shared
-  const config = useRuntimeConfig(event)
-  const url = config.cacheValkeyUrl
+  const url = useRuntimeConfig().cacheValkeyUrl
   shared = createDataCache({
     store: url === '' ? memoryStore() : valkeyStore(url),
     changes: async (since) =>
-      CacheChanges.parse(
-        await fromPublicApi(event, since === undefined ? '/cache/changes' : `/cache/changes?since=${since}`),
-      ),
+      CacheChanges.parse(await getPublicApi(since === undefined ? '/cache/changes' : `/cache/changes?since=${since}`)),
   })
   return shared
 }
@@ -201,7 +236,7 @@ export function tagsOfAnswer(value: unknown): readonly string[] {
 
 /** An api answer through the process's cache, for one of the site's data routes. */
 export async function cachedFromPublicApi(event: H3Event, path: string): Promise<unknown> {
-  const { value, hit } = await useDataCache(event).read(
+  const { value, hit } = await useDataCache().read(
     path,
     () => fromPublicApi(event, path),
     tagsOfAnswer,

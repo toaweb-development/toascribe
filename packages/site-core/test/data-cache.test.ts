@@ -76,4 +76,39 @@ describe('the data cache', () => {
     expect(await cache.read('/a', slow, tagsOf, true)).toMatchObject({ value: { call: 2 }, hit: false })
     expect(await cache.read('/a', slow, tagsOf, true)).toMatchObject({ value: { call: 2 }, hit: true })
   })
+
+  it('does not let a request ride on a look at the change log that began before it arrived', async () => {
+    const { cache, change, changes } = setup()
+    await cache.read('/a', async () => ({ cacheTags: ['content:a'] }), tagsOf, true)
+    // The first look is slow; while it runs, a change is made and a second request arrives.
+    let release: () => void = () => undefined
+    changes.mockImplementationOnce(
+      () => new Promise<CacheChanges>((resolve) => (release = () => resolve({ cursor: '1.1', all: false, tags: [] }))),
+    )
+    const first = cache.read('/b', async () => ({ cacheTags: [] }), tagsOf, true)
+    await Promise.resolve()
+    change({ tags: ['content:a'] })
+    const second = cache.read('/a', async () => ({ fresh: true, cacheTags: ['content:a'] }), tagsOf, true)
+    release()
+    await first
+    expect(await second).toMatchObject({ value: { fresh: true }, hit: false })
+  })
+
+  it('answers without the cache when the store fails, and passes on a failed answer as it is', async () => {
+    const broken = memoryStore()
+    broken.get = async () => {
+      throw new Error('valkey gone')
+    }
+    const cache = createDataCache({ store: broken, changes: async () => ({ cursor: '1.1', all: true, tags: [] }) })
+    expect(await cache.read('/a', async () => ({ ok: 1, cacheTags: [] }), tagsOf, true)).toEqual({
+      value: { ok: 1, cacheTags: [] },
+      hit: false,
+    })
+    const failure = new Error('api 404')
+    const working = createDataCache({
+      store: memoryStore(),
+      changes: async () => ({ cursor: '1.1', all: true, tags: [] }),
+    })
+    await expect(working.read('/a', () => Promise.reject(failure), tagsOf, true)).rejects.toBe(failure)
+  })
 })

@@ -5,11 +5,16 @@ import type { H3Event } from 'h3'
 
 import { POST_PASSWORD_COOKIE_NAME } from '@toascribe/shared'
 
-/** The api's address for the server: the internal one (`NUXT_API_URL_INTERNAL`), or the site's own origin through the proxy. */
-function apiBaseOf(event: H3Event): string {
-  const config = useRuntimeConfig(event)
+/**
+ * The api's address for the server: the internal one (`NUXT_API_URL_INTERNAL`, set by compose and by `nuxt dev`). Never built from
+ * the request: its Host header is the visitor's to choose, and an answer fetched from another host would be cached for everyone.
+ * Without it the site answers 502, as the API plugin's calls fail (nuxt-base app/plugins/api.ts).
+ */
+export function publicApiBase(): string {
+  const config = useRuntimeConfig()
   const internal = config.apiUrlInternal.replace(/\/+$/, '')
-  return `${internal === '' ? getRequestURL(event).origin : internal}${config.public.apiBase}/v1/public`
+  if (internal === '') throw createError({ statusCode: 502, statusMessage: 'Bad Gateway' })
+  return `${internal}${config.public.apiBase}/v1/public`
 }
 
 /** The visitor's post password cookie, if any. */
@@ -18,12 +23,12 @@ export function postPassCookie(event: H3Event): string | undefined {
   return value !== undefined && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : undefined
 }
 
-/** A GET of the public api, with the post password cookie when the visitor has one. The api's 404 stays a 404; any other failure is a 502. */
-export async function fromPublicApi(event: H3Event, path: string): Promise<unknown> {
-  const pass = postPassCookie(event)
+/** A GET of the public api, with the post password cookie when given. The api's 404 stays a 404; any other failure is a 502. */
+export async function getPublicApi(path: string, postPass?: string): Promise<unknown> {
+  const base = publicApiBase()
   try {
-    return await $fetch(`${apiBaseOf(event)}${path}`, {
-      headers: pass === undefined ? {} : { cookie: `${POST_PASSWORD_COOKIE_NAME}=${pass}` },
+    return await $fetch(`${base}${path}`, {
+      headers: postPass === undefined ? {} : { cookie: `${POST_PASSWORD_COOKIE_NAME}=${postPass}` },
       timeout: 5000,
       retry: 0,
     })
@@ -34,6 +39,11 @@ export async function fromPublicApi(event: H3Event, path: string): Promise<unkno
       statusMessage: status === 404 ? 'Not Found' : 'Bad Gateway',
     })
   }
+}
+
+/** A GET of the public api for this request: with the visitor's post password cookie when they have one. */
+export function fromPublicApi(event: H3Event, path: string): Promise<unknown> {
+  return getPublicApi(path, postPassCookie(event))
 }
 
 /** What the site's data routes answer with: private (an unlocked item is the visitor's own), and not kept by the browser. */

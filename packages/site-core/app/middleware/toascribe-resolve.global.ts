@@ -44,8 +44,13 @@ export default defineNuxtRouteMiddleware(async (to) => {
     ])
     resolved = answer
     settings.value = read
-  } catch {
-    return abortNavigation(createError({ statusCode: 503, statusMessage: 'Service Unavailable', fatal: true }))
+  } catch (error) {
+    // An address the api refuses to read (too long, say) is no page: the theme's 404. Anything else is the api being away.
+    if (typeof error === 'object' && error !== null && Reflect.get(error, 'statusCode') === 400) {
+      resolved = { kind: '404', status: 404, templates: ['404', 'index'], cacheTags: [] }
+    } else {
+      return abortNavigation(createError({ statusCode: 503, statusMessage: 'Service Unavailable', fatal: true }))
+    }
   }
 
   if (resolved.kind === 'redirect') {

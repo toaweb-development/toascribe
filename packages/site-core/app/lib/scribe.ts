@@ -64,11 +64,11 @@ export function itemPage(path: string, page: number): string {
 
 /** The first template of the answer's list that the theme has; `index` is the last in every list. */
 export function pickTemplate<T>(names: readonly string[], available: Readonly<Record<string, T>>): T | undefined {
-  for (const name of names) {
-    const found = available[name]
-    if (found !== undefined) return found
+  // Own names only: a template called `constructor` is no template, not Object's.
+  for (const name of [...names, 'index']) {
+    if (Object.hasOwn(available, name)) return available[name]
   }
-  return available['index']
+  return undefined
 }
 
 /** A redirect the site follows: a path on the site, never another host. */

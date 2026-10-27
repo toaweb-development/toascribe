@@ -43,6 +43,9 @@ describe('the catch-all helpers', () => {
     const available = { single: 'S', index: 'I' }
     expect(pickTemplate(['single-post-hei', 'single', 'index'], available)).toBe('S')
     expect(pickTemplate(['404'], available)).toBe('I')
+    // A name an object inherits is not a template.
+    expect(pickTemplate(['constructor', 'toString'], available)).toBe('I')
+    expect(pickTemplate(['constructor'], {})).toBeUndefined()
   })
 
   it('follows a redirect to a path on the site only', () => {
