@@ -1,8 +1,10 @@
 # Changelog
 
-All notable changes to this project are documented here.
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) ·
-Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
+All notable changes to this project are documented here, newest first. Versioning:
+[SemVer](https://semver.org/spec/v2.0.0.html). From the next release on, each release is one heading `## X.Y.Z — YYYY-MM-DD`
+(a long dash, an ISO date) with plain bullets under it, written for the people who run toascribe (VERSIONING_STANDARD_2026 §2);
+`scripts/release.sh` refuses to release without it. The notes collect under `## [Unreleased]` until then. The sections below
+that heading keep the format they were written in (Keep a Changelog).
 
 ## [Unreleased]
 
@@ -42,7 +44,9 @@ worker only), `file-type` and `image-size`.
   limit and which types each role may upload.
 - The media API under `/api/v1/media` and `/api/v1/media-folders`, and `/api/v1/settings/media`. An upload's type is read from
   its bytes and must agree with its name; SVG, HTML, scripts and programs are never accepted. Files are served with `nosniff`
-  and a sandbox Content-Security-Policy, and a file that is not an image as a download. A private file has no public address: it is served by the api to its uploader
+  and a sandbox Content-Security-Policy, and a file that is not an image as a download. A file made private moves to new
+  addresses: its old public address stops answering and the old files are deleted. A copy that a CDN or shared cache already
+  holds stays until it expires (public files are cached for a year), unless you purge it there. A private file has no public address: it is served by the api to its uploader
   and to those who may read private posts.
 - The image block stores the file's id from the library, with the alternative text (required unless the image is marked
   decorative) and the caption, and is drawn with `srcset` and `sizes` from the file's sizes. Image blocks with an address from

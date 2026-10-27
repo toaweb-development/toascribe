@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # `pnpm release:check`: the check of a release, on this machine (VERSIONING_STANDARD_2026 §4, SECURITY_STANDARD_2026 §9).
 # scripts/release.sh runs it (CHECK_CMD) on main from a clean working tree, then the audit (scripts/audit.sh), before it writes
-# the version, tags and pushes; the tag starts release.yml, which builds, scans and publishes. It can also run on its own:
+# the version, tags and pushes; the tag starts release.yml, which builds, scans and publishes. It can also run on its own. The
+# dependency audit is not here: it is scripts/release.sh's AUDIT_CMD.
 #
 #    1. actionlint on every workflow
-#    2. (the dependency audit is scripts/release.sh's AUDIT_CMD)
-#    3. pnpm check with a throwaway PostgreSQL 18 and Mailpit, so the database and e-mail tests run and none is skipped
-#    4. every image built with provenance and SBOM attestations into a throwaway registry, as release.yml builds them
-#    5. the digest of each image read once (scripts/image-digests.sh) and scanned with Trivy, with the rules of release.yml
+#    2. pnpm check with a throwaway PostgreSQL 18 and Mailpit, so the database and e-mail tests run and none is skipped
+#    3. every image built with provenance and SBOM attestations into a throwaway registry, as release.yml builds them
+#    4. the digest of each image read once (scripts/image-digests.sh) and scanned with Trivy, with the rules of release.yml
 #       (Critical and High with a known fix fail), and the valkey image of compose.yaml too
-#    6. the scanned images started as a user starts them, and the route checks before install, `toa core install`, and
+#    5. the scanned images started as a user starts them, and the route checks before install, `toa core install`, and
 #       the route checks after it (scripts/check-routes.sh)
-#    7. a dry run of the publishing: the scanned digests into an OCI layout (scripts/export-images.sh), then
+#    6. a dry run of the publishing: the scanned digests into an OCI layout (scripts/export-images.sh), then
 #       scripts/publish-images.sh from it into a second throwaway registry, as the build and publish jobs do
-#    8. the full end-to-end suite (apps/admin/e2e, Playwright) against its own stack
+#    7. the full end-to-end suite (apps/admin/e2e, Playwright) against its own stack
 #
 # Needs: docker with compose and buildx 0.33 or newer, trivy, actionlint, jq, curl, openssl, pnpm, and Playwright's Chromium
 # (README, «Verktøy for release:check»). Everything it starts is removed at the end, also after a failure. Ports and names
@@ -128,7 +128,7 @@ wait_for() {
 step 'actionlint'
 actionlint
 
-# --- 3. pnpm check with the database and e-mail tests ----------------------------------------------------------------------------
+# --- 2. pnpm check with the database and e-mail tests ----------------------------------------------------------------------------
 
 step 'pnpm check, with PostgreSQL 18 and Mailpit'
 db_password="$(openssl rand -hex 24)"
@@ -148,7 +148,7 @@ TEST_DATABASE_URL="postgres://postgres:${db_password}@127.0.0.1:${db_port}/postg
   pnpm check
 docker rm -f "${prefix}-db" "${prefix}-mailpit" >/dev/null
 
-# --- 4. Build with attestations into a throwaway registry -------------------------------------------------------------------------
+# --- 3. Build with attestations into a throwaway registry -------------------------------------------------------------------------
 
 step 'Build the images with attestations'
 docker run -d --name "${prefix}-registry" -p "127.0.0.1:${build_registry_port}:5000" "${registry_image}" >/dev/null
@@ -164,7 +164,7 @@ TOASCRIBE_VERSION="${version}" TOASCRIBE_REGISTRY="${source_prefix}" \
   docker buildx bake --builder "${builder}" -f docker/compose.build.yaml --push \
   --set '*.attest=type=provenance,mode=max' --set '*.attest=type=sbom'
 
-# --- 5. Digests and scan ----------------------------------------------------------------------------------------------
+# --- 4. Digests and scan ----------------------------------------------------------------------------------------------
 
 step 'Read the digests'
 digests="$(scripts/image-digests.sh "${source_prefix}" "${version}")"
@@ -181,7 +181,7 @@ for name in "${names[@]}"; do
 done
 scan "${valkey_image}"
 
-# --- 6. The scanned images as a user starts them, and the route checks --------------------------------------------------------------
+# --- 5. The scanned images as a user starts them, and the route checks --------------------------------------------------------------
 
 step 'Start the scanned images'
 # Pulled by digest from the build registry and tagged with the name compose.yaml uses, so the stack runs what was scanned.
@@ -221,7 +221,7 @@ scripts/check-routes.sh after "${base}"
 stack down -v >/dev/null
 rm -f "${stack_env}"
 
-# --- 7. Publishing, dry run ------------------------------------------------------------------------------------------------------
+# --- 6. Publishing, dry run ------------------------------------------------------------------------------------------------------
 
 step 'Publish dry run (into a second throwaway registry, not ghcr.io)'
 layout="${state}/images"
@@ -230,7 +230,7 @@ scripts/publish-images.sh "${layout}" "localhost:${target_registry_port}/toaweb-
   "sha-$(git rev-parse --short=7 HEAD)" "${digests}"
 docker rm -f "${prefix}-registry" "${prefix}-target" >/dev/null
 
-# --- 8. End-to-end -----------------------------------------------------------------------------------------------------------
+# --- 7. End-to-end -----------------------------------------------------------------------------------------------------------
 
 step 'End-to-end tests'
 e2e_started=true

@@ -20,6 +20,7 @@ import {
   detectType,
   extensionOf,
   headerDimensions,
+  movedKeys,
   originalKey,
   shownFile,
 } from '@toascribe/media'
@@ -55,7 +56,7 @@ import type {
 import type { Logger } from 'pino'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
-import { canRead as canReadContent } from '../lib/content-access.ts'
+import { canEdit as canEditContent, canRead as canReadContent } from '../lib/content-access.ts'
 import { AppError, ForbiddenError, NotFoundError } from '../lib/errors.ts'
 import { uploadFileLimit } from '../lib/upload-limit.ts'
 import type { MediaJobPort } from '../ports/media-jobs.ts'
@@ -369,6 +370,29 @@ export function createMediaService(options: {
     return { detection, width, height, settings }
   }
 
+  /**
+   * The content an upload is attached to (WordPress' post_parent): it must exist and the uploader must be allowed to edit it, as
+   * WordPress' media_handle_upload asks for edit_post. One answer for both, so it does not tell whether someone else's item exists.
+   */
+  async function checkAttachTo(executor: Executor, auth: SessionAuth, contentId: string): Promise<void> {
+    const row = await findContent(executor, contentId)
+    const authors = row === undefined ? [] : ((await authorsOf(executor, [row.id])).get(row.id) ?? [])
+    const allowed =
+      row !== undefined &&
+      canEditContent(
+        { id: auth.account.id, capabilities: auth.capabilities },
+        {
+          type: row.type,
+          status: row.status,
+          statusBeforeTrash: row.statusBeforeTrash,
+          authorIds: authors.map((author) => author.id),
+        },
+      )
+    if (!allowed) {
+      throw new AppError(400, 'invalid_attached_to', 'The file cannot be attached to this content')
+    }
+  }
+
   async function checkFolder(executor: Executor, folderId: string | null | undefined): Promise<string | null> {
     if (folderId === undefined || folderId === null) {
       return null
@@ -385,6 +409,46 @@ export function createMediaService(options: {
       await jobs.send(job)
     } catch (err) {
       logger.error({ err, mediaId: job.mediaId, kind: job.kind }, 'could not queue a media job; the sweep will retry')
+    }
+  }
+
+  /**
+   * Copies an original and its generated files to new keys (review L-c: `/uploads/` is cached `public, immutable`, so a file that
+   * goes private must leave its public address) and returns the row's new keys. Each copy is recorded in `moved` as it is made.
+   */
+  async function moveFiles(
+    row: MediaRow,
+    moved: { from: string; to: string }[],
+  ): Promise<{ storageKey: string; variants: MediaVariantsData }> {
+    const move = movedKeys(row.storageKey)
+    const copy = async (from: string): Promise<string> => {
+      const to = move(from)
+      await storage.put(to, await storage.read(from))
+      moved.push({ from, to })
+      return to
+    }
+    /** A generated file that is missing on disk is left out (the worker can make it again); it never blocks the change. */
+    const copyGenerated = async (from: string): Promise<string | undefined> =>
+      (await storage.stat(from)) === undefined ? undefined : copy(from)
+    if ((await storage.stat(row.storageKey)) === undefined) {
+      throw new AppError(409, 'media_missing', 'The file is missing on the server')
+    }
+    const storageKey = await copy(row.storageKey)
+    const sizes: MediaVariantsData['sizes'] = {}
+    for (const [name, size] of Object.entries(row.variants.sizes)) {
+      const key = await copyGenerated(size.key)
+      if (key !== undefined) sizes[name] = { ...size, key }
+    }
+    const { scaled, edited } = row.variants
+    const scaledKey = scaled === undefined ? undefined : await copyGenerated(scaled.key)
+    const editedKey = edited === undefined ? undefined : await copyGenerated(edited.key)
+    return {
+      storageKey,
+      variants: {
+        sizes,
+        ...(scaled === undefined || scaledKey === undefined ? {} : { scaled: { ...scaled, key: scaledKey } }),
+        ...(edited === undefined || editedKey === undefined ? {} : { edited: { ...edited, key: editedKey } }),
+      },
     }
   }
 
@@ -408,9 +472,7 @@ export function createMediaService(options: {
       id = await inTransaction(db, async (tx) => {
         const folderId = await checkFolder(tx, input.folderId)
         if (input.attachedTo !== undefined && input.attachedTo !== null) {
-          if ((await findContent(tx, input.attachedTo)) === undefined) {
-            throw new AppError(400, 'invalid_attached_to', 'The content to attach the file to does not exist')
-          }
+          await checkAttachTo(tx, auth, input.attachedTo)
         }
         const created = await insertMedia(
           tx,
@@ -587,36 +649,48 @@ export function createMediaService(options: {
 
     async update(auth, id, request, ctx) {
       requireUpload(auth)
-      await inTransaction(db, async (tx) => {
-        const row = await findMedia(tx, id, { forUpdate: true })
-        if (row === undefined || !canRead(auth, row)) {
-          throw new NotFoundError()
-        }
-        if (!canEdit(auth, row)) {
-          throw new ForbiddenError()
-        }
-        const folderId = request.folderId === undefined ? undefined : await checkFolder(tx, request.folderId)
-        await updateMedia(
-          tx,
-          id,
-          {
-            ...(request.title === undefined ? {} : { title: request.title }),
-            ...(request.alt === undefined ? {} : { alt: request.alt }),
-            ...(request.caption === undefined ? {} : { caption: request.caption }),
-            ...(request.description === undefined ? {} : { description: request.description }),
-            ...(request.visibility === undefined ? {} : { visibility: request.visibility }),
-            ...(folderId === undefined ? {} : { folderId }),
-          },
-          clock(),
-        )
-        await audit(tx, ctx, {
-          actor: { id: auth.account.id, username: auth.account.username },
-          action: 'media.updated',
-          objectType: 'media',
-          objectId: id,
-          newValue: { fields: Object.keys(request).sort() },
+      // A file made private moves to new keys: the copies are written in the transaction (the row is locked, so the worker
+      // cannot write sizes beside the old key meanwhile), the old files are removed after it, the new ones if it fails.
+      const moved: { from: string; to: string }[] = []
+      try {
+        await inTransaction(db, async (tx) => {
+          const row = await findMedia(tx, id, { forUpdate: true })
+          if (row === undefined || !canRead(auth, row)) {
+            throw new NotFoundError()
+          }
+          if (!canEdit(auth, row)) {
+            throw new ForbiddenError()
+          }
+          const folderId = request.folderId === undefined ? undefined : await checkFolder(tx, request.folderId)
+          const rekeyed =
+            request.visibility === 'private' && row.visibility === 'public' ? await moveFiles(row, moved) : {}
+          await updateMedia(
+            tx,
+            id,
+            {
+              ...rekeyed,
+              ...(request.title === undefined ? {} : { title: request.title }),
+              ...(request.alt === undefined ? {} : { alt: request.alt }),
+              ...(request.caption === undefined ? {} : { caption: request.caption }),
+              ...(request.description === undefined ? {} : { description: request.description }),
+              ...(request.visibility === undefined ? {} : { visibility: request.visibility }),
+              ...(folderId === undefined ? {} : { folderId }),
+            },
+            clock(),
+          )
+          await audit(tx, ctx, {
+            actor: { id: auth.account.id, username: auth.account.username },
+            action: 'media.updated',
+            objectType: 'media',
+            objectId: id,
+            newValue: { fields: Object.keys(request).sort() },
+          })
         })
-      })
+      } catch (err) {
+        await removeFiles(moved.map((file) => file.to))
+        throw err
+      }
+      await removeFiles(moved.map((file) => file.from))
       return itemOf(auth, id)
     },
 

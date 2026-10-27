@@ -247,6 +247,63 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect((await editor.patch(`/api/v1/media/${item.id}`, { title: 'Redigert' })).status).toBe(200)
     })
 
+    it('moves a file that goes private to new keys, so a public address any cache holds answers 404', async () => {
+      const item = await upload(author, f.PNG, 'blir-privat.png')
+      const base = item.originalUrl.slice('/uploads/'.length).replace(/\.png$/, '')
+      const thumb = {
+        key: `${base}-0a0a0a0a-150x150.webp`,
+        width: 150,
+        height: 150,
+        size: f.WEBP.length,
+        mime: 'image/webp',
+      }
+      await createLocalStorage(env.uploadsDir).put(thumb.key, f.WEBP)
+      await env.query(`update media set variants = $2::jsonb, processing = 'ready' where id = $1`, [
+        item.id,
+        JSON.stringify({ sizes: { thumbnail: thumb } }),
+      ])
+      for (const path of [item.originalUrl, `/uploads/${thumb.key}`]) {
+        expect((await env.client().get(path)).status, path).toBe(200)
+      }
+      expect((await author.patch(`/api/v1/media/${item.id}`, { visibility: 'private' })).status).toBe(200)
+      const [row] = await env.query<{ storage_key: string; variants: { sizes: { thumbnail: { key: string } } } }>(
+        'select storage_key, variants from media where id = $1',
+        [item.id],
+      )
+      const newKeys = [row?.storage_key ?? '', row?.variants.sizes.thumbnail.key ?? '']
+      expect(newKeys[0]).not.toBe(item.originalUrl.slice('/uploads/'.length))
+      expect(newKeys[1]).toMatch(/-0a0a0a0a-150x150\.webp$/)
+      // The old public addresses are gone, and so are the old files; the new keys are not public either.
+      const storage = createLocalStorage(env.uploadsDir)
+      for (const path of [item.originalUrl, `/uploads/${thumb.key}`, ...newKeys.map((key) => `/uploads/${key}`)]) {
+        expect((await env.client().get(path)).status, path).toBe(404)
+      }
+      expect(await storage.stat(thumb.key)).toBeUndefined()
+      expect(await storage.stat(item.originalUrl.slice('/uploads/'.length))).toBeUndefined()
+      // Through the api the uploader still has both.
+      expect((await author.get(`/api/v1/media/${item.id}/file?size=original`)).status).toBe(200)
+      expect((await author.get(`/api/v1/media/${item.id}/file?size=thumbnail`)).status).toBe(200)
+      // A generated file missing on disk does not block the change: it is left out.
+      const gone = MediaItem.parse(
+        await (await author.patch(`/api/v1/media/${item.id}`, { visibility: 'public' })).json(),
+      )
+      await createLocalStorage(env.uploadsDir).remove(newKeys[1] ?? '')
+      expect((await author.patch(`/api/v1/media/${item.id}`, { visibility: 'private' })).status).toBe(200)
+      const [after] = await env.query<{ storage_key: string; variants: { sizes: Record<string, unknown> } }>(
+        'select storage_key, variants from media where id = $1',
+        [item.id],
+      )
+      expect(after?.variants.sizes).toEqual({})
+      expect(gone.originalUrl).not.toBe(`/uploads/${after?.storage_key ?? ''}`)
+      expect((await author.get(`/api/v1/media/${item.id}/file?size=original`)).status).toBe(200)
+      // Made public again, it is served at its new address.
+      const pub = MediaItem.parse(
+        await (await author.patch(`/api/v1/media/${item.id}`, { visibility: 'public' })).json(),
+      )
+      expect(pub.originalUrl).toBe(`/uploads/${after?.storage_key ?? ''}`)
+      expect((await env.client().get(pub.originalUrl)).status).toBe(200)
+    })
+
     it('serves a private file only through the api, to its uploader and to read_private_posts', async () => {
       const item = await upload(author, f.PDF, 'hemmelig.pdf')
       const original = item.originalUrl
@@ -307,7 +364,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       ).toBe(200)
     })
 
-    it('refuses to attach an upload to content that does not exist (400, not 500)', async () => {
+    it('attaches an upload only to content the uploader may edit (400 otherwise, never 500)', async () => {
       const res = await multipart(
         author,
         '/api/v1/media',
@@ -320,6 +377,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       )
       const attached = await upload(author, f.PNG, 'vedlagt.png', { attachedTo: post.id })
       expect(attached.attachedTo).toBe(post.id)
+      // Someone else's draft: the same answer as for one that does not exist (WordPress asks for edit_post on the parent).
+      const notHers = await multipart(
+        other,
+        '/api/v1/media',
+        { bytes: f.PNG, name: 'fremmed.png' },
+        { attachedTo: post.id },
+      )
+      expect([notHers.status, await code(notHers)]).toEqual([400, 'invalid_attached_to'])
+      // An editor may edit it, so may attach to it.
+      expect((await upload(editor, f.PNG, 'redaktor.png', { attachedTo: post.id })).attachedTo).toBe(post.id)
     })
 
     it('serves only the current generated files: an address a new run replaced answers 404', async () => {
