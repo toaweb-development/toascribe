@@ -372,7 +372,7 @@ const formatButtons = computed(() => [
 </script>
 
 <template>
-  <div ref="root" class="flex flex-col gap-1">
+  <div ref="root" class="flex flex-col gap-1" :data-enter="enter">
     <EditorToolbar v-if="toolbar && selected" :block="block">
       <slot name="tools" />
       <div role="group" :aria-label="t('editorPrototype.paragraph.formatting')" class="flex items-center gap-1">

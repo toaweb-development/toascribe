@@ -25,16 +25,26 @@ const confirm = useConfirmDialog()
 const { title: blockTitle, issue } = useBlockText()
 
 const words = computed(() => typeText(t, props.type))
-const capabilities = computed<ReadonlySet<string>>(
-  () => new Set(auth.session.value.status === 'authenticated' ? auth.session.value.account.capabilities : []),
+// The rights and the account of the last signed-in session: a 401 (the session ran out) makes useAuth forget the session, and the
+// editor must stay as it is behind the login dialog, with the work that is not saved (K-010). The api stays the authority.
+const signedIn = shallowRef<{ id: string; capabilities: readonly string[] }>({ id: '', capabilities: [] })
+watch(
+  () => auth.session.value,
+  (session) => {
+    if (session.status === 'authenticated') {
+      signedIn.value = { id: session.account.id, capabilities: session.account.capabilities }
+    }
+  },
+  { immediate: true },
 )
+const capabilities = computed<ReadonlySet<string>>(() => new Set(signedIn.value.capabilities))
 const plural = props.type === 'page' ? 'pages' : 'posts'
 const mayEdit = computed(() => capabilities.value.has(`edit_${plural}`))
 if (import.meta.server && !mayEdit.value) {
   const event = useRequestEvent()
   if (event) setResponseStatus(event, 403)
 }
-const accountId = computed(() => (auth.session.value.status === 'authenticated' ? auth.session.value.account.id : ''))
+const accountId = computed(() => signedIn.value.id)
 
 const editor = useBlockEditor()
 provideBlockEditor(editor)
@@ -159,15 +169,24 @@ inline.hold()
 const loginDialog = overlay.create(ContentLoginModal)
 watch(inline.needed, async (needed) => {
   if (!needed) return
-  const signedIn = (await loginDialog.open()) as boolean | undefined
+  const before = accountId.value
+  const back = (await loginDialog.open()) as boolean | undefined
   inline.needed.value = false
-  if (signedIn === true) {
-    toast.add({ title: t('editor.login.done'), color: 'success', icon: 'i-lucide-circle-check' })
-    const again = pendingSave
-    pendingSave = undefined
-    if (again !== undefined) await save(again)
+  if (back !== true) return
+  const now = auth.session.value.status === 'authenticated' ? auth.session.value.account.id : ''
+  const again = pendingSave
+  pendingSave = undefined
+  if (now !== before) {
+    // Another account signed in: its session must not send the first account's work. The page shows what the new one may see.
+    toast.add({ title: t('editor.login.otherAccount'), color: 'warning', icon: 'i-lucide-triangle-alert' })
+    await refresh()
+    return
   }
+  toast.add({ title: t('editor.login.done'), color: 'success', icon: 'i-lucide-circle-check' })
+  if (again !== undefined) await save(again)
 })
+// The dialog is not closed by the overlay when the editor goes; close it here.
+onBeforeUnmount(() => loginDialog.close())
 
 /** Saves the form and (unless the blocks are WordPress' parsed ones) the blocks, with the status the button says. */
 async function save(kind: MainAction | 'draft'): Promise<boolean> {
@@ -234,13 +253,18 @@ function savedMessage(kind: MainAction | 'draft', saved: string): string {
 }
 
 async function preview(): Promise<void> {
+  // The window is opened in the click itself, before the save: a window opened after an await is blocked as a pop-up.
+  const target = window.open('about:blank', '_blank')
   if (item.value === null || dirty.value) {
     if (!maySaveDraft(item.value) || !(await save('draft'))) {
       if (item.value !== null && dirty.value) toast.add({ title: t('editor.previewSaveFirst'), color: 'warning' })
-      if (item.value === null) return
+      if (item.value === null) {
+        target?.close()
+        return
+      }
     }
   }
-  if (item.value !== null) window.open(`${baseURL}/preview/${item.value.id}`, '_blank')
+  if (item.value !== null && target !== null) target.location.href = `${baseURL}/preview/${item.value.id}`
 }
 
 async function trash(): Promise<void> {

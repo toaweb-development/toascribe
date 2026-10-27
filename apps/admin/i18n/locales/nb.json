@@ -1419,7 +1419,8 @@
       "openLogin": "Åpne innloggingen i en ny fane",
       "later": "Senere",
       "done": "Du er logget inn igjen.",
-      "saveWaits": "Økten er utløpt. Logg inn igjen, så lagres endringene."
+      "saveWaits": "Økten er utløpt. Logg inn igjen, så lagres endringene.",
+      "otherAccount": "Du logget inn med en annen konto. Det som ikke var lagret, ble ikke sendt, og siden er lastet på nytt."
     },
     "shortcuts": {
       "title": "Hurtigtaster",

@@ -3,6 +3,7 @@ import type { InjectionKey, ShallowRef } from 'vue'
 import type { Block, BlockDocument, Direction, EditorSelection, InlineNode, Place } from '@toascribe/blocks'
 import {
   BLOCKS_MIME,
+  allowedInContentType,
   blocksToText,
   canContain,
   createEditorModel,
@@ -406,7 +407,15 @@ export function useBlockEditor(initial: BlockDocument = []): BlockEditor {
         }
         blocks = target === undefined ? undefined : parseClipboardBlocks(data.json, target.parentType)
         // Custom HTML is pasted only by those who may write it (the api refuses it anyway).
-        if (blocks?.some((block) => flatten([block]).some((inner) => !mayInsert(inner.type)))) blocks = undefined
+        // Custom HTML only from those who may write it, «Les mer» only in a post (the api refuses both anyway).
+        if (
+          blocks?.some((block) =>
+            flatten([block]).some(
+              (inner) => !mayInsert(inner.type) || !allowedInContentType(inner.type, scope.value.contentType),
+            ),
+          )
+        )
+          blocks = undefined
       } else if (data.text !== undefined) {
         blocks = textToBlocks(data.text)
         if (blocks !== undefined) {

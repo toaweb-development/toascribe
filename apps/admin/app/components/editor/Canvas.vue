@@ -98,6 +98,9 @@ function onPaste(event: ClipboardEvent): void {
   if (data === null) return
   const json = data.getData(BLOCKS_MIME)
   const text = data.getData('text/plain')
+  // Plain text in a text that is not split into blocks (preformatted, a table cell, a button, a citation) stays in that text.
+  const field = target?.closest('[data-enter]')
+  if (json === '' && field && field.getAttribute('data-enter') !== 'split') return
   const handled = json !== '' ? editor.paste({ json }) : editor.paste({ text })
   if (handled) event.preventDefault()
 }

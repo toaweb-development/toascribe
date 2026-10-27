@@ -10,6 +10,7 @@ import {
   createBlock,
   createEditorModel,
   endList,
+  mayEditBlockType,
   parseClipboardBlocks,
   selectionEnds,
   serializeBlocks,
@@ -51,6 +52,37 @@ describe('blocks on the clipboard', () => {
 
   it('give other programs their text, a paragraph each', () => {
     expect(blocksToText([p('b_p004', 'En'), createBlock('core/heading', { content: text('To') })])).toBe('En\n\nTo')
+  })
+})
+
+describe('a crafted clipboard payload', () => {
+  const payload = (blocks: unknown[]) => JSON.stringify({ format: 'toascribe-blocks', version: 1, blocks })
+  const paragraphWithLink = (href: string) => ({
+    ...p('b_link', ''),
+    attrs: { content: [{ type: 'text', text: 'x', marks: [{ type: 'link', attrs: { href } }] }] },
+  })
+
+  it('cannot bring a javascript:, data: or another-host link', () => {
+    for (const href of ['javascript:alert(1)', 'data:text/html,<b>x</b>', '//evil.example/x', 'java\tscript:x']) {
+      expect(parseClipboardBlocks(payload([paragraphWithLink(href)]), null), href).toBeUndefined()
+    }
+    expect(parseClipboardBlocks(payload([paragraphWithLink('https://example.com/')]), null)).toHaveLength(1)
+  })
+
+  it('cannot bring an unknown block type, extra keys on a block, or an attribute its block.json does not have', () => {
+    expect(parseClipboardBlocks(payload([{ ...p('b_x001'), type: 'evil/script' }]), null)).toBeUndefined()
+    expect(parseClipboardBlocks(payload([{ ...p('b_x002'), html: '<script>' }]), null)).toBeUndefined()
+    expect(
+      parseClipboardBlocks(payload([{ ...p('b_x003'), attrs: { content: [], onclick: 'x' } }]), null),
+    ).toBeUndefined()
+  })
+
+  it('carries custom HTML as data; who may put it in is the editor’s and the api’s check (mayEditBlockType)', () => {
+    const html = { id: 'b_html', type: 'core/html', version: 1, attrs: { content: '<script>x</script>' }, children: [] }
+    const pasted = parseClipboardBlocks(payload([html]), null) ?? []
+    expect(pasted.map((block) => block.type)).toEqual(['core/html'])
+    expect(mayEditBlockType('core/html', new Set(['edit_posts']))).toBe(false)
+    expect(mayEditBlockType('core/html', new Set(['unfiltered_html']))).toBe(true)
   })
 })
 

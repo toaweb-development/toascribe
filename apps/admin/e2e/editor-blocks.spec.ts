@@ -355,6 +355,12 @@ test('the session runs out while editing: a login dialog, and nothing written is
   await expect(dialog).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/posts\/new$/)
   await expectNoAxeViolations(page, 'the login dialog over the editor')
+  // «Senere»: the editor is still there with the text, and the next save asks again.
+  await dialog.getByRole('button', { name: 'Senere' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('textbox', { name: 'Avsnitt' })).toHaveText('Tekst som ikke skal bli borte.')
+  await page.getByRole('button', { name: 'Lagre kladd' }).click()
+  await expect(dialog).toBeVisible()
   await dialog.getByLabel('Brukernavn eller e-postadresse').fill(user.username)
   await dialog.getByLabel('Passord', { exact: true }).fill(PASSWORD)
   await dialog.getByRole('button', { name: 'Logg inn' }).click()

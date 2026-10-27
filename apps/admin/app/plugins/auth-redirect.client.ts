@@ -14,7 +14,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       }
       // A screen with work that is not saved (the editor) signs in again in a dialog over itself (K-010, useInlineLogin).
       const inline = useInlineLogin()
-      if (inline.holders.value > 0) {
+      if (inline.holders.value > 0 && inline.path.value === current.path) {
         inline.needed.value = true
         return
       }
