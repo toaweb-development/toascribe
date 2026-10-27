@@ -179,7 +179,14 @@ watch(inline.needed, async (needed) => {
   if (now !== before) {
     // Another account signed in: its session must not send the first account's work. The page shows what the new one may see.
     toast.add({ title: t('editor.login.otherAccount'), color: 'warning', icon: 'i-lucide-triangle-alert' })
-    await refresh()
+    if (item.value === null) {
+      // A new item that was never saved: nothing to read again, so it starts empty for the new account.
+      form.value = formOf(null, now)
+      savedForm.value = JSON.stringify(form.value)
+      editor.load([])
+    } else {
+      await refresh()
+    }
     return
   }
   toast.add({ title: t('editor.login.done'), color: 'success', icon: 'i-lucide-circle-check' })
