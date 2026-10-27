@@ -28,6 +28,7 @@ import {
   NEXTPAGE,
   PARAGRAPH,
   QUERY,
+  GLOBAL_SET,
   PREFORMATTED,
   QUOTE,
   SEPARATOR,
@@ -275,6 +276,9 @@ export function renderBlock(block: Block, context: ViewContext): VNode | null {
     case NEXTPAGE:
       // «Les mer» marks where an archive's excerpt ends and a page break where a page ends (K-107, K-227): the site uses them when
       // it lists or pages a post (M1.4). In the whole post they show nothing.
+      return null
+    case GLOBAL_SET:
+      // A global set (K-106) is read when the page is shown: the site draws it with its view (site-core). Without it, nothing.
       return null
     case QUERY:
       // The Query Loop (K-085) lists what is published when the page is shown: the site draws it with its view, which reads the items

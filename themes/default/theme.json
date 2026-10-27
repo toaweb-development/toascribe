@@ -8,6 +8,7 @@
   "license": "MIT",
   "requires": { "themeApi": 1 },
   "menus": { "primary": "Hovedmeny", "footer": "Bunnmeny" },
+  "globalSets": [{ "slug": "bunntekst", "name": "Bunntekst" }],
   "supports": { "headingLevels": [2, 3, 4, 5, 6], "featuredImage": true },
   "templates": [{ "slug": "full-width", "name": "Full bredde", "types": ["page"] }]
 }

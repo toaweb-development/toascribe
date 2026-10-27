@@ -1,12 +1,15 @@
 // The theme SDK (M1.4; PLAN «Regler et tema må følge» 1): the only way a theme reads data. useContent gives what the address is,
-// useQuery lists published items, useSettings the site's settings, useUser who is signed in; useMenu and useArea answer empty
-// until menus and areas come (M1.5).
+// useQuery lists published items, useSettings the site's settings, useUser who is signed in, useMenu a theme location's menu and
+// useGlobalSet a global set (M1.5); useArea answers empty until areas come (phase 3).
 import type { Block } from '@toascribe/blocks'
 import type {
   PublicArchive,
   PublicContent,
   PublicList,
+  PublicGlobalSetResponse,
   PublicListResponse,
+  PublicMenuItem,
+  PublicMenuResponse,
   PublicQueryInput,
   PublicSettings,
   ResolveResponse,
@@ -75,14 +78,37 @@ export function useQuery(query: MaybeRefOrGetter<PublicQueryInput>) {
   )
 }
 
-/** A menu location's items. Menus come in M1.5; until then every location is empty. */
-export function useMenu(_location: string) {
-  return computed<readonly { readonly label: string; readonly url: string }[]>(() => [])
+/**
+ * The menu in a theme location (K-132): its items with the current titles and addresses, published content only. Call in setup; it
+ * is read on the server and kept in the payload. Empty when no menu stands there.
+ */
+export function useMenu(location: MaybeRefOrGetter<string>) {
+  const fetcher = useRequestFetch()
+  const key = computed(() => `scribe:menu:${toValue(location)}`)
+  const { data } = useAsyncData(key, () => fetcher<PublicMenuResponse>(`/_toascribe/data/menu/${toValue(location)}`), {
+    default: () => undefined,
+  })
+  return computed<readonly PublicMenuItem[]>(() => data.value?.items ?? [])
 }
 
-/** A widget area's blocks. Areas come in M1.5; until then every area is empty. */
+/** A widget area's blocks. Areas come in phase 3; until then every area is empty. */
 export function useArea(_id: string) {
   return computed<readonly Block[]>(() => [])
+}
+
+/**
+ * A global set by its slug (K-106): its blocks and their media, for `<ScribeBlocks>`. Undefined while there is none of the slug (a
+ * theme's expected set is made empty in «Globale sett»).
+ */
+export function useGlobalSet(slug: MaybeRefOrGetter<string>) {
+  const fetcher = useRequestFetch()
+  const key = computed(() => `scribe:global-set:${toValue(slug)}`)
+  const { data } = useAsyncData(
+    key,
+    () => fetcher<PublicGlobalSetResponse>(`/_toascribe/data/global-set/${toValue(slug)}`).catch(() => undefined),
+    { default: () => undefined },
+  )
+  return data
 }
 
 /** Who is signed in, for the toolbar (K-032) and a theme that greets them; `anonymous` for a visitor. */

@@ -234,3 +234,89 @@
   color: var(--ui-text-muted);
   font-size: 0.9rem;
 }
+
+/* The menus (M1.5): the main menu in a row on a wide screen and behind «Meny» on a narrow one, submenus opened by their buttons. */
+.theme-nav {
+  padding-top: 0.75rem;
+}
+.theme-nav-toggle,
+.theme-menu-toggle {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--ui-border-accented);
+  border-radius: 0.375rem;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  cursor: pointer;
+}
+.theme-nav-menu[data-open='false'] {
+  display: none;
+}
+.theme-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.theme-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.theme-menu-row a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: 0.25rem;
+}
+.theme-menu-row a[aria-current='page'] {
+  font-weight: 700;
+}
+.theme-submenu[data-open='false'] {
+  display: none;
+}
+.theme-submenu {
+  padding-inline-start: 1rem;
+}
+@media (min-width: 48rem) {
+  .theme-nav-toggle {
+    display: none;
+  }
+  .theme-nav-menu[data-open='false'] {
+    display: block;
+  }
+  .theme-nav-menu > .theme-menu-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+  }
+  .theme-nav-menu > .theme-menu-list > .theme-menu-item {
+    position: relative;
+  }
+  .theme-nav-menu > .theme-menu-list > .theme-menu-item > .theme-submenu {
+    position: absolute;
+    z-index: 20;
+    inset-inline-start: 0;
+    top: 100%;
+    min-width: 14rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 0.5rem;
+    background: var(--ui-bg);
+  }
+}
+.theme-footer-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.theme-footer-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+.theme-footer-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}

@@ -46,6 +46,11 @@ export const ThemeManifest = z.strictObject({
   menus: z.record(Location, Label).optional(),
   /** Widget areas (M1.5): slug → shown name. */
   areas: z.record(Location, Label).optional(),
+  /** The global sets the theme reads (`useGlobalSet`, M1.5): made empty in «Globale sett» when there is none of the slug. */
+  globalSets: z
+    .array(z.strictObject({ slug: Slug, name: Label }))
+    .max(50)
+    .optional(),
   supports: z
     .strictObject({
       /** The heading levels the editor offers (Tor, M1.4): e.g. [2, 3, 4], when the theme draws the title as <h1>. */
@@ -92,6 +97,7 @@ export const ActiveTheme = z.object({
   templates: z.array(ThemeTemplate),
   menus: z.record(z.string(), z.string()),
   areas: z.record(z.string(), z.string()),
+  globalSets: z.array(z.object({ slug: Slug, name: Label })),
 })
 export type ActiveTheme = z.infer<typeof ActiveTheme>
 

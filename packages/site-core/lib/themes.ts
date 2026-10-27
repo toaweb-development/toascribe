@@ -172,6 +172,15 @@ export function resolveTheme(layers: readonly LayerDirs[]): ResolvedTheme {
       templates: [...offered.values()],
       menus: merged((manifest) => manifest.menus),
       areas: merged((manifest) => manifest.areas),
+      // The parent's sets and the child's, the child's name winning for the same slug.
+      globalSets: [
+        ...new Map(
+          [...themes]
+            .reverse()
+            .flatMap((theme) => theme.manifest.globalSets ?? [])
+            .map((set) => [set.slug, set] as const),
+        ).values(),
+      ],
     },
     templates,
     blockViews,

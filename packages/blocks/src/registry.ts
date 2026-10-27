@@ -6,6 +6,7 @@ import codeJson from './code/block.json' with { type: 'json' }
 import columnJson from './column/block.json' with { type: 'json' }
 import columnsJson from './columns/block.json' with { type: 'json' }
 import galleryJson from './gallery/block.json' with { type: 'json' }
+import globalSetJson from './global-set/block.json' with { type: 'json' }
 import groupJson from './group/block.json' with { type: 'json' }
 import headingJson from './heading/block.json' with { type: 'json' }
 import htmlJson from './html/block.json' with { type: 'json' }
@@ -44,6 +45,7 @@ export const MORE = 'core/more'
 export const NEXTPAGE = 'core/nextpage'
 export const HTML = 'core/html'
 export const QUERY = 'core/query'
+export const GLOBAL_SET = 'core/global-set'
 
 /** Parsed when the module loads: a block.json that does not fit the definition schema stops the api and the editor at once. */
 export const CORE_BLOCKS: readonly BlockDefinition[] = [
@@ -68,6 +70,7 @@ export const CORE_BLOCKS: readonly BlockDefinition[] = [
   nextpageJson,
   htmlJson,
   queryJson,
+  globalSetJson,
 ].map((json) => BlockDefinition.parse(json))
 
 const BY_NAME = new Map(CORE_BLOCKS.map((definition) => [definition.name, definition]))

@@ -1,0 +1,15 @@
+{
+  "name": "core/global-set",
+  "version": 1,
+  "title": "Global set",
+  "description": "Shows one of the site's global sets («Kontaktinfo», «Bunntekst»): edit it once in «Utseende → Globale sett», and it changes everywhere.",
+  "category": "widgets",
+  "icon": "i-lucide-library",
+  "keywords": ["global", "reusable", "set"],
+  "attributes": {
+    "slug": { "type": "string", "default": "", "maxLength": 64 }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

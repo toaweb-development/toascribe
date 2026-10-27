@@ -25,6 +25,13 @@
       "text": "Adressen finnes ikke, eller innholdet er flyttet. Prøv et søk.",
       "home": "Til forsiden"
     },
-    "privacy": "Personvernerklæring"
+    "privacy": "Personvernerklæring",
+    "menu": {
+      "primary": "Hovedmeny",
+      "footer": "Bunnmeny",
+      "open": "Meny",
+      "submenu": "Undermeny for {label}",
+      "newTab": "(åpnes i ny fane)"
+    }
   }
 }

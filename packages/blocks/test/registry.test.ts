@@ -26,6 +26,7 @@ describe('the core block.json files', () => {
       'core/nextpage',
       'core/html',
       'core/query',
+      'core/global-set',
     ])
     for (const block of CORE_BLOCKS) {
       expect(BlockDefinition.safeParse(block).success).toBe(true)
