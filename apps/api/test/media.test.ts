@@ -5,6 +5,7 @@
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { createLocalStorage } from '@toascribe/media'
 import { ContentItem, MediaDetail, MediaFolderListResponse, MediaItem, MediaListResponse } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
@@ -231,6 +232,36 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect((await env.client().get(item.originalUrl)).status).toBe(404)
       expect((await env.client().get(replaced.originalUrl)).status).toBe(200)
       expect(env.mediaJobs.jobs.at(-1)).toEqual({ kind: 'process', mediaId: item.id })
+    })
+
+    it('serves only the current generated files: an address a new run replaced answers 404', async () => {
+      const item = await upload(author, f.PNG, 'versjon.png')
+      const base = item.originalUrl.slice('/uploads/'.length).replace(/\.png$/, '')
+      const size = (version: string) => ({
+        key: `${base}-${version}-150x150.webp`,
+        width: 150,
+        height: 150,
+        size: f.WEBP.length,
+        mime: 'image/webp',
+      })
+      const old = size('0a0a0a0a')
+      const next = size('1b1b1b1b')
+      const storage = createLocalStorage(env.uploadsDir)
+      for (const file of [old, next]) await storage.put(file.key, f.WEBP)
+      const setSizes = (file: typeof old) =>
+        env.query(`update media set variants = $2::jsonb, processing = 'ready' where id = $1`, [
+          item.id,
+          JSON.stringify({ sizes: { thumbnail: file } }),
+        ])
+      await setSizes(old)
+      const served = await env.client().get(`/uploads/${old.key}`)
+      expect(served.status).toBe(200)
+      expect(served.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+      await setSizes(next)
+      expect((await env.client().get(`/uploads/${old.key}`)).status).toBe(404)
+      expect((await env.client().get(`/uploads/${next.key}`)).status).toBe(200)
+      const listed = MediaItem.parse(await (await author.get(`/api/v1/media/${item.id}`)).json())
+      expect(listed.sizes.map((entry) => entry.url)).toEqual([`/uploads/${next.key}`])
     })
 
     it('queues an edit with its steps, and refuses a crop outside the image or an enlargement', async () => {

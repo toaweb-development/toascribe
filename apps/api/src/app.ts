@@ -193,7 +193,8 @@ export function buildApp(deps: AppDeps) {
   // The public files of the media library (M1.2): /uploads/<key>, as WordPress' /wp-content/uploads/. Served by the api, not as
   // static files (security §4): the key is checked, a private file is not served here (only through /api/v1/media/{id}/file with
   // the rights check), and the answer carries its own type, nosniff and, for anything but an image, Content-Disposition: attachment.
-  // The keys are never reused (a replaced or edited file gets a new one), so a public file is cached for a year.
+  // A key is never used for other pixels (an original gets a new key when it is replaced, and every run of the worker gives its sizes
+  // a new version in the name, packages/media versionedKey), so a public file is cached for a year.
   app.get('/uploads/*', policyGuard(publicAccess()), async (c) => {
     const key = c.req.path.slice('/uploads/'.length)
     const file = STORAGE_KEY.test(key) ? await services.media.openPublic(key) : undefined

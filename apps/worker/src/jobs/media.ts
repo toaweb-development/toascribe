@@ -5,7 +5,16 @@
 // pixel limit of the settings (sharp's limitInputPixels), so a file that got past the api's header check still cannot fill the memory.
 import type { Database } from '@toascribe/db'
 import { schema } from '@toascribe/db'
-import { RESIZABLE_MIMES, createLocalStorage, defaultSizes, derivedKey, planSizes, shownFile } from '@toascribe/media'
+import {
+  RESIZABLE_MIMES,
+  createLocalStorage,
+  defaultSizes,
+  derivedKey,
+  planSizes,
+  randomPart,
+  shownFile,
+  versionedKey,
+} from '@toascribe/media'
 import type { MediaStorage, PlannedSize } from '@toascribe/media'
 import { CoreSettings, MEDIA_QUEUE, MediaJob, MediaVariantsData } from '@toascribe/shared'
 import type { MediaEditOperation, MediaVariant } from '@toascribe/shared'
@@ -175,13 +184,15 @@ export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<v
         }
       }
 
+      // A new version in every generated key of this run: /uploads/ is cached `immutable`, so new pixels need a new address.
+      const version = randomPart()
       const plan = planSizes(source.width, source.height, defaultSizes(settings))
       for (const size of plan.sizes) {
         variants.sizes[size.name] = await makeVariant(
           storage,
           source,
           size,
-          derivedKey(row.storageKey, `${String(size.width)}x${String(size.height)}`),
+          versionedKey(row.storageKey, version, `${String(size.width)}x${String(size.height)}`),
           settings.image_max_pixels,
         )
       }
@@ -191,7 +202,7 @@ export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<v
           storage,
           source,
           { ...plan.scaled, name: 'scaled' },
-          derivedKey(row.storageKey, 'scaled'),
+          versionedKey(row.storageKey, version, 'scaled'),
           settings.image_max_pixels,
         )
       }

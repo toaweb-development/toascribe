@@ -85,7 +85,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('media jobs (needs TEST_DATABAS
       '2048x2048': [2048, 1536],
     })
     expect(row.variants.scaled).toMatchObject({ width: 2560, height: 1920, mime: 'image/webp' })
-    expect(row.variants.scaled?.key).toBe(key.replace(/\.jpg$/, '-scaled.webp'))
+    expect(row.variants.scaled?.key).toMatch(new RegExp(`^${key.replace(/\.jpg$/, '')}-[0-9a-f]{8}-scaled\\.webp$`))
+    expect(row.variants.sizes['medium']?.key).toMatch(/-[0-9a-f]{8}-300x225\.webp$/)
     for (const size of Object.values(row.variants.sizes)) {
       const meta = await sharp(await readFile(join(uploads, size.key))).metadata()
       expect([meta.format, meta.width, meta.height]).toEqual(['webp', size.width, size.height])
@@ -157,6 +158,34 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('media jobs (needs TEST_DATABAS
     })
     const row = await variantsOf(id)
     expect(row.variants.edited).toMatchObject({ width: 1280, height: 960 })
+  })
+
+  it('gives every generated file a new address at each edit and regeneration, and removes the old files', async () => {
+    const { id } = await stored(await photo(3000, 2000), 'image/jpeg', 'jpg')
+    await runMediaJob(deps(), { kind: 'process', mediaId: id })
+    const keysOf = (variants: MediaVariantsData) => [
+      ...Object.values(variants.sizes).map((size) => size.key),
+      ...(variants.scaled === undefined ? [] : [variants.scaled.key]),
+      ...(variants.edited === undefined ? [] : [variants.edited.key]),
+    ]
+    const first = keysOf((await variantsOf(id)).variants)
+    // Same settings, same pixels: still new addresses, so nothing cached `immutable` is ever served for other pixels.
+    await runMediaJob(deps(), { kind: 'regenerate', mediaId: id })
+    const second = keysOf((await variantsOf(id)).variants)
+    await runMediaJob(deps(), {
+      kind: 'edit',
+      mediaId: id,
+      operations: [{ op: 'crop', x: 0, y: 0, width: 800, height: 800 }],
+    })
+    const third = keysOf((await variantsOf(id)).variants)
+    for (const [before, after] of [
+      [first, second],
+      [second, third],
+    ] as const) {
+      expect(after.filter((key) => before.includes(key))).toEqual([])
+      for (const key of before) await expect(stat(join(uploads, key))).rejects.toThrow()
+    }
+    for (const key of third) expect((await stat(join(uploads, key))).size).toBeGreaterThan(0)
   })
 
   it('makes the sizes again after the settings change, and removes the files that are no longer a size', async () => {

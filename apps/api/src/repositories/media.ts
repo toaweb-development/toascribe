@@ -1,5 +1,6 @@
 // The media library's queries (M1.2, typescript §8): `media`, `media_folder`, and the media references in `content_ref`.
 import { schema } from '@toascribe/db'
+import { GENERATED_SUFFIX } from '@toascribe/media'
 import { MediaVariantsData } from '@toascribe/shared'
 import type { MediaProcessing, MediaVariants, MediaVisibility } from '@toascribe/shared'
 import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm'
@@ -171,14 +172,15 @@ export async function findMedia(
 
 /**
  * The file a key under /uploads/ belongs to: the original with that key, or the original whose generated file it is
- * (`<original without ext>-<suffix>.webp`, found by the original key's prefix and then checked against its variants).
+ * (`<original without ext>-<version>-<size>.webp` or `-e<ms>.webp`, found by the original key's prefix and then checked against its
+ * current variants, so the address of a file that an edit or new sizes replaced answers 404).
  */
 export async function findMediaByKey(db: Executor, key: string): Promise<MediaRow | undefined> {
   const exact = await db.select(columns).from(media).where(eq(media.storageKey, key)).limit(1)
   if (exact[0] !== undefined) {
     return normalize(exact[0])
   }
-  const base = key.replace(/-(\d+x\d+|scaled|e\d+)\.webp$/, '')
+  const base = key.replace(GENERATED_SUFFIX, '')
   if (base === key) {
     return undefined
   }
