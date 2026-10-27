@@ -163,8 +163,10 @@ export async function restoreBackup(checked: CheckedBackup, options: RestoreOpti
     // Unpacked only now, after the confirmation, and checked again as it is (the file may have changed since the check).
     await mkdir(folder, { recursive: false, mode: 0o700 })
     const manifest = await readBackup(checked.file, { ...options, write: folder })
-    if (manifest.createdAt !== checked.manifest.createdAt)
+    // The whole manifest, so the version and migration checks made on the first read hold for this one too.
+    if (JSON.stringify(manifest) !== JSON.stringify(checked.manifest)) {
       throw new BackupError('The backup changed after it was checked.')
+    }
 
     const { db, pool } = createDb({ connectionString: options.ownerUrl, max: 1, applicationName: 'toascribe-restore' })
     try {
