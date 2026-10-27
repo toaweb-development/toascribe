@@ -98,6 +98,30 @@ Use `toascribe_owner` for the owner password, and `postgres` for `POSTGRES_PASSW
   exception: 0 installed, 1 not installed, 2 error. `toa` with no arguments lists them.
 - **Stop.** `docker compose -f docker/compose.yaml down` (add `-v` to delete the database volume as well).
 
+### Backups
+
+One file, `toascribe-<date>-<time>Z-<version>.tar.zst`, holds the database (`pg_dump -Fc`), the uploads and `manifest.json` (the
+version, the last migration, the time and a sha256 per part). Files are mode 0600 in the `backups` volume; copy them off the host.
+
+```sh
+docker compose exec api toa backup create            # also: list, verify <file>, prune [--keep N]
+docker compose stop api worker                       # a restore replaces the database and the uploads
+docker compose run --rm migrate toa backup restore <file> --dry-run   # checks it, changes nothing
+docker compose run --rm migrate toa backup restore <file>             # asks; --yes for a script
+docker compose up -d
+```
+
+- **toascribe.toml.** Point `TOASCRIBE_CONFIG_DIR` in `.env` at a folder with `toascribe.toml`; its `[backup]` section sets
+  `schedule = true` (the worker makes one a day at 03:30 UTC and keeps the newest `keep`, 7 by default), `encrypt = true` and
+  `recipient = "age1..."` (every backup encrypted with [age](https://age-encryption.org) to that public key).
+- **Secrets stay out** unless you ask: `--include-secrets` adds the encryption and signing keys, and is refused without a
+  `recipient`, so they are never stored unencrypted. A restore writes them to a 0600 file beside the backups, never to `.env`.
+  An encrypted backup is read with `--identity <file>` (the age private key, mounted into the container).
+- **A restore** checks every sha256 and the manifest before anything changes, refuses a backup from a newer version, migrates
+  an older one up, keeps the site in maintenance mode while it runs and turns it back off after, also when it fails.
+- **Updates.** `migrate` runs `toa db migrate`: when a migration is pending on a site with content, it makes a backup first
+  and stops if that fails. `toa db migrate --no-backup` (or `toa core update --no-backup`) skips it, with a warning.
+
 ## Installer uten å klone repoet
 
 The images are published to `ghcr.io/toaweb-development/toascribe-*` at each release, so a server needs only `compose.yaml` and `.env`

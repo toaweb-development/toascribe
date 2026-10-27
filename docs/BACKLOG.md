@@ -14,6 +14,7 @@ line in the same commit; when it becomes a milestone task, move it into `docs/PL
 ## Code and structure
 
 - Media storage on S3 (or a compatible service) as a second implementation of the storage interface; M1.2 has the local volume only. — M1.2 brief
+- Backups to S3 and other stores (an off-host copy without a script of one's own); M1.7 writes them to the `backups` volume only. — M1.7 brief
 - A static front page split by page breaks has no second page: `/2/` is read as a slug and gives 404 (WordPress: `/2/` or `/?page=2`). Item pages and archives are paged. — M1.4
 
 - The theme registry (phase 3): «Tilpass» stores choices for the active theme only, and the site alone reads them

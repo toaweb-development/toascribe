@@ -182,17 +182,32 @@ describe('docker/compose.yaml', () => {
     }
   })
 
-  it('shares the uploads volume between the api and the worker only, with the same cap in the api and the proxy (M1.2)', () => {
-    for (const name of ['api', 'worker']) {
+  it('shares the uploads volume between the api, the worker and migrate (restore, M1.7) only, with the same cap in the api and the proxy (M1.2)', () => {
+    for (const name of ['api', 'worker', 'migrate']) {
       expect(service(name), name).toContain('- uploads:/var/lib/toascribe/uploads')
       expect(service(name), name).toContain('UPLOADS_DIR: /var/lib/toascribe/uploads')
     }
-    for (const name of ['proxy', 'site', 'admin', 'migrate', 'postgres']) {
+    for (const name of ['proxy', 'site', 'admin', 'postgres']) {
       expect(service(name), name).not.toContain('uploads:/')
     }
     expect(service('api')).toContain('UPLOAD_MAX_SIZE_MB: ${TOASCRIBE_UPLOAD_MAX_SIZE_MB:-64}')
     expect(service('proxy')).toContain('TOASCRIBE_UPLOAD_MAX_SIZE_MB: ${TOASCRIBE_UPLOAD_MAX_SIZE_MB:-64}')
     expect(compose).toMatch(/^volumes:\n(\s+.*\n)*\s+uploads: \{\}/m)
+  })
+
+  it('gives the backups volume and toascribe.toml (read only) to the api, the worker and migrate only, which runs toa db migrate (M1.7)', () => {
+    for (const name of ['api', 'worker', 'migrate']) {
+      expect(service(name), name).toContain('- backups:/var/lib/toascribe/backups')
+      expect(service(name), name).toContain('BACKUPS_DIR: /var/lib/toascribe/backups')
+      expect(service(name), name).toContain('- ${TOASCRIBE_CONFIG_DIR:-config}:/etc/toascribe:ro')
+      expect(service(name), name).toContain('TOASCRIBE_CONFIG_FILE: /etc/toascribe/toascribe.toml')
+    }
+    for (const name of ['proxy', 'site', 'admin', 'postgres']) {
+      expect(service(name), name).not.toMatch(/backups:\/|\/etc\/toascribe:/)
+    }
+    expect(service('migrate')).toContain("command: ['toa', 'db', 'migrate']")
+    expect(compose).toMatch(/^volumes:\n(\s+.*\n)*\s+backups: \{\}/m)
+    expect(compose).toMatch(/^volumes:\n(\s+.*\n)*\s+config: \{\}/m)
   })
 
   it('gives the encryption keys and the public origin to the api and the worker, the same way', () => {

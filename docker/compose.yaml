@@ -187,12 +187,17 @@ services:
       SITE_URL_INTERNAL: http://site:3000
       # Valkey (the `valkey` profile): the embed preview limit is shared by every api process. Empty: each counts alone.
       CACHE_VALKEY_URL: ${TOASCRIBE_CACHE_VALKEY_URL:-}
+      # Backups (M1.7): `docker compose exec api toa backup create|list|verify|prune` writes and reads the backups volume.
+      BACKUPS_DIR: /var/lib/toascribe/backups
+      TOASCRIBE_CONFIG_FILE: /etc/toascribe/toascribe.toml
       LOG_LEVEL: ${LOG_LEVEL:-info}
     read_only: true
     tmpfs:
       - /tmp
     volumes:
       - uploads:/var/lib/toascribe/uploads
+      - backups:/var/lib/toascribe/backups
+      - ${TOASCRIBE_CONFIG_DIR:-config}:/etc/toascribe:ro
     networks:
       - internal
       - db
@@ -234,11 +239,16 @@ services:
       WORKER_HEARTBEAT_FILE: /tmp/toascribe-worker.heartbeat
       # The media library (M1.2): the worker reads the originals and writes the sizes.
       UPLOADS_DIR: /var/lib/toascribe/uploads
+      # The daily backup (M1.7), when toascribe.toml's [backup] schedule = true.
+      BACKUPS_DIR: /var/lib/toascribe/backups
+      TOASCRIBE_CONFIG_FILE: /etc/toascribe/toascribe.toml
     read_only: true
     tmpfs:
       - /tmp # the heartbeat file the healthcheck reads
     volumes:
       - uploads:/var/lib/toascribe/uploads
+      - backups:/var/lib/toascribe/backups
+      - ${TOASCRIBE_CONFIG_DIR:-config}:/etc/toascribe:ro
     # pg-boss waits up to 30 s for running jobs; the worker allows 40 s (apps/worker). Docker must not kill it sooner.
     stop_grace_period: 45s
     networks:
@@ -260,13 +270,22 @@ services:
           memory: 1G
 
   # Runs the migrations as the owner role, then exits. It is the only service that gets MIGRATION_DATABASE_URL.
-  # It takes an advisory lock, so two of them never migrate at once (packages/db).
+  # It takes an advisory lock, so two of them never migrate at once (packages/db). `toa db migrate` (M1.7, K-293) takes a
+  # backup first when a migration is pending on a database that has data, and stops if that fails; it is also where
+  # `docker compose run --rm migrate toa backup restore <file>` runs (the owner role, the uploads and the backups).
   migrate:
     <<: *api-image
-    command: ['node', 'packages/db/dist/migrate.js']
+    command: ['toa', 'db', 'migrate']
     environment:
       MIGRATION_DATABASE_URL: '${POSTGRES_OWNER_PASSWORD:+postgres://toascribe_owner:${POSTGRES_OWNER_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-toascribe}}'
+      UPLOADS_DIR: /var/lib/toascribe/uploads
+      BACKUPS_DIR: /var/lib/toascribe/backups
+      TOASCRIBE_CONFIG_FILE: /etc/toascribe/toascribe.toml
       LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - uploads:/var/lib/toascribe/uploads
+      - backups:/var/lib/toascribe/backups
+      - ${TOASCRIBE_CONFIG_DIR:-config}:/etc/toascribe:ro
     restart: 'no'
     init: true
     logging: *logging
@@ -435,3 +454,8 @@ volumes:
   postgres_data: {}
   # The media library's files (originals and sizes), shared by the api and the worker. Back it up with the database.
   uploads: {}
+  # Backups (M1.7): `toa backup create`, the daily backup and the one before a migration. Copy them off the host too.
+  backups: {}
+  # toascribe.toml at /etc/toascribe ([backup] and later sections). Empty by default (the defaults hold); point
+  # TOASCRIBE_CONFIG_DIR at a folder on the host to use your own file.
+  config: {}

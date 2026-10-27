@@ -41,7 +41,9 @@ WORKDIR /app
 # Non-root user. npm, npx, corepack and yarn are not needed to run node dist/*.js and carry their own CVEs.
 # apk upgrade: every build takes all security fixes Alpine has published since the base image was built, not only
 # the one a scan found that day. The image scan before publishing is still the gate.
+# Backups (M1.7): pg_dump, pg_restore and psql of the server's major version, zstd and age, from Alpine's packages.
 RUN apk upgrade --no-cache \
+ && apk add --no-cache postgresql18-client zstd age \
  && addgroup -S -g 10001 app \
  && adduser -S -u 10001 -G app -h /app -s /sbin/nologin app \
  && rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
@@ -56,6 +58,7 @@ COPY --from=prod-deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=prod-deps /app/apps/worker/node_modules ./apps/worker/node_modules
 COPY --from=prod-deps /app/cli/node_modules ./cli/node_modules
 COPY --from=prod-deps /app/packages/auth/node_modules ./packages/auth/node_modules
+COPY --from=prod-deps /app/packages/backup/node_modules ./packages/backup/node_modules
 COPY --from=prod-deps /app/packages/blocks/node_modules ./packages/blocks/node_modules
 COPY --from=prod-deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=prod-deps /app/packages/http/node_modules ./packages/http/node_modules
@@ -70,6 +73,8 @@ COPY --from=build /app/apps/worker/package.json /app/apps/worker/package.json
 COPY --from=build /app/apps/worker/dist ./apps/worker/dist
 COPY --from=build /app/packages/auth/package.json ./packages/auth/package.json
 COPY --from=build /app/packages/auth/dist ./packages/auth/dist
+COPY --from=build /app/packages/backup/package.json ./packages/backup/package.json
+COPY --from=build /app/packages/backup/dist ./packages/backup/dist
 COPY --from=build /app/packages/blocks/package.json ./packages/blocks/package.json
 COPY --from=build /app/packages/blocks/dist ./packages/blocks/dist
 COPY --from=build /app/packages/db/package.json ./packages/db/package.json
@@ -87,11 +92,13 @@ COPY --from=build /app/cli/package.json ./cli/package.json
 COPY --from=build /app/cli/dist ./cli/dist
 
 # `toa` on PATH. The file is already executable after `pnpm build`.
-# The media library's volume (M1.2): made here and owned by the app user, so a new named volume starts with that owner.
+# The media library's volume (M1.2) and the backups' (M1.7): made here and owned by the app user, so a new named volume starts
+# with that owner. /etc/toascribe is where toascribe.toml is mounted (read only); without it the defaults hold.
 RUN ln -s /app/cli/dist/index.js /usr/local/bin/toa \
- && mkdir -p /var/lib/toascribe/uploads \
- && chown 10001:10001 /var/lib/toascribe/uploads \
- && chmod 750 /var/lib/toascribe/uploads
+ && mkdir -p /var/lib/toascribe/uploads /var/lib/toascribe/backups /etc/toascribe \
+ && chown 10001:10001 /var/lib/toascribe/uploads /var/lib/toascribe/backups \
+ && chmod 750 /var/lib/toascribe/uploads \
+ && chmod 700 /var/lib/toascribe/backups
 
 USER 10001:10001
 EXPOSE 3001

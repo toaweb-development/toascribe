@@ -20,6 +20,15 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- Backups (K-292, K-293): `toa backup create|list|verify|prune|restore`. A backup is one `.tar.zst` file with the database, the
+  uploads and a manifest with a sha256 per part, mode 0600, in the new `backups` volume. Secrets are left out unless
+  `--include-secrets`, which needs an age public key in `toascribe.toml` and encrypts the file; `encrypt = true` encrypts every
+  backup. With `schedule = true` the worker makes one a day and keeps the newest seven (`keep`). A restore runs from the `migrate`
+  service, checks the whole file before it changes anything, refuses a newer version, migrates an older one up and keeps the
+  site in maintenance mode meanwhile. `migrate` now runs `toa db migrate`, which makes a backup before a pending migration and
+  stops if it fails (`--no-backup` skips it, with a warning). New: the `config` volume or `TOASCRIBE_CONFIG_DIR` (a folder with
+  `toascribe.toml`, mounted read only at `/etc/toascribe`), the migration `0014_journal_read_for_backups` (the app role may read
+  the migration journal), and `pg_dump`, `zstd` and `age` in the api image. New dependency: `tar` (reading an archive).
 - Maintenance mode (K-288, K-266): `toa maintenance on|off|status`, with an optional message and Retry-After. Visitors get 503 and a
   maintenance page (a theme can draw its own with `templates/maintenance.vue`), and feeds, the sitemap, robots.txt and `/oembed`
   answer 503 too; an account that may manage the site sees the site as usual, with a notice in the toolbar, and the admin works.
