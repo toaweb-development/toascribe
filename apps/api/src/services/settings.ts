@@ -355,10 +355,13 @@ export function createSettingsService(options: {
       for (const key of ['seo_default_image', 'seo_publisher_logo'] as const) {
         const imageId = request[key]
         if (imageId === undefined || imageId === null) continue
-        const [ref] = await options.media.contentRefs({ id: auth.account.id, capabilities: auth.capabilities }, [
-          imageId,
-        ])
-        if (ref?.mime.startsWith('image/') !== true) throw invalid(key, 'an image from the media library')
+        // An image every visitor may see (a private one would drop out of the site's head), and for sharing one that social
+        // sites show: JPEG, PNG, WebP or GIF (seo standard, «OG-bilder»).
+        const [ref] = await options.media.contentRefs({ id: '', capabilities: new Set<string>() }, [imageId])
+        const shareable = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+        const fits =
+          key === 'seo_default_image' ? shareable.includes(ref?.mime ?? '') : ref?.mime.startsWith('image/') === true
+        if (!fits) throw invalid(key, 'a public image from the media library (JPEG, PNG, WebP or GIF for sharing)')
       }
       if (
         request.seo_publisher_person !== undefined &&

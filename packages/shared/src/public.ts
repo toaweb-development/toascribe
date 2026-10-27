@@ -176,6 +176,8 @@ export const PublicSettings = z.object({
   showOnFront: z.enum(['posts', 'page']),
   /** The address of the page of posts when the front page is static; null otherwise. */
   postsPagePath: z.string().nullable(),
+  /** That page's title (its own title in the head, M1.6). */
+  postsPageTitle: z.string().nullable(),
   /** «Søkemotorsynlighet» (K-194): false asks search engines not to index the site (`noindex`, and robots.txt in M1.6). */
   searchEngineVisible: z.boolean(),
   /** The address of the published privacy policy page (K-198, K-199); null without one. */

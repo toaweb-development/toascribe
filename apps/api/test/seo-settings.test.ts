@@ -77,6 +77,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('«Deling og søkemotorer» (ne
     expect((await admin.patch('/api/v1/settings/reading', { seo_publisher_logo: crypto.randomUUID() })).status).toBe(
       400,
     )
+    // A private image would drop out of the site's head: refused.
+    const secret = await upload(f.PNG, 'privat.png')
+    expect((await admin.patch(`/api/v1/media/${secret.id}`, { visibility: 'private' })).status).toBe(200)
+    expect((await admin.patch('/api/v1/settings/reading', { seo_default_image: secret.id })).status).toBe(400)
     const res = await admin.patch('/api/v1/settings/reading', {
       seo_default_image: sharing.id,
       seo_publisher_name: '  Fjell AS  ',

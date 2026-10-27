@@ -12,7 +12,6 @@ const settings = useSettings()
 const customize = useCustomize()
 const { kind, content, archive, preview } = useContent()
 
-const route = useRoute()
 const { list } = useContent()
 // The whole head of the page (lib/seo.ts): title, description, canonical, prev/next, Open Graph, Twitter and JSON-LD.
 const head = computed(() =>
@@ -20,7 +19,6 @@ const head = computed(() =>
     ? undefined
     : seoHead({
         settings: settings.value,
-        path: route.path,
         kind: kind.value,
         content: content.value,
         archive: archive.value,

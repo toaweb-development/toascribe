@@ -31,6 +31,7 @@ const SETTINGS: PublicSettings = {
   postsPerPage: 10,
   showOnFront: 'posts',
   postsPagePath: null,
+  postsPageTitle: null,
   searchEngineVisible: true,
   privacyPolicyPath: null,
   origin: ORIGIN,
@@ -45,6 +46,7 @@ const POST: PublicContent = {
   title: 'Hei fjellet',
   slug: 'hei',
   path: '/hei/',
+
   publishedAt: '2026-10-26T08:30:00.000Z',
   modifiedAt: '2026-10-27T09:00:00.000Z',
   excerpt: 'Innledning om fjellet.',
@@ -79,6 +81,7 @@ const PAGE: PublicContent = {
   title: 'Teamet',
   slug: 'team',
   path: '/om/team/',
+
   categories: [],
   featuredImage: null,
   media: [],
@@ -96,7 +99,7 @@ const LABELS: SeoInput['labels'] = {
 function input(overrides: Partial<SeoInput>): SeoInput {
   return {
     settings: SETTINGS,
-    path: '/',
+
     kind: 'home',
     content: undefined,
     archive: undefined,
@@ -178,7 +181,7 @@ const types = (head: ReturnType<typeof seoHead>) => graph(head).map((node) => no
 
 describe('the head of each template', () => {
   it('front page of latest posts: «Nettsted – Slagord», canonical /, website, next page', () => {
-    const head = seoHead(input({ path: '/', kind: 'home', archive: { type: 'home' }, list: list(1, 3) }))
+    const head = seoHead(input({ kind: 'home', archive: { type: 'home' }, list: list(1, 3) }))
     expect(head.title).toBe('Fjellbloggen – Turer og topper')
     expect(link(head, 'canonical')).toBe(`${ORIGIN}/`)
     expect(link(head, 'prev')).toBeUndefined()
@@ -190,14 +193,14 @@ describe('the head of each template', () => {
   })
 
   it('a later page of the front page: canonical to itself, prev and next', () => {
-    const head = seoHead(input({ path: '/page/2/', kind: 'home', archive: { type: 'home' }, list: list(2, 3) }))
+    const head = seoHead(input({ kind: 'home', archive: { type: 'home' }, list: list(2, 3) }))
     expect(link(head, 'canonical')).toBe(`${ORIGIN}/page/2/`)
     expect(link(head, 'prev')).toBe(`${ORIGIN}/`)
     expect(link(head, 'next')).toBe(`${ORIGIN}/page/3/`)
   })
 
   it('a static front page: the front pattern, a WebPage', () => {
-    const head = seoHead(input({ path: '/', kind: 'front-page', content: { ...PAGE, path: '/', ancestors: [] } }))
+    const head = seoHead(input({ kind: 'front-page', content: { ...PAGE, path: '/', ancestors: [] } }))
     expect(head.title).toBe('Fjellbloggen – Turer og topper')
     expect(link(head, 'canonical')).toBe(`${ORIGIN}/`)
     expect(types(head)).toEqual(['WebSite', 'Organization', 'WebPage'])
@@ -205,7 +208,7 @@ describe('the head of each template', () => {
   })
 
   it('a post: «Tittel – Nettsted», article cards, BlogPosting and breadcrumbs through its category', () => {
-    const head = seoHead(input({ path: '/hei/', kind: 'single', content: POST }))
+    const head = seoHead(input({ kind: 'single', content: POST }))
     expect(head.title).toBe('Hei fjellet – Fjellbloggen')
     expect(head.description).toBe('Innledning om fjellet.')
     expect(link(head, 'canonical')).toBe(`${ORIGIN}/hei/`)
@@ -223,7 +226,7 @@ describe('the head of each template', () => {
 
   it("the SEO panel's title and description win", () => {
     const head = seoHead(
-      input({ path: '/hei/', kind: 'single', content: { ...POST, seo: { title: 'Egen', description: 'Egen tekst' } } }),
+      input({ kind: 'single', content: { ...POST, seo: { title: 'Egen', description: 'Egen tekst' } } }),
     )
     expect(head.title).toBe('Egen – Fjellbloggen')
     expect(head.description).toBe('Egen tekst')
@@ -231,14 +234,14 @@ describe('the head of each template', () => {
   })
 
   it("a post's second page after a page break: canonical to it, prev and next", () => {
-    const head = seoHead(input({ path: '/hei/2/', kind: 'single', content: { ...POST, page: 2, pages: 3 } }))
+    const head = seoHead(input({ kind: 'single', content: { ...POST, page: 2, pages: 3 } }))
     expect(link(head, 'canonical')).toBe(`${ORIGIN}/hei/2/`)
     expect(link(head, 'prev')).toBe(`${ORIGIN}/hei/`)
     expect(link(head, 'next')).toBe(`${ORIGIN}/hei/3/`)
   })
 
   it('a page under a parent: WebPage and breadcrumbs through its parents', () => {
-    const head = seoHead(input({ path: '/om/team/', kind: 'page', content: PAGE }))
+    const head = seoHead(input({ kind: 'page', content: PAGE }))
     expect(head.title).toBe('Teamet – Fjellbloggen')
     expect(prop(head, 'og:type')).toBe('website')
     expect(types(head)).toEqual(['WebSite', 'Organization', 'WebPage', 'BreadcrumbList'])
@@ -255,7 +258,6 @@ describe('the head of each template', () => {
     const term = { id: POST.categories[0]?.id ?? '', name: 'Lokalt', slug: 'lokalt', path: '/category/nyheter/lokalt/' }
     const category = seoHead(
       input({
-        path: '/category/nyheter/lokalt/page/2/',
         kind: 'archive',
         archive: { type: 'category', term },
         list: list(2, 2),
@@ -269,7 +271,6 @@ describe('the head of each template', () => {
     expectSchemaOrg(category.jsonLd)
     const author = seoHead(
       input({
-        path: '/author/kari/',
         kind: 'archive',
         archive: { type: 'author', author: POST.authors[0] ?? POST.authors[0]! },
         list: list(1, 1),
@@ -278,7 +279,6 @@ describe('the head of each template', () => {
     expect(author.title).toBe('Kari – Fjellbloggen')
     const date = seoHead(
       input({
-        path: '/2026/10/',
         kind: 'archive',
         archive: { type: 'date', year: 2026, month: 10, day: null },
         list: list(1, 1),
@@ -290,23 +290,21 @@ describe('the head of each template', () => {
 
   it('search, 404 and a preview: noindex, no canonical, no structured data', () => {
     for (const head of [
-      seoHead(input({ path: '/', kind: 'search', archive: { type: 'search', query: 'fjell' }, list: list(1, 1) })),
-      seoHead(input({ path: '/finnes-ikke/', kind: '404' })),
-      seoHead(input({ path: '/', kind: 'single', content: POST, preview: true })),
+      seoHead(input({ kind: 'search', archive: { type: 'search', query: 'fjell' }, list: list(1, 1) })),
+      seoHead(input({ kind: '404' })),
+      seoHead(input({ kind: 'single', content: POST, preview: true })),
     ]) {
       expect(head.noindex).toBe(true)
       expect(link(head, 'canonical')).toBeUndefined()
       expect(head.jsonLd).toBeNull()
     }
-    expect(seoHead(input({ path: '/', kind: 'search', archive: { type: 'search', query: 'fjell' } })).title).toBe(
+    expect(seoHead(input({ kind: 'search', archive: { type: 'search', query: 'fjell' } })).title).toBe(
       'Søk etter «fjell» – Fjellbloggen',
     )
   })
 
   it('noindex from the SEO panel and from «Søkemotorsynlighet»', () => {
-    expect(
-      seoHead(input({ kind: 'single', path: '/hei/', content: { ...POST, seo: { noindex: true } } })).noindex,
-    ).toBe(true)
+    expect(seoHead(input({ kind: 'single', content: { ...POST, seo: { noindex: true } } })).noindex).toBe(true)
     expect(seoHead(input({ settings: { ...SETTINGS, searchEngineVisible: false } })).noindex).toBe(true)
   })
 
@@ -317,7 +315,7 @@ describe('the head of each template', () => {
           ...SETTINGS,
           seo: { defaultImage: null, publisher: { type: 'person', name: 'Kari', path: '/author/kari/' } },
         },
-        path: '/hei/',
+
         kind: 'single',
         content: POST,
       }),
@@ -325,6 +323,43 @@ describe('the head of each template', () => {
     expect(types(head)).toContain('Person')
     expect(graph(head)[2]).toMatchObject({ publisher: { '@id': `${ORIGIN}/#person` } })
     expectSchemaOrg(head.jsonLd)
+  })
+})
+
+describe('addresses built from what the api resolved', () => {
+  it("a split post under «Enkel»: its pages are `/?p=12&page=2`, not another post's address", () => {
+    const head = seoHead(input({ kind: 'single', content: { ...POST, path: '/?p=12', page: 2, pages: 3 } }))
+    expect(link(head, 'canonical')).toBe(`${ORIGIN}/?p=12&page=2`)
+    expect(link(head, 'prev')).toBe(`${ORIGIN}/?p=12`)
+    expect(link(head, 'next')).toBe(`${ORIGIN}/?p=12&page=3`)
+  })
+
+  it('a split post under a structure without the closing slash: `/hei/2/`', () => {
+    const head = seoHead(input({ kind: 'single', content: { ...POST, path: '/hei', page: 2, pages: 2 } }))
+    expect(link(head, 'canonical')).toBe(`${ORIGIN}/hei/2/`)
+    expect(link(head, 'prev')).toBe(`${ORIGIN}/hei/`)
+  })
+
+  it("an archive's canonical is its own address, whatever the request looked like", () => {
+    const author = { id: POST.authors[0]?.id ?? '', displayName: 'Kari', nicename: 'kari', path: '/author/kari/' }
+    const head = seoHead(input({ kind: 'archive', archive: { type: 'author', author }, list: list(2, 3) }))
+    expect(link(head, 'canonical')).toBe(`${ORIGIN}/author/kari/page/2/`)
+    expect(link(head, 'prev')).toBe(`${ORIGIN}/author/kari/`)
+    expect(link(head, 'next')).toBe(`${ORIGIN}/author/kari/page/3/`)
+  })
+
+  it('the page of posts under a static front page: its own title, address and breadcrumbs', () => {
+    const settings = { ...SETTINGS, showOnFront: 'page' as const, postsPagePath: '/blogg/', postsPageTitle: 'Blogg' }
+    const head = seoHead(input({ settings, kind: 'home', archive: { type: 'home' }, list: list(1, 2) }))
+    expect(head.title).toBe('Blogg – Fjellbloggen')
+    expect(link(head, 'canonical')).toBe(`${ORIGIN}/blogg/`)
+    expect(link(head, 'next')).toBe(`${ORIGIN}/blogg/page/2/`)
+    expect(types(head)).toContain('BreadcrumbList')
+  })
+
+  it("the SEO panel's title wins on a static front page too", () => {
+    const front = { ...PAGE, path: '/', ancestors: [], seo: { title: 'Velkommen til fjellet' } }
+    expect(seoHead(input({ kind: 'front-page', content: front })).title).toBe('Velkommen til fjellet – Fjellbloggen')
   })
 })
 
@@ -343,7 +378,7 @@ describe('the sharing image', () => {
       input({
         settings: { ...SETTINGS, seo: { ...SETTINGS.seo, defaultImage: null } },
         kind: 'single',
-        path: '/hei/',
+
         content: { ...POST, seo: {}, featuredImage: null },
       }),
     )

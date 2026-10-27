@@ -59,8 +59,12 @@ export function archivePage(path: string, page: number, search?: string): string
   return search === undefined ? at : `${at}?${new URLSearchParams({ s: search }).toString()}`
 }
 
-/** The address of page `page` of a split item (WordPress: `/slug/2/`); the front page's second page is `/2/`. */
+/**
+ * The address of page `page` of a split item (WordPress: `/slug/2/`, also for a structure without the closing slash); the front
+ * page's second page is `/2/`. Under «Enkel» the item is `/?p=12`, and its page `/?p=12&page=2`, as the api reads it.
+ */
 export function itemPage(path: string, page: number): string {
+  if (path.includes('?')) return page <= 1 ? path : `${path}&page=${String(page)}`
   const base = path.endsWith('/') ? path : `${path}/`
   return page <= 1 ? base : `${base}${String(page)}/`
 }

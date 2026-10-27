@@ -5,10 +5,10 @@
 // absolute on the site's origin (PUBLIC_ORIGIN, from the api), never on the request's Host.
 import type { ContentMediaRef, PublicArchive, PublicContent, PublicList, PublicSettings } from '@toascribe/shared'
 
+import { archivePage, itemPage } from '../app/lib/scribe'
+
 export interface SeoInput {
   readonly settings: PublicSettings
-  /** The address of the page (the route's path, `/page/2/` included). */
-  readonly path: string
   readonly kind: string
   readonly content: PublicContent | undefined
   readonly archive: PublicArchive | undefined
@@ -41,13 +41,26 @@ function absolute(origin: string, url: string): string {
   return /^https?:\/\//.test(url) ? url : `${origin}${url.startsWith('/') ? url : `/${url}`}`
 }
 
-/** `/category/x/page/3/` → `/category/x/`: the first page of a list. */
-function listBase(path: string): string {
-  return path.replace(/page\/\d+\/$/, '')
-}
+const pad = (value: number) => String(value).padStart(2, '0')
 
-function pageOf(base: string, page: number): string {
-  return page <= 1 ? base : `${base}page/${String(page)}/`
+/**
+ * The address of a list as the api resolved it (never the request's path, which may differ in case or in its closing slash): the
+ * term's, the author's, the date's, the page of posts, or the front page.
+ */
+function listAddress(archive: PublicArchive, settings: PublicSettings): string | undefined {
+  switch (archive.type) {
+    case 'category':
+    case 'tag':
+      return archive.term.path
+    case 'author':
+      return archive.author.path
+    case 'date':
+      return `/${[String(archive.year), ...(archive.month === null ? [] : [pad(archive.month)]), ...(archive.day === null ? [] : [pad(archive.day)])].join('/')}/`
+    case 'home':
+      return settings.showOnFront === 'page' && settings.postsPagePath !== null ? settings.postsPagePath : '/'
+    case 'search':
+      return undefined
+  }
 }
 
 /** The sharing image (Tor's order): the item's own, its featured image, the site's default. */
@@ -65,20 +78,25 @@ export function seoHead(input: SeoInput): SeoHead {
   const { settings, content, archive, list } = input
   const origin = settings.origin.replace(/\/+$/, '')
   const site = settings.title || input.labels.siteFallback
-  const isFront = input.kind === 'front-page' || (input.kind === 'home' && listBase(input.path) === '/')
+  const isPostsPage = input.kind === 'home' && settings.showOnFront === 'page' && settings.postsPagePath !== null
+  const isFront = input.kind === 'front-page' || (input.kind === 'home' && !isPostsPage)
 
   // The title: «Tittel – Nettstedstittel», and on the front page «Nettstedstittel – Slagord».
   let own = ''
   if (content !== undefined) own = content.seo.title || content.title
+  else if (isPostsPage) own = settings.postsPageTitle ?? ''
   else if (archive?.type === 'category' || archive?.type === 'tag') own = archive.term.name
   else if (archive?.type === 'author') own = archive.author.displayName
   else if (archive?.type === 'date')
     own = input.labels.date([archive.year, archive.month, archive.day].filter((part) => part !== null).join('-'))
   else if (archive?.type === 'search') own = input.labels.search(archive.query)
   else if (input.kind === '404') own = input.labels.notFound
-  const title = isFront
-    ? [site, settings.tagline].filter((part) => part !== '').join(SEPARATOR)
-    : [own, site].filter((part) => part !== '').join(SEPARATOR)
+  // The SEO panel's title goes first, also on a static front page («Tittel – Nettstedstittel» then, as everywhere else).
+  const frontTitle = content?.seo.title
+  const title =
+    isFront && (frontTitle === undefined || frontTitle === '')
+      ? [site, settings.tagline].filter((part) => part !== '').join(SEPARATOR)
+      : [own, site].filter((part) => part !== '').join(SEPARATOR)
 
   const description =
     (content === undefined ? undefined : content.seo.description || content.excerpt) || settings.tagline || undefined
@@ -95,21 +113,23 @@ export function seoHead(input: SeoInput): SeoHead {
   const links: { rel: 'canonical' | 'prev' | 'next'; href: string }[] = []
   if (indexable && content !== undefined) {
     const base = input.kind === 'front-page' ? '/' : content.path
-    const at = (page: number) => (page <= 1 ? base : `${base}${String(page)}/`)
+    const at = (page: number) => itemPage(base, page)
     canonical = absolute(origin, at(content.page))
     if (content.page > 1) links.push({ rel: 'prev', href: absolute(origin, at(content.page - 1)) })
     if (content.page < content.pages) links.push({ rel: 'next', href: absolute(origin, at(content.page + 1)) })
-  } else if (indexable && list !== undefined) {
-    const base = listBase(input.path)
-    canonical = absolute(origin, pageOf(base, list.page))
-    if (list.page > 1) links.push({ rel: 'prev', href: absolute(origin, pageOf(base, list.page - 1)) })
-    if (list.page < list.pages) links.push({ rel: 'next', href: absolute(origin, pageOf(base, list.page + 1)) })
+  } else if (indexable && list !== undefined && archive !== undefined) {
+    const base = listAddress(archive, settings)
+    if (base !== undefined) {
+      canonical = absolute(origin, archivePage(base, list.page))
+      if (list.page > 1) links.push({ rel: 'prev', href: absolute(origin, archivePage(base, list.page - 1)) })
+      if (list.page < list.pages) links.push({ rel: 'next', href: absolute(origin, archivePage(base, list.page + 1)) })
+    }
   }
   if (canonical !== undefined) links.unshift({ rel: 'canonical', href: canonical })
 
   // Open Graph and Twitter.
   const image = sharingImage(content, settings)
-  const shareTitle = isFront ? site : own || site
+  const shareTitle = isFront && (frontTitle === undefined || frontTitle === '') ? site : own || site
   const isArticle = content?.type === 'post'
   const meta: { name?: string; property?: string; content: string }[] = [
     { property: 'og:type', content: isArticle ? 'article' : 'website' },
@@ -144,7 +164,9 @@ export function seoHead(input: SeoInput): SeoHead {
     noindex,
     meta,
     links,
-    jsonLd: indexable ? graphOf({ input, origin, site, own, canonical, description, image, isFront }) : null,
+    jsonLd: indexable
+      ? graphOf({ input, origin, site, own, canonical, description, image, isFront, isPostsPage })
+      : null,
   }
 }
 
@@ -157,6 +179,7 @@ function graphOf(context: {
   description: string | undefined
   image: ContentMediaRef | null
   isFront: boolean
+  isPostsPage: boolean
 }): Record<string, unknown> {
   const { input, origin, site, canonical, description, image } = context
   const { settings, content, archive } = input
@@ -234,7 +257,7 @@ function graphOf(context: {
     } else if (content !== undefined) {
       for (const parent of content.ancestors) trail.push({ name: parent.title, url: absolute(origin, parent.path) })
     }
-    if (content !== undefined || (archive !== undefined && archive.type !== 'home')) {
+    if (content !== undefined || (archive !== undefined && (archive.type !== 'home' || context.isPostsPage))) {
       trail.push({ name: context.own, url: canonical })
     }
     if (trail.length > 1) {

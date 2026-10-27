@@ -610,7 +610,12 @@ export function createPublicService(options: {
               ? null
               : { type: 'person', name: person.displayName, path: settings.links.authorPath(person.nicename) },
       }
-      const seoTags = [...[...images.keys()].map((id) => `media:${id}`), ...(person === undefined ? [] : ['list:post'])]
+      // Every image asked for (one that becomes public later changes this answer), and the posts when a person is chosen (the
+      // person drops out while they have nothing published, and comes back when they do).
+      const seoTags = [
+        ...imageIds.map((id) => `media:${id}`),
+        ...(settings.seo_publisher_type === 'person' ? ['list:post'] : []),
+      ]
       const privacyPage =
         settings.wp_page_for_privacy_policy === null
           ? undefined
@@ -623,6 +628,7 @@ export function createPublicService(options: {
         postsPerPage: settings.posts_per_page,
         showOnFront: settings.show_on_front,
         postsPagePath: postsPage === undefined ? null : await pathOf(postsPage, settings),
+        postsPageTitle: postsPage?.title ?? null,
         searchEngineVisible: settings.blog_public,
         privacyPolicyPath: privacyPage === undefined ? null : await pathOf(privacyPage, settings),
         origin: options.publicOrigin.replace(/\/+$/, ''),
