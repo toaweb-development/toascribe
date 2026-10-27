@@ -51,7 +51,7 @@ const itemResponse = (description: string) => ({ content: { 'application/json': 
 const uploadErrors = {
   400: errorResponse(
     'Not allowed: `unsupported_type` (not on the list, or not for this role), `type_mismatch` (the content is not what the name ' +
-      'says), `empty_file`, `unreadable_image`, `image_too_large` (more pixels than `image_max_pixels`), `invalid_folder`',
+      'says), `empty_file`, `unreadable_image`, `image_too_large` (more pixels than `image_max_pixels`), `invalid_folder`, `invalid_attached_to` (no such content)',
   ),
   401: errorResponse('Not signed in'),
   403: errorResponse('CSRF token missing or wrong, or no right to the file'),
@@ -216,14 +216,21 @@ const replaceRoute = defineRoute({
   path: '/media/{id}/replace',
   tags: [TAG],
   summary: 'Replace the file',
-  description: `A new file under the same id (K-115), checked as an upload; links in content keep working. ${STATE_CHANGING_NOTE}`,
+  description:
+    'A new file under the same id (K-115), checked as an upload; links in content keep working. `media_busy` (409) while the ' +
+    `worker has the file (an edit or its sizes): try again when it is ready. ${STATE_CHANGING_NOTE}`,
   policy: UPLOAD,
   bodyType: 'multipart',
   request: {
     params: MediaIdParams,
     body: { required: true, content: { 'multipart/form-data': { schema: ReplaceForm } } },
   },
-  responses: { 200: itemResponse('Replaced'), ...uploadErrors, 404: errorResponse('No such file') },
+  responses: {
+    200: itemResponse('Replaced'),
+    ...uploadErrors,
+    404: errorResponse('No such file'),
+    409: errorResponse('`media_busy`: the worker has the file'),
+  },
 })
 
 const editRoute = defineRoute({

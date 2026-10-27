@@ -313,6 +313,7 @@ const facts = computed(() => {
               variant="outline"
               class="min-h-11"
               :loading="replacing"
+              :disabled="item.processing === 'pending'"
               :label="$t('media.details.replace')"
               @click="replaceInput?.inputRef?.click()"
             />

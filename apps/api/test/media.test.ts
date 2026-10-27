@@ -276,6 +276,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
   describe('replace, edit and regenerate', () => {
     it('replaces the file under the same id, with a new key, and removes the old one', async () => {
       const item = await upload(author, f.PNG, 'forste.png')
+      await env.query(`update media set processing = 'ready' where id = $1`, [item.id]) // the worker's sizes are done
       const res = await multipart(author, `/api/v1/media/${item.id}/replace`, { bytes: f.JPEG, name: 'andre.jpg' })
       expect(res.status).toBe(200)
       const replaced = MediaItem.parse(await res.json())
@@ -284,6 +285,41 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect((await env.client().get(item.originalUrl)).status).toBe(404)
       expect((await env.client().get(replaced.originalUrl)).status).toBe(200)
       expect(env.mediaJobs.jobs.at(-1)).toEqual({ kind: 'process', mediaId: item.id })
+    })
+
+    it('waits with a replacement while the worker has the file (an edit pending), and keeps the file as it is', async () => {
+      const item = await upload(author, f.PNG, 'vent.png')
+      await env.query(`update media set processing = 'ready' where id = $1`, [item.id])
+      const edited = await author.post(`/api/v1/media/${item.id}/edit`, { operations: [{ op: 'rotate', degrees: 90 }] })
+      expect(edited.status).toBe(202)
+      const busy = await multipart(author, `/api/v1/media/${item.id}/replace`, { bytes: f.JPEG, name: 'ny.jpg' })
+      expect([busy.status, await code(busy)]).toEqual([409, 'media_busy'])
+      const after = MediaItem.parse(await (await author.get(`/api/v1/media/${item.id}`)).json())
+      expect(after).toMatchObject({ mime: 'image/png', originalUrl: item.originalUrl })
+      // Nothing of the refused file is left in the uploads folder.
+      const year = item.originalUrl.split('/')[2] ?? ''
+      const month = item.originalUrl.split('/')[3] ?? ''
+      expect((await readdir(join(env.uploadsDir, year, month))).filter((name) => name.startsWith('ny-'))).toEqual([])
+      // Once the worker is done, it goes through.
+      await env.query(`update media set processing = 'ready' where id = $1`, [item.id])
+      expect(
+        (await multipart(author, `/api/v1/media/${item.id}/replace`, { bytes: f.JPEG, name: 'ny.jpg' })).status,
+      ).toBe(200)
+    })
+
+    it('refuses to attach an upload to content that does not exist (400, not 500)', async () => {
+      const res = await multipart(
+        author,
+        '/api/v1/media',
+        { bytes: f.PNG, name: 'foreldrelos.png' },
+        { attachedTo: '0198a3c2-0000-7000-8000-0000000000ff' },
+      )
+      expect([res.status, await code(res)]).toEqual([400, 'invalid_attached_to'])
+      const post = ContentItem.parse(
+        await (await author.post('/api/v1/content', { type: 'post', title: 'Vedlegg' })).json(),
+      )
+      const attached = await upload(author, f.PNG, 'vedlagt.png', { attachedTo: post.id })
+      expect(attached.attachedTo).toBe(post.id)
     })
 
     it('serves only the current generated files: an address a new run replaced answers 404', async () => {

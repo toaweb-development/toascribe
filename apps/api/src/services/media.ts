@@ -58,7 +58,7 @@ import { canRead as canReadContent } from '../lib/content-access.ts'
 import { AppError, ForbiddenError, NotFoundError } from '../lib/errors.ts'
 import { uploadFileLimit } from '../lib/upload-limit.ts'
 import type { MediaJobPort } from '../ports/media-jobs.ts'
-import { authorsOf } from '../repositories/content.ts'
+import { authorsOf, findContent } from '../repositories/content.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import type { Executor } from '../repositories/executor.ts'
 import {
@@ -404,6 +404,11 @@ export function createMediaService(options: {
     try {
       id = await inTransaction(db, async (tx) => {
         const folderId = await checkFolder(tx, input.folderId)
+        if (input.attachedTo !== undefined && input.attachedTo !== null) {
+          if ((await findContent(tx, input.attachedTo)) === undefined) {
+            throw new AppError(400, 'invalid_attached_to', 'The content to attach the file to does not exist')
+          }
+        }
         const created = await insertMedia(
           tx,
           {
@@ -644,6 +649,10 @@ export function createMediaService(options: {
       if (!canEdit(auth, current)) {
         throw new ForbiddenError()
       }
+      // A replacement waits for the worker: an edit still pending would otherwise be applied to the new file.
+      if (current.processing === 'pending') {
+        throw new AppError(409, 'media_busy', 'The image is still being processed')
+      }
       const { detection, width, height, settings } = await check(auth, input)
       const now = clock()
       const key = originalKey(input.fileName, detection.ext, now, settings.uploads_use_yearmonth_folders)
@@ -655,6 +664,9 @@ export function createMediaService(options: {
           const row = await findMedia(tx, id, { forUpdate: true })
           if (row === undefined) {
             throw new NotFoundError()
+          }
+          if (row.processing === 'pending') {
+            throw new AppError(409, 'media_busy', 'The image is still being processed')
           }
           await updateMedia(
             tx,

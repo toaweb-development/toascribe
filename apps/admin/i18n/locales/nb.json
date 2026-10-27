@@ -1082,6 +1082,7 @@
       "folderExists": "Det finnes allerede en mappe med dette navnet her.",
       "fetchFailed": "Filen kunne ikke hentes fra nettadressen.",
       "notEditable": "Bare bilder kan redigeres.",
+      "invalidAttachedTo": "Innlegget eller siden filen skulle lastes opp til, finnes ikke lenger.",
       "busy": "Bildet behandles fortsatt. Prøv igjen om litt.",
       "invalidEdit": "Utsnittet må ligge inne i bildet, og et bilde kan bare skaleres ned.",
       "aboveUploadCap": "Grensen kan ikke være høyere enn den største filstørrelsen serveren tar imot.",

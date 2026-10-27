@@ -58,6 +58,8 @@ export function mediaErrorText(t: MessageT, code: string | undefined): string | 
       return t('media.errors.imageTooLarge')
     case 'invalid_folder':
       return t('media.errors.invalidFolder')
+    case 'invalid_attached_to':
+      return t('media.errors.invalidAttachedTo')
     case 'folder_exists':
       return t('media.errors.folderExists')
     case 'fetch_failed':
