@@ -173,6 +173,17 @@ export function resolveTheme(layers: readonly LayerDirs[]): ResolvedTheme {
       menus: merged((manifest) => manifest.menus),
       areas: merged((manifest) => manifest.areas),
       // The parent's sets and the child's, the child's name winning for the same slug.
+      // The parent's colours and fonts, and the child's on top (the child's entry of a slug wins).
+      settings: {
+        colors: Object.assign(
+          {},
+          ...[...themes].reverse().map((theme) => theme.manifest.settings?.colors ?? {}),
+        ) as Record<string, { name: string; default: string }>,
+        fonts: Object.assign(
+          {},
+          ...[...themes].reverse().map((theme) => theme.manifest.settings?.fonts ?? {}),
+        ) as Record<string, { name: string; default: string; choices: { label: string; value: string }[] }>,
+      },
       globalSets: [
         ...new Map(
           [...themes]

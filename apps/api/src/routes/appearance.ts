@@ -3,14 +3,17 @@ import {
   ApiError,
   CreateGlobalSetRequest,
   CreateMenuRequest,
+  CustomizeResponse,
   GlobalSetChoicesResponse,
   GlobalSetDetail,
   GlobalSetListResponse,
   MenuDetail,
   MenuListResponse,
   MenuLocationsResponse,
+  PublicCustomizeResponse,
   PublicGlobalSetResponse,
   PublicMenuResponse,
+  UpdateCustomizeRequest,
   UpdateGlobalSetRequest,
   UpdateMenuLocationsRequest,
 } from '@toascribe/shared'
@@ -227,6 +230,44 @@ const setChoices = defineRoute({
   },
 })
 
+const ThemeQuery = z.object({ theme: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/) })
+const getCustomize = defineRoute({
+  method: 'get',
+  path: '/customize',
+  tags: ['appearance'],
+  summary: "«Tilpass»: the identity and the theme's choices",
+  description:
+    'For the theme named (the active one, as the site reports it). `mayEditCss` says whether «Ekstra CSS» may change.',
+  policy: THEME,
+  request: { query: ThemeQuery },
+  responses: { 200: json(CustomizeResponse, 'What Tilpass shows'), 400: errorResponse('Invalid query'), ...refused },
+})
+const patchCustomize = defineRoute({
+  method: 'patch',
+  path: '/customize',
+  tags: ['appearance'],
+  summary: '«Tilpass → Publiser»',
+  description:
+    '«Ekstra CSS» needs edit_css (edit_theme_options and unfiltered_html) and may not hold a `<` (it is written into a <style>). ' +
+    NOTE,
+  policy: THEME,
+  request: { body: { required: true, content: { 'application/json': { schema: UpdateCustomizeRequest } } } },
+  responses: {
+    200: json(CustomizeResponse, 'What Tilpass shows afterwards'),
+    400: errorResponse('Invalid request, or `invalid_media`'),
+    ...refused,
+  },
+})
+const publicCustomize = defineRoute({
+  method: 'get',
+  path: '/public/customize',
+  tags: ['public'],
+  summary: "The theme's choices, «Ekstra CSS», the logo and the icon",
+  policy: publicAccess(),
+  request: { query: ThemeQuery },
+  responses: { 200: json(PublicCustomizeResponse, 'What the site draws'), 400: errorResponse('Invalid query') },
+})
+
 export function createAppearanceApp(services: Services): OpenAPIHono<AppEnv> {
   const context = (c: Parameters<typeof getClientIp>[0]) => ({ ip: getClientIp(c), requestId: c.get('requestId') })
   const appearance = services.appearance
@@ -275,4 +316,11 @@ export function createAppearanceApp(services: Services): OpenAPIHono<AppEnv> {
     })
     .openapi(publicMenu, async (c) => c.json(await appearance.publicMenu(c.req.valid('param').location), 200))
     .openapi(publicSet, async (c) => c.json(await appearance.publicGlobalSet(c.req.valid('param').slug), 200))
+    .openapi(getCustomize, async (c) =>
+      c.json(await services.customize.get(await requireSession(c), c.req.valid('query').theme), 200),
+    )
+    .openapi(patchCustomize, async (c) =>
+      c.json(await services.customize.update(await requireSession(c), c.req.valid('json'), context(c)), 200),
+    )
+    .openapi(publicCustomize, async (c) => c.json(await services.customize.publicFor(c.req.valid('query').theme), 200))
 }

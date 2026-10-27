@@ -320,3 +320,15 @@
   align-items: center;
   min-height: 2.75rem;
 }
+
+/* «Tilpass» (M1.5): the theme's colours and fonts (theme.json `settings`), written as variables by ScribeHead. Without a choice the
+   defaults of Nuxt UI's tokens apply. */
+.theme-site {
+  --ui-primary: var(--theme-color-primary, var(--ui-color-primary-700));
+  --ui-bg: var(--theme-color-background, var(--color-white));
+  --ui-text: var(--theme-color-text, var(--ui-color-neutral-700));
+  font-family: var(--theme-font-body, system-ui, sans-serif);
+}
+.theme-site :where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--theme-font-heading, inherit);
+}

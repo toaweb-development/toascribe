@@ -16,6 +16,7 @@ const THEME: ActiveTheme = {
   menus: {},
   areas: {},
   globalSets: [],
+  settings: {},
 }
 const DEFAULT = { value: 'default', label: 'Standardmal' }
 

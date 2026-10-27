@@ -6,9 +6,78 @@
   "description": "Standardtemaet: lett å lese, WCAG 2.2 AA, med innleggsliste, enkeltinnlegg, sider, arkiver, søk og 404.",
   "author": "toascribe",
   "license": "MIT",
-  "requires": { "themeApi": 1 },
-  "menus": { "primary": "Hovedmeny", "footer": "Bunnmeny" },
-  "globalSets": [{ "slug": "bunntekst", "name": "Bunntekst" }],
-  "supports": { "headingLevels": [2, 3, 4, 5, 6], "featuredImage": true },
-  "templates": [{ "slug": "full-width", "name": "Full bredde", "types": ["page"] }]
+  "requires": {
+    "themeApi": 1
+  },
+  "menus": {
+    "primary": "Hovedmeny",
+    "footer": "Bunnmeny"
+  },
+  "globalSets": [
+    {
+      "slug": "bunntekst",
+      "name": "Bunntekst"
+    }
+  ],
+  "supports": {
+    "headingLevels": [2, 3, 4, 5, 6],
+    "featuredImage": true
+  },
+  "templates": [
+    {
+      "slug": "full-width",
+      "name": "Full bredde",
+      "types": ["page"]
+    }
+  ],
+  "settings": {
+    "colors": {
+      "primary": {
+        "name": "Lenker og knapper",
+        "default": "#1d4ed8"
+      },
+      "background": {
+        "name": "Bakgrunn",
+        "default": "#ffffff"
+      },
+      "text": {
+        "name": "Tekst",
+        "default": "#1f2937"
+      }
+    },
+    "fonts": {
+      "body": {
+        "name": "Brødtekst",
+        "default": "system-ui, sans-serif",
+        "choices": [
+          {
+            "label": "Systemets standard",
+            "value": "system-ui, sans-serif"
+          },
+          {
+            "label": "Serif",
+            "value": "Georgia, 'Times New Roman', serif"
+          },
+          {
+            "label": "Lesbar sans-serif",
+            "value": "'Atkinson Hyperlegible', Verdana, sans-serif"
+          }
+        ]
+      },
+      "heading": {
+        "name": "Overskrifter",
+        "default": "system-ui, sans-serif",
+        "choices": [
+          {
+            "label": "Systemets standard",
+            "value": "system-ui, sans-serif"
+          },
+          {
+            "label": "Serif",
+            "value": "Georgia, 'Times New Roman', serif"
+          }
+        ]
+      }
+    }
+  }
 }

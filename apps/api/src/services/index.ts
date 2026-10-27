@@ -24,6 +24,8 @@ import type { MediaService } from './media.ts'
 import { createPublicService } from './public.ts'
 import { createSettingsService } from './settings.ts'
 import { createAppearanceService } from './appearance.ts'
+import { createCustomizeService } from './customize.ts'
+import type { CustomizeService } from './customize.ts'
 import type { AppearanceService } from './appearance.ts'
 import type { SettingsService } from './settings.ts'
 import type { PublicService } from './public.ts'
@@ -99,6 +101,8 @@ export interface Services {
   readonly terms: TermService
   /** The media library (M1.2). */
   readonly media: MediaService
+  /** Appearance → Customize (M1.5). */
+  readonly customize: CustomizeService
   /** Appearance → Menus and Global sets (M1.5). */
   readonly appearance: AppearanceService
   /** Settings → General, Writing, Reading and Privacy (M1.5). */
@@ -203,6 +207,13 @@ export function createServices(deps: ServiceDeps): Services {
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     media,
+    customize: createCustomizeService({
+      db,
+      clock,
+      audit,
+      media,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
     appearance: createAppearanceService({
       db,
       clock,

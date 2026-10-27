@@ -93,6 +93,8 @@ export const CoreSettings = z.object({
   blogname: text,
   blogdescription: text,
   site_icon: z.uuid().nullable(),
+  /** «Tilpass → Nettstedsidentitet» (M1.5): the logo, an image in the media library. */
+  site_logo: z.uuid().nullable(),
   /** The administration e-mail address (WordPress: the first administrator's, set by the installer). Null until installed. */
   admin_email: z.email().max(254).nullable(),
   users_can_register: z.boolean(),
@@ -271,6 +273,7 @@ export const CORE_SETTINGS: CoreSettings = {
   blogname: '', // Tor (WordPress: the installer's title)
   blogdescription: '',
   site_icon: null,
+  site_logo: null,
   admin_email: null, // set by the install
   users_can_register: false,
   default_role: 'subscriber',

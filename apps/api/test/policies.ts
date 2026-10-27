@@ -65,6 +65,9 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'PATCH /api/v1/global-sets/:id': 'capability:edit_theme_options',
   'DELETE /api/v1/global-sets/:id': 'capability:edit_theme_options',
   'GET /api/v1/public/menus/:location': 'public',
+  'GET /api/v1/customize': 'capability:edit_theme_options',
+  'PATCH /api/v1/customize': 'capability:edit_theme_options',
+  'GET /api/v1/public/customize': 'public',
   'GET /api/v1/public/global-sets/:slug': 'public',
   // The public reading API (M1.4): open to anyone; it shows only what is published and public.
   'GET /api/v1/public/settings': 'public',

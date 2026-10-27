@@ -465,6 +465,8 @@ const CASES: readonly MatrixCase[] = [
       ['PATCH /api/v1/menus/:id', 'PATCH', `/api/v1/menus/${NO_SUCH_CONTENT}`, { name: 'x' }, 404],
       ['DELETE /api/v1/menus/:id', 'DELETE', `/api/v1/menus/${NO_SUCH_CONTENT}`, undefined, 404],
       ['GET /api/v1/menu-locations', 'GET', '/api/v1/menu-locations', undefined, 200],
+      ['GET /api/v1/customize', 'GET', '/api/v1/customize?theme=matrix', undefined, 200],
+      ['PATCH /api/v1/customize', 'PATCH', '/api/v1/customize', { theme: 'matrix', version: '1.0.0' }, 200],
       ['PUT /api/v1/menu-locations', 'PUT', '/api/v1/menu-locations', { locations: {} }, 200],
       ['GET /api/v1/global-sets', 'GET', '/api/v1/global-sets', undefined, 200],
       ['POST /api/v1/global-sets', 'POST', '/api/v1/global-sets', {}, 400],
@@ -488,6 +490,7 @@ const CASES: readonly MatrixCase[] = [
   ...(
     [
       ['GET /api/v1/public/menus/:location', '/api/v1/public/menus/primary', 200],
+      ['GET /api/v1/public/customize', '/api/v1/public/customize?theme=matrix', 200],
       ['GET /api/v1/public/global-sets/:slug', '/api/v1/public/global-sets/finnes-ikke', 200],
     ] as const
   ).map(([route, path, status]) => ({

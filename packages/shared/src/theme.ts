@@ -25,6 +25,31 @@ export type ThemeTemplate = z.infer<typeof ThemeTemplate>
 
 export const HeadingLevel = z.int().min(1).max(6)
 
+/** A colour as Tilpass stores it: `#rrggbb`. */
+export const HexColor = z.string().regex(/^#[0-9a-f]{6}$/i)
+/** A font stack a theme offers: family names, quotes, commas and spaces only, so it cannot leave its CSS declaration. */
+export const FontStack = z
+  .string()
+  .min(1)
+  .max(200)
+  .regex(/^[A-Za-z0-9 ,'"-]+$/)
+
+/** The colours and fonts a theme offers in Tilpass, by slug (the CSS variable is `--theme-color-<slug>` / `--theme-font-<slug>`). */
+export const ThemeSettingsSpec = z.strictObject({
+  colors: z.record(Location, z.strictObject({ name: Label, default: HexColor })).optional(),
+  fonts: z
+    .record(
+      Location,
+      z.strictObject({
+        name: Label,
+        default: FontStack,
+        choices: z.array(z.strictObject({ label: Label, value: FontStack })).min(1).max(30),
+      }),
+    )
+    .optional(),
+})
+export type ThemeSettingsSpec = z.infer<typeof ThemeSettingsSpec>
+
 export const ThemeManifest = z.strictObject({
   /** The address of the published JSON Schema, for an editor's completion (PLAN). */
   $schema: z.string().optional(),
@@ -63,8 +88,8 @@ export const ThemeManifest = z.strictObject({
       comments: z.boolean().optional(),
     })
     .optional(),
-  /** Choices for «Tilpass» (phase 3); kept as given until then. */
-  settings: z.record(z.string(), z.unknown()).optional(),
+  /** What «Utseende → Tilpass» offers (K-150, M1.5): the theme's colours and fonts, each with its default. */
+  settings: ThemeSettingsSpec.optional(),
   templates: z
     .array(ThemeTemplate)
     .max(50)
@@ -98,6 +123,7 @@ export const ActiveTheme = z.object({
   menus: z.record(z.string(), z.string()),
   areas: z.record(z.string(), z.string()),
   globalSets: z.array(z.object({ slug: Slug, name: Label })),
+  settings: ThemeSettingsSpec,
 })
 export type ActiveTheme = z.infer<typeof ActiveTheme>
 
