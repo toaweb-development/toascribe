@@ -158,9 +158,10 @@ const BLOCK_KEYS = ['id', 'type', 'version', 'attrs', 'children'] as const
 /**
  * Checks a whole document: the shape of each block, unique ids, known types at their current version, where each block stands
  * (`parent` / `allowedBlocks`), the number of children (`childCount`) and every attribute. Collects all issues instead of
- * stopping at the first, so the editor can mark each block. On success returns the document with defaults filled in.
+ * stopping at the first, so the editor can mark each block. On success returns the document with defaults filled in. `parentType`
+ * checks the list as the children of a block of that type instead of a document (blocks pasted into a column, a list).
  */
-export function validateDocument(input: unknown): ValidationResult {
+export function validateDocument(input: unknown, parentType: string | null = null): ValidationResult {
   const issues: ValidationIssue[] = []
   const ids = new Set<string>()
   let count = 0
@@ -273,7 +274,7 @@ export function validateDocument(input: unknown): ValidationResult {
   }
   const blocks: Block[] = []
   for (const [index, node] of document.entries()) {
-    const block = visit(node, [index], null, 1)
+    const block = visit(node, [index], parentType, 1)
     if (block !== undefined) {
       blocks.push(block)
     }

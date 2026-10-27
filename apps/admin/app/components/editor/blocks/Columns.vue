@@ -5,7 +5,7 @@ import { COLUMN, COLUMNS, flatten, getBlockDefinition } from '@toascribe/blocks'
 // Columns: 2 to 4 columns side by side (one under the other on a phone), each a list of paragraphs and images. The columns block
 // is structure in the block tree, not in ProseMirror: each paragraph in it has its own TipTap like any other. Its toolbar shows
 // while the cursor is anywhere inside it, with the count of columns.
-const props = defineProps<{ block: Block; selected: boolean }>()
+const props = defineProps<{ block: Block; parentType: string | null; selected: boolean }>()
 
 const editor = useBlockEditorContext()
 const { t } = useI18n()

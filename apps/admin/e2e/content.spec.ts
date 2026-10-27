@@ -55,7 +55,7 @@ test('make a post in the editor and save it as a draft; quick edit and publish i
   await expectNoAxeViolations(page, 'the posts list')
   await page.getByRole('link', { name: 'Legg til innlegg' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Legg til innlegg' })).toBeVisible()
-  await page.getByLabel('Tittel').fill(title)
+  await page.getByRole('textbox', { name: 'Tittel', exact: true }).fill(title)
   await page.getByRole('button', { name: 'Lagre kladd' }).click()
   await expect(page.getByText('Lagret.').first()).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/posts\/[0-9a-f-]{36}$/)
@@ -139,7 +139,7 @@ test('a page under another page shows under it with «— », after a quick edit
   for (const title of [parent, child]) {
     await page.goto('/admin/pages/new')
     await expect(page.getByRole('heading', { level: 1, name: 'Legg til side' })).toBeVisible()
-    await page.getByLabel('Tittel').fill(title)
+    await page.getByRole('textbox', { name: 'Tittel', exact: true }).fill(title)
     await page.getByRole('button', { name: 'Lagre kladd' }).click()
     await expect(page).toHaveURL(/\/admin\/pages\/[0-9a-f-]{36}$/)
   }

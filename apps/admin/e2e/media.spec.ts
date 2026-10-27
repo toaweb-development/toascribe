@@ -84,7 +84,8 @@ test('upload an image, describe it, crop it, and insert it in a post', async ({ 
   // A new post: the image block's picker finds the file; the block takes its alternative text.
   await page.goto('/admin/posts/new')
   await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
-  await page.getByRole('menuitem', { name: 'Bilde' }).click()
+  await page.getByRole('searchbox', { name: 'Søk etter blokk' }).fill('Bilde')
+  await page.getByRole('button', { name: 'Bilde', exact: true }).click()
   await page.getByRole('button', { name: 'Mediebibliotek' }).click()
   const picker = page.getByRole('dialog', { name: 'Velg eller last opp medier' })
   await picker.getByRole('searchbox').fill(word)
@@ -95,7 +96,7 @@ test('upload an image, describe it, crop it, and insert it in a post', async ({ 
   await picker.getByRole('button', { name: 'Velg', exact: true }).click()
   await expect(page.getByLabel('Alternativ tekst')).toHaveValue(`Blå flate ${word}`)
   await expect(page.getByRole('img', { name: `Blå flate ${word}` })).toBeVisible()
-  await page.getByLabel('Tittel').fill(`${word} med bilde`)
+  await page.getByRole('textbox', { name: 'Tittel', exact: true }).fill(`${word} med bilde`)
   await page.getByRole('button', { name: 'Lagre kladd' }).click()
   await expect(page.getByText('Lagret.').first()).toBeVisible()
 

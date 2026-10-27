@@ -17,6 +17,7 @@ import {
   locate,
   mergeWithPrevious,
   moveBlock,
+  endList,
   indentListItem,
   insertBlocks,
   outdentListItem,
@@ -63,6 +64,8 @@ export interface EditorModel {
     cursor: EditorSelection,
   ): EditorSelection | undefined
   merge(id: string, cursor: EditorSelection): EditorSelection | undefined
+  /** Enter in the empty last item of a list: out of the list, into a new paragraph after it. */
+  endList(itemId: string, cursor: EditorSelection): EditorSelection | undefined
   /** Tab / Shift+Tab in a list item. */
   indent(id: string, cursor: EditorSelection): EditorSelection | undefined
   outdent(id: string, cursor: EditorSelection): EditorSelection | undefined
@@ -97,11 +100,14 @@ export function neighbourAfterRemoval(document: BlockDocument, id: string): stri
   return (previous ?? order.slice(index + 1).find(isLeaf))?.id ?? null
 }
 
-/** The block that takes the cursor in a new block: the block itself, or for columns the first block of the first column. */
+/**
+ * The block that takes the cursor in a new block: the block itself, or for a container its first block without children (the first
+ * paragraph of the first column, the first item of a list, the paragraph of a quote or a group, the first button).
+ */
 function firstLeaf(block: Block): Block {
-  return block.type === COLUMNS
-    ? (flatten([block]).find((inner) => inner.children.length === 0 && inner.type !== COLUMN) ?? block)
-    : block
+  return block.children.length === 0
+    ? block
+    : (flatten(block.children).find((inner) => inner.children.length === 0 && inner.type !== COLUMN) ?? block)
 }
 
 /** The block that takes the cursor at the end of something put in: its last leaf. */
@@ -181,6 +187,10 @@ export function createEditorModel(initial: BlockDocument, options: HistoryOption
       return result === undefined
         ? undefined
         : commit(result.document, cursor, { blockId: result.targetId, offset: result.offset })
+    },
+    endList(itemId, cursor) {
+      const result = endList(history.present, itemId)
+      return result === undefined ? undefined : commit(result.document, cursor, { blockId: result.newId, offset: 0 })
     },
     indent(id, cursor) {
       return commit(indentListItem(history.present, id), cursor, cursor)

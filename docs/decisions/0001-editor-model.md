@@ -122,6 +122,30 @@ listen på nytt. Med svak CPU er det godt under 100 ms, men det vokser lineært.
 største enkeltbeløpet ved oppstart. Med 1 000 blokker eller mer bør TipTap monteres først når blokken får fokus, og blokken vises
 som statisk visning før det.
 
+### Ytelse i M1.3: 200 blokker av blandet type
+
+Målt 2026-10-27 med samme test (`apps/admin/e2e/editor-performance.spec.ts`), nå med 200 blokker av blandet type: 13 runder med
+avsnitt, overskrift, liste med to punkter, sitat med avsnitt, tabell, kode, skillelinje og to kolonner med et avsnitt hver, og 5
+avsnitt til slutt. Hvert avsnitt har fet tekst og en lenke. Editoren er nå den i M1.3: TipTap lages først når en tekst får fokus
+(justering 1), og hver blokk tegnes én gang i en dokk som flyttes inn i treet (justering 2). «Klar» er tiden til alle 200 blokkene
+er tegnet; ingen TipTap-instans er laget da. Samme maskin og oppsett som i M0.6, to kjøringer uten struping.
+
+| Måling | Uten struping | CPU strupet ×4 |
+| --- | --- | --- |
+| Siden klar med 200 blokker | 0,48–0,51 s | 1,76 s |
+| TipTap-instanser ved lasting | 0 | 0 |
+| DOMContentLoaded | 0,15 s | 0,39 s |
+| Skriving, 42 tegn: p95 / maks | 32 / 32–40 ms | 40 / 56 ms |
+| Flytting (Alt+Shift+Pil), 5 steg: p95 / maks | 16–24 / 16–24 ms | 64 / 64 ms |
+| Angre, 6 steg: p95 / maks | 24–32 / 24–32 ms | 80 / 80 ms |
+| JS-heap etter testen | 81–132 MB | 136 MB |
+
+Sammenlignet med M0.6 er oppstarten raskere (0,48–0,51 s mot 0,71–0,78 s, og 1,76 s mot 2,6 s med struping), selv om dokumentet
+nå har tabeller, lister og sitater. Det er fordi ingen TipTap lages før en tekst får fokus. Skriving ligger litt over én frame
+(p95 32 ms mot 24 ms). Grunnen er at hver endring nå også går gjennom dokken og sidepanelet, som følger valgt blokk. Flytting
+er raskere enn før, fordi blokkene beholder komponenten sin og bare dokken flyttes. Heapen varierer mellom kjøringene (81–132 MB)
+og følger hvor mange tekster som har fått fokus. Ingen måling er i nærheten av grensen på 100 ms, heller ikke med svak CPU.
+
 ## Hva var vanskelig
 
 1. Fokus og markør når blokker bytter forelder, og samspillet med menyer (se over).

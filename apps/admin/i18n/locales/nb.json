@@ -717,7 +717,6 @@
     "remove": "Slett blokk",
     "insertAfter": "Sett inn blokk etter",
     "cannotMove": "Blokken kan ikke flyttes lenger den veien.",
-    "shortcuts": "Tastatur: Ctrl+Z angrer og Ctrl+Shift+Z gjentar. Alt+Shift+Pil opp eller Pil ned flytter blokken, Alt+Shift+Z sletter den. Skriv / i et tomt avsnitt for å velge blokk.",
     "paragraph": {
       "label": "Avsnitt",
       "placeholder": "Skriv tekst, eller / for å velge blokk",
@@ -761,7 +760,9 @@
       "invalidAttribute": "Et felt i blokken har en verdi som ikke er tillatt.",
       "childCount": "Blokken har for få eller for mange kolonner.",
       "tooLarge": "Dokumentet er for stort.",
-      "altRequired": "Bildet mangler alternativ tekst. Beskriv bildet, eller merk det som dekorativt."
+      "altRequired": "Bildet mangler alternativ tekst. Beskriv bildet, eller merk det som dekorativt.",
+      "capabilityRequired": "Bare kontoer som kan bruke egendefinert HTML, kan legge til eller endre denne blokken.",
+      "wrongContentType": "Blokken kan ikke brukes i denne innholdstypen («Les mer» bare i innlegg)."
     },
     "previewPage": {
       "invalid": "Utkastet har blokker som ikke kan vises."
@@ -771,7 +772,23 @@
     "paragraph": "Avsnitt",
     "image": "Bilde",
     "columns": "Kolonner",
-    "column": "Kolonne"
+    "column": "Kolonne",
+    "heading": "Overskrift",
+    "list": "Liste",
+    "listItem": "Listeelement",
+    "quote": "Sitat",
+    "code": "Kode",
+    "preformatted": "Forhåndsformatert",
+    "table": "Tabell",
+    "gallery": "Galleri",
+    "buttons": "Knapper",
+    "button": "Knapp",
+    "group": "Gruppe",
+    "separator": "Skillelinje",
+    "spacer": "Mellomrom",
+    "more": "Les mer",
+    "nextpage": "Sideskift",
+    "html": "Egendefinert HTML"
   },
   "content": {
     "posts": {
@@ -784,7 +801,8 @@
       "views": "Innlegg etter status",
       "empty": "Fant ingen innlegg.",
       "emptyTrash": "Fant ingen innlegg i papirkurven.",
-      "denied": "Du har ikke tilgang til innleggene"
+      "denied": "Du har ikke tilgang til innleggene",
+      "singular": "Innlegg"
     },
     "pages": {
       "title": "Sider",
@@ -796,7 +814,8 @@
       "views": "Sider etter status",
       "empty": "Fant ingen sider.",
       "emptyTrash": "Fant ingen sider i papirkurven.",
-      "denied": "Du har ikke tilgang til sidene"
+      "denied": "Du har ikke tilgang til sidene",
+      "singular": "Side"
     },
     "denied": {
       "text": "Rollen din gir ikke rett til å se denne listen. Spør en administrator hvis du trenger tilgang.",
@@ -1246,6 +1265,179 @@
       "save": "Lagre endringer",
       "saved": "Innstillingene er lagret.",
       "saveFailed": "Innstillingene kunne ikke lagres."
+    }
+  },
+  "editor": {
+    "addBlock": "Legg til blokk",
+    "blockTab": "Blokk",
+    "sidebar": "Innstillinger",
+    "unknownBlock": "Blokken «{name}» kan ikke redigeres her.",
+    "previewSaveFirst": "Forhåndsvisningen viser den lagrede versjonen. Oppdater for å se endringene.",
+    "trashConfirm": "Innholdet flyttes til papirkurven. Du kan gjenopprette det derfra.",
+    "actions": {
+      "schedule": "Planlegg",
+      "submit": "Send til gjennomgang"
+    },
+    "saved": {
+      "scheduled": "Planlagt.",
+      "submitted": "Sendt til gjennomgang."
+    },
+    "selection": {
+      "count": "{n} blokk er valgt. | {n} blokk er valgt. | {n} blokker er valgt."
+    },
+    "heading": {
+      "label": "Overskrift {n}",
+      "level": "Overskrift {n}",
+      "levelLabel": "Overskriftsnivå",
+      "placeholder": "Overskrift"
+    },
+    "list": {
+      "item": "Listeelement",
+      "bullets": "Gjør om til punktliste",
+      "numbers": "Gjør om til nummerert liste",
+      "numbered": "Nummerert liste",
+      "indent": "Rykk inn",
+      "outdent": "Rykk ut"
+    },
+    "quote": {
+      "citation": "Legg til sitatkilde"
+    },
+    "code": {
+      "label": "Kode",
+      "placeholder": "Skriv kode …"
+    },
+    "preformatted": {
+      "label": "Forhåndsformatert tekst",
+      "placeholder": "Skriv forhåndsformatert tekst …"
+    },
+    "table": {
+      "cell": "Rad {row}, kolonne {column}",
+      "addRow": "Sett inn rad etter",
+      "addColumn": "Sett inn kolonne etter",
+      "removeRow": "Slett raden",
+      "removeColumn": "Slett kolonnen",
+      "header": "Topprad",
+      "caption": "Bildetekst for tabellen"
+    },
+    "gallery": {
+      "add": "Legg til bilde",
+      "remove": "Fjern fra galleriet",
+      "empty": "Galleriet har ingen bilder ennå.",
+      "columns": "Kolonner",
+      "crop": "Beskjær bildene til samme størrelse",
+      "link": "Lenke til",
+      "linkNone": "Ingen",
+      "linkFile": "Mediefil"
+    },
+    "button": {
+      "text": "Knappetekst",
+      "placeholder": "Legg til tekst …",
+      "url": "Lenkeadresse",
+      "style": "Stil",
+      "fill": "Fylt",
+      "outline": "Omriss"
+    },
+    "spacer": {
+      "label": "Mellomrom: {size}",
+      "size": "Størrelse",
+      "small": "Liten",
+      "medium": "Middels",
+      "large": "Stor",
+      "xLarge": "Ekstra stor"
+    },
+    "more": {
+      "text": "Tekst på «Les mer»-lenken",
+      "placeholder": "Les mer",
+      "noTeaser": "Skjul utdraget på hele innleggssiden"
+    },
+    "html": {
+      "placeholder": "Skriv HTML …",
+      "readOnly": "Bare kontoer som kan bruke egendefinert HTML, kan endre blokken. Du kan flytte eller slette den."
+    },
+    "inserter": {
+      "search": "Søk etter blokk",
+      "text": "Tekst",
+      "media": "Media",
+      "design": "Utforming",
+      "widgets": "Widgeter"
+    },
+    "settings": {
+      "none": "Velg en blokk for å se innstillingene.",
+      "nothing": "Blokken har ingen flere innstillinger.",
+      "toHeading": "Gjør om til overskrift",
+      "toParagraph": "Gjør om til avsnitt"
+    },
+    "document": {
+      "summary": "Oppsummering",
+      "visibility": "Synlighet",
+      "public": "Offentlig",
+      "publicHelp": "Synlig for alle.",
+      "private": "Privat",
+      "privateHelp": "Bare synlig for nettstedets administratorer og redaktører.",
+      "password": "Passordbeskyttet",
+      "passwordHelp": "Bare de som har passordet, kan se innholdet.",
+      "passwordField": "Passord",
+      "passwordKeep": "Et passord er satt. Skriv et nytt for å bytte det.",
+      "chooseTime": "Velg tidspunkt for publisering",
+      "immediately": "Publiseres: Umiddelbart",
+      "publishAt": "Publiser",
+      "unpublishAt": "Avpubliser",
+      "unpublishHelp": "Innholdet går tilbake til utkast på dette tidspunktet. La stå tomt for aldri.",
+      "authors": "Forfattere",
+      "comments": "Tillat kommentarer",
+      "terms": "Kategorier og stikkord",
+      "categories": "Kategorier",
+      "tags": "Stikkord",
+      "tagsHelp": "Skill stikkord med komma.",
+      "excerpt": "Utdrag",
+      "excerptHelp": "Et kort sammendrag som vises i arkiver og når innholdet deles. La stå tomt for å bruke starten av teksten.",
+      "pageAttributes": "Sideattributter",
+      "trash": "Flytt til papirkurven"
+    },
+    "featured": {
+      "title": "Fremhevet bilde",
+      "choose": "Velg fremhevet bilde",
+      "replace": "Erstatt bildet",
+      "remove": "Fjern bildet"
+    },
+    "seo": {
+      "heading": "SEO",
+      "title": "Tittel for søkemotorer",
+      "description": "Beskrivelse",
+      "image": "Bilde ved deling",
+      "imageHelp": "Brukes når innholdet deles. Uten eget bilde brukes det fremhevede bildet.",
+      "noindex": "Skjul fra søkemotorer",
+      "searchPreview": "Slik kan det se ut i et søkeresultat",
+      "sharePreview": "Slik kan det se ut når det deles",
+      "noDescription": "Ingen beskrivelse. Søkemotoren velger tekst selv.",
+      "chooseImage": "Velg bilde for deling"
+    },
+    "login": {
+      "title": "Økten er utløpt",
+      "description": "Logg inn på nytt for å fortsette. Det du har skrevet, er ikke borte.",
+      "enrol": "Kontoen må sette opp en autentiseringsapp før du kan logge inn. Gjør det i en ny fane, og kom tilbake hit.",
+      "openLogin": "Åpne innloggingen i en ny fane",
+      "later": "Senere",
+      "done": "Du er logget inn igjen.",
+      "saveWaits": "Økten er utløpt. Logg inn igjen, så lagres endringene.",
+      "otherAccount": "Du logget inn med en annen konto. Det som ikke var lagret, ble ikke sendt, og siden er lastet på nytt."
+    },
+    "shortcuts": {
+      "title": "Hurtigtaster",
+      "global": "Globalt",
+      "blocks": "Blokker",
+      "text": "Tekst",
+      "save": "Lagre",
+      "insertBefore": "Sett inn ny blokk før",
+      "insertAfter": "Sett inn ny blokk etter",
+      "move": "Flytt blokken opp eller ned",
+      "select": "Velg flere blokker",
+      "selectClick": "Velg alle blokkene fram til denne",
+      "shiftClick": "Shift+klikk",
+      "deleteSelected": "Slett de valgte blokkene",
+      "slash": "Velg blokk i et tomt avsnitt",
+      "lineBreak": "Linjeskift",
+      "indent": "Rykk inn eller ut i en liste"
     }
   }
 }

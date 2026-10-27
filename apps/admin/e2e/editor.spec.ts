@@ -28,6 +28,13 @@ const settle = (page: Page) =>
 
 const paragraphs = (page: Page) => page.getByRole('textbox', { name: 'Avsnitt' })
 
+/** The «+» at the end of the document (the last «Legg til blokk»), and a block chosen in the inserter (K-081). */
+async function insertAtEnd(page: Page, name: string): Promise<void> {
+  await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
+  await page.getByRole('searchbox', { name: 'Søk etter blokk' }).fill(name)
+  await page.getByRole('button', { name, exact: true }).click()
+}
+
 /** The document's shape as the editor shows it: each block's type, with the blocks of each column inside. */
 async function outline(page: Page): Promise<string> {
   return page.getByRole('region', { name: 'Innhold' }).evaluate((root) => {
@@ -55,8 +62,7 @@ test('build a document with columns, an image and formatted text; undo and redo;
   await expect(page.getByText('Dokumentet er tomt.')).toBeVisible()
 
   // Columns from the «+» at the end of the document: two columns, each with an empty paragraph, and the cursor in the first.
-  await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
-  await page.getByRole('menuitem', { name: 'Kolonner' }).click()
+  await insertAtEnd(page, 'Kolonner')
   await expect(page.getByRole('group', { name: 'Kolonne 2' })).toBeVisible()
   await expect(paragraphs(page).first()).toBeFocused()
   await page.keyboard.type('Venstre kolonne')
@@ -83,8 +89,7 @@ test('build a document with columns, an image and formatted text; undo and redo;
   await expect(second.getByRole('img', { name: 'Et testbilde' })).toBeVisible()
 
   // A paragraph after the columns, with text typed in one go and one word made bold afterwards.
-  await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
-  await page.getByRole('menuitem', { name: 'Avsnitt' }).click()
+  await insertAtEnd(page, 'Avsnitt')
   const last = paragraphs(page).last()
   await expect(last).toBeFocused()
   await page.keyboard.type('Hei fet tekst')
@@ -112,11 +117,11 @@ test('build a document with columns, an image and formatted text; undo and redo;
   await expect(last).toHaveText('')
   await page.keyboard.press(`${MOD}+Shift+z`)
   await expect(last).toHaveText('Hei fet tekst')
-  await page.getByRole('button', { name: 'Gjør om' }).click()
+  await page.getByRole('button', { name: 'Gjør om', exact: true }).click()
   await expect(last.locator('strong')).toHaveText('fet')
   expect(await outline(page)).toBe('columns(column(paragraph) column(image)) paragraph')
   // One step is left to redo: the move.
-  await expect(page.getByRole('button', { name: 'Gjør om' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Gjør om', exact: true })).toBeEnabled()
 
   // Save, reload: the same document.
   await page.getByRole('button', { name: 'Lagre kladd' }).click()
@@ -160,7 +165,10 @@ test('keyboard only: Enter makes a paragraph, Backspace in an empty one deletes 
   await page.goto('/admin/posts/new')
   await page.getByRole('button', { name: 'Legg til blokk' }).last().focus()
   await page.keyboard.press('Enter')
-  await page.getByRole('menuitem', { name: 'Avsnitt' }).press('Enter')
+  // The inserter's search field has the focus: a word and Enter take the first block that matches.
+  await expect(page.getByRole('searchbox', { name: 'Søk etter blokk' })).toBeFocused()
+  await page.keyboard.type('avsnitt')
+  await page.keyboard.press('Enter')
   await expect(paragraphs(page)).toHaveCount(1)
   await page.keyboard.type('En')
   await page.keyboard.press('Enter')
@@ -194,8 +202,7 @@ test('the editor lets images in from this site only, like every other admin page
   expect(csp).not.toContain('unsafe-inline')
   // The image block takes a file of the media library only: no field for an address on another host.
   await page.goto('/admin/posts/new')
-  await page.getByRole('button', { name: 'Legg til blokk' }).last().click()
-  await page.getByRole('menuitem', { name: 'Bilde' }).click()
+  await insertAtEnd(page, 'Bilde')
   await expect(page.getByRole('button', { name: 'Mediebibliotek' })).toBeVisible()
   await expect(page.getByLabel('Bildeadresse')).toHaveCount(0)
 })

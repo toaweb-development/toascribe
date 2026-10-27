@@ -364,6 +364,69 @@ export function outdentListItem(document: BlockDocument, id: string): BlockDocum
   return without === undefined ? undefined : insertBlock(without, target, located.block)
 }
 
+/**
+ * Enter in an empty last item of a top-level list (Gutenberg): the item goes and a paragraph takes the cursor right after the list.
+ * When it was the only item, the list goes too. Undefined for an item that is not empty, not last, or in a nested list (that one is
+ * outdented instead).
+ */
+export function endList(
+  document: BlockDocument,
+  itemId: string,
+  paragraph: Block = createParagraph(),
+): { document: BlockDocument; newId: string } | undefined {
+  const located = locate(document, itemId)
+  if (located?.block.type !== LIST_ITEM || located.parentId === null || contentOf(located.block).length > 0) {
+    return undefined
+  }
+  const list = locate(document, located.parentId)
+  if (list === undefined || list.parentType === LIST_ITEM || located.index !== list.block.children.length - 1) {
+    return undefined
+  }
+  const without =
+    list.block.children.length === 1 ? removeBlock(document, list.block.id) : removeBlock(document, itemId)
+  const index = list.block.children.length === 1 ? list.index : list.index + 1
+  const next = without === undefined ? undefined : insertBlock(without, { parentId: list.parentId, index }, paragraph)
+  return next === undefined ? undefined : { document: next, newId: paragraph.id }
+}
+
+/** The blocks between two siblings, both included, in document order; undefined when they are not siblings. */
+export function siblingRange(document: BlockDocument, a: string, b: string): string[] | undefined {
+  const first = locate(document, a)
+  const second = locate(document, b)
+  if (first === undefined || second?.parentId !== first.parentId) {
+    return undefined
+  }
+  const siblings = childrenOf(document, first.parentId) ?? []
+  const [from, to] = first.index <= second.index ? [first.index, second.index] : [second.index, first.index]
+  return siblings.slice(from, to + 1).map((block) => block.id)
+}
+
+/**
+ * The two blocks to select between when a selection runs from `a` to `b` in different parents (Shift+click across a column, as
+ * Gutenberg does): the ancestors of each that are siblings under their nearest common parent. Undefined when one is inside the other.
+ */
+export function selectionEnds(document: BlockDocument, a: string, b: string): [string, string] | undefined {
+  const chain = (id: string): string[] => {
+    const ids: string[] = []
+    for (
+      let at = locate(document, id);
+      at !== undefined;
+      at = at.parentId === null ? undefined : locate(document, at.parentId)
+    ) {
+      ids.unshift(at.block.id)
+    }
+    return ids
+  }
+  const first = chain(a)
+  const second = chain(b)
+  if (first.length === 0 || second.length === 0) return undefined
+  let depth = 0
+  while (depth < first.length && depth < second.length && first[depth] === second[depth]) depth += 1
+  const left = first[depth]
+  const right = second[depth]
+  return left === undefined || right === undefined ? undefined : [left, right]
+}
+
 /** Removes several blocks in one change; undefined when one of them may not go. A block inside another one removed goes with it. */
 export function removeBlocks(document: BlockDocument, ids: readonly string[]): BlockDocument | undefined {
   let next: BlockDocument | undefined = document

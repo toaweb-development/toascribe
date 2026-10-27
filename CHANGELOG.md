@@ -20,6 +20,20 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- The block editor of M1.3 (K-075, K-081): an edit component for every basic block, the inserter with search and categories (and
+  «/» in an empty paragraph), and the block toolbar. A text is shown as the site draws it until it gets the focus, so a long
+  document opens fast, and a block keeps its state when it moves into or out of a column. Several blocks can be selected
+  (Shift+click, Shift+arrow) and deleted, copied, cut and pasted, also into columns, and undone in one step; plain text with
+  empty lines is pasted as paragraphs. Lists take Tab and Shift+Tab. «Hurtigtaster» lists the keys, among them Ctrl+S,
+  Ctrl+Alt+T and Ctrl+Alt+Y.
+- The edit screen (PLAN «Redigeringsskjermen»): «Lagre kladd», «Forhåndsvis», «Publiser», «Planlegg» for a time ahead,
+  «Oppdater», and «Send til gjennomgang» for a contributor. The sidebar's «Innlegg»/«Side» tab has the status and visibility
+  (public, private, password), the publish time («Umiddelbart» or a chosen time) and the time it goes back to draft, the
+  authors, «Fest øverst», categories and tags, the featured image, the excerpt (K-107), discussion, the page attributes, the SEO
+  panel with a search and a sharing preview (K-105) and «Flytt til papirkurven»; the «Blokk» tab has the settings of the selected
+  block.
+- When the session runs out while editing, a login dialog opens over the editor, and the save that found it goes on afterwards;
+  nothing written is lost (K-010). Leaving with unsaved changes asks first.
 - The basic blocks of M1.3 in the block format (K-078, K-079): heading, list (bulleted and numbered, with levels), quote, code,
   preformatted, table (with a header row), gallery (columns, cropped or not, linked to the file or not), buttons, group,
   separator, spacer, «Les mer» (posts only) and page break, and custom HTML, beside paragraph, image and columns. Each block's
