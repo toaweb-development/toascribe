@@ -1,0 +1,19 @@
+{
+  "name": "core/preformatted",
+  "version": 1,
+  "title": "Preformatted",
+  "description": "Add text that respects your spacing and tabs, and also allows styling.",
+  "category": "text",
+  "icon": "i-lucide-text",
+  "keywords": ["poetry", "poem"],
+  "attributes": {
+    "content": {
+      "type": "rich-text",
+      "default": [],
+      "maxLength": 100000
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

@@ -9,5 +9,21 @@
   "attributes": {},
   "supports": {},
   "parent": ["core/columns"],
-  "allowedBlocks": ["core/paragraph", "core/image"]
+  "allowedBlocks": [
+    "core/paragraph",
+    "core/heading",
+    "core/list",
+    "core/quote",
+    "core/image",
+    "core/gallery",
+    "core/buttons",
+    "core/columns",
+    "core/group",
+    "core/separator",
+    "core/spacer",
+    "core/code",
+    "core/preformatted",
+    "core/table",
+    "core/html"
+  ]
 }

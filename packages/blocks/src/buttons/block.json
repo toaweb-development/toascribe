@@ -1,0 +1,17 @@
+{
+  "name": "core/buttons",
+  "version": 1,
+  "title": "Buttons",
+  "description": "Prompt visitors to take action with a group of button-style links.",
+  "category": "design",
+  "icon": "i-lucide-mouse-pointer-click",
+  "keywords": ["link"],
+  "attributes": {},
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": ["core/button"],
+  "childCount": {
+    "min": 1,
+    "max": 20
+  }
+}

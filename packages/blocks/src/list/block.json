@@ -1,0 +1,22 @@
+{
+  "name": "core/list",
+  "version": 1,
+  "title": "List",
+  "description": "An organized collection of items displayed in a specific order.",
+  "category": "text",
+  "icon": "i-lucide-list",
+  "keywords": ["bullet list", "ordered list", "numbered list"],
+  "attributes": {
+    "ordered": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": ["core/list-item"],
+  "childCount": {
+    "min": 1,
+    "max": 1000
+  }
+}

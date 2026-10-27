@@ -6,6 +6,7 @@ import type {
   CommentStatus,
   ContentCounts,
   ContentOrderBy,
+  ContentSeo,
   ContentStatus,
   ContentStatusBeforeTrash,
   ContentTypeKey,
@@ -39,6 +40,10 @@ export interface ContentRow {
   readonly unpublishAt: Date | null
   readonly createdAt: Date
   readonly modifiedAt: Date
+  /** «Fremhevet bilde» (K-070): a media id. */
+  readonly featuredMediaId: string | null
+  /** The SEO panel (K-105), as stored: checked against ContentSeo when it is read. */
+  readonly seo: unknown
 }
 
 // The columns are checked in the database: type by the service (only post and page are written), status, status_before_trash
@@ -63,6 +68,8 @@ const rowColumns = {
   unpublishAt: content.unpublishAt,
   createdAt: content.createdAt,
   modifiedAt: content.modifiedAt,
+  featuredMediaId: content.featuredMediaId,
+  seo: content.seo,
 }
 
 /** The date a list shows and sorts by: the publish date when there is one, otherwise the last change (WordPress' post_date). */
@@ -376,6 +383,8 @@ export interface ContentValues {
   readonly publishedAt: Date | null
   readonly unpublishAt: Date | null
   readonly blocks: Blocks
+  readonly featuredMediaId: string | null
+  readonly seo: ContentSeo
 }
 
 export interface SearchText {
@@ -418,6 +427,8 @@ export async function insertContent(
       publishedAt: input.publishedAt,
       unpublishAt: input.unpublishAt,
       blocks: input.blocks,
+      featuredMediaId: input.featuredMediaId,
+      seo: input.seo,
       search: searchVector(search),
       createdAt: input.at,
       modifiedAt: input.at,

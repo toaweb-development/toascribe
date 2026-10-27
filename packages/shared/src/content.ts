@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { ContentSeo } from './documents.ts'
 import { ApiError } from './errors.ts'
 import { MAX_CATEGORIES_PER_ITEM, MAX_TAGS_PER_ITEM, TagName, TermRef } from './terms.ts'
 import { CONTENT_STATUS_BEFORE_TRASH, CommentStatus, ContentStatus, ContentStatusBeforeTrash } from './values.ts'
@@ -206,13 +207,31 @@ export const ContentItem = z.object({
   /** The block tree, upgraded to the current block versions (an older stored tree is migrated on read; it is stored on the next save). */
   blocks: z.array(z.record(z.string(), z.unknown())),
   blocksFormat: z.enum(['blocks', 'legacy']),
-  /** The media the blocks use, by id, that the account may see. */
+  /** «Fremhevet bilde» (K-070): a media id, or null. */
+  featuredMediaId: z.uuid().nullable(),
+  /** The SEO panel (K-105): the title and description for search engines and sharing, the sharing image's media id. */
+  seo: ContentSeo,
+  /** The media the blocks, the featured image and the sharing image use, by id, that the account may see. */
   media: z.array(ContentMediaRef),
 })
 export type ContentItem = z.infer<typeof ContentItem>
 
 export const ContentIdParams = z.object({ id: z.uuid() })
 export type ContentIdParams = z.infer<typeof ContentIdParams>
+
+/** The longest SEO title and description (Google shows about 60 and 155 characters; these are safety caps, not advice). */
+export const SEO_TITLE_MAX_LENGTH = 200
+export const SEO_DESCRIPTION_MAX_LENGTH = 500
+
+/** The SEO panel as a request sends it (K-105). */
+export const SeoRequest = z.strictObject({
+  title: z.string().trim().max(SEO_TITLE_MAX_LENGTH).optional(),
+  description: z.string().trim().max(SEO_DESCRIPTION_MAX_LENGTH).optional(),
+  /** The sharing image (og:image): an image in the media library, by id. */
+  image: z.uuid().optional(),
+  noindex: z.boolean().optional(),
+})
+export type SeoRequest = z.infer<typeof SeoRequest>
 
 /** The fields a request may set. A field left out keeps its value (or its default on create). */
 const writableFields = {
@@ -248,6 +267,10 @@ const writableFields = {
     .refine((ids) => new Set(ids).size === ids.length, { message: 'Each category may be named once' }),
   /** Posts only: tag names; a name that is not a tag yet becomes one (WordPress' tag box). */
   tags: z.array(TagName).max(MAX_TAGS_PER_ITEM),
+  /** «Fremhevet bilde» (K-070): an image in the media library the account may see, or null for none. */
+  featuredMediaId: z.uuid().nullable(),
+  /** The SEO panel (K-105). Replaces what is stored; a field left out is empty (the site then uses the title and the excerpt). */
+  seo: SeoRequest,
 }
 
 /** POST /content. Everything but `type` may be left out: a new draft by the signed-in account. */
@@ -273,6 +296,8 @@ export const CreateContentRequest = z
     blocks: true,
     categories: true,
     tags: true,
+    featuredMediaId: true,
+    seo: true,
   })
 export type CreateContentRequest = z.infer<typeof CreateContentRequest>
 

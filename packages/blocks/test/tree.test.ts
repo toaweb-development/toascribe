@@ -48,9 +48,7 @@ describe('insert', () => {
       'b_aaaa b_cols(b_col1(b_xxxx b_yyyy) b_col2(b_zzzz b_new2)) b_bbbb',
     )
     expect(insertBlock(start, { parentId: 'b_cols', index: 0 }, p('b_new3'))).toBeUndefined()
-    expect(
-      insertBlock(start, { parentId: 'b_col1', index: 0 }, cols('b_new4', col('b_n5'), col('b_n6'))),
-    ).toBeUndefined()
+    expect(insertBlock(start, { parentId: 'b_col1', index: 0 }, col('b_new4'))).toBeUndefined()
     expect(insertBlock(start, { parentId: null, index: 9 }, p('b_new7'))).toBeUndefined()
     expect(insertBlock(start, { parentId: 'b_none', index: 0 }, p('b_new8'))).toBeUndefined()
   })

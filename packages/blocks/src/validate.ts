@@ -5,7 +5,7 @@ import { z } from 'zod'
 import type { Block } from './block.ts'
 import { BLOCK_ID_PATTERN } from './block.ts'
 import type { AttributeSchema, BlockDefinition } from './definition.ts'
-import { inlineContentSchema, isSafeMediaUrl } from './inline.ts'
+import { inlineContentSchema, isSafeHref, isSafeMediaUrl } from './inline.ts'
 import { canContain, getBlockDefinition } from './registry.ts'
 
 /** Limits on a whole document. A safety cap, not a setting: far above what a person writes, low enough to keep a request cheap. */
@@ -65,6 +65,7 @@ export function attributeValidator(schema: AttributeSchema): z.ZodType {
       }
       const allowed = schema.enum
       const isUrl = schema.format === 'url'
+      const isHref = schema.format === 'href'
       const isUuid = schema.format === 'uuid'
       validator = base
         .refine((value) => allowed === undefined || allowed.includes(value), {
@@ -72,6 +73,7 @@ export function attributeValidator(schema: AttributeSchema): z.ZodType {
         })
         // An empty address is the default: «no image chosen yet».
         .refine((value) => !isUrl || value === '' || isSafeMediaUrl(value), { message: 'Not an allowed address' })
+        .refine((value) => !isHref || value === '' || isSafeHref(value), { message: 'Not an allowed link address' })
         .refine((value) => !isUuid || value === '' || UUID.test(value), { message: 'Not an id' })
       break
     }
@@ -96,6 +98,17 @@ export function attributeValidator(schema: AttributeSchema): z.ZodType {
     case 'rich-text':
       validator = inlineContentSchema(schema.maxLength)
       break
+    case 'table': {
+      const cell = inlineContentSchema(schema.cellMaxLength)
+      validator = z
+        .array(z.array(cell).min(1).max(schema.maxColumns))
+        .min(1)
+        .max(schema.maxRows)
+        .refine((rows) => rows.every((row) => row.length === rows[0]?.length), {
+          message: 'Every row must have the same number of cells',
+        })
+      break
+    }
     default:
       schema satisfies never
       throw new Error('unknown attribute type')

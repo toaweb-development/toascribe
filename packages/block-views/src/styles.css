@@ -1,0 +1,197 @@
+/*
+ * The default look of the block views (@toascribe/block-views), for the admin's preview and as a starting point for a theme. Plain
+ * CSS on the views' class names, with Nuxt UI's colour tokens where the admin has them; a theme ships its own (M1.4).
+ */
+.blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  line-height: 1.65;
+}
+.blocks :where(h1, h2, h3, h4, h5, h6) {
+  font-weight: 700;
+  line-height: 1.25;
+}
+.blocks h1 {
+  font-size: 2rem;
+}
+.blocks h2 {
+  font-size: 1.5rem;
+}
+.blocks h3 {
+  font-size: 1.25rem;
+}
+.blocks :where(h4, h5, h6) {
+  font-size: 1.05rem;
+}
+.blocks a {
+  color: var(--ui-primary, currentColor);
+  text-decoration: underline;
+}
+.blocks code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}
+.block-list {
+  padding-inline-start: 1.5rem;
+}
+ul.block-list {
+  list-style: disc;
+}
+ol.block-list {
+  list-style: decimal;
+}
+.block-list .block-list {
+  margin-top: 0.25rem;
+}
+.block-quote {
+  border-inline-start: 4px solid var(--ui-border-accented, currentColor);
+  padding-inline-start: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.block-quote cite {
+  font-size: 0.9em;
+  font-style: normal;
+  color: var(--ui-text-muted, inherit);
+}
+.block-code,
+.block-preformatted {
+  overflow-x: auto;
+  white-space: pre;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--ui-border, currentColor);
+  background: var(--ui-bg-elevated, transparent);
+}
+.block-preformatted {
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+.block-table {
+  overflow-x: auto;
+}
+.block-table table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.block-table :where(th, td) {
+  border: 1px solid var(--ui-border, currentColor);
+  padding: 0.5rem;
+  text-align: start;
+  vertical-align: top;
+}
+.block-table figcaption,
+.block-image figcaption {
+  font-size: 0.875rem;
+  color: var(--ui-text-muted, inherit);
+  margin-top: 0.5rem;
+}
+.block-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+}
+.block-gallery {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.block-gallery.columns-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 40rem) {
+  .block-gallery.columns-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .block-gallery.columns-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .block-gallery.columns-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .block-gallery.columns-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .block-gallery.columns-7 {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  .block-gallery.columns-8 {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+.block-gallery.is-cropped img {
+  aspect-ratio: 1;
+  object-fit: cover;
+  width: 100%;
+}
+.block-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.block-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.375rem;
+  border: 2px solid var(--ui-primary, currentColor);
+  font-weight: 600;
+  text-decoration: none;
+}
+.blocks a.block-button {
+  text-decoration: none;
+}
+.block-button.is-fill {
+  background: var(--ui-primary, currentColor);
+  color: var(--ui-bg, #fff);
+}
+.blocks a.block-button.is-fill {
+  color: var(--ui-bg, #fff);
+}
+.block-button.is-outline {
+  background: transparent;
+  color: var(--ui-primary, currentColor);
+}
+.block-columns {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 40rem) {
+  .block-columns.columns-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .block-columns.columns-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .block-columns.columns-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.block-column,
+.block-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+.block-separator {
+  border: 0;
+  border-top: 1px solid var(--ui-border-accented, currentColor);
+  margin: 1rem 0;
+}
+.block-spacer.is-small {
+  height: 1rem;
+}
+.block-spacer.is-medium {
+  height: 3rem;
+}
+.block-spacer.is-large {
+  height: 6rem;
+}
+.block-spacer.is-x-large {
+  height: 10rem;
+}

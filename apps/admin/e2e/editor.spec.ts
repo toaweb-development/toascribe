@@ -140,7 +140,8 @@ test('build a document with columns, an image and formatted text; undo and redo;
   expect(article).toContain('Venstre kolonne')
   expect(article).toMatch(/<p[^>]*>Hei <strong>fet<\/strong> tekst<\/p>/)
   // The file's address in the library, with a srcset from its sizes.
-  expect(article).toMatch(/<img[^>]*src="\/uploads\/\d{4}\/\d{2}\/test-[0-9a-f]{8}\.png"[^>]*srcset="[^"]+ 1w"/)
+  // A 1 × 1 file has no generated sizes, so the view gives it no srcset (one entry would say nothing).
+  expect(article).toMatch(/<img[^>]*src="\/uploads\/\d{4}\/\d{2}\/test-[0-9a-f]{8}\.png"[^>]*width="1"/)
   expect(article).toMatch(/<img[^>]*alt="Et testbilde"/)
   expect(article).not.toMatch(/<script|\son[a-z]+=/)
 

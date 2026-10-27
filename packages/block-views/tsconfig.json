@@ -1,0 +1,5 @@
+{
+  // Typecheck and typed lint for everything in the package, including tests and tool configs.
+  "extends": "@toascribe/tsconfig/tsconfig.base.json",
+  "include": ["src", "test", "vitest.config.ts"]
+}

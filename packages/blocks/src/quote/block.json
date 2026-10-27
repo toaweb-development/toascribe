@@ -1,0 +1,23 @@
+{
+  "name": "core/quote",
+  "version": 1,
+  "title": "Quote",
+  "description": "Give quoted text visual emphasis.",
+  "category": "text",
+  "icon": "i-lucide-quote",
+  "keywords": ["blockquote", "cite"],
+  "attributes": {
+    "citation": {
+      "type": "rich-text",
+      "default": [],
+      "maxLength": 1000
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": ["core/paragraph", "core/heading", "core/list"],
+  "childCount": {
+    "min": 1,
+    "max": 100
+  }
+}

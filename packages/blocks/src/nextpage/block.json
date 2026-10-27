@@ -1,0 +1,13 @@
+{
+  "name": "core/nextpage",
+  "version": 1,
+  "title": "Page Break",
+  "description": "Separate your content into a multi-page experience.",
+  "category": "design",
+  "icon": "i-lucide-file-stack",
+  "keywords": ["next page", "pagination"],
+  "attributes": {},
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

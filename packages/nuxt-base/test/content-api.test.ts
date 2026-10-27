@@ -31,6 +31,8 @@ const ITEM = {
   excerpt: '',
   blocks: [],
   blocksFormat: 'blocks',
+  featuredMediaId: null,
+  seo: {},
   media: [],
 }
 

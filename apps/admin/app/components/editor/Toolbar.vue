@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Block } from '@toascribe/blocks'
-import { insertableBlocks, locate } from '@toascribe/blocks'
+import { locate } from '@toascribe/blocks'
 import type { DropdownMenuItem } from '@nuxt/ui'
 
 // The toolbar of the block that has the cursor: move up and down, insert after, delete, and what the block adds in the slot
@@ -19,7 +19,7 @@ const parentType = computed(() => locate(editor.document.value, props.block.id)?
 // As in the inserter: once a block is chosen, the menu does not give the focus back to its button; the new block has it.
 let chosen = false
 const insertItems = computed<DropdownMenuItem[]>(() =>
-  insertableBlocks(parentType.value).map((definition) => ({
+  editorInsertableBlocks(parentType.value).map((definition) => ({
     label: title(definition.name),
     icon: definition.icon,
     onSelect: () => {

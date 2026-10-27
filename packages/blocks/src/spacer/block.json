@@ -1,0 +1,20 @@
+{
+  "name": "core/spacer",
+  "version": 1,
+  "title": "Spacer",
+  "description": "Add white space between blocks, in one of the theme's sizes.",
+  "category": "design",
+  "icon": "i-lucide-move-vertical",
+  "keywords": ["space", "gap"],
+  "attributes": {
+    "size": {
+      "type": "string",
+      "default": "medium",
+      "maxLength": 10,
+      "enum": ["small", "medium", "large", "x-large"]
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

@@ -1,0 +1,33 @@
+{
+  "name": "core/table",
+  "version": 1,
+  "title": "Table",
+  "description": "Create structured content in rows and columns to display information.",
+  "category": "text",
+  "icon": "i-lucide-table",
+  "keywords": ["rows", "columns"],
+  "attributes": {
+    "hasHeader": {
+      "type": "boolean",
+      "default": true
+    },
+    "cells": {
+      "type": "table",
+      "default": [
+        [[], []],
+        [[], []]
+      ],
+      "maxRows": 100,
+      "maxColumns": 10,
+      "cellMaxLength": 2000
+    },
+    "caption": {
+      "type": "string",
+      "default": "",
+      "maxLength": 1000
+    }
+  },
+  "supports": {},
+  "parent": null,
+  "allowedBlocks": []
+}

@@ -1,0 +1,39 @@
+{
+  "name": "@toascribe/block-views",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "How the core blocks look on the site (PLAN «Regler for blokker» 6): server-rendered Vue components that draw a block document as semantic HTML, with no script and no style attribute. The admin's preview and the site use them; a theme styles their classes.",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./src/styles.css"
+  },
+  "files": [
+    "dist",
+    "src/styles.css"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@toascribe/blocks": "workspace:*",
+    "@toascribe/shared": "workspace:*",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@toascribe/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "axe-core": "catalog:",
+    "eslint": "catalog:",
+    "jsdom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
