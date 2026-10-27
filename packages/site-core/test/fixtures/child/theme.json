@@ -1,0 +1,8 @@
+{
+  "name": "Barn",
+  "slug": "barn",
+  "version": "0.1.0",
+  "requires": { "themeApi": 1 },
+  "parent": "forelder",
+  "menus": { "footer": "Bunnmeny" }
+}

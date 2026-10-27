@@ -3,11 +3,13 @@
   "version": "0.6.0",
   "private": true,
   "type": "module",
-  "description": "The default theme, a Nuxt layer that apps/site extends. The theme SDK comes in phase 3.",
+  "description": "The default theme, a Nuxt layer on @toascribe/site-core that apps/site extends when toascribe.toml names it: the templates of WordPress' hierarchy, a layout and the look of every core block (WCAG 2.2 AA).",
   "main": "./nuxt.config.ts",
   "files": [
     "app",
-    "nuxt.config.ts"
+    "i18n",
+    "nuxt.config.ts",
+    "theme.json"
   ],
   "scripts": {
     "lint": "nuxt prepare && eslint .",
@@ -19,7 +21,8 @@
   "dependencies": {
     "@iconify-json/lucide": "catalog:",
     "@nuxt/ui": "catalog:",
-    "@toascribe/nuxt-base": "workspace:*",
+    "@toascribe/block-views": "workspace:*",
+    "@toascribe/site-core": "workspace:*",
     "tailwindcss": "catalog:",
     "vue": "catalog:"
   },

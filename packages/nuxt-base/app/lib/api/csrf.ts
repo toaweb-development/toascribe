@@ -44,6 +44,8 @@ const PUBLIC_PATHS = [
   '/auth/password/lost',
   '/auth/password/reset',
   '/auth/password/set',
+  // A post's password (M1.4): a visitor with no session types it on the site.
+  '/public/unlock',
 ]
 
 /**

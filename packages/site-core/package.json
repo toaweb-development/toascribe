@@ -1,0 +1,40 @@
+{
+  "name": "@toascribe/site-core",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "The core of the public site, a Nuxt layer: the theme SDK and core components, the catch-all route, and the theme module that reads theme.json, the templates and a theme's block views.",
+  "main": "./nuxt.config.ts",
+  "types": "./modules/types.d.ts",
+  "files": [
+    "app",
+    "i18n",
+    "lib",
+    "modules",
+    "nuxt.config.ts",
+    "server"
+  ],
+  "scripts": {
+    "lint": "nuxt prepare && eslint .",
+    "typecheck": "nuxi typecheck",
+    "test": "vitest run",
+    "build": "echo \"site-core is a Nuxt layer: the site that extends it builds it, so it has no build of its own\"",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@toascribe/block-views": "workspace:*",
+    "@toascribe/blocks": "workspace:*",
+    "@toascribe/nuxt-base": "workspace:*",
+    "@toascribe/shared": "workspace:*",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "catalog:",
+    "eslint": "catalog:",
+    "nuxt": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:",
+    "zod": "catalog:"
+  }
+}

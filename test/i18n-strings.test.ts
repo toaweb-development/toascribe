@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 const ROOT = new URL('../', import.meta.url)
 
 /** Where Nuxt code lives: the shared layer, the two apps and the theme layer. */
-const NUXT_DIRS = ['packages/nuxt-base', 'apps/site', 'apps/admin', 'themes/default']
+const NUXT_DIRS = ['packages/nuxt-base', 'packages/site-core', 'apps/site', 'apps/admin', 'themes/default']
 
 function path(relative: string): string {
   return fileURLToPath(new URL(relative, ROOT))
@@ -58,11 +58,12 @@ const messagesByFile = new Map(
 )
 
 describe('the message files', () => {
-  it('exist for the layer and both apps', () => {
+  it('exist for the shared layer, the site core, the theme and the admin (the site has only what they bring)', () => {
     expect(messageFiles).toEqual(
       expect.arrayContaining([
         'packages/nuxt-base/i18n/locales/nb.json',
-        'apps/site/i18n/locales/nb.json',
+        'packages/site-core/i18n/locales/nb.json',
+        'themes/default/i18n/locales/nb.json',
         'apps/admin/i18n/locales/nb.json',
       ]),
     )

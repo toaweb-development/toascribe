@@ -116,8 +116,14 @@ describe('the Nuxt apps and layers', () => {
     return manifest['scripts']
   }
 
-  it('finds the site, the admin, the theme and the shared layer', () => {
-    expect(nuxtDirs.sort()).toEqual(['apps/admin', 'apps/site', 'packages/nuxt-base', 'themes/default'])
+  it('finds the site, the admin, the theme, the site core and the shared layer', () => {
+    expect(nuxtDirs.sort()).toEqual([
+      'apps/admin',
+      'apps/site',
+      'packages/nuxt-base',
+      'packages/site-core',
+      'themes/default',
+    ])
   })
 
   it.each(nuxtDirs)('%s builds, lints, typechecks and tests without building a library first', (dir) => {

@@ -1,0 +1,6 @@
+# The site's choices that are made when it is built (PLAN «Kjøremodell»; settings that change at run time are in the admin).
+# Read by apps/site/nuxt.config.ts.
+
+[site]
+# The active theme: a folder under themes/ with a theme.json. A child theme extends its parent's folder itself.
+theme = "default"
