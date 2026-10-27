@@ -40,6 +40,7 @@ import { createNoticesApp } from './routes/notices.ts'
 import { createUsersApp } from './routes/users.ts'
 import { createSecurityApp } from './routes/security.ts'
 import { createSetupApp } from './routes/setup.ts'
+import { createSiteToolsApp } from './routes/site-tools.ts'
 import { createSystemApp } from './routes/system.ts'
 import { createServices } from './services/index.ts'
 
@@ -80,6 +81,12 @@ export interface AppDeps {
   readonly embedFetch?: EmbedFetch
   /** CACHE_VALKEY_URL: the embed preview limit is shared through it when set. */
   readonly valkeyUrl?: string
+  /** NODE_ENV, for Nettstedshelse. */
+  readonly environment?: string
+  /** TOASCRIBE_UPDATE_CHECK is not `off`. */
+  readonly serverAllowsUpdateCheck?: boolean
+  /** TOASCRIBE_CONFIG_FILE: toascribe.toml. */
+  readonly configFile?: string
 }
 
 /**
@@ -131,6 +138,9 @@ export function buildApp(deps: AppDeps) {
     previewLimit: createPreviewLimit(deps.valkeyUrl, (err) => {
       deps.logger.warn({ err }, 'valkey did not answer; the embed preview limit counts in this process')
     }),
+    ...(deps.environment === undefined ? {} : { environment: deps.environment }),
+    ...(deps.serverAllowsUpdateCheck === undefined ? {} : { serverAllowsUpdateCheck: deps.serverAllowsUpdateCheck }),
+    ...(deps.configFile === undefined ? {} : { configFile: deps.configFile }),
     activeTheme: deps.activeTheme ?? siteThemeSource({ siteUrl: deps.siteUrlInternal ?? 'http://site:3000' }),
     ...(deps.trustedProxy === undefined ? {} : { trustedProxy: deps.trustedProxy }),
     ...(deps.minimumResponseMs === undefined ? {} : { minimumResponseMs: deps.minimumResponseMs }),
@@ -218,6 +228,7 @@ export function buildApp(deps: AppDeps) {
   app.route('/api/v1', createMeApp(services))
   app.route('/api/v1', createSecurityApp(services))
   app.route('/api/v1', createSystemApp(services))
+  app.route('/api/v1', createSiteToolsApp(services))
   app.route('/api/v1', createAdminApp(services))
   app.route('/api/v1', createDashboardApp(services))
   app.route('/api/v1', createNoticesApp(services))

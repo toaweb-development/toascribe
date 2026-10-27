@@ -26,9 +26,9 @@ const shape = (role: BuiltInRole) =>
     .map((item) => ({ id: item.id, to: item.to, children: item.children.map((child) => child.id) }))
 
 describe('the core menu', () => {
-  it('shows an administrator Kontrollpanel, Innlegg, Media, Sider, Utseende, Brukere and Innstillinger, and not the top-level Profil', () => {
+  it('shows an administrator Kontrollpanel (with Oppdateringer), Innlegg, Media, Sider, Utseende, Brukere, Verktøy and Innstillinger, and not the top-level Profil', () => {
     expect(shape('administrator')).toEqual([
-      { id: 'dashboard', to: '/', children: ['dashboard.home'] },
+      { id: 'dashboard', to: '/', children: ['dashboard.home', 'dashboard.updates'] },
       { id: 'posts', to: '/posts', children: ['posts.all', 'posts.new', 'posts.categories', 'posts.tags'] },
       { id: 'media', to: '/media', children: ['media.library', 'media.new'] },
       { id: 'pages', to: '/pages', children: ['pages.all', 'pages.new'] },
@@ -38,6 +38,7 @@ describe('the core menu', () => {
         children: ['appearance.customize', 'appearance.menus', 'appearance.global-sets'],
       },
       { id: 'users', to: '/users', children: ['users.all', 'users.profile'] },
+      { id: 'tools', to: '/tools/site-health', children: ['tools.site-health'] },
       {
         id: 'settings',
         to: '/settings/general',
@@ -123,8 +124,10 @@ describe('the core menu', () => {
     expect(byId.get('pages')).toMatchObject({ position: 20, icon: 'i-lucide-file-text', capability: 'edit_pages' })
     expect(byId.get('users')).toMatchObject({ position: 70, icon: 'i-lucide-users' })
     expect(byId.get('profile')).toMatchObject({ position: 70, icon: 'i-lucide-user', unlessCapability: 'list_users' })
+    expect(byId.get('tools')).toMatchObject({ position: 75, icon: 'i-lucide-wrench', capability: 'manage_options' })
     expect(CORE_MENU_ITEMS.flatMap((item) => (item.children ?? []).map((child) => child.id))).toEqual([
       'dashboard.home',
+      'dashboard.updates',
       'posts.all',
       'posts.new',
       'posts.categories',
@@ -138,6 +141,7 @@ describe('the core menu', () => {
       'appearance.customize',
       'appearance.menus',
       'appearance.global-sets',
+      'tools.site-health',
       'settings.general',
       'settings.writing',
       'settings.reading',
@@ -266,6 +270,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('GET /api/v1/admin/menu (needs 
       'pages',
       'appearance',
       'users',
+      'tools',
       'settings',
     ])
     expect(items[5]).toEqual({
@@ -312,6 +317,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('GET /api/v1/admin/menu (needs 
       'pages',
       'appearance',
       'users',
+      'tools',
       'settings',
     ])
   })

@@ -67,6 +67,9 @@ const { app, services } = buildApp({
   uploadCapMb: config.UPLOAD_MAX_SIZE_MB,
   siteUrlInternal: config.SITE_URL_INTERNAL,
   valkeyUrl: config.CACHE_VALKEY_URL,
+  environment: config.NODE_ENV,
+  serverAllowsUpdateCheck: config.TOASCRIBE_UPDATE_CHECK !== 'off',
+  configFile: config.TOASCRIBE_CONFIG_FILE,
 })
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   logger.info({ port: info.port, env: config.NODE_ENV }, 'api listening')

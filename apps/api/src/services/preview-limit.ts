@@ -14,9 +14,17 @@ export interface CounterStore {
   incrWithExpiry(key: string, milliseconds: number): Promise<number>
 }
 
+/** Where the counts are kept, and whether Valkey answers (Nettstedshelse, M1.7): null when there is no Valkey to ask. */
+export interface CacheProbe {
+  readonly backend: 'memory' | 'valkey'
+  readonly answers: boolean | null
+}
+
 export interface PreviewLimit {
   /** Counts one preview for the account; throws 429 when it is over the limit. */
   count(accountId: string, now: number): Promise<void>
+  /** Which store counts, and whether it answers. */
+  probe(): Promise<CacheProbe>
   /** Closes the Valkey connection, if there is one. */
   close(): Promise<void>
 }
@@ -34,6 +42,7 @@ function memoryLimit(): PreviewLimit {
       if (previews.size > 10_000) previews.delete(previews.keys().next().value ?? '')
       return Promise.resolve()
     },
+    probe: () => Promise.resolve({ backend: 'memory', answers: null }),
     close: () => Promise.resolve(),
   }
 }
@@ -46,6 +55,7 @@ export function sharedPreviewLimit(
   store: CounterStore,
   onError: (error: unknown) => void,
   close: () => Promise<void> = () => Promise.resolve(),
+  ping: () => Promise<boolean> = () => Promise.resolve(true),
 ): PreviewLimit {
   const fallback = memoryLimit()
   let failing = false
@@ -63,6 +73,9 @@ export function sharedPreviewLimit(
         return fallback.count(accountId, now)
       }
       if (used > PREVIEWS_PER_MINUTE) throw new TooManyRequestsError(((window + 1) * WINDOW_MS - now) / 1000)
+    },
+    async probe() {
+      return { backend: 'valkey', answers: await ping().catch(() => false) }
     },
     close,
   }
@@ -92,8 +105,13 @@ export function createPreviewLimit(valkeyUrl: string | undefined, onError: (erro
       return count
     },
   }
-  return sharedPreviewLimit(store, onError, () => {
-    client.disconnect()
-    return Promise.resolve()
-  })
+  return sharedPreviewLimit(
+    store,
+    onError,
+    () => {
+      client.disconnect()
+      return Promise.resolve()
+    },
+    async () => (await client.ping()) === 'PONG',
+  )
 }

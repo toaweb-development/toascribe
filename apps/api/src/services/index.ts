@@ -23,6 +23,8 @@ import { createMediaService } from './media.ts'
 import type { MediaService } from './media.ts'
 import { createPublicService } from './public.ts'
 import { createSettingsService } from './settings.ts'
+import { createSiteToolsService } from './site-tools.ts'
+import type { SiteToolsService } from './site-tools.ts'
 import { safeFetch } from '@toascribe/http'
 
 import type { ActiveThemeSource } from './active-theme.ts'
@@ -91,6 +93,12 @@ export interface ServiceDeps {
   readonly previewLimit: PreviewLimit
   /** The site's active theme (menu locations, «Tilpass»). */
   readonly activeTheme: ActiveThemeSource
+  /** NODE_ENV, shown in Nettstedshelse. */
+  readonly environment?: string
+  /** TOASCRIBE_UPDATE_CHECK is not `off` (default: allowed). The api never asks a registry; the worker and the CLI do. */
+  readonly serverAllowsUpdateCheck?: boolean
+  /** toascribe.toml, for whether the daily backup is on (Nettstedshelse). */
+  readonly configFile?: string
 }
 
 /** Everything the routes and the later flows (MFA, lost password, registration) build on, made once at start-up. */
@@ -121,6 +129,8 @@ export interface Services {
   readonly appearance: AppearanceService
   /** Settings → General, Writing, Reading and Privacy (M1.5). */
   readonly settings: SettingsService
+  /** «Oppdateringer» and «Nettstedshelse → Info» (M1.7). */
+  readonly siteTools: SiteToolsService
   /** The public reading API of the site and its theme (M1.4). */
   readonly public: PublicService
   /** Second factor: enrolment, recovery codes, the second step of a login (K-023). */
@@ -256,6 +266,19 @@ export function createServices(deps: ServiceDeps): Services {
       limiter,
       publicOrigin: deps.publicOrigin,
       media,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
+    siteTools: createSiteToolsService({
+      db,
+      clock,
+      audit,
+      version: deps.version,
+      environment: deps.environment ?? 'production',
+      serverAllowsUpdateCheck: deps.serverAllowsUpdateCheck ?? true,
+      configFile: deps.configFile ?? '/etc/toascribe/toascribe.toml',
+      uploadCapMb: deps.uploadCapMb,
+      previewLimit: deps.previewLimit,
+      activeTheme: deps.activeTheme,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     public: createPublicService({

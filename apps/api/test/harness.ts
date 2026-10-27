@@ -251,6 +251,10 @@ export interface StartOptions {
   readonly uploadsDir?: string
   /** UPLOAD_MAX_SIZE_MB. Default 64. */
   readonly uploadCapMb?: number
+  /** toascribe.toml (Nettstedshelse reads [backup] schedule). Default: a file that does not exist. */
+  readonly configFile?: string
+  /** TOASCRIBE_UPDATE_CHECK is not `off`. Default true. */
+  readonly serverAllowsUpdateCheck?: boolean
 }
 
 export interface VariantOptions {
@@ -301,6 +305,11 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
       mediaJobs,
       ...(options.uploadCapMb === undefined ? {} : { uploadCapMb: options.uploadCapMb }),
       activeTheme: options.activeTheme ?? fixedThemeSource(TEST_THEME),
+      configFile: options.configFile ?? '/nonexistent/toascribe.toml',
+      environment: 'test',
+      ...(options.serverAllowsUpdateCheck === undefined
+        ? {}
+        : { serverAllowsUpdateCheck: options.serverAllowsUpdateCheck }),
       embedFetch: options.embedFetch ?? noProviders,
     })
 

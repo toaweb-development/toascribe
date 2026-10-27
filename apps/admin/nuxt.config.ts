@@ -43,6 +43,7 @@ export default defineNuxtConfig({
         'lucide:gauge',
         'lucide:image',
         'lucide:settings',
+        'lucide:wrench',
         'lucide:users',
         'lucide:user',
         'lucide:log-out',

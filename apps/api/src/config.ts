@@ -35,6 +35,10 @@ const Env = z
     SITE_URL_INTERNAL: z.url({ protocol: /^https?$/ }).default('http://site:3000'),
     /** Valkey (the `valkey` profile, the server the site's cache uses): limits shared by every api process. Empty: each counts alone. */
     CACHE_VALKEY_URL: z.union([z.literal(''), z.url({ protocol: /^rediss?$/ })]).default(''),
+    /** toascribe.toml (M1.7): Nettstedshelse shows whether its [backup] section turns the daily backup on. */
+    TOASCRIBE_CONFIG_FILE: z.string().startsWith('/').max(500).default('/etc/toascribe/toascribe.toml'),
+    /** `off`: no update check on this server (M1.7); «Oppdateringer» says so. Empty is on. */
+    TOASCRIBE_UPDATE_CHECK: z.union([z.literal(''), z.enum(['on', 'off'])]).default(''),
   })
   .superRefine((env, ctx) => {
     const versions = [

@@ -190,6 +190,8 @@ services:
       # Backups (M1.7): `docker compose exec api toa backup create|list|verify|prune` writes and reads the backups volume.
       BACKUPS_DIR: /var/lib/toascribe/backups
       TOASCRIBE_CONFIG_FILE: /etc/toascribe/toascribe.toml
+      # `off`: no update check on this server (M1.7); «Oppdateringer» says so.
+      TOASCRIBE_UPDATE_CHECK: ${TOASCRIBE_UPDATE_CHECK:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     read_only: true
     tmpfs:
@@ -242,6 +244,8 @@ services:
       # The daily backup (M1.7), when toascribe.toml's [backup] schedule = true.
       BACKUPS_DIR: /var/lib/toascribe/backups
       TOASCRIBE_CONFIG_FILE: /etc/toascribe/toascribe.toml
+      # The daily update check (M1.7): a GET of the public image tags on ghcr.io, nothing about the site sent. `off` stops it.
+      TOASCRIBE_UPDATE_CHECK: ${TOASCRIBE_UPDATE_CHECK:-}
     read_only: true
     tmpfs:
       - /tmp # the heartbeat file the healthcheck reads

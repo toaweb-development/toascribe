@@ -257,6 +257,26 @@ const CASES: readonly MatrixCase[] = [
     json: {},
     expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403, administrator: 202 },
   },
+  // `update_core` and `manage_options` (M1.7): «Oppdateringer» and Nettstedshelse, only the administrator
+  {
+    route: 'GET /api/v1/updates',
+    method: 'GET',
+    path: '/api/v1/updates',
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'PATCH /api/v1/updates/settings',
+    method: 'PATCH',
+    path: '/api/v1/updates/settings',
+    json: { enabled: true },
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'GET /api/v1/site-health/info',
+    method: 'GET',
+    path: '/api/v1/site-health/info',
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
   // The `list_users` and `promote_users` capabilities: only the administrator
   {
     route: 'GET /api/v1/users',

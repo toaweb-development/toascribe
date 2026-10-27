@@ -376,6 +376,9 @@
   "menu": {
     "dashboard": "Kontrollpanel",
     "dashboardHome": "Hjem",
+    "dashboardUpdates": "Oppdateringer",
+    "tools": "Verktøy",
+    "toolsSiteHealth": "Nettstedshelse",
     "users": "Brukere",
     "usersAll": "Alle brukere",
     "usersProfile": "Profil",

@@ -5,7 +5,7 @@ import { AdminMenuItem } from '@toascribe/shared'
 import type { AdminMenuChild, AdminMenuEntry, AdminMenuItemInput } from '@toascribe/shared'
 
 /**
- * The items of M0.5, M1.1 and M1.2, with WordPress' positions (wp-admin/menu.php). Only what works is here: «Oppdateringer», the users' «Legg til ny» and
+ * The items of M0.5, M1.1 and M1.2, with WordPress' positions (wp-admin/menu.php). Only what works is here: the users' «Legg til ny» and
  * «Roller» are added by the task that builds them. The icons are Lucide names; the admin lists them in `icon.clientBundle`.
  */
 export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
@@ -16,7 +16,11 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     position: 2,
     capability: 'read',
     to: '/',
-    children: [{ id: 'dashboard.home', labelKey: 'menu.dashboardHome', capability: 'read', to: '/' }],
+    children: [
+      { id: 'dashboard.home', labelKey: 'menu.dashboardHome', capability: 'read', to: '/' },
+      // WordPress' «Oppdateringer» (update-core.php), for those who may update the core (M1.7).
+      { id: 'dashboard.updates', labelKey: 'menu.dashboardUpdates', capability: 'update_core', to: '/updates' },
+    ],
   },
   {
     // WordPress' «Innlegg» (menu.php position 5; the dashicon is a pin).
@@ -99,6 +103,23 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
         labelKey: 'menu.appearanceGlobalSets',
         capability: 'edit_theme_options',
         to: '/appearance/global-sets',
+      },
+    ],
+  },
+  {
+    // WordPress' «Verktøy» (position 75). M1.7 has «Nettstedshelse»; import and export come with phase 2.
+    id: 'tools',
+    labelKey: 'menu.tools',
+    icon: 'i-lucide-wrench',
+    position: 75,
+    capability: 'manage_options',
+    to: '/tools/site-health',
+    children: [
+      {
+        id: 'tools.site-health',
+        labelKey: 'menu.toolsSiteHealth',
+        capability: 'manage_options',
+        to: '/tools/site-health',
       },
     ],
   },
