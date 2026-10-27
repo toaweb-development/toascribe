@@ -1535,7 +1535,22 @@
       "feedExcerpt": "Utdrag",
       "visibility": "Søkemotorsynlighet",
       "discourage": "Be søkemotorer om ikke å indeksere dette nettstedet",
-      "discourageHelp": "Det er opp til søkemotorene å følge forespørselen."
+      "discourageHelp": "Det er opp til søkemotorene å følge forespørselen.",
+      "sharing": "Deling og søkemotorer",
+      "sharingHelp": "Brukes når innhold deles i sosiale medier og når søkemotorer leser nettstedet. Tittelen er «Tittel – Nettstedstittel», og forsiden «Nettstedstittel – Slagord».",
+      "defaultImage": "Standard delingsbilde",
+      "defaultImageHelp": "Vises når innholdet verken har eget delingsbilde eller fremhevet bilde. 1200 × 630 piksler blir best.",
+      "chooseImage": "Velg bilde",
+      "publisher": "Nettstedet representerer",
+      "organization": "En organisasjon",
+      "person": "En person",
+      "organizationName": "Organisasjonens navn",
+      "organizationNameHelp": "Står feltet tomt, brukes nettstedstittelen.",
+      "organizationLogo": "Organisasjonens logo",
+      "organizationLogoHelp": "Uten eget valg brukes logoen fra «Tilpass».",
+      "personChoice": "Person",
+      "personHelp": "Bare brukere som har publisert noe, kan velges: forfattersiden deres blir personens adresse.",
+      "noPeople": "Ingen brukere har publisert noe ennå."
     },
     "privacy": {
       "title": "Personvern",

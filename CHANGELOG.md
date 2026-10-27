@@ -20,6 +20,11 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- Search engines and sharing (K-224): every page has a canonical address, a description, Open Graph and Twitter cards, `rel="prev"`
+  and `rel="next"` on paged lists and split posts, and JSON-LD (`WebSite`, `BlogPosting` or `WebPage`, `BreadcrumbList`, and the
+  publisher). Titles are «Tittel – Nettstedstittel», and the front page «Nettstedstittel – Slagord». The SEO panel's fields go first.
+- «Deling og søkemotorer» on «Innstillinger → Lesing»: a default sharing image (used when content has neither its own nor a
+  featured image), and whether the site represents an organisation (name and logo, the logo from «Tilpass» by default) or a person.
 - RSS 2.0 as in WordPress (K-222): the site's `/feed/`, and a feed under every category (with its parents), tag and author
   address (`/category/<sti>/feed/`, `/tag/<slug>/feed/`, `/author/<navn>/feed/`, following the permalink bases). The number of
   items and the whole text or the excerpt come from «Lesing». A password-protected post has its title and link only; private,
