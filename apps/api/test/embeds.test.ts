@@ -163,6 +163,16 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('«Innbygging» on save (needs 
     expect(asked.length - before).toBeLessThanOrEqual(MAX_EMBEDS_PER_SAVE)
   })
 
+  it("asks no provider for an update the account may not make (someone else's post)", async () => {
+    const theirs = await save(admin, [])
+    const before = asked.length
+    const res = await contributor.patch(`/api/v1/content/${theirs.id}`, {
+      blocks: [embed('https://www.youtube.com/watch?v=noenannen1')],
+    })
+    expect([403, 404]).toContain(res.status)
+    expect(asked.length).toBe(before)
+  })
+
   it('stores no thumbnail for an account that may not upload, and keeps the player', async () => {
     const item = await save(contributor, [embed('https://www.youtube.com/shorts/dQw4w9WgXcQ')])
     expect(attrsOf(item)['thumbnailId']).toBe('')

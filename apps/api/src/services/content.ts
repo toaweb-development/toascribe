@@ -1095,6 +1095,15 @@ export function createContentService(options: {
     create,
 
     async update(auth, id, sent, ctx) {
+      // The same rights as the save checks under its lock, asked first: a request that will be refused asks no provider and stores
+      // no thumbnail. The transaction checks again (the item may change in between).
+      if (sent.blocks !== undefined) {
+        const row = await findContent(db, id)
+        const access = row === undefined ? undefined : accessOf(row, (await authorsOf(db, [id])).get(id) ?? [])
+        const actor = actorOf(auth)
+        if (access === undefined || !canRead(actor, access)) throw new NotFoundError()
+        if (!canEdit(actor, access)) throw new ForbiddenError()
+      }
       const request = await withEmbeds(auth, sent, ctx)
       const passwordHash = await passwordHashOf(request.password)
       await inTransaction(db, (tx) => updateIn(tx, auth, id, request, passwordHash, ctx))
