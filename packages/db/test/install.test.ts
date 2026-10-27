@@ -1,5 +1,6 @@
 // M0.4 data layer against a real PostgreSQL 18 (typescript §6): the install lock, markInstalled(), the default content
 // rows, site_secret and admin_notice, all as the app role (DML only), which is what the api and the CLI use.
+import { fromWordPress, validateDocument } from '@toascribe/blocks'
 import { CORE_SETTINGS, CoreSettings, SETUP_EMAIL_SKIPPED_NOTICE } from '@toascribe/shared'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
@@ -383,20 +384,29 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('M0.4 install data (needs TEST_
       expect(rows[0]?.body).toContain('<a href="https://nb.gravatar.com/">Gravatar</a>')
     })
 
-    it('stores the blocks parsed from WordPress’ markup, with the site URL filled in and the entities fixed', async () => {
+    it('stores the blocks in toascribe’s format, from WordPress’ markup, with the site URL filled in and the entities fixed', async () => {
+      const withoutIds = (value: unknown): unknown =>
+        JSON.parse(JSON.stringify(value, (key, inner: unknown) => (key === 'id' ? undefined : inner)))
       const blocks = async (id: string): Promise<unknown> =>
         (await one<{ blocks: unknown }>('select blocks from content where id = $1', [id])).blocks
-      expect(await blocks(result.postId)).toEqual(parseBlockMarkup(firstPostMarkup(nb)))
-      expect(await blocks(result.samplePageId)).toEqual(parseBlockMarkup(samplePageMarkup(nb, `${SITE}/admin/`)))
-      expect(await blocks(result.privacyPolicyPageId)).toEqual(parseBlockMarkup(privacyPolicyMarkup(nb, SITE)))
+      for (const [id, markup] of [
+        [result.postId, firstPostMarkup(nb)],
+        [result.samplePageId, samplePageMarkup(nb, `${SITE}/admin/`)],
+        [result.privacyPolicyPageId, privacyPolicyMarkup(nb, SITE)],
+      ] as const) {
+        const stored = await blocks(id)
+        expect(validateDocument(stored).ok).toBe(true)
+        expect(withoutIds(stored)).toEqual(withoutIds(fromWordPress(parseBlockMarkup(markup))))
+      }
 
       const all = JSON.stringify((await owner.query<{ blocks: unknown }>('select blocks from content')).rows)
+      expect(all).not.toContain('blockName')
       expect(all).not.toContain('{SITEURL}')
       expect(all).not.toContain('%s')
       expect(all).not.toMatch(/&lauot;|&raquot;/)
       expect(all).toContain('«Husk meg»')
-      expect(all).toContain(`Vår nettstedsadresse er: ${SITE}<`)
-      expect(all).toContain(`<a href=\\"${SITE}/admin/\\">ditt kontrollpanel</a>`)
+      expect(all).toContain(`Vår nettstedsadresse er: ${SITE}`)
+      expect(all).toContain(`{"type":"link","attrs":{"href":"${SITE}/admin/"}}`)
     })
 
     it('sets wp_page_for_privacy_policy to the draft privacy page', async () => {

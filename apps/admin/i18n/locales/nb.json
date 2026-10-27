@@ -1420,7 +1420,8 @@
       "later": "Senere",
       "done": "Du er logget inn igjen.",
       "saveWaits": "Økten er utløpt. Logg inn igjen, så lagres endringene.",
-      "otherAccount": "Du logget inn med en annen konto. Det som ikke var lagret, ble ikke sendt, og siden er lastet på nytt."
+      "otherAccount": "Du logget inn med en annen konto. Det som ikke var lagret, ble ikke sendt, og siden er lastet på nytt.",
+      "previewAgain": "Du er logget inn igjen. Velg «Forhåndsvis» en gang til."
     },
     "shortcuts": {
       "title": "Hurtigtaster",

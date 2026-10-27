@@ -350,8 +350,14 @@ test('the session runs out while editing: a login dialog, and nothing written is
 
   // The session ends behind the editor's back (another tab logged out, or it expired).
   await context.clearCookies()
-  await page.getByRole('button', { name: 'Lagre kladd' }).click()
+  // «Forhåndsvis» first: the login dialog in the editor, and no tab left behind with a login screen or nothing in it.
+  await page.getByRole('button', { name: 'Forhåndsvis' }).click()
   const dialog = page.getByRole('dialog', { name: 'Økten er utløpt' })
+  await expect(dialog).toBeVisible()
+  await expect.poll(() => context.pages().length).toBe(1)
+  await dialog.getByRole('button', { name: 'Senere' }).click()
+  await expect(dialog).toBeHidden()
+  await page.getByRole('button', { name: 'Lagre kladd' }).click()
   await expect(dialog).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/posts\/new$/)
   await expectNoAxeViolations(page, 'the login dialog over the editor')
@@ -365,7 +371,9 @@ test('the session runs out while editing: a login dialog, and nothing written is
   await dialog.getByLabel('Passord', { exact: true }).fill(PASSWORD)
   await dialog.getByRole('button', { name: 'Logg inn' }).click()
   await expect(dialog).toBeHidden()
-  // The save that found the session gone goes on by itself.
+  // The save that found the session gone goes on by itself (and the dismissed preview is not asked for again).
+  await expect(page.getByText('Du er logget inn igjen.').first()).toBeVisible()
+  await expect(page.getByText('Velg «Forhåndsvis» en gang til.')).toHaveCount(0)
   await expect(page.getByText('Lagret.').first()).toBeVisible()
   await expect(page).toHaveURL(/\/admin\/posts\/[0-9a-f-]{36}$/)
   const id = page.url().split('/').pop() ?? ''
