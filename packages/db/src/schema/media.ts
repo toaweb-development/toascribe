@@ -72,6 +72,11 @@ export const media = pgTable(
     /** The worker's work on the file (M1.2): `pending` until the sizes are made, `failed` with the reason in processing_error. */
     processing: text('processing').notNull().default('ready'),
     processingError: text('processing_error'),
+    /**
+     * Runs of the worker since the last upload, replacement, edit or «Lag bildestørrelser på nytt» (review M6). Counted when a run
+     * starts, so a run that kills the worker counts too; after MEDIA_MAX_ATTEMPTS the file is `failed` and not tried again.
+     */
+    processingAttempts: integer('processing_attempts').notNull().default(0),
     ...timestamps(),
   },
   (t): PgTableExtraConfigValue[] => [
@@ -80,6 +85,7 @@ export const media = pgTable(
     check('ck_media_processing', oneOf(t.processing, MEDIA_PROCESSING)),
     check('ck_media_sha256', sql`${t.sha256} ~ '^[0-9a-f]{64}$'`),
     check('ck_media_size', sql`${t.size} >= 0`),
+    check('ck_media_processing_attempts', sql`${t.processingAttempts} >= 0`),
     check(
       'ck_media_dimensions',
       sql`(${t.width} is null) = (${t.height} is null) and ${t.width} > 0 and ${t.height} > 0`,

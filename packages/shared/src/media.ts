@@ -61,6 +61,20 @@ export const MediaSizeRef = z.object({
 })
 export type MediaSizeRef = z.infer<typeof MediaSizeRef>
 
+/**
+ * Why the worker could not make the sizes (media.processing_error): a code, never the library's own message, which may name a path
+ * on the server (security §5). The admin shows a sentence for each; the message itself is in the worker's log.
+ */
+export const MEDIA_FAILURES = [
+  'too_many_pixels',
+  'unreadable_image',
+  'missing_file',
+  'worker_stopped',
+  'unknown',
+] as const
+export const MediaFailure = z.enum(MEDIA_FAILURES)
+export type MediaFailure = z.infer<typeof MediaFailure>
+
 export const MediaItem = z.object({
   id: z.uuid(),
   title: z.string(),
@@ -80,6 +94,8 @@ export const MediaItem = z.object({
   uploadedBy: z.object({ id: z.uuid(), displayName: z.string() }).nullable(),
   attachedTo: z.uuid().nullable(),
   processing: MediaProcessing,
+  /** Why the worker could not make the sizes, when `processing` is `failed`, as a code; null otherwise. */
+  processingError: MediaFailure.nullable(),
   /** The address of the file as it is shown: the edited or `-scaled` image, or the original. Public files under /uploads/, private ones through the api. */
   url: z.string(),
   /** The original as uploaded. */
@@ -96,7 +112,11 @@ export type MediaItem = z.infer<typeof MediaItem>
 export const MediaUsage = z.object({ id: z.uuid(), type: ContentTypeKey, title: z.string(), status: z.string() })
 export type MediaUsage = z.infer<typeof MediaUsage>
 
-export const MediaDetail = MediaItem.extend({ usedBy: z.array(MediaUsage) })
+/**
+ * «Brukes på» (K-122): the content the asker may read, by title, and how many more items use the file. Their titles are not
+ * shown: a private post of someone else is not named to everyone who can see the file.
+ */
+export const MediaDetail = MediaItem.extend({ usedBy: z.array(MediaUsage), usedByOthers: z.int().min(0) })
 export type MediaDetail = z.infer<typeof MediaDetail>
 
 export const MediaIdParams = z.object({ id: z.uuid() })
@@ -213,7 +233,14 @@ export const MediaJob = z.discriminatedUnion('kind', [
 ])
 export type MediaJob = z.infer<typeof MediaJob>
 
-/** How a media job is queued: two more tries a minute apart, and given up after ten minutes. */
+/**
+ * The worker tries a file at most this many times after an upload, a replacement, an edit or «Lag bildestørrelser på nytt»: the
+ * job's own retries and the sweep's new jobs count together (media.processing_attempts), so an image that kills the worker is not
+ * tried forever. Then it is `failed`, with the reason, until someone asks again.
+ */
+export const MEDIA_MAX_ATTEMPTS = 3
+
+/** How a media job is queued: two more tries a minute apart (MEDIA_MAX_ATTEMPTS in all), and given up after ten minutes. */
 export const MEDIA_JOB_OPTIONS = {
   retryLimit: 2,
   retryDelay: 60,

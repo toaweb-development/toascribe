@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# `pnpm release:check`: everything the old ci.yml did, on this machine, before a release (VERSIONING_STANDARD_2026 §4,
-# SECURITY_STANDARD_2026 §9). Push starts no workflow; a tag vX.Y.Z starts release.yml, which builds, scans and publishes. So
-# this runs on main before the chore(release) commit and the tag, from a clean working tree:
+# `pnpm release:check`: the check of a release, on this machine (VERSIONING_STANDARD_2026 §4, SECURITY_STANDARD_2026 §9).
+# scripts/release.sh runs it (CHECK_CMD) on main from a clean working tree, then the audit (scripts/audit.sh), before it writes
+# the version, tags and pushes; the tag starts release.yml, which builds, scans and publishes. It can also run on its own:
 #
 #    1. actionlint on every workflow
-#    2. the dependency audit (scripts/audit.sh: the review date of the exceptions, then pnpm audit --prod --audit-level high)
+#    2. (the dependency audit is scripts/release.sh's AUDIT_CMD)
 #    3. pnpm check with a throwaway PostgreSQL 18 and Mailpit, so the database and e-mail tests run and none is skipped
 #    4. every image built with provenance and SBOM attestations into a throwaway registry, as release.yml builds them
 #    5. the digest of each image read once (scripts/image-digests.sh) and scanned with Trivy, with the rules of release.yml
@@ -127,11 +127,6 @@ wait_for() {
 
 step 'actionlint'
 actionlint
-
-# --- 2. Audit ------------------------------------------------------------------------------------------------------------------
-
-step 'Audit'
-scripts/audit.sh
 
 # --- 3. pnpm check with the database and e-mail tests ----------------------------------------------------------------------------
 

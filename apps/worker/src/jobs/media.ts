@@ -5,11 +5,21 @@
 // pixel limit of the settings (sharp's limitInputPixels), so a file that got past the api's header check still cannot fill the memory.
 import type { Database } from '@toascribe/db'
 import { schema } from '@toascribe/db'
-import { RESIZABLE_MIMES, createLocalStorage, defaultSizes, derivedKey, planSizes, shownFile } from '@toascribe/media'
+import {
+  RESIZABLE_MIMES,
+  createLocalStorage,
+  defaultSizes,
+  derivedKey,
+  planSizes,
+  randomPart,
+  shownFile,
+  versionedKey,
+} from '@toascribe/media'
 import type { MediaStorage, PlannedSize } from '@toascribe/media'
-import { CoreSettings, MEDIA_QUEUE, MediaJob, MediaVariantsData } from '@toascribe/shared'
+import { CoreSettings, MEDIA_MAX_ATTEMPTS, MEDIA_QUEUE, MediaJob, MediaVariantsData } from '@toascribe/shared'
+import type { MediaFailure } from '@toascribe/shared'
 import type { MediaEditOperation, MediaVariant } from '@toascribe/shared'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type { PgBoss } from 'pg-boss'
 import type { Logger } from 'pino'
 import sharp from 'sharp'
@@ -113,11 +123,56 @@ function allKeys(variants: MediaVariantsData): string[] {
   ]
 }
 
-/** Runs one media job. Throws when it fails (pg-boss tries it again); the row says `failed` with the reason until a try succeeds. */
+/** The reason a file gets when its runs ran out without one of them saying why (the worker stopped during each). */
+export const GAVE_UP: MediaFailure = 'worker_stopped'
+
+/** The code of a failure (stored and shown); the message stays in the log, since it may name a path on the server. */
+export function failureOf(err: unknown): MediaFailure {
+  const message = err instanceof Error ? err.message : String(err)
+  const code = typeof err === 'object' && err !== null && 'code' in err ? String(err.code) : ''
+  if (/pixel limit/i.test(message)) return 'too_many_pixels'
+  if (code === 'ENOENT') return 'missing_file'
+  if (/unsupported image format|corrupt|premature end|bad seek|vips|input (buffer|file)/i.test(message)) {
+    return 'unreadable_image'
+  }
+  return 'unknown'
+}
+
+async function markFailed(db: Database, mediaId: string, reason: string, now: Date): Promise<void> {
+  await db
+    .update(media)
+    .set({ processing: 'failed', processingError: reason.slice(0, 500), modifiedAt: now })
+    .where(eq(media.id, mediaId))
+}
+
+/**
+ * Runs one media job. A file is tried at most MEDIA_MAX_ATTEMPTS times after it was handed to the worker (review M6): the run is
+ * counted first, in a commit of its own, so a run that kills the worker (memory) counts as well. A run that fails with tries left
+ * keeps the file `pending` and throws (pg-boss tries again a minute later); the last one marks it `failed` with the reason and does
+ * not throw. A run beyond the limit (the sweep, an old job) only marks it `failed`. «Lag bildestørrelser på nytt», a replacement or an
+ * edit sets the count back to 0 (the api and the CLI).
+ */
 export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<void> {
   const job = MediaJob.parse(input)
   const storage = createLocalStorage(deps.uploadsDir)
   const now = (deps.now ?? (() => new Date()))()
+  const [counted] = await deps.db
+    .update(media)
+    .set({ processingAttempts: sql`${media.processingAttempts} + 1` })
+    .where(eq(media.id, job.mediaId))
+    .returning({ attempt: media.processingAttempts, error: media.processingError })
+  if (counted === undefined) {
+    return // deleted meanwhile
+  }
+  if (counted.attempt > MEDIA_MAX_ATTEMPTS) {
+    // Only a file still waiting: a stray job for one that is done changes nothing.
+    await deps.db
+      .update(media)
+      .set({ processing: 'failed', processingError: (counted.error ?? GAVE_UP).slice(0, 500), modifiedAt: now })
+      .where(and(eq(media.id, job.mediaId), eq(media.processing, 'pending')))
+    deps.logger.warn({ job: MEDIA_QUEUE, kind: job.kind, mediaId: job.mediaId }, 'media job not run: no tries left')
+    return
+  }
   const settings = await readSettings(deps.db, MEDIA_SETTINGS)
   let stale: string[]
   try {
@@ -175,13 +230,15 @@ export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<v
         }
       }
 
+      // A new version in every generated key of this run: /uploads/ is cached `immutable`, so new pixels need a new address.
+      const version = randomPart()
       const plan = planSizes(source.width, source.height, defaultSizes(settings))
       for (const size of plan.sizes) {
         variants.sizes[size.name] = await makeVariant(
           storage,
           source,
           size,
-          derivedKey(row.storageKey, `${String(size.width)}x${String(size.height)}`),
+          versionedKey(row.storageKey, version, `${String(size.width)}x${String(size.height)}`),
           settings.image_max_pixels,
         )
       }
@@ -191,7 +248,7 @@ export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<v
           storage,
           source,
           { ...plan.scaled, name: 'scaled' },
-          derivedKey(row.storageKey, 'scaled'),
+          versionedKey(row.storageKey, version, 'scaled'),
           settings.image_max_pixels,
         )
       }
@@ -211,10 +268,19 @@ export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<v
     })
   } catch (err) {
     const summary = summarizeError(err)
-    deps.logger.error({ job: MEDIA_QUEUE, kind: job.kind, mediaId: job.mediaId, err: summary }, 'media job failed')
+    const last = counted.attempt >= MEDIA_MAX_ATTEMPTS
+    deps.logger.error(
+      { job: MEDIA_QUEUE, kind: job.kind, mediaId: job.mediaId, attempt: counted.attempt, err: summary },
+      last ? 'media job failed; no tries left' : 'media job failed; it will be tried again',
+    )
+    if (last) {
+      await markFailed(deps.db, job.mediaId, failureOf(err), now)
+      return
+    }
+    // Tries left: still pending (the reason is kept for the last one), and pg-boss runs the job again.
     await deps.db
       .update(media)
-      .set({ processing: 'failed', processingError: summary.message.slice(0, 500), modifiedAt: now })
+      .set({ processingError: failureOf(err), modifiedAt: now })
       .where(eq(media.id, job.mediaId))
     throw err
   }
@@ -231,15 +297,27 @@ export const MEDIA_SWEEP = 'media.sweep'
 /** A file pending this long without being done has lost its job (the api could not queue it): the sweep queues it again. */
 export const SWEEP_AFTER_MINUTES = 10
 
-/** Queues a `process` job for every image left pending for SWEEP_AFTER_MINUTES. The queue's key per file stops a second one. */
+/**
+ * Queues a `process` job for every image left pending for SWEEP_AFTER_MINUTES with tries left; the queue's key per file stops a
+ * second one. One whose tries ran out (each run stopped the worker) is marked `failed` instead, so it is not queued forever.
+ */
 export async function sweepPending(
   deps: { readonly db: Database; readonly logger: Logger; readonly now?: () => Date },
   boss: Pick<PgBoss, 'send'>,
 ): Promise<number> {
   const now = (deps.now ?? (() => new Date()))()
   const cutoff = new Date(now.getTime() - SWEEP_AFTER_MINUTES * 60_000)
+  const given = await deps.db.execute<{ id: string }>(
+    sql`update media set processing = 'failed', processing_error = coalesce(processing_error, ${GAVE_UP}), modified_at = ${now}
+        where processing = 'pending' and modified_at < ${cutoff} and processing_attempts >= ${MEDIA_MAX_ATTEMPTS}
+        returning id`,
+  )
+  if (given.rows.length > 0) {
+    deps.logger.warn({ job: MEDIA_SWEEP, failed: given.rows.length }, 'pending media without tries left marked failed')
+  }
   const rows = await deps.db.execute<{ id: string }>(
-    sql`select id from media where processing = 'pending' and modified_at < ${cutoff} order by modified_at limit 500`,
+    sql`select id from media where processing = 'pending' and modified_at < ${cutoff}
+        and processing_attempts < ${MEDIA_MAX_ATTEMPTS} order by modified_at limit 500`,
   )
   for (const row of rows.rows) {
     await boss.send(MEDIA_QUEUE, { kind: 'process', mediaId: row.id }, { singletonKey: `process:${row.id}` })

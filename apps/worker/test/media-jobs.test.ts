@@ -10,7 +10,7 @@ import { MediaVariantsData } from '@toascribe/shared'
 import sharp from 'sharp'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import { runMediaJob, sweepPending } from '../src/jobs/media.ts'
+import { GAVE_UP, failureOf, runMediaJob, sweepPending } from '../src/jobs/media.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './helpers.ts'
 import { memoryLogger, startJobDb } from './harness.ts'
 import type { JobDb } from './harness.ts'
@@ -85,7 +85,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('media jobs (needs TEST_DATABAS
       '2048x2048': [2048, 1536],
     })
     expect(row.variants.scaled).toMatchObject({ width: 2560, height: 1920, mime: 'image/webp' })
-    expect(row.variants.scaled?.key).toBe(key.replace(/\.jpg$/, '-scaled.webp'))
+    expect(row.variants.scaled?.key).toMatch(new RegExp(`^${key.replace(/\.jpg$/, '')}-[0-9a-f]{8}-scaled\\.webp$`))
+    expect(row.variants.sizes['medium']?.key).toMatch(/-[0-9a-f]{8}-300x225\.webp$/)
     for (const size of Object.values(row.variants.sizes)) {
       const meta = await sharp(await readFile(join(uploads, size.key))).metadata()
       expect([meta.format, meta.width, meta.height]).toEqual(['webp', size.width, size.height])
@@ -159,6 +160,34 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('media jobs (needs TEST_DATABAS
     expect(row.variants.edited).toMatchObject({ width: 1280, height: 960 })
   })
 
+  it('gives every generated file a new address at each edit and regeneration, and removes the old files', async () => {
+    const { id } = await stored(await photo(3000, 2000), 'image/jpeg', 'jpg')
+    await runMediaJob(deps(), { kind: 'process', mediaId: id })
+    const keysOf = (variants: MediaVariantsData) => [
+      ...Object.values(variants.sizes).map((size) => size.key),
+      ...(variants.scaled === undefined ? [] : [variants.scaled.key]),
+      ...(variants.edited === undefined ? [] : [variants.edited.key]),
+    ]
+    const first = keysOf((await variantsOf(id)).variants)
+    // Same settings, same pixels: still new addresses, so nothing cached `immutable` is ever served for other pixels.
+    await runMediaJob(deps(), { kind: 'regenerate', mediaId: id })
+    const second = keysOf((await variantsOf(id)).variants)
+    await runMediaJob(deps(), {
+      kind: 'edit',
+      mediaId: id,
+      operations: [{ op: 'crop', x: 0, y: 0, width: 800, height: 800 }],
+    })
+    const third = keysOf((await variantsOf(id)).variants)
+    for (const [before, after] of [
+      [first, second],
+      [second, third],
+    ] as const) {
+      expect(after.filter((key) => before.includes(key))).toEqual([])
+      for (const key of before) await expect(stat(join(uploads, key))).rejects.toThrow()
+    }
+    for (const key of third) expect((await stat(join(uploads, key))).size).toBeGreaterThan(0)
+  })
+
   it('makes the sizes again after the settings change, and removes the files that are no longer a size', async () => {
     const { id } = await stored(await photo(1600, 1200), 'image/jpeg', 'jpg')
     await runMediaJob(deps(), { kind: 'process', mediaId: id })
@@ -173,16 +202,76 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('media jobs (needs TEST_DATABAS
     await env.query(`update setting set value = '300'::jsonb where key = 'medium_size_h'`)
   })
 
-  it('refuses to decode an image above the pixel limit, and marks the file failed', async () => {
-    await env.query(`update setting set value = '1000000'::jsonb where key = 'image_max_pixels'`)
-    const { id } = await stored(await photo(1500, 1000), 'image/jpeg', 'jpg')
-    await expect(runMediaJob(deps(), { kind: 'process', mediaId: id })).rejects.toThrow()
-    const [row] = await env.query<{ processing: string; processing_error: string }>(
-      'select processing, processing_error from media where id = $1',
+  async function stateOf(id: string) {
+    const [row] = await env.query<{ processing: string; processing_error: string | null; processing_attempts: number }>(
+      'select processing, processing_error, processing_attempts from media where id = $1',
       [id],
     )
+    return row
+  }
+
+  it('refuses to decode an image above the pixel limit: tried three times, then failed with the reason', async () => {
+    await env.query(`update setting set value = '1000000'::jsonb where key = 'image_max_pixels'`)
+    const { id } = await stored(await photo(1500, 1000), 'image/jpeg', 'jpg')
+    // Two runs with tries left: still pending, and the job throws so pg-boss runs it again.
+    for (const attempt of [1, 2]) {
+      await expect(runMediaJob(deps(), { kind: 'process', mediaId: id })).rejects.toThrow()
+      expect(await stateOf(id)).toMatchObject({ processing: 'pending', processing_attempts: attempt })
+    }
+    // The third: failed, with the reason, and no throw (no fourth try).
+    await runMediaJob(deps(), { kind: 'process', mediaId: id })
+    const row = await stateOf(id)
+    expect(row).toMatchObject({ processing: 'failed', processing_attempts: 3 })
+    expect(row?.processing_error).toBe('too_many_pixels')
+    // A job that still comes (an old one, a retry) does not run it again.
+    await runMediaJob(deps(), { kind: 'process', mediaId: id })
+    expect(await stateOf(id)).toMatchObject({ processing: 'failed', processing_attempts: 4 })
+  })
+
+  it('stores a code for a failure, never the message (which can name a path on the server)', async () => {
+    const { id, key } = await stored(await photo(100, 100), 'image/jpeg', 'jpg')
+    await rm(join(uploads, key))
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await runMediaJob(deps(), { kind: 'process', mediaId: id }).catch(() => undefined)
+    }
+    expect(await stateOf(id)).toMatchObject({ processing: 'failed', processing_error: 'missing_file' })
+    expect(failureOf(new Error('Input file contains unsupported image format'))).toBe('unreadable_image')
+    expect(failureOf(new Error('something else at /var/lib/toascribe/uploads/x.jpg'))).toBe('unknown')
+  })
+
+  it('counts a run that never finished (the worker died), and gives up after three', async () => {
+    const { id } = await stored(await photo(100, 100), 'image/jpeg', 'jpg')
+    // Three runs started and none came back: the count is in its own commit, so it is there.
+    await env.query('update media set processing_attempts = 3 where id = $1', [id])
+    await runMediaJob(deps(), { kind: 'process', mediaId: id })
+    const row = await stateOf(id)
     expect(row?.processing).toBe('failed')
-    expect(row?.processing_error).toMatch(/pixel/i)
+    expect(row?.processing_error).toBe(GAVE_UP)
+    // «Lag bildestørrelser på nytt» sets the count back (the api does), and it works again.
+    await env.query(
+      `update media set processing = 'pending', processing_error = null, processing_attempts = 0 where id = $1`,
+      [id],
+    )
+    await runMediaJob(deps(), { kind: 'regenerate', mediaId: id })
+    expect(await stateOf(id)).toMatchObject({ processing: 'ready', processing_error: null, processing_attempts: 1 })
+  })
+
+  it('marks an image whose tries ran out failed instead of queueing it again', async () => {
+    const { id } = await stored(await photo(100, 100), 'image/jpeg', 'jpg')
+    await env.query(`update media set modified_at = $2, processing_attempts = 3 where id = $1`, [
+      id,
+      new Date(NOW.getTime() - 15 * 60_000),
+    ])
+    const sent: unknown[] = []
+    const boss = {
+      send: (_name: string, data: object | null) => {
+        sent.push(data)
+        return Promise.resolve('job')
+      },
+    }
+    await sweepPending({ db: env.db, logger: memoryLogger().logger, now: () => NOW }, boss as never)
+    expect(sent).not.toContainEqual({ kind: 'process', mediaId: id })
+    expect(await stateOf(id)).toMatchObject({ processing: 'failed', processing_error: GAVE_UP })
   })
 
   it('queues the images that stayed pending, once each', async () => {

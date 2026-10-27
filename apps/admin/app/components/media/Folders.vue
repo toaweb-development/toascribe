@@ -2,10 +2,11 @@
 import { MEDIA_FOLDER_NAME_MAX_LENGTH } from '@toascribe/shared'
 import type { MediaFolderItem } from '@toascribe/shared'
 
-// «Mapper» of the library (K-119): add a folder (at the top or inside another), rename it, move it, delete it. Deleting a folder deletes its
+// «Mapper» of the library (K-119): add a folder (at the top or inside another), rename it, move it, delete it. Everyone with
+// upload_files makes folders; renaming, moving and deleting needs edit_others_posts (`mayOrganize`; the api checks it too). Deleting a folder deletes its
 // subfolders too, and their files move to the top of the library; the files themselves are not touched. Folders are for sorting in the admin only: a file's
 // address does not change with its folder.
-const props = defineProps<{ folders: readonly MediaFolderItem[] }>()
+const props = defineProps<{ folders: readonly MediaFolderItem[]; mayOrganize: boolean }>()
 const emit = defineEmits<{ close: [changed: boolean] }>()
 
 const { t } = useI18n()
@@ -159,7 +160,7 @@ async function remove(folder: MediaFolderItem): Promise<void> {
                 {{ '— '.repeat(folder.depth) }}{{ folder.name }}
                 <span class="text-sm font-normal text-toned">({{ folder.count }})</span>
               </span>
-              <span class="flex gap-1">
+              <span v-if="props.mayOrganize" class="flex gap-1">
                 <UButton
                   size="sm"
                   color="neutral"

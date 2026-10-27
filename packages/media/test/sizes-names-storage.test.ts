@@ -8,10 +8,12 @@ import {
   InvalidStorageKeyError,
   createLocalStorage,
   defaultSizes,
+  GENERATED_SUFFIX,
   derivedKey,
   originalKey,
   planSizes,
   readableName,
+  versionedKey,
   resizeDimensions,
   shownFile,
 } from '../src/index.ts'
@@ -74,6 +76,16 @@ describe('storage keys', () => {
     expect(originalKey('../../etc/passwd', 'txt', at, false, 'abcdef01')).toBe('passwd-abcdef01.txt')
     expect(readableName('§§§.png')).toBe('file')
     expect(derivedKey('2026/10/bilde-abcdef01.jpg', '300x200')).toBe('2026/10/bilde-abcdef01-300x200.webp')
+  })
+
+  it('gives every run of the sizes a new address, which the suffix pattern knows', () => {
+    const key = versionedKey('2026/10/bilde-abcdef01.jpg', '0a1b2c3d', '300x200')
+    expect(key).toBe('2026/10/bilde-abcdef01-0a1b2c3d-300x200.webp')
+    expect(key.replace(GENERATED_SUFFIX, '')).toBe('2026/10/bilde-abcdef01')
+    expect('2026/10/bilde-abcdef01-0a1b2c3d-scaled.webp'.replace(GENERATED_SUFFIX, '')).toBe('2026/10/bilde-abcdef01')
+    expect('2026/10/bilde-abcdef01-e1761480000000.webp'.replace(GENERATED_SUFFIX, '')).toBe('2026/10/bilde-abcdef01')
+    // Not the original's own random part: the version is the last eight hex digits before the size.
+    expect('2026/10/bilde-abcdef01-0a1b2c3d-scaled.webp'.replace(GENERATED_SUFFIX, '')).not.toBe('2026/10/bilde')
   })
 })
 

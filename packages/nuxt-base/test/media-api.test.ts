@@ -20,6 +20,7 @@ const ITEM = {
   uploadedBy: null,
   attachedTo: null,
   processing: 'ready',
+  processingError: null,
   url: '/uploads/2026/10/fjord-abcdef01.jpg',
   originalUrl: '/uploads/2026/10/fjord-abcdef01.jpg',
   sizes: [],

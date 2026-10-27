@@ -20,8 +20,6 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@commitlint/cli": "catalog:",
-    "@commitlint/config-conventional": "catalog:",
     "@eslint/js": "catalog:",
     "@toascribe/tsconfig": "workspace:*",
     "@types/node": "catalog:",

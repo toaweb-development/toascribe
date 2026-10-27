@@ -1,4 +1,4 @@
-import type { MediaGroup, MediaProcessing } from '@toascribe/shared'
+import type { MediaFailure, MediaGroup, MediaProcessing } from '@toascribe/shared'
 
 import { statusLabel } from './content-text.ts'
 import type { MessageT } from './users-messages.ts'
@@ -41,6 +41,24 @@ export function processingLabel(t: MessageT, processing: MediaProcessing): strin
   }
 }
 
+/** Why the worker could not make the sizes, from its code (MEDIA_FAILURES). */
+export function failureText(t: MessageT, failure: MediaFailure): string {
+  switch (failure) {
+    case 'too_many_pixels':
+      return t('media.processing.reasons.tooManyPixels')
+    case 'unreadable_image':
+      return t('media.processing.reasons.unreadable')
+    case 'missing_file':
+      return t('media.processing.reasons.missingFile')
+    case 'worker_stopped':
+      return t('media.processing.reasons.workerStopped')
+    case 'unknown':
+      return t('media.processing.reasons.unknown')
+    default:
+      return failure satisfies never
+  }
+}
+
 /** The text for an error code of the media API, or undefined to fall back to the shared messages. */
 export function mediaErrorText(t: MessageT, code: string | undefined): string | undefined {
   switch (code) {
@@ -58,6 +76,8 @@ export function mediaErrorText(t: MessageT, code: string | undefined): string | 
       return t('media.errors.imageTooLarge')
     case 'invalid_folder':
       return t('media.errors.invalidFolder')
+    case 'invalid_attached_to':
+      return t('media.errors.invalidAttachedTo')
     case 'folder_exists':
       return t('media.errors.folderExists')
     case 'fetch_failed':

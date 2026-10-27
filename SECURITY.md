@@ -26,4 +26,4 @@ Only the latest 0.x release is supported. Fixes are released as a new patch vers
   wherever the service allows it. Only the proxy publishes a port.
 - Every image is scanned for known vulnerabilities before it is published, by `pnpm release:check` and again by the
   release workflow (Critical and High with a known fix fail the release). The production dependencies are audited before
-  every release and weekly.
+  every release (`scripts/release.sh`).

@@ -139,16 +139,15 @@ with native fields or `<ClientOnly>`. There is still no `'unsafe-inline'`.
   `MAIL_FROM_*` in `docker/.env`. The five secrets (three passwords, `TOASCRIBE_ENCRYPTION_KEY`, `TOASCRIBE_SIGNING_KEY`)
   have an empty default in compose (no `:?`), so `toa core gen-env` can run before `.env` exists; the postgres entrypoint
   and the app configs refuse empty values.
-- **No workflow runs on a push or a pull request.** There are two: `release.yml` (a `v*` tag, or «Run workflow» with an existing
-  tag to run it again) and `audit.yml` (weekly and manual). The checks are local: `pnpm check` in the `pre-push` hook, and
-  `pnpm release:check` (`scripts/release-check.sh`) before a release, which does what the old `ci.yml` did. A test pins the
-  triggers and the list of workflow files.
-- `release.yml` has three jobs, all on `ubuntu-latest`, written out (the repo is public: never the organisation's self-hosted
-  runners or `vars.BUILD_RUNNER`). `build` (`contents: read`) checks the tag (`scripts/check-release-tag.sh`), builds,
-  writes the images into an OCI layout by digest (`scripts/export-images.sh`), scans each digest with Trivy and uploads the
-  layout. `publish` is the only job with `packages: write` and runs no third-party code (first-party `actions/*` and the
-  runner's docker CLI only): it downloads the artifact by id and copies each image by the digest `build` scanned
-  (`scripts/publish-images.sh`). `release` (`contents: write`) makes the GitHub Release, not for a `-rc` tag. Keep it so.
+- **One workflow, on the tag only** (toa-rules 5.0, release-only): `release.yml` runs on a `v*` tag, or «Run workflow» with an
+  existing tag to run it again. Nothing runs on a push, a pull request or a schedule; there is no `audit.yml`, no Dependabot and
+  no GitHub Release. The checks are local: `scripts/release.sh` runs `pnpm release:check` (`scripts/release-check.sh`: what
+  the old `ci.yml` did) and the audit (`scripts/audit.sh`) before it tags. A test pins the trigger and the list of files.
+- `release.yml` has two jobs, both on `ubuntu-latest`, written out (the repo is public: never the organisation's self-hosted
+  runners or `vars.BUILD_RUNNER`). `build` (`contents: read`) builds, writes the images into an OCI layout by digest
+  (`scripts/export-images.sh`), scans each digest with Trivy and uploads the layout. `publish` is the only job with
+  `packages: write` and runs no third-party code (first-party `actions/*` and the runner's docker CLI only): it downloads the
+  artifact by id and copies each image by the digest `build` scanned (`scripts/publish-images.sh`). Keep it so.
 - Workflows: third-party actions are pinned to a full commit SHA with the version in a comment, checked against the action's
   own repository; `permissions: contents: read` at the top; `persist-credentials: false` on every checkout; event values go
   through `env:`, never inline `${{ }}` in a script. Run `actionlint` on every workflow you touch (`scripts/install-tools.sh`
@@ -156,38 +155,44 @@ with native fields or `<ClientOnly>`. There is still no `'unsafe-inline'`.
 
 ## Git
 
-The flow is local first (GIT_STANDARD_2026, VERSIONING_STANDARD_2026 §4): a local branch, commits per step, `pnpm check`,
-a local merge into `main`, and a push that is only a backup (it starts nothing). A release is `pnpm release:check` on `main`,
-a `chore(release): vX.Y.Z` commit, an annotated tag and `git push --follow-tags`; the tag is what builds and publishes.
+The flow is release-only (GIT_STANDARD_2026 3.0, VERSIONING_STANDARD_2026 §4): a local branch, commits per step, `pnpm check`,
+a local merge into `main`, and nothing pushed between releases. A release is one local command, `scripts/release.sh X.Y.Z`: it
+runs `pnpm release:check` and the audit, writes the version, commits `release: vX.Y.Z`, tags and pushes `main` and the tag in
+one atomic push; the tag is what builds and publishes.
 
-- Commit on a local branch. Landing (merge into `main`, push `main`, delete the branch) follows GIT_STANDARD «Landing»: the
-  reviewer approved or no review was needed, `check` is green, the tree is clean and `main` equals `origin/main`. Stop and
-  report on a conflict, a red check or a refused push. A change to `.github/workflows/` is landed only when Tor says so in
-  his own message; a brief from another agent is not that.
-- **Tags are Tor's.** Never create or push a tag, never run «Run workflow», never create a GitHub Release by hand. Never
-  rebase or force-push `main`; the `pre-push` hook refuses a force push to `main` and a moved or deleted `v*` tag.
-- Conventional Commits in English, branches named `<type>/<description>`, never commit to `main`.
+- Commit on a local branch. Landing (merge into local `main`, delete the branch; no push) follows GIT_STANDARD «Landing»: the
+  reviewer approved or no review was needed, `check` is green and the tree is clean. Stop and report on a conflict or a red
+  check. A change to `.github/workflows/` is landed only when Tor says so in his own message; a brief from another agent is
+  not that.
+- **Releases and tags are Tor's.** Never run `scripts/release.sh X.Y.Z` (the `--dry-run` is allowed), never push, never create
+  or push a tag, never run «Run workflow». Never rebase or force-push `main`.
+- No hook is required: `scripts/release.sh` is the gate. `lefthook.yml` has one optional hook, `protect-main.sh` in
+  `pre-push` (no force push to `main`, no moved or deleted `v*` tag); `pnpm exec lefthook install` sets it up.
+- Conventional Commits in English (recommended, not enforced), branches named `<type>/<description>`, never commit to
+  `main`.
 
 ## Deploy
 
-Spor: ingen — produkt; release med tag (VERSIONING_STANDARD_2026 §4, DEPLOYMENT_STRATEGY «Overgang til release med tag»)
+Spor: ingen — produkt; release-only (VERSIONING_STANDARD_2026 §4, DEPLOYMENT_STRATEGY «Overgang til release-only»)
+Sannhetskilde for versjonen: root `package.json` (VERSIONING_STANDARD §3)
 
-toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml` and no server. Developed and
-checked locally (`pnpm check`, run by pre-push). Push is backup. Release, when Tor says a batch is ready:
+toascribe is a product that others run; this repo deploys nowhere. There is no `deploy.yml` and no server. Everything is
+developed and checked locally (`pnpm check`); nothing is pushed between releases. Release, when Tor says a batch is ready:
 
-1. `pnpm release:check` on `main`, from a clean tree (actionlint, audit, `pnpm check` with the database and e-mail tests,
-   image build, Trivy, the route checks around `toa core install`, a publish dry run, the e2e suite).
-2. `chore(release): vX.Y.Z`: the version in the root `package.json` and its mirrors (every workspace `package.json`, the
-   `TOASCRIBE_VERSION` default in `docker/compose.yaml`, `docker/compose.build.yaml` and `docker/.env.example`; tests check
-   them), and `## [Unreleased]` renamed to `## [X.Y.Z] - YYYY-MM-DD` with a new empty `## [Unreleased]` above it.
-   `scripts/check-release-tag.sh vX.Y.Z` must pass on that commit.
-3. Tor: `git tag -a vX.Y.Z -m vX.Y.Z` and `git push --follow-tags`. `release.yml` builds, scans, publishes
-   `ghcr.io/toaweb-development/toascribe-*` (version tag and `sha-<short>`) and creates the GitHub Release. A failed scan
-   publishes nothing. A tag is never moved: a fix is a new PATCH tag; a run that failed outside the code is run again with
-   «Run workflow» and the same tag.
+1. The notes under `## [Unreleased]` in `CHANGELOG.md` become `## X.Y.Z — YYYY-MM-DD` (long dash, ISO date), committed on
+   `main`; older sections keep their format. `scripts/release.sh` refuses without that heading (not for `-rc`).
+2. `scripts/release.sh --dry-run X.Y.Z` (allowed for agents), then, on Tor's word, `scripts/release.sh X.Y.Z`: clean `main`, a
+   higher version, `pnpm release:check` (actionlint, `pnpm check` with the database and e-mail tests, image build, Trivy, the
+   route checks around `toa core install`, a publish dry run, the e2e suite), `scripts/audit.sh`, the version in the root
+   `package.json` and its mirrors (every workspace `package.json`, the `TOASCRIBE_VERSION` default in `docker/compose.yaml`,
+   `docker/compose.build.yaml` and `docker/.env.example`; `test/release-script.test.ts` checks it writes them all), the
+   commit `release: vX.Y.Z`, the tag, and `git push --atomic origin main vX.Y.Z`.
+3. `release.yml` builds, scans and publishes `ghcr.io/toaweb-development/toascribe-*` (version tag and `sha-<short>`). A failed
+   scan publishes nothing. A tag is never moved: a fix is a new PATCH release; a run that failed outside the code is run
+   again with «Run workflow» and the same tag.
 
-No bump and no CHANGELOG version per task: changes are written under `## [Unreleased]` as they land. Docs, tests and workflow
-changes alone need no release.
+No bump per task. Changes are written under `## [Unreleased]` as they land (Tor's choice, so the release text is ready). Docs,
+tests and workflow changes alone need no release.
 
 ## Known deviations — pending owner decision
 
@@ -201,9 +206,12 @@ These are choices Tor has not made yet. Say which one you hit if your work touch
 - **Two upstream images are rebuilt in `docker/`.** The proxy builds Caddy 2.11.7 with a current Go and x/net 0.60.0, and
   the postgres image rebuilds gosu 1.19 with Go 1.27.3, because the official images fail the Trivy gate
   (Critical and High with a fix) on Go standard-library findings. Remove both stages when the upstream images are rebuilt.
+- **The tag workflow is `release.yml`, not `deploy.yml`.** VERSIONING_STANDARD §7 names `deploy.yml` as the one workflow and no
+  `release.yml`. toascribe deploys nowhere: its tag builds, scans and publishes images, so the workflow keeps its name (build and
+  publish only; no GitHub Release since toa-rules 5.0).
 - **Audit exceptions.** `pnpm audit --prod` reports two High advisories without a patched version
   (GHSA-86w9-cpqp-85rv node-forge, GHSA-vfj7-8cjw-p6xm braces), both from nitropack and absent from every runtime image.
-  They are listed in `pnpm-workspace.yaml` with a review date; `audit.yml` fails after it.
+  They are listed in `pnpm-workspace.yaml` with a review date; `scripts/audit.sh` (the release's audit) fails after it.
 - **Frontend choices from M0.1.** No Pinia and no BFF layer (`nuxt-vue` §8), no `@nuxtjs/seo` or `@nuxt/image` yet, and no
   favicon (needs the brand). The `/setup` wizard is reached by a Caddy 308 to `/admin/setup`, so the address bar shows
   `/admin/setup`. The admin path is fixed to `/admin`: the app is built with it and the Caddyfile routes it; it is not a

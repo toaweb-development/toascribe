@@ -41,6 +41,8 @@ const errorResponse = (description: string) => ({
 const TAG = 'media'
 const UPLOAD = requireCapability('upload_files')
 const MANAGE = requireCapability('manage_options')
+/** Renaming, moving and deleting folders (the service checks upload_files too). */
+const ORGANIZE = requireCapability('edit_others_posts')
 const STATE_CHANGING_NOTE =
   'Needs the X-CSRF-Token header of the session, a same-origin request and an application/json body (multipart for a file).'
 
@@ -49,7 +51,7 @@ const itemResponse = (description: string) => ({ content: { 'application/json': 
 const uploadErrors = {
   400: errorResponse(
     'Not allowed: `unsupported_type` (not on the list, or not for this role), `type_mismatch` (the content is not what the name ' +
-      'says), `empty_file`, `unreadable_image`, `image_too_large` (more pixels than `image_max_pixels`), `invalid_folder`',
+      'says), `empty_file`, `unreadable_image`, `image_too_large` (more pixels than `image_max_pixels`), `invalid_folder`, `invalid_attached_to` (no such content)',
   ),
   401: errorResponse('Not signed in'),
   403: errorResponse('CSRF token missing or wrong, or no right to the file'),
@@ -132,7 +134,9 @@ const getRoute = defineRoute({
   path: '/media/{id}',
   tags: [TAG],
   summary: 'One file, with where it is used',
-  description: '`usedBy` lists the posts and pages whose blocks use the file («Brukes på», K-122).',
+  description:
+    '`usedBy` lists the posts and pages whose blocks use the file and that the asker may read («Brukes på», K-122); ' +
+    '`usedByOthers` counts the rest, without their titles.',
   policy: UPLOAD,
   request: { params: MediaIdParams },
   responses: {
@@ -212,14 +216,21 @@ const replaceRoute = defineRoute({
   path: '/media/{id}/replace',
   tags: [TAG],
   summary: 'Replace the file',
-  description: `A new file under the same id (K-115), checked as an upload; links in content keep working. ${STATE_CHANGING_NOTE}`,
+  description:
+    'A new file under the same id (K-115), checked as an upload; links in content keep working. `media_busy` (409) while the ' +
+    `worker has the file (an edit or its sizes): try again when it is ready. ${STATE_CHANGING_NOTE}`,
   policy: UPLOAD,
   bodyType: 'multipart',
   request: {
     params: MediaIdParams,
     body: { required: true, content: { 'multipart/form-data': { schema: ReplaceForm } } },
   },
-  responses: { 200: itemResponse('Replaced'), ...uploadErrors, 404: errorResponse('No such file') },
+  responses: {
+    200: itemResponse('Replaced'),
+    ...uploadErrors,
+    404: errorResponse('No such file'),
+    409: errorResponse('`media_busy`: the worker has the file'),
+  },
 })
 
 const editRoute = defineRoute({
@@ -248,7 +259,7 @@ const editRoute = defineRoute({
 const folderErrors = {
   400: errorResponse('Invalid request, or `invalid_folder`'),
   401: errorResponse('Not signed in'),
-  403: errorResponse('CSRF token missing or wrong, or no upload_files'),
+  403: errorResponse('CSRF token missing or wrong, no upload_files, or (rename, move, delete) no edit_others_posts'),
   404: errorResponse('No such folder'),
   409: errorResponse('`folder_exists`: the name is taken beside it'),
 }
@@ -287,8 +298,8 @@ const updateFolderRoute = defineRoute({
   path: '/media-folders/{id}',
   tags: [TAG],
   summary: 'Rename or move a folder',
-  description: STATE_CHANGING_NOTE,
-  policy: UPLOAD,
+  description: `Needs \`edit_others_posts\` as well: a folder holds other people's files. ${STATE_CHANGING_NOTE}`,
+  policy: ORGANIZE,
   request: {
     params: MediaIdParams,
     body: { required: true, content: { 'application/json': { schema: UpdateMediaFolderRequest } } },
@@ -301,8 +312,8 @@ const deleteFolderRoute = defineRoute({
   path: '/media-folders/{id}',
   tags: [TAG],
   summary: 'Delete a folder',
-  description: `With the folders in it; their files move to the top of the library. ${STATE_CHANGING_NOTE}`,
-  policy: UPLOAD,
+  description: `With the folders in it; their files move to the top of the library. Needs \`edit_others_posts\` as well. ${STATE_CHANGING_NOTE}`,
+  policy: ORGANIZE,
   request: { params: MediaIdParams },
   responses: { 204: { description: 'Deleted' }, ...folderErrors },
 })
@@ -344,8 +355,7 @@ export function sendFile(c: Context<AppEnv>, file: OpenedFile, cache: string): R
   c.header('Content-Length', String(file.size))
   c.header('X-Content-Type-Options', 'nosniff')
   c.header('Cache-Control', cache)
-  // A file never runs script, and is never framed (the app's secure headers add frame-ancestors 'none' as well).
-  c.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+  // Its Content-Security-Policy (a sandbox, no script, never framed) is set by the app's secure headers for the file routes (app.ts).
   const name = encodeURIComponent(file.fileName).replace(
     /['()*]/g,
     (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,

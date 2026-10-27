@@ -72,7 +72,7 @@ test('build a document with columns, an image and formatted text; undo and redo;
   await second.getByRole('button', { name: 'Mediebibliotek' }).click()
   const picker = page.getByRole('dialog', { name: 'Velg eller last opp medier' })
   await picker.getByRole('button', { name: 'Legg til mediefil' }).click()
-  await expect(picker.getByText(/Maksimal filstørrelse for opplasting: \d+ MB\./)).toBeVisible()
+  await expect(picker.getByText(/Maksimal filstørrelse for opplasting: [\d,]+ MB\./)).toBeVisible()
   await picker.locator('input[type="file"]').setInputFiles({ name: 'test.png', mimeType: 'image/png', buffer: PNG })
   await expect(picker.getByRole('status').filter({ hasText: 'Valgt:' })).toBeVisible()
   await expectNoAxeViolations(page, 'the image picker with an upload')

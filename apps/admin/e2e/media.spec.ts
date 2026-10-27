@@ -22,7 +22,7 @@ test('upload an image, describe it, crop it, and insert it in a post', async ({ 
   // «Legg til ny»: the limit is shown, the upload goes through the hidden file field of «Velg filer».
   await page.goto('/admin/media/new')
   await expect(page.getByRole('heading', { level: 1, name: 'Last opp ny mediefil' })).toBeVisible()
-  await expect(page.getByText(/Maksimal filstørrelse for opplasting: \d+ MB\./)).toBeVisible()
+  await expect(page.getByText(/Maksimal filstørrelse for opplasting: [\d,]+ MB\./)).toBeVisible()
   await expectNoAxeViolations(page, 'Legg til ny')
   await page
     .locator('input[type="file"]')
@@ -107,4 +107,28 @@ test('upload an image, describe it, crop it, and insert it in a post', async ({ 
   await expect(
     page.getByRole('dialog', { name: 'Vedleggsdetaljer' }).getByRole('link', { name: `${word} med bilde` }),
   ).toBeVisible()
+})
+
+test('takes a file right at the upload limit through the proxy, and refuses a request above it', async ({ page }) => {
+  // The e2e stack runs with TOASCRIBE_UPLOAD_MAX_SIZE_MB=2: the request may be 2 MiB, the file 64 KiB less (the form around it).
+  // Caddy and the api both count MiB; with Caddy's `MB` (1000 × 1000) this file would be refused by the proxy.
+  test.skip((page.viewportSize()?.width ?? 0) < 1000, 'the limit is the same at every width')
+  await signIn(page, editor)
+  const limit = 2 * 1024 * 1024 - 64 * 1024
+  const pdf = Buffer.alloc(limit, 0x20)
+  pdf.write('%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n', 0, 'latin1')
+  const name = `grense${Date.now().toString(36)}.pdf`
+  await page.goto('/admin/media/new')
+  // 2 MiB less 64 KiB, as WordPress writes it.
+  await expect(page.getByText('Maksimal filstørrelse for opplasting: 1,9 MB.')).toBeVisible()
+  await page.locator('input[type="file"]').setInputFiles({ name, mimeType: 'application/pdf', buffer: pdf })
+  await expect(page.getByRole('heading', { name: 'Lastet opp' })).toBeVisible()
+  await expect(page.getByText(name)).toBeVisible()
+
+  // One byte above 2 MiB is refused before it reaches anything that reads it.
+  const refused = await page.request.post('/api/v1/media', {
+    headers: { 'content-type': 'multipart/form-data; boundary=x' },
+    data: Buffer.alloc(2 * 1024 * 1024 + 1),
+  })
+  expect(refused.status()).toBe(413)
 })

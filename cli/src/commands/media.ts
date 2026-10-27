@@ -36,7 +36,7 @@ export async function mediaRegenerate(args: readonly string[], options: CommandO
     const ids = await db.transaction(async (tx) => {
       const rows = await tx
         .update(media)
-        .set({ processing: 'pending', processingError: null, modifiedAt: now })
+        .set({ processing: 'pending', processingError: null, processingAttempts: 0, modifiedAt: now })
         .where(
           and(inArray(media.mime, [...RESIZABLE_MIMES]), only === undefined ? undefined : sql`${media.id} = ${only}`),
         )

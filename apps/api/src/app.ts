@@ -13,6 +13,7 @@ import type { Logger } from 'pino'
 import { apiError } from './lib/api-error.ts'
 import type { AppEnv } from './lib/env.ts'
 import { publicAccess } from './lib/policy.ts'
+import { uploadRequestLimit } from './lib/upload-limit.ts'
 import { authContext } from './middleware/auth.ts'
 import { onError, onNotFound } from './middleware/errors.ts'
 import { annotatePolicies, findUnguardedRoutes, policyGuard } from './middleware/policy.ts'
@@ -72,12 +73,22 @@ export interface AppDeps {
  */
 export const BODY_LIMIT_BYTES = 1024 * 1024
 
-/** Room for the multipart framing and the form's other fields around an uploaded file. */
-const MULTIPART_OVERHEAD_BYTES = 1024 * 1024
-
 /** The two routes that take a file (upload and replace) get the upload cap instead of the general limit. */
 export function isUploadRequest(method: string, path: string): boolean {
   return method === 'POST' && (path === '/api/v1/media' || /^\/api\/v1\/media\/[0-9a-f-]{36}\/replace$/i.test(path))
+}
+
+/** The routes that answer with a stored file rather than JSON. */
+export function isFileRequest(path: string): boolean {
+  return path.startsWith('/uploads/') || /^\/api\/v1\/media\/[0-9a-f-]{36}\/file$/i.test(path)
+}
+
+/** The CSP of a served file: `default-src 'none'; style-src 'unsafe-inline'; sandbox; frame-ancestors 'none'`. */
+export const FILE_CSP = {
+  defaultSrc: ["'none'"],
+  styleSrc: ["'unsafe-inline'"],
+  sandbox: [] as string[],
+  frameAncestors: ["'none'"],
 }
 
 export const OPENAPI_PATH = '/api/v1/openapi.json'
@@ -131,24 +142,33 @@ export function buildApp(deps: AppDeps) {
     services.proxy.observe(c.req.header('x-real-ip'))
     await next()
   })
-  app.use(
-    secureHeaders({
-      xFrameOptions: 'DENY',
-      // Only where the site is served over HTTPS: a browser that sees HSTS on plain HTTP ignores it, but a local
-      // http://localhost setup should not send a header that says otherwise.
-      strictTransportSecurity: publicOrigin.startsWith('https:') ? 'max-age=31536000; includeSubDomains' : false,
-      referrerPolicy: 'strict-origin-when-cross-origin',
-      permissionsPolicy: { camera: [], microphone: [], geolocation: [] },
-      // A JSON API: nothing it returns should load or embed anything (security §7).
-      contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
-    }),
-  )
+  const headerOptions = {
+    xFrameOptions: 'DENY' as const,
+    // Only where the site is served over HTTPS: a browser that sees HSTS on plain HTTP ignores it, but a local
+    // http://localhost setup should not send a header that says otherwise.
+    strictTransportSecurity: publicOrigin.startsWith('https:') ? 'max-age=31536000; includeSubDomains' : false,
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    permissionsPolicy: { camera: [] as string[], microphone: [] as string[], geolocation: [] as string[] },
+  }
+  // A JSON API: nothing it returns should load or embed anything (security §7).
+  const apiHeaders = secureHeaders({
+    ...headerOptions,
+    contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+  })
+  // A served file (/uploads/*, /api/v1/media/{id}/file): the same, plus a sandbox, so a file opened in the browser never runs script
+  // or reaches the site's origin, and inline styles only (a PDF viewer needs them). secureHeaders writes its headers after the
+  // handler and would replace a CSP the route set itself, so the file routes get their own instance here.
+  const fileHeaders = secureHeaders({
+    ...headerOptions,
+    contentSecurityPolicy: FILE_CSP,
+  })
+  app.use((c, next) => (isFileRequest(c.req.path) ? fileHeaders(c, next) : apiHeaders(c, next)))
   const generalLimit = bodyLimit({
     maxSize: BODY_LIMIT_BYTES,
     onError: (c) => c.json(apiError('payload_too_large', 'Request body too large', c.get('requestId')), 413),
   })
   const uploadLimit = bodyLimit({
-    maxSize: (deps.uploadCapMb ?? 64) * 1024 * 1024 + MULTIPART_OVERHEAD_BYTES,
+    maxSize: uploadRequestLimit(deps.uploadCapMb ?? 64),
     onError: (c) =>
       c.json(apiError('file_too_large', 'The file is larger than the upload limit', c.get('requestId')), 413),
   })
@@ -193,7 +213,8 @@ export function buildApp(deps: AppDeps) {
   // The public files of the media library (M1.2): /uploads/<key>, as WordPress' /wp-content/uploads/. Served by the api, not as
   // static files (security §4): the key is checked, a private file is not served here (only through /api/v1/media/{id}/file with
   // the rights check), and the answer carries its own type, nosniff and, for anything but an image, Content-Disposition: attachment.
-  // The keys are never reused (a replaced or edited file gets a new one), so a public file is cached for a year.
+  // A key is never used for other pixels (an original gets a new key when it is replaced, and every run of the worker gives its sizes
+  // a new version in the name, packages/media versionedKey), so a public file is cached for a year.
   app.get('/uploads/*', policyGuard(publicAccess()), async (c) => {
     const key = c.req.path.slice('/uploads/'.length)
     const file = STORAGE_KEY.test(key) ? await services.media.openPublic(key) : undefined

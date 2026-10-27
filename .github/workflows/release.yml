@@ -1,23 +1,23 @@
-# Release when Tor pushes a tag vX.Y.Z (VERSIONING_STANDARD_2026 §4, §4.1). toascribe is a product that others run, so it
-# deploys nowhere: a release is the six images in ghcr.io/toaweb-development/toascribe-* and a GitHub Release. Nothing runs on
-# a push to a branch or on a pull request; the checks before a tag are local (`pnpm check` in pre-push, `pnpm release:check`).
+# Release when scripts/release.sh pushes a tag vX.Y.Z (VERSIONING_STANDARD_2026 §4). toascribe is a product that others run, so
+# it deploys nowhere: a release is the six images in ghcr.io/toaweb-development/toascribe-*. This is the only workflow, and it
+# runs only on a tag. The checks before a tag are local: scripts/release.sh runs `pnpm release:check` and the audit, writes the
+# version, commits, tags and pushes main and the tag in one atomic push, so there is no tag check, test or audit here.
 #
-#   build    contents: read. Checks that the tag is the version in package.json and has a CHANGELOG section, builds every
-#            image with provenance and SBOM attestations into a throwaway registry on the runner, reads their digests once
-#            (scripts/image-digests.sh), scans each digest (Critical and High with a known fix fail), and only then writes
-#            those digests into an OCI layout (scripts/export-images.sh) and uploads it, with no third-party step in between.
-#            The digests and the artifact id are job outputs. No build or Trivy cache is read or written: a cache that
-#            another workflow run could fill would carry into the release.
+#   build    contents: read. Builds every image with provenance and SBOM attestations into a throwaway registry on the runner,
+#            reads their digests once (scripts/image-digests.sh), scans each digest (Critical and High with a known fix fail),
+#            and only then writes those digests into an OCI layout (scripts/export-images.sh) and uploads it, with no
+#            third-party step in between. The digests and the artifact id are job outputs. No build or Trivy cache is read or
+#            written: a cache that another workflow run could fill would carry into the release.
 #   publish  packages: write, this job only. Runs no third-party code: first-party actions/* and the runner's docker CLI and
 #            jq only. Downloads the artifact by id (the download fails on a digest mismatch), hashes every blob in it, logs in
 #            to ghcr.io and copies each image by the digest the build scanned (scripts/publish-images.sh), tagged <version>
 #            and sha-<short>.
-#   release  contents: write, this job only, and not for a -rc tag: the GitHub Release with the version's CHANGELOG section
-#            (scripts/release-notes.sh) and the two files an installation without a clone needs. Runs no third-party code.
 #
-# A failed scan leaves no artifact, no image and no release. A tag is never moved: when a run failed outside the code (a
-# network error), «Run workflow» with the same tag runs it again; an image whose version tag is already in ghcr.io and a
-# release that already exists are left as they are.
+# No GitHub Release (VERSIONING_STANDARD_2026 §6): the release is the tag, its text is the tag's CHANGELOG.md, and an
+# installation without a clone takes docker/compose.yaml from the tag (README, «Installer uten å klone repoet»).
+#
+# A failed scan leaves no artifact and no image. A tag is never moved: when a run failed outside the code (a network error),
+# «Run workflow» with the same tag runs it again; an image whose version tag is already in ghcr.io is left as it is.
 #
 # Every job runs on GitHub's ubuntu-latest: the repository is public and never uses the organisation's self-hosted runners
 # (DEPLOYMENT_STRATEGY_2026, «Runnere»).
@@ -90,12 +90,6 @@ jobs:
       - name: Record the commit
         id: commit
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Check that the tag is the version
-        env:
-          VERSION_FILE: package.json # the single source of truth; the workspace packages mirror it (test/version-mirror.test.ts)
-          TAG: ${{ steps.tag.outputs.tag }}
-        run: scripts/check-release-tag.sh "${TAG}"
 
       # registry:3, pinned by tag and digest. Loopback only; no authentication is needed for a registry that lives for one job.
       # Why a registry: the attestations only exist on an image that is pushed (DOCKER_STANDARD, «CI-bygg»; the docker
@@ -266,41 +260,3 @@ jobs:
       - name: Log out of ghcr.io
         if: always()
         run: docker logout ghcr.io
-
-  release:
-    name: GitHub Release
-    needs: [build, publish]
-    if: ${{ !contains(needs.build.outputs.tag, '-rc.') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: write # this job only: the GitHub Release
-    env:
-      GH_TOKEN: ${{ github.token }}
-      TAG: ${{ needs.build.outputs.tag }}
-      VERSION: ${{ needs.build.outputs.version }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.build.outputs.sha }}
-          persist-credentials: false
-      - name: GitHub Release
-        run: |
-          set -euo pipefail
-          if gh release view "${TAG}" > /dev/null 2>&1; then
-            echo "::notice::the release ${TAG} exists already; not changed."
-            exit 0
-          fi
-          scripts/release-notes.sh "${TAG}" > "${RUNNER_TEMP}/notes.md"
-          {
-            printf '\n### Images\n\n'
-            printf 'ghcr.io/toaweb-development/toascribe-{proxy,site,admin,api,postgres,mailpit}:%s, scanned before they were published.\n' "${VERSION}"
-            cat <<'TEXT'
-          `compose.yaml` and `env.example` (the `.env.example`) start them without cloning the repository: see «Installer uten å klone repoet» in the README.
-          TEXT
-          } >> "${RUNNER_TEMP}/notes.md"
-          # GitHub renames an asset whose name starts with a dot, so .env.example is attached as env.example.
-          cp docker/compose.yaml "${RUNNER_TEMP}/compose.yaml"
-          cp docker/.env.example "${RUNNER_TEMP}/env.example"
-          gh release create "${TAG}" --verify-tag --title "${TAG}" --notes-file "${RUNNER_TEMP}/notes.md" \
-            "${RUNNER_TEMP}/compose.yaml" "${RUNNER_TEMP}/env.example"

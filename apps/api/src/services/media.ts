@@ -1,5 +1,6 @@
 // The media library (M1.2; K-110 to K-125). Uploads are checked here, stored, and handed to the worker, which makes the sizes:
-// - size: at most `upload_max_size_mb` (and never above UPLOAD_MAX_SIZE_MB from .env, which the proxy enforces too);
+// - size: at most `upload_max_size_mb` MiB, and within UPLOAD_MAX_SIZE_MB MiB for the whole request, which the proxy enforces too
+//   (lib/upload-limit.ts);
 // - type: from the bytes, and it must agree with the extension (@toascribe/media detectType); SVG, HTML, scripts and programs are
 //   not on the list; a role may be limited to some groups (`upload_groups_by_role`);
 // - an image's pixels are read from its header and checked against `image_max_pixels` before anything decodes it;
@@ -23,7 +24,15 @@ import {
   shownFile,
 } from '@toascribe/media'
 import type { MediaStorage, ShownFile } from '@toascribe/media'
-import { CoreSettings, MediaSettings, MediaVariantsData } from '@toascribe/shared'
+import {
+  ContentStatus,
+  ContentStatusBeforeTrash,
+  ContentTypeKey,
+  CoreSettings,
+  MediaFailure,
+  MediaSettings,
+  MediaVariantsData,
+} from '@toascribe/shared'
 import type {
   ContentMediaRef,
   CreateMediaFolderRequest,
@@ -46,8 +55,11 @@ import type {
 import type { Logger } from 'pino'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
+import { canRead as canReadContent } from '../lib/content-access.ts'
 import { AppError, ForbiddenError, NotFoundError } from '../lib/errors.ts'
+import { uploadFileLimit } from '../lib/upload-limit.ts'
 import type { MediaJobPort } from '../ports/media-jobs.ts'
+import { authorsOf, findContent } from '../repositories/content.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import type { Executor } from '../repositories/executor.ts'
 import {
@@ -75,8 +87,6 @@ import type { MediaFilter, MediaRow } from '../repositories/media.ts'
 import { readSettings, writeSettings } from '../repositories/settings.ts'
 import { flattenTree } from './content.ts'
 import type { Auditor, RequestContext } from './support.ts'
-
-const MB = 1024 * 1024
 
 const SETTINGS = CoreSettings.pick({
   upload_max_size_mb: true,
@@ -254,6 +264,14 @@ export function createMediaService(options: {
     }
   }
 
+  /** Renaming, moving and deleting a folder: it holds other people's files, so `edit_others_posts` as well (making one needs only
+   * upload_files). */
+  function requireOrganize(auth: SessionAuth): void {
+    if (!has(auth, 'upload_files') || !has(auth, 'edit_others_posts')) {
+      throw new ForbiddenError()
+    }
+  }
+
   function urlOf(row: MediaRow, key: string, which: string): string {
     return row.visibility === 'public'
       ? `/uploads/${key}`
@@ -279,6 +297,9 @@ export function createMediaService(options: {
       uploadedBy: row.uploadedBy === null ? null : { id: row.uploadedBy, displayName: names.get(row.uploadedBy) ?? '' },
       attachedTo: row.attachedTo,
       processing: row.processing,
+      // A code (MEDIA_FAILURES); anything else stored there (an older message) is shown as unknown, never sent.
+      processingError:
+        row.processing === 'failed' ? (MediaFailure.safeParse(row.processingError).data ?? 'unknown') : null,
       url: urlOf(row, shown.key, 'shown'),
       originalUrl: urlOf(row, row.storageKey, 'original'),
       sizes: Object.entries(row.variants.sizes)
@@ -312,7 +333,7 @@ export function createMediaService(options: {
   }
 
   function maxBytes(settings: { upload_max_size_mb: number }): number {
-    return Math.min(settings.upload_max_size_mb, options.uploadCapMb) * MB
+    return uploadFileLimit(settings.upload_max_size_mb, options.uploadCapMb)
   }
 
   /** The checks every upload passes (also a replacement and a fetch from a URL). Throws AppError; returns what to store. */
@@ -386,6 +407,11 @@ export function createMediaService(options: {
     try {
       id = await inTransaction(db, async (tx) => {
         const folderId = await checkFolder(tx, input.folderId)
+        if (input.attachedTo !== undefined && input.attachedTo !== null) {
+          if ((await findContent(tx, input.attachedTo)) === undefined) {
+            throw new AppError(400, 'invalid_attached_to', 'The content to attach the file to does not exist')
+          }
+        }
         const created = await insertMedia(
           tx,
           {
@@ -509,13 +535,29 @@ export function createMediaService(options: {
     async get(auth, id) {
       requireUpload(auth)
       const item = await itemOf(auth, id)
-      const usedBy = await mediaUsage(db, id)
-      return {
-        ...item,
-        usedBy: usedBy.flatMap((entry) =>
-          entry.type === 'post' || entry.type === 'page' ? [{ ...entry, type: entry.type }] : [],
-        ),
-      }
+      const usage = await mediaUsage(db, id)
+      const authors = await authorsOf(
+        db,
+        usage.map((entry) => entry.id),
+      )
+      const actor = { id: auth.account.id, capabilities: auth.capabilities }
+      const readable = usage.flatMap((entry) => {
+        const type = ContentTypeKey.safeParse(entry.type)
+        const status = ContentStatus.safeParse(entry.status)
+        if (!type.success || !status.success) return []
+        const before = ContentStatusBeforeTrash.safeParse(entry.statusBeforeTrash)
+        const access = {
+          type: type.data,
+          status: status.data,
+          statusBeforeTrash: before.success ? before.data : null,
+          authorIds: (authors.get(entry.id) ?? []).map((author) => author.id),
+        }
+        return canReadContent(actor, access)
+          ? [{ id: entry.id, type: type.data, title: entry.title, status: entry.status }]
+          : []
+      })
+      // The rest is counted, never named (a private post of someone else, a draft the asker may not edit).
+      return { ...item, usedBy: readable, usedByOthers: usage.length - readable.length }
     },
 
     upload: ingest,
@@ -610,6 +652,10 @@ export function createMediaService(options: {
       if (!canEdit(auth, current)) {
         throw new ForbiddenError()
       }
+      // A replacement waits for the worker: an edit still pending would otherwise be applied to the new file.
+      if (current.processing === 'pending') {
+        throw new AppError(409, 'media_busy', 'The image is still being processed')
+      }
       const { detection, width, height, settings } = await check(auth, input)
       const now = clock()
       const key = originalKey(input.fileName, detection.ext, now, settings.uploads_use_yearmonth_folders)
@@ -621,6 +667,9 @@ export function createMediaService(options: {
           const row = await findMedia(tx, id, { forUpdate: true })
           if (row === undefined) {
             throw new NotFoundError()
+          }
+          if (row.processing === 'pending') {
+            throw new AppError(409, 'media_busy', 'The image is still being processed')
           }
           await updateMedia(
             tx,
@@ -636,6 +685,7 @@ export function createMediaService(options: {
               variants: { sizes: {} },
               processing: resizable ? 'pending' : 'ready',
               processingError: null,
+              processingAttempts: 0,
             },
             now,
           )
@@ -677,7 +727,7 @@ export function createMediaService(options: {
         }
         const shown = shownVariant(row)
         editedSize(shown.width ?? row.width ?? 1, shown.height ?? row.height ?? 1, request.operations)
-        await updateMedia(tx, id, { processing: 'pending', processingError: null }, clock())
+        await updateMedia(tx, id, { processing: 'pending', processingError: null, processingAttempts: 0 }, clock())
         await audit(tx, ctx, {
           actor: { id: auth.account.id, username: auth.account.username },
           action: 'media.edited',
@@ -715,7 +765,7 @@ export function createMediaService(options: {
         )
         const now = clock()
         for (const row of rows) {
-          await updateMedia(tx, row.id, { processing: 'pending', processingError: null }, now)
+          await updateMedia(tx, row.id, { processing: 'pending', processingError: null, processingAttempts: 0 }, now)
         }
         await audit(tx, ctx, {
           actor: { id: auth.account.id, username: auth.account.username },
@@ -824,7 +874,7 @@ export function createMediaService(options: {
     },
 
     async updateFolder(auth, id, request, ctx) {
-      requireUpload(auth)
+      requireOrganize(auth)
       await inTransaction(db, async (tx) => {
         await lockFolders(tx)
         const folder = await findFolder(tx, id)
@@ -851,7 +901,7 @@ export function createMediaService(options: {
     },
 
     async deleteFolder(auth, id, ctx) {
-      requireUpload(auth)
+      requireOrganize(auth)
       await inTransaction(db, async (tx) => {
         const folder = await findFolder(tx, id)
         if (folder === undefined) {

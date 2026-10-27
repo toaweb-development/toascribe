@@ -29,7 +29,7 @@ const Env = z
     TOASCRIBE_TRUSTED_PROXY: z.string().trim().max(200).default(''),
     /** The media library's volume (M1.2): originals and generated sizes. */
     UPLOADS_DIR: z.string().startsWith('/').max(500).default('/var/lib/toascribe/uploads'),
-    /** The cap on one upload in megabytes; the setting upload_max_size_mb cannot go above it, and the proxy enforces the same. */
+    /** The cap on one upload request in MiB; the setting upload_max_size_mb cannot go above it, and the proxy enforces the same. */
     UPLOAD_MAX_SIZE_MB: z.coerce.number().int().min(1).max(4096).default(64),
   })
   .superRefine((env, ctx) => {

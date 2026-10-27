@@ -132,7 +132,7 @@ const deleteRoute = defineRoute({
   tags: [TAG],
   summary: 'Delete a term',
   description:
-    'Its child categories move up to its parent; its posts get its parent category, or, when they are left without any, the ' +
+    'As WordPress: its child categories move up to its parent, and a post left without any category gets the ' +
     `default category. The default category cannot be deleted (409 \`default_term\`). ${STATE_CHANGING_NOTE}`,
   policy: MANAGE,
   request: { params: TermParams },

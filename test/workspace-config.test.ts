@@ -197,9 +197,11 @@ describe('the root scripts', () => {
     }
   })
 
-  it('is what pre-push runs, and what release:check runs with the database and e-mail tests', () => {
-    expect(read('lefthook.yml')).toMatch(/^pre-push:\n(?:\s*#.*\n)*\s+commands:\n\s+check:\n\s+run: pnpm check\b/m)
-    expect(read('lefthook.yml')).toMatch(/'protect-main\.sh':\n\s+runner: bash\n\s+use_stdin: true/)
+  it('is what release:check runs with the database and e-mail tests; no hook is required, protect-main.sh is the only one', () => {
     expect(read('scripts/release-check.sh')).toMatch(/^\s+pnpm check$/m)
+    const hooks = read('lefthook.yml')
+    expect(hooks).toMatch(/'protect-main\.sh':\n\s+runner: bash\n\s+use_stdin: true/)
+    expect(hooks).not.toMatch(/^(commit-msg|pre-commit):/m)
+    expect(hooks).not.toMatch(/pnpm check|commitlint/)
   })
 })

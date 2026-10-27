@@ -140,8 +140,9 @@
 		redir * /admin 308
 	}
 
-	# The two routes that take a file (an upload and a replacement, M1.2) may send up to TOASCRIBE_UPLOAD_MAX_SIZE_MB, the whole
-	# form; the api has the same cap (UPLOAD_MAX_SIZE_MB) and its own 1 MB for every other body. Settings → Media can lower the
+	# The two routes that take a file (an upload and a replacement, M1.2) may send up to TOASCRIBE_UPLOAD_MAX_SIZE_MB MiB, the
+	# whole form. MiB, not MB: Caddy reads MB as 1000 × 1000 bytes, and the api counts 1024 × 1024 (UPLOAD_MAX_SIZE_MB, the same
+	# value; apps/api/src/lib/upload-limit.ts). The api has its own 1 MiB for every other body. Settings → Media can lower the
 	# limit in the api, not raise it.
 	@upload {
 		method POST
@@ -149,7 +150,7 @@
 	}
 	handle @upload {
 		request_body {
-			max_size {$TOASCRIBE_UPLOAD_MAX_SIZE_MB:64}MB
+			max_size {$TOASCRIBE_UPLOAD_MAX_SIZE_MB:64}MiB
 		}
 		reverse_proxy api:3001 {
 			header_up X-Real-IP {client_ip}

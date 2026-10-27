@@ -5,6 +5,7 @@
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { createLocalStorage } from '@toascribe/media'
 import { ContentItem, MediaDetail, MediaFolderListResponse, MediaItem, MediaListResponse } from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
@@ -147,6 +148,36 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect([res.status, await code(res)]).toEqual([status, reason])
     })
 
+    it('counts the cap in MiB, for the whole request as the proxy does, and leaves room for the form', async () => {
+      // This app's cap is 2 MiB: a file may be 2 MiB less 64 KiB, the room for the multipart framing and the other fields.
+      const limit = 2 * 1024 * 1024 - 64 * 1024
+      const list = MediaListResponse.parse(await (await author.get('/api/v1/media?per_page=1')).json())
+      expect(list.upload.maxBytes).toBe(limit)
+      const fits = new Uint8Array(limit)
+      fits.set(f.PDF)
+      expect((await multipart(author, '/api/v1/media', { bytes: fits, name: 'akkurat.pdf' })).status).toBe(201)
+      const over = new Uint8Array(limit + 1)
+      over.set(f.PDF)
+      const refused = await multipart(author, '/api/v1/media', { bytes: over, name: 'for-stor.pdf' })
+      expect([refused.status, await code(refused)]).toEqual([413, 'file_too_large'])
+      // A request above 2 MiB is refused by the body limit before the file is read, exactly where Caddy's 2MiB refuses it.
+      const body = (size: number) =>
+        env.app.request('/api/v1/media', {
+          method: 'POST',
+          body: new Uint8Array(size),
+          headers: {
+            origin: TEST_ORIGIN,
+            'content-type': 'multipart/form-data; boundary=x',
+            'content-length': String(size),
+            ...(author.cookie === undefined ? {} : { cookie: author.cookie }),
+            ...(author.csrfToken === undefined ? {} : { 'x-csrf-token': author.csrfToken }),
+          },
+        })
+      const tooBig = await body(2 * 1024 * 1024 + 1)
+      expect([tooBig.status, await code(tooBig)]).toEqual([413, 'file_too_large'])
+      expect((await body(2 * 1024 * 1024)).status).not.toBe(413)
+    })
+
     it('refuses a file above the upload limit, from the setting as well as from the cap', async () => {
       const big = new Uint8Array(1.5 * 1024 * 1024)
       big.set(f.PDF)
@@ -179,6 +210,28 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       for (const path of ['/uploads/../package.json', '/uploads/%2e%2e/x', '/uploads/2026/10/NONE.png']) {
         expect((await env.client().get(path)).status, path).toBe(404)
       }
+    })
+  })
+
+  describe('the headers of a served file', () => {
+    const FILE_CSP = "default-src 'none'; style-src 'unsafe-inline'; sandbox; frame-ancestors 'none'"
+
+    it('sends the sandbox CSP on /uploads/ and on the file route, and the plain API CSP on JSON', async () => {
+      const item = await upload(author, f.PDF, 'sandkasse.pdf')
+      const pub = await env.client().get(item.originalUrl)
+      expect(pub.status).toBe(200)
+      expect(pub.headers.get('content-security-policy')).toBe(FILE_CSP)
+      expect(pub.headers.get('x-frame-options')).toBe('DENY')
+      expect(pub.headers.get('x-content-type-options')).toBe('nosniff')
+      const own = await author.get(`/api/v1/media/${item.id}/file?size=original`)
+      expect(own.status).toBe(200)
+      expect(own.headers.get('content-security-policy')).toBe(FILE_CSP)
+      const json = await author.get(`/api/v1/media/${item.id}`)
+      expect(json.headers.get('content-security-policy')).toBe("default-src 'none'; frame-ancestors 'none'")
+      // A 404 under /uploads/ is not a file, but still never runs anything.
+      expect(
+        (await env.client().get('/uploads/2026/10/ingen-00000000.png')).headers.get('content-security-policy'),
+      ).toBe(FILE_CSP)
     })
   })
 
@@ -223,6 +276,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
   describe('replace, edit and regenerate', () => {
     it('replaces the file under the same id, with a new key, and removes the old one', async () => {
       const item = await upload(author, f.PNG, 'forste.png')
+      await env.query(`update media set processing = 'ready' where id = $1`, [item.id]) // the worker's sizes are done
       const res = await multipart(author, `/api/v1/media/${item.id}/replace`, { bytes: f.JPEG, name: 'andre.jpg' })
       expect(res.status).toBe(200)
       const replaced = MediaItem.parse(await res.json())
@@ -231,6 +285,88 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect((await env.client().get(item.originalUrl)).status).toBe(404)
       expect((await env.client().get(replaced.originalUrl)).status).toBe(200)
       expect(env.mediaJobs.jobs.at(-1)).toEqual({ kind: 'process', mediaId: item.id })
+    })
+
+    it('waits with a replacement while the worker has the file (an edit pending), and keeps the file as it is', async () => {
+      const item = await upload(author, f.PNG, 'vent.png')
+      await env.query(`update media set processing = 'ready' where id = $1`, [item.id])
+      const edited = await author.post(`/api/v1/media/${item.id}/edit`, { operations: [{ op: 'rotate', degrees: 90 }] })
+      expect(edited.status).toBe(202)
+      const busy = await multipart(author, `/api/v1/media/${item.id}/replace`, { bytes: f.JPEG, name: 'ny.jpg' })
+      expect([busy.status, await code(busy)]).toEqual([409, 'media_busy'])
+      const after = MediaItem.parse(await (await author.get(`/api/v1/media/${item.id}`)).json())
+      expect(after).toMatchObject({ mime: 'image/png', originalUrl: item.originalUrl })
+      // Nothing of the refused file is left in the uploads folder.
+      const year = item.originalUrl.split('/')[2] ?? ''
+      const month = item.originalUrl.split('/')[3] ?? ''
+      expect((await readdir(join(env.uploadsDir, year, month))).filter((name) => name.startsWith('ny-'))).toEqual([])
+      // Once the worker is done, it goes through.
+      await env.query(`update media set processing = 'ready' where id = $1`, [item.id])
+      expect(
+        (await multipart(author, `/api/v1/media/${item.id}/replace`, { bytes: f.JPEG, name: 'ny.jpg' })).status,
+      ).toBe(200)
+    })
+
+    it('refuses to attach an upload to content that does not exist (400, not 500)', async () => {
+      const res = await multipart(
+        author,
+        '/api/v1/media',
+        { bytes: f.PNG, name: 'foreldrelos.png' },
+        { attachedTo: '0198a3c2-0000-7000-8000-0000000000ff' },
+      )
+      expect([res.status, await code(res)]).toEqual([400, 'invalid_attached_to'])
+      const post = ContentItem.parse(
+        await (await author.post('/api/v1/content', { type: 'post', title: 'Vedlegg' })).json(),
+      )
+      const attached = await upload(author, f.PNG, 'vedlagt.png', { attachedTo: post.id })
+      expect(attached.attachedTo).toBe(post.id)
+    })
+
+    it('serves only the current generated files: an address a new run replaced answers 404', async () => {
+      const item = await upload(author, f.PNG, 'versjon.png')
+      const base = item.originalUrl.slice('/uploads/'.length).replace(/\.png$/, '')
+      const size = (version: string) => ({
+        key: `${base}-${version}-150x150.webp`,
+        width: 150,
+        height: 150,
+        size: f.WEBP.length,
+        mime: 'image/webp',
+      })
+      const old = size('0a0a0a0a')
+      const next = size('1b1b1b1b')
+      const storage = createLocalStorage(env.uploadsDir)
+      for (const file of [old, next]) await storage.put(file.key, f.WEBP)
+      const setSizes = (file: typeof old) =>
+        env.query(`update media set variants = $2::jsonb, processing = 'ready' where id = $1`, [
+          item.id,
+          JSON.stringify({ sizes: { thumbnail: file } }),
+        ])
+      await setSizes(old)
+      const served = await env.client().get(`/uploads/${old.key}`)
+      expect(served.status).toBe(200)
+      expect(served.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+      await setSizes(next)
+      expect((await env.client().get(`/uploads/${old.key}`)).status).toBe(404)
+      expect((await env.client().get(`/uploads/${next.key}`)).status).toBe(200)
+      const listed = MediaItem.parse(await (await author.get(`/api/v1/media/${item.id}`)).json())
+      expect(listed.sizes.map((entry) => entry.url)).toEqual([`/uploads/${next.key}`])
+    })
+
+    it('sends why the worker failed as a code, never a stored message', async () => {
+      const item = await upload(author, f.PNG, 'feil.png')
+      const read = async () =>
+        MediaItem.parse(await (await author.get(`/api/v1/media/${item.id}`)).json()).processingError
+      await env.query(`update media set processing = 'failed', processing_error = 'too_many_pixels' where id = $1`, [
+        item.id,
+      ])
+      expect(await read()).toBe('too_many_pixels')
+      await env.query(
+        `update media set processing = 'failed', processing_error = 'ENOENT: /var/lib/toascribe/uploads/x.png' where id = $1`,
+        [item.id],
+      )
+      expect(await read()).toBe('unknown')
+      await env.query(`update media set processing = 'ready' where id = $1`, [item.id])
+      expect(await read()).toBeNull()
     })
 
     it('queues an edit with its steps, and refuses a crop outside the image or an enlargement', async () => {
@@ -288,6 +424,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect(post.media.map((ref) => ref.id)).toEqual([image.id])
       const detail = MediaDetail.parse(await (await author.get(`/api/v1/media/${image.id}`)).json())
       expect(detail.usedBy).toEqual([{ id: post.id, type: 'post', title: 'Med bilde', status: 'draft' }])
+      expect(detail.usedByOthers).toBe(0)
 
       // A post stored before M1.2, with the prototype's version 1 block pointing at the file's address.
       const [legacy] = await env.query<{ id: string }>(
@@ -313,6 +450,41 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
         attrs: { mediaId: image.id, alt: 'Gammel alt', decorative: false },
       })
       expect(read.media.map((ref) => ref.id)).toEqual([image.id])
+    })
+
+    it('names only the content the asker may read, and counts the rest without titles', async () => {
+      const image = await upload(author, f.PNG, 'delt.png')
+      await author.patch(`/api/v1/media/${image.id}`, { alt: 'Delt' })
+      const block = [
+        {
+          id: 'b_img00003',
+          type: 'core/image',
+          version: 2,
+          attrs: { mediaId: image.id, alt: 'Delt', caption: '', decorative: false },
+          children: [],
+        },
+      ]
+      const make = async (client: TestClient, title: string, status: string) => {
+        const res = await client.post('/api/v1/content', { type: 'post', title, status, blocks: block })
+        expect(res.status, await res.clone().text()).toBe(201)
+        return ContentItem.parse(await res.json())
+      }
+      const draft = await make(author, 'Utkast fra forfatteren', 'draft')
+      const secret = await make(editor, 'Privat fra redaktøren', 'private')
+      const open = await make(editor, 'Publisert fra redaktøren', 'publish')
+      // Another author: the published post by title; the draft and the private post only as a number.
+      const forOther = MediaDetail.parse(await (await other.get(`/api/v1/media/${image.id}`)).json())
+      expect(forOther.usedBy.map((use) => use.id)).toEqual([open.id])
+      expect(forOther.usedByOthers).toBe(2)
+      expect(JSON.stringify(forOther)).not.toContain('Privat fra redaktøren')
+      expect(JSON.stringify(forOther)).not.toContain('Utkast fra forfatteren')
+      // The uploader writes the draft, so it is hers to read; an editor reads all three.
+      const forAuthor = MediaDetail.parse(await (await author.get(`/api/v1/media/${image.id}`)).json())
+      expect(forAuthor.usedBy.map((use) => use.id).sort()).toEqual([draft.id, open.id].sort())
+      expect(forAuthor.usedByOthers).toBe(1)
+      const forEditor = MediaDetail.parse(await (await editor.get(`/api/v1/media/${image.id}`)).json())
+      expect(forEditor.usedBy.map((use) => use.id).sort()).toEqual([draft.id, secret.id, open.id].sort())
+      expect(forEditor.usedByOthers).toBe(0)
     })
 
     it('refuses an image without alt text unless it is decorative', async () => {
@@ -342,7 +514,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
   })
 
   describe('folders and settings', () => {
-    it('makes, renames, moves and deletes folders; a deleted folder’s files move to the top', async () => {
+    it('makes folders for upload_files, renames and deletes them for edit_others_posts; files move to the top', async () => {
       const made = MediaFolderListResponse.parse(
         await (await author.post('/api/v1/media-folders', { name: 'Ferie' })).json(),
       )
@@ -354,7 +526,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       expect(await code(await author.post('/api/v1/media-folders', { name: 'ferie' }))).toBe('folder_exists')
       expect(
         await code(
-          await author.patch(`/api/v1/media-folders/${holiday}`, {
+          await editor.patch(`/api/v1/media-folders/${holiday}`, {
             parentId: nested.folders.find((x) => x.name === 'Fjell')?.id ?? null,
           }),
         ),
@@ -362,7 +534,14 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the media library (needs TEST_
       const file = await upload(author, f.PNG, 'i-mappe.png', { folderId: holiday })
       const inFolder = MediaListResponse.parse(await (await author.get(`/api/v1/media?folder=${holiday}`)).json())
       expect(inFolder.items.map((item) => item.id)).toEqual([file.id])
-      expect((await author.delete(`/api/v1/media-folders/${holiday}`)).status).toBe(204)
+      // An author makes folders and puts files in them, but renaming, moving and deleting needs edit_others_posts.
+      expect((await author.patch(`/api/v1/media-folders/${holiday}`, { name: 'Sommer' })).status).toBe(403)
+      expect((await author.delete(`/api/v1/media-folders/${holiday}`)).status).toBe(403)
+      const renamed = MediaFolderListResponse.parse(
+        await (await editor.patch(`/api/v1/media-folders/${holiday}`, { name: 'Sommer' })).json(),
+      )
+      expect(renamed.folders.find((folder) => folder.id === holiday)?.name).toBe('Sommer')
+      expect((await editor.delete(`/api/v1/media-folders/${holiday}`)).status).toBe(204)
       const moved = MediaItem.parse((await (await author.get(`/api/v1/media/${file.id}`)).json()) as unknown)
       expect(moved.folderId).toBeNull()
     })

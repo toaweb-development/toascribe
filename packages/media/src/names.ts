@@ -41,7 +41,19 @@ export function originalKey(
   return `${folder}${readableName(fileName)}-${random}.${ext}`
 }
 
-/** The key of a generated file beside an original: `<original without ext>-<suffix>.webp` (`-300x200`, `-scaled`, `-e1730000000000`). */
+/** The key of a generated file beside an original: `<original without ext>-<suffix>.webp`. */
 export function derivedKey(original: string, suffix: string, ext = 'webp'): string {
   return `${original.replace(/\.[^./]*$/, '')}-${suffix}.${ext}`
 }
+
+/**
+ * The key of a size or the `-scaled` copy: `<original without ext>-<version>-<name>.webp`, where the version is new for every run of
+ * the worker (`randomPart()`). /uploads/ serves a public file `immutable` for a year, so a key is never used for other pixels: after
+ * an edit, a replacement or new sizes every generated file has a new address, and the old ones are removed (they answer 404).
+ */
+export function versionedKey(original: string, version: string, name: string): string {
+  return derivedKey(original, `${version}-${name}`)
+}
+
+/** The end of a generated key: `-<version>-<WxH|scaled>.webp`, or an edited image's `-e<milliseconds>.webp`. */
+export const GENERATED_SUFFIX = /-(?:[0-9a-f]{8}-(?:\d+x\d+|scaled)|e\d{13})\.webp$/

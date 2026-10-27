@@ -1042,7 +1042,7 @@
       "description": "Beskrivelsen er som standard ikke fremtredende, men noen temaer kan vise den."
     },
     "confirm": {
-      "category": "«{name}» slettes. Innleggene i den får den overordnede kategorien, eller «Ukategorisert» hvis de ikke har noen annen.",
+      "category": "«{name}» slettes. Innlegg som ikke har noen annen kategori, får «Ukategorisert», og underkategoriene flyttes opp ett nivå.",
       "tag": "«{name}» slettes og fjernes fra innleggene som har det.",
       "many": "Termen slettes. | De {n} termene slettes."
     },
@@ -1066,7 +1066,17 @@
     },
     "processing": {
       "pending": "Bildestørrelsene lages …",
-      "failed": "Bildestørrelsene kunne ikke lages."
+      "failed": "Bildestørrelsene kunne ikke lages.",
+      "failedShort": "Feilet",
+      "reason": "Årsak: {reason}",
+      "reasons": {
+        "tooManyPixels": "bildet har flere piksler enn nettstedet tillater.",
+        "unreadable": "bildet kan ikke leses; filen kan være skadet.",
+        "missingFile": "filen finnes ikke lenger på serveren.",
+        "workerStopped": "behandlingen stoppet hver gang, trolig fordi bildet krever for mye minne.",
+        "unknown": "en ukjent feil. Se loggen til arbeideren (worker)."
+      },
+      "retry": "Bildet er prøvd tre ganger. «Lag bildestørrelser på nytt» prøver igjen."
     },
     "errors": {
       "fileTooLarge": "Filen er større enn maksimal filstørrelse for opplasting.",
@@ -1079,6 +1089,7 @@
       "folderExists": "Det finnes allerede en mappe med dette navnet her.",
       "fetchFailed": "Filen kunne ikke hentes fra nettadressen.",
       "notEditable": "Bare bilder kan redigeres.",
+      "invalidAttachedTo": "Innlegget eller siden filen skulle lastes opp til, finnes ikke lenger.",
       "busy": "Bildet behandles fortsatt. Prøv igjen om litt.",
       "invalidEdit": "Utsnittet må ligge inne i bildet, og et bilde kan bare skaleres ned.",
       "aboveUploadCap": "Grensen kan ikke være høyere enn den største filstørrelsen serveren tar imot.",
@@ -1158,6 +1169,8 @@
       "copyFailed": "Adressen kunne ikke kopieres. Merk den og kopier den selv.",
       "usedBy": "Brukes på",
       "unused": "Filen brukes ikke i noe innhold.",
+      "usedByOthers": "og {n} annet | og {n} andre",
+      "usedOnlyByOthers": "Filen brukes i {n} innlegg eller side du ikke har tilgang til. | Filen brukes i {n} innlegg eller sider du ikke har tilgang til.",
       "inTrash": "Papirkurv",
       "editImage": "Rediger bilde",
       "replace": "Erstatt",
@@ -1169,6 +1182,7 @@
       "deleteTitle": "Slette filen permanent?",
       "deleteConfirm": "Du er i ferd med å slette denne filen permanent fra nettstedet. Handlingen kan ikke angres.",
       "deleteUsed": "Filen brukes på {list}. Slettes den, mangler bildet der. Handlingen kan ikke angres. | Filen brukes på {list}. Slettes den, mangler bildet der. Handlingen kan ikke angres. | Filen brukes på {n} steder: {list}. Slettes den, mangler bildet der. Handlingen kan ikke angres.",
+      "deleteUsedHidden": "Filen brukes i {n} innlegg eller side du ikke har tilgang til. Slettes den, mangler bildet der. Handlingen kan ikke angres. | Filen brukes i {n} innlegg eller sider du ikke har tilgang til. Slettes den, mangler bildet der. Handlingen kan ikke angres.",
       "save": "Lagre",
       "saved": "Endringene er lagret.",
       "close": "Lukk"

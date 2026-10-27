@@ -1,5 +1,6 @@
 // The media library's queries (M1.2, typescript §8): `media`, `media_folder`, and the media references in `content_ref`.
 import { schema } from '@toascribe/db'
+import { GENERATED_SUFFIX } from '@toascribe/media'
 import { MediaVariantsData } from '@toascribe/shared'
 import type { MediaProcessing, MediaVariants, MediaVisibility } from '@toascribe/shared'
 import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm'
@@ -171,14 +172,15 @@ export async function findMedia(
 
 /**
  * The file a key under /uploads/ belongs to: the original with that key, or the original whose generated file it is
- * (`<original without ext>-<suffix>.webp`, found by the original key's prefix and then checked against its variants).
+ * (`<original without ext>-<version>-<size>.webp` or `-e<ms>.webp`, found by the original key's prefix and then checked against its
+ * current variants, so the address of a file that an edit or new sizes replaced answers 404).
  */
 export async function findMediaByKey(db: Executor, key: string): Promise<MediaRow | undefined> {
   const exact = await db.select(columns).from(media).where(eq(media.storageKey, key)).limit(1)
   if (exact[0] !== undefined) {
     return normalize(exact[0])
   }
-  const base = key.replace(/-(\d+x\d+|scaled|e\d+)\.webp$/, '')
+  const base = key.replace(GENERATED_SUFFIX, '')
   if (base === key) {
     return undefined
   }
@@ -231,7 +233,12 @@ export async function insertMedia(db: Executor, values: MediaValues, at: Date): 
 }
 
 export type MediaChanges = Partial<
-  MediaValues & { readonly variants: MediaVariantsData; readonly processingError: string | null }
+  MediaValues & {
+    readonly variants: MediaVariantsData
+    readonly processingError: string | null
+    /** Back to 0 whenever the file is handed to the worker anew (MEDIA_MAX_ATTEMPTS). */
+    readonly processingAttempts: number
+  }
 >
 
 export async function updateMedia(db: Executor, id: string, changes: MediaChanges, at: Date): Promise<void> {
@@ -263,13 +270,24 @@ export async function accountNames(db: Executor, ids: readonly string[]): Promis
   return new Map(rows.map((row) => [row.id, row.displayName]))
 }
 
-/** «Brukes på» (K-122): the content whose blocks use the file, newest first. */
-export function mediaUsage(
-  db: Executor,
-  mediaId: string,
-): Promise<{ id: string; type: string; title: string; status: string }[]> {
+export interface MediaUsageRow {
+  readonly id: string
+  readonly type: string
+  readonly title: string
+  readonly status: string
+  readonly statusBeforeTrash: string | null
+}
+
+/** «Brukes på» (K-122): the content whose blocks use the file, by title. The service shows only what the asker may read. */
+export function mediaUsage(db: Executor, mediaId: string): Promise<MediaUsageRow[]> {
   return db
-    .selectDistinct({ id: content.id, type: content.type, title: content.title, status: content.status })
+    .selectDistinct({
+      id: content.id,
+      type: content.type,
+      title: content.title,
+      status: content.status,
+      statusBeforeTrash: content.statusBeforeTrash,
+    })
     .from(contentRef)
     .innerJoin(content, eq(content.id, contentRef.contentId))
     .where(and(eq(contentRef.kind, 'media'), eq(contentRef.targetMediaId, mediaId)))
