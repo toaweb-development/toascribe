@@ -144,6 +144,7 @@ describe('the OpenAPI document', () => {
         '/api/v1/public/feed',
         '/api/v1/public/global-sets/{slug}',
         '/api/v1/public/menus/{location}',
+        '/api/v1/public/oembed',
         '/api/v1/public/preview',
         '/api/v1/public/query',
         '/api/v1/public/resolve',

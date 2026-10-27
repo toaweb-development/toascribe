@@ -223,3 +223,30 @@ export function isSafeEmbedLink(address: string): boolean {
     return false
   }
 }
+
+/** GET /public/oembed?url= (the site as a provider, M1.6): which address. */
+export const PublicOEmbedQuery = z.strictObject({
+  url: z.string().min(1).max(2000),
+  format: z.enum(['json', 'xml']).optional(),
+  maxwidth: z.string().max(10).optional(),
+  maxheight: z.string().max(10).optional(),
+})
+
+/**
+ * The site's oEmbed answer for its own published, public content: a `link` (title, author, the site, a thumbnail), as oEmbed 1.0
+ * defines it. `cacheTags` is for the site's cache and is not passed on.
+ */
+export const PublicOEmbedResponse = z.object({
+  version: z.literal('1.0'),
+  type: z.literal('link'),
+  title: z.string(),
+  author_name: z.string().optional(),
+  author_url: z.string().optional(),
+  provider_name: z.string(),
+  provider_url: z.string(),
+  thumbnail_url: z.string().optional(),
+  thumbnail_width: z.int().optional(),
+  thumbnail_height: z.int().optional(),
+  cacheTags: z.array(z.string()),
+})
+export type PublicOEmbedResponse = z.infer<typeof PublicOEmbedResponse>

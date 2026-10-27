@@ -12,6 +12,8 @@ import {
   PublicQuery,
   PublicSettings,
   PublicFeedQuery,
+  PublicOEmbedQuery,
+  PublicOEmbedResponse,
   PublicSitemapIndex,
   PublicSitemapPage,
   SitemapKind,
@@ -85,6 +87,25 @@ const feedRoute = defineRoute({
     200: json(PublicFeedResponse, 'The feed, or where it moved'),
     400: errorResponse('Invalid query'),
     404: errorResponse('No feed at that address'),
+  },
+})
+
+const oembedRoute = defineRoute({
+  method: 'get',
+  path: '/public/oembed',
+  tags: [TAG],
+  summary: 'The site as an oEmbed provider (M1.6, K-225)',
+  description:
+    "For the site's `/oembed?url=`: a `link` answer (oEmbed 1.0) for this site's own published, public content without a " +
+    'password; 404 for any other address (another host, a draft, a private or protected item, an archive). JSON only: ' +
+    '`format=xml` is 501, as oEmbed asks.',
+  policy: PUBLIC,
+  request: { query: PublicOEmbedQuery },
+  responses: {
+    200: json(PublicOEmbedResponse, 'The answer'),
+    400: errorResponse('Invalid query'),
+    404: errorResponse('No content of this site at that address'),
+    501: errorResponse('Only JSON'),
   },
 })
 
@@ -200,6 +221,11 @@ export function createPublicApp(services: Services): OpenAPIHono<AppEnv> {
   return new OpenAPIHono<AppEnv>()
     .openapi(settingsRoute, async (c) => {
       return c.json(await services.public.settings(), 200)
+    })
+    .openapi(oembedRoute, async (c) => {
+      const query = c.req.valid('query')
+      if (query.format === 'xml') throw new AppError(501, 'not_implemented', 'JSON only')
+      return c.json(await services.public.oembed(query.url), 200)
     })
     .openapi(sitemapIndexRoute, async (c) => c.json(await services.public.sitemapIndex(), 200))
     .openapi(sitemapPageRoute, async (c) => {

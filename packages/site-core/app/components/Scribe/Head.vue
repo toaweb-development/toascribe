@@ -90,6 +90,23 @@ useHead({
   style: [{ key: 'scribe-customize', id: 'scribe-customize', textContent: () => customize.value.css }],
 })
 useHead({ link: linkTags })
+// The site as an oEmbed provider (M1.6): published, public content without a password names its `/oembed` answer.
+const oembedLink = computed(() => {
+  const canonical = head.value?.links.find((link) => link.rel === 'canonical')?.href
+  const item = content.value
+  if (canonical === undefined || item === undefined || item.protected || item.locked || preview.value) return []
+  const origin = settings.value?.origin ?? ''
+  return [
+    {
+      key: 'scribe-oembed',
+      rel: 'alternate' as const,
+      type: 'application/json+oembed',
+      href: `${origin}/oembed?${new URLSearchParams({ url: canonical }).toString()}`,
+      title: head.value?.title ?? '',
+    },
+  ]
+})
+useHead({ link: oembedLink })
 </script>
 
 <template>

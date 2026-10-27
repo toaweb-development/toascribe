@@ -74,6 +74,7 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'GET /api/v1/public/settings': 'public',
   'GET /api/v1/public/resolve': 'public',
   'GET /api/v1/public/feed': 'public',
+  'GET /api/v1/public/oembed': 'public',
   'GET /api/v1/public/sitemap': 'public',
   'GET /api/v1/public/sitemap/:kind/:page': 'public',
   'GET /api/v1/public/query': 'public',

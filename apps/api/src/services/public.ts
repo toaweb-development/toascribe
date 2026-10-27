@@ -38,6 +38,7 @@ import type {
   PublicTerm,
   PublicFeed,
   PublicFeedResponse,
+  PublicOEmbedResponse,
   PublicSitemapIndex,
   PublicSitemapPage,
   SitemapKind,
@@ -134,6 +135,8 @@ export interface PublicService {
   resolve(path: string, visitor: Visitor, options?: { readonly feed?: boolean }): Promise<ResolveResponse>
   /** The RSS feed under an address (K-222): `/` for the site's, an archive's address for its own. 404 when it has none. */
   feed(path: string): Promise<PublicFeedResponse>
+  /** The site as an oEmbed provider: its own published, public, unprotected content only; 404 for anything else. */
+  oembed(url: string): Promise<PublicOEmbedResponse>
   /** The sitemap's index (K-223). 404 when the site asks search engines not to index it. */
   sitemapIndex(): Promise<PublicSitemapIndex>
   /** One file of the sitemap; 404 past its last page, and when the site asks not to be indexed. */
@@ -973,6 +976,42 @@ export function createPublicService(options: {
         ],
       }
       return answer
+    },
+
+    async oembed(url) {
+      const origin = new URL(options.publicOrigin).origin
+      let address: URL
+      try {
+        address = new URL(url)
+      } catch {
+        throw new NotFoundError()
+      }
+      // This site's addresses only (the origin from PUBLIC_ORIGIN, never a request's Host), and nothing a password or a status hides.
+      if (address.origin !== origin || address.username !== '' || address.password !== '') throw new NotFoundError()
+      const found = await service.resolve(`${address.pathname}${address.search}`, {})
+      if (found.kind !== 'single' && found.kind !== 'page' && found.kind !== 'front-page') throw new NotFoundError()
+      const { content } = found
+      if (content.protected || content.locked) throw new NotFoundError()
+      const settings = await settingsOf()
+      const author = content.authors[0]
+      const image = content.featuredImage
+      const absolute = (path: string) => (/^https?:\/\//.test(path) ? path : `${origin}${path}`)
+      return {
+        version: '1.0',
+        type: 'link',
+        title: content.seo.title || content.title,
+        ...(author === undefined ? {} : { author_name: author.displayName, author_url: absolute(author.path) }),
+        provider_name: settings.blogname || address.hostname,
+        provider_url: `${origin}/`,
+        ...(image === null
+          ? {}
+          : {
+              thumbnail_url: absolute(image.url),
+              ...(image.width === null ? {} : { thumbnail_width: image.width }),
+              ...(image.height === null ? {} : { thumbnail_height: image.height }),
+            }),
+        cacheTags: found.cacheTags,
+      }
     },
 
     async sitemapIndex() {

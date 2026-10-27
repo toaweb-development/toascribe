@@ -418,6 +418,7 @@ const CASES: readonly MatrixCase[] = [
       ['GET /api/v1/public/settings', '/api/v1/public/settings', 200],
       ['GET /api/v1/public/resolve', '/api/v1/public/resolve?path=%2Fingen-slik%2F', 200],
       ['GET /api/v1/public/feed', '/api/v1/public/feed?path=%2F', 200],
+      ['GET /api/v1/public/oembed', '/api/v1/public/oembed?url=https%3A%2F%2Fevil.example%2F', 404],
       ['GET /api/v1/public/sitemap', '/api/v1/public/sitemap', 200],
       ['GET /api/v1/public/sitemap/:kind/:page', '/api/v1/public/sitemap/pages/1', 200],
       ['GET /api/v1/public/query', '/api/v1/public/query', 200],

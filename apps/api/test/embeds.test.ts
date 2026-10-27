@@ -17,6 +17,7 @@ import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
 import { setSetting } from './flows.ts'
 import { TEST_PASSWORD, startAuthApp } from './harness.ts'
 import type { AuthTestApp, TestClient } from './harness.ts'
+import { TEST_ORIGIN } from './helpers.ts'
 import * as f from './media-fixtures.ts'
 import type { EmbedFetch } from '../src/services/embeds.ts'
 import { MAX_EMBEDS_PER_SAVE } from '../src/services/embeds.ts'
@@ -148,6 +149,46 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('«Innbygging» on save (needs 
   it('stores no thumbnail for an account that may not upload, and keeps the player', async () => {
     const item = await save(contributor, [embed('https://www.youtube.com/shorts/dQw4w9WgXcQ')])
     expect(attrsOf(item)['thumbnailId']).toBe('')
+  })
+
+  it("answers as a provider for this site's own published, public content only", async () => {
+    const make = async (body: Record<string, unknown>) => {
+      const res = await admin.post('/api/v1/content', { type: 'post', ...body })
+      expect(res.status, await res.clone().text()).toBe(201)
+      return ContentItem.parse(await res.json())
+    }
+    const open = await make({ title: 'Åpent innlegg', slug: 'apent', status: 'publish' })
+    await make({ title: 'Kladd', slug: 'kladd-oembed', status: 'draft' })
+    await make({ title: 'Privat', slug: 'privat-oembed', status: 'private' })
+    await make({ title: 'Låst', slug: 'last-oembed', status: 'publish', password: 'sesam' })
+    const ask = (url: string, format?: string) =>
+      env
+        .client({ ip: '203.0.113.95' })
+        .get(
+          `/api/v1/public/oembed?${new URLSearchParams({ url, ...(format === undefined ? {} : { format }) }).toString()}`,
+        )
+    const res = await ask(`${TEST_ORIGIN}/apent/`)
+    expect(res.status, await res.clone().text()).toBe(200)
+    expect(await res.json()).toMatchObject({
+      version: '1.0',
+      type: 'link',
+      title: 'Åpent innlegg',
+      provider_url: `${TEST_ORIGIN}/`,
+      author_url: expect.stringContaining(`${TEST_ORIGIN}/author/`) as unknown,
+    })
+    expect(open.id).toBeDefined()
+    for (const url of [
+      `${TEST_ORIGIN}/kladd-oembed/`,
+      `${TEST_ORIGIN}/privat-oembed/`,
+      `${TEST_ORIGIN}/last-oembed/`,
+      'https://evil.example/apent/',
+      `${TEST_ORIGIN}/category/uncategorized/`,
+      `${TEST_ORIGIN}/finnes-ikke/`,
+      'ikke en adresse',
+    ]) {
+      expect((await ask(url)).status, url).toBe(404)
+    }
+    expect((await ask(`${TEST_ORIGIN}/apent/`, 'xml')).status).toBe(501)
   })
 
   it('previews an address for the editor, and refuses one who may not write', async () => {
