@@ -70,6 +70,11 @@ export const MAINTENANCE_USAGE = `  maintenance on [--message <text>] [--retry-a
                          --message as its text; accounts with manage_options see the site, and the api answers, so an administrator
                          can sign in and turn it off. A restore and a migration turn it on and off by themselves. Needs DATABASE_URL.`
 
+export const CHECK_UPDATE_USAGE = `  check-update [--format table|json]     (also: core check-update)
+                         Looks for a newer release now (the public image tags on ghcr.io; nothing about the site is sent) and
+                         stores the answer for «Oppdateringer». Off with TOASCRIBE_UPDATE_CHECK=off or the update_check setting
+                         (exit 1, nothing asked). Needs DATABASE_URL.`
+
 export const BACKUP_USAGE = `  backup create [--include-secrets] [--format table|json]
                          One file in the backups volume (BACKUPS_DIR): the database, the uploads and a manifest with a sha256 per
                          file, mode 0600. The keys are left out; --include-secrets keeps them, encrypted with age to [backup]
@@ -108,6 +113,7 @@ ${USER_MFA_RESET_USAGE}
 ${MEDIA_REGENERATE_USAGE}
 ${MAINTENANCE_USAGE}
 ${BACKUP_USAGE}
+${CHECK_UPDATE_USAGE}
 ${DB_MIGRATE_USAGE}
 
 ${EXIT_CODES_USAGE}

@@ -1,4 +1,5 @@
 import type { MailProducer } from '@toascribe/db'
+import type { UpdateSource } from '@toascribe/updates'
 import type { Logger } from 'pino'
 
 import type { EnvSource } from './config.ts'
@@ -16,4 +17,6 @@ export interface CommandOptions {
   readonly prompt?: Prompter
   /** The mail queue the commands that send a notice use. Defaults to a pg-boss producer on DATABASE_URL, stopped when the command ends. */
   readonly mail?: MailProducer
+  /** Where `check-update` looks for releases. Defaults to ghcr.io; tests pass stored answers. */
+  readonly updateSource?: UpdateSource
 }

@@ -23,6 +23,7 @@
     "@toascribe/install": "workspace:*",
     "@toascribe/media": "workspace:*",
     "@toascribe/shared": "workspace:*",
+    "@toascribe/updates": "workspace:*",
     "drizzle-orm": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"

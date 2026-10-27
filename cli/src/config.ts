@@ -131,6 +131,18 @@ const SecretValues = {
   TOASCRIBE_SIGNING_KEY: z.string().default(''),
 }
 
+/** `toa check-update` (M1.7, K-290): `off` turns the update check off on this server, whatever the setting says. */
+const UpdateCheckEnv = AppDatabaseEnv.extend({
+  TOASCRIBE_UPDATE_CHECK: z.preprocess((value) => (value === '' ? undefined : value), z.enum(['on', 'off']).optional()),
+})
+export type UpdateCheckConfig = z.infer<typeof UpdateCheckEnv>
+
+export function loadUpdateCheckConfig(env: EnvSource = process.env): UpdateCheckConfig {
+  const parsed = UpdateCheckEnv.safeParse(env)
+  if (!parsed.success) throw new ConfigError(parsed.error.issues)
+  return parsed.data
+}
+
 const BackupEnv = AppDatabaseEnv.extend(BackupPaths)
 export type BackupConfig = z.infer<typeof BackupEnv>
 

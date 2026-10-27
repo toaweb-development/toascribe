@@ -3,6 +3,7 @@
 import { coreGenEnv, coreInstall, coreIsInstalled, coreSetupToken } from './commands/core.ts'
 import { devSeedTom } from './commands/dev-seed.ts'
 import { backup, dbMigrate } from './commands/backup.ts'
+import { checkUpdate } from './commands/check-update.ts'
 import { maintenance } from './commands/maintenance.ts'
 import { mediaRegenerate } from './commands/media.ts'
 import { userCreate, userMfaReset, userResetLoginLimit, userResetPassword } from './commands/user.ts'
@@ -51,6 +52,12 @@ export async function run(argv: readonly string[], version: string, options: Com
   }
   if (command === 'core' && rest[0] === 'update') {
     return await dbMigrate(rest.slice(1), options, 'core update')
+  }
+  if (command === 'check-update') {
+    return await checkUpdate(rest, version, options)
+  }
+  if (command === 'core' && rest[0] === 'check-update') {
+    return await checkUpdate(rest.slice(1), version, options)
   }
   if (command === 'maintenance') {
     return await maintenance(rest, options)
