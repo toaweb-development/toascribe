@@ -178,7 +178,8 @@ export function createEmbedService(options: {
     const cached = await fromCache(key)
     if (cached?.fresh === true) return { key, data: cached.data }
     const asked = await ask(provider, key)
-    if (asked === undefined) return undefined
+    // The provider did not answer (or not with something that passes): an expired answer still shows the player it checked.
+    if (asked === undefined) return cached === undefined ? undefined : { key, data: cached.data }
     // A new answer keeps the thumbnail already stored for the address: one media item per address, not one a day.
     const data = { ...asked, thumbnailId: cached?.data.thumbnailId ?? null }
     await keep(key, data)

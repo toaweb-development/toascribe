@@ -109,6 +109,10 @@ export default defineNuxtConfig({
         'style-src-attr': ["'unsafe-hashes'", ...ADMIN_STYLE_ATTRIBUTES.map(({ value }) => sha256(value))],
       },
       xFrameOptions: 'DENY',
+      // «Tilpass» frames the site, and under a COEP a same-origin frame must send one of its own; the site sends `unsafe-none`
+      // since M1.6 (a provider's player would be blocked otherwise). The admin is one app (a header cannot change per screen), it
+      // uses nothing that needs cross-origin isolation, and it loads nothing from another origin (CSP above), so it sends none.
+      crossOriginEmbedderPolicy: 'unsafe-none',
     },
   },
 

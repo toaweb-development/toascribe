@@ -86,6 +86,8 @@ Since M1.6 the site also differs for «Innbygging» (K-225): `frame-src` is adde
 from the hosts the api lists (`PublicSettings.embed.frameHosts`: the fixed providers' hosts in `shared/oembed.ts` and the Mastodon
 instances in «Personvern»), never `*` or a scheme; `Cross-Origin-Embedder-Policy: unsafe-none` (a provider's player sends no COEP of
 its own, so credentialless or require-corp would block every player); and `fullscreen` for the players' hosts in `Permissions-Policy`.
+The admin sends `Cross-Origin-Embedder-Policy: unsafe-none` too: «Tilpass» frames the site, a same-origin frame under a COEP must send one,
+and the admin is one app whose header cannot change per screen.
 No provider script runs on the site: every player is an iframe whose address is checked again before it is drawn (`isEmbedFrame`).
 
 The admin also sets `style-src-attr` with `'unsafe-hashes'` and the hashes of the inline style strings that Nuxt UI and Reka UI

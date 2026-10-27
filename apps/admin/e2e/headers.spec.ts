@@ -76,6 +76,8 @@ test('the other security headers, and a page that is never cached', async ({ req
   expect(headers['x-frame-options']).toBe('DENY')
   expect(headers['x-robots-tag']).toBe('noindex, nofollow')
   expect(headers['permissions-policy']).toContain('camera=()')
+  // No cross-origin isolation: «Tilpass» frames the site, which sends none (M1.6, players from other services).
+  expect(headers['cross-origin-embedder-policy']).toBe('unsafe-none')
   // Plain http (and the proxy does not trust a forged X-Forwarded-Proto): no HSTS.
   expect(headers['strict-transport-security']).toBeUndefined()
   const forged = await request.get('/admin/login', { headers: { 'X-Forwarded-Proto': 'https' } })
