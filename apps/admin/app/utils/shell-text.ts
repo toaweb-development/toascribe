@@ -56,6 +56,8 @@ export function menuLabel({ t, te }: Translator, key: string): string {
       return t('menu.settingsReading')
     case 'menu.settingsMedia':
       return t('menu.settingsMedia')
+    case 'menu.settingsPermalinks':
+      return t('menu.settingsPermalinks')
     case 'menu.settingsPrivacy':
       return t('menu.settingsPrivacy')
     default:

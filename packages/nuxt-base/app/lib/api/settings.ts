@@ -1,12 +1,14 @@
 import {
   ConfirmAdminEmailResponse,
   GeneralSettingsResponse,
+  PermalinkSettingsResponse,
   PrivacySettingsResponse,
   ReadingSettingsResponse,
   WritingSettingsResponse,
 } from '@toascribe/shared'
 import type {
   UpdateGeneralSettingsRequest,
+  UpdatePermalinkSettingsRequest,
   UpdatePrivacySettingsRequest,
   UpdateReadingSettingsRequest,
   UpdateWritingSettingsRequest,
@@ -33,6 +35,9 @@ export function createSettingsApi(api: ApiCall) {
     reading: async () => ReadingSettingsResponse.parse(await api(`${BASE}/reading`)),
     updateReading: async (request: UpdateReadingSettingsRequest) =>
       ReadingSettingsResponse.parse(await api(`${BASE}/reading`, { method: 'PATCH', body: request })),
+    permalinks: async () => PermalinkSettingsResponse.parse(await api(`${BASE}/permalinks`)),
+    updatePermalinks: async (request: UpdatePermalinkSettingsRequest) =>
+      PermalinkSettingsResponse.parse(await api(`${BASE}/permalinks`, { method: 'PATCH', body: request })),
     privacy: async () => PrivacySettingsResponse.parse(await api(`${BASE}/privacy`)),
     updatePrivacy: async (request: UpdatePrivacySettingsRequest) =>
       PrivacySettingsResponse.parse(await api(`${BASE}/privacy`, { method: 'PATCH', body: request })),

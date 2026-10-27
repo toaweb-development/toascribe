@@ -69,3 +69,31 @@ test('Personvern: the chosen page is linked in the footer once it is published',
   const footer = page.getByRole('contentinfo')
   await expect(footer.getByRole('link', { name: 'Personvernerklæring' })).toBeVisible()
 })
+
+test('Permalenker: a new structure, and an old link that still leads to the post', async ({ page }) => {
+  await signIn(page, admin)
+  const title = `Lenket ${uniqueName('perma')}`
+  await page.goto('/admin/posts/new')
+  await page.getByRole('textbox', { name: 'Tittel', exact: true }).fill(title)
+  await page.getByRole('button', { name: 'Publiser', exact: true }).click()
+  await expect(page.getByText('Publisert.').first()).toBeVisible()
+  await page.goto('/')
+  const oldLink = await page.getByRole('link', { name: title }).first().getAttribute('href')
+  expect(oldLink).toMatch(/^\/[^/]+\/$/)
+
+  try {
+    await page.goto('/admin/settings/permalinks')
+    await expect(page.getByRole('heading', { name: 'Permalenkeinnstillinger' })).toBeVisible()
+    await expectNoAxeViolations(page, 'Settings → Permalinks')
+    await page.getByRole('radio', { name: 'Dag og navn' }).check()
+    await page.getByRole('button', { name: 'Lagre endringer' }).click()
+    await expect(page.getByText('Innstillingene er lagret.')).toBeVisible()
+
+    const answer = await page.goto(oldLink ?? '/')
+    expect(answer?.status()).toBe(200)
+    await expect(page).toHaveURL(/\/\d{4}\/\d{2}\/\d{2}\/[^/]+\/$/)
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+  } finally {
+    await setSetting('permalink_structure', '/%postname%/')
+  }
+})

@@ -397,7 +397,8 @@
     "settingsGeneral": "Generelt",
     "settingsWriting": "Skriving",
     "settingsReading": "Lesing",
-    "settingsPrivacy": "Personvern"
+    "settingsPrivacy": "Personvern",
+    "settingsPermalinks": "Permalenker"
   },
   "notices": {
     "emailNotVerified": "E-post fra nettstedet er ikke testet. Passordlenker og bekreftelser kommer kanskje ikke fram før en testmelding har gått gjennom. Innstillingene for e-post kommer i en senere versjon.",
@@ -1533,6 +1534,24 @@
       "pageHelp": "En side som ikke er publisert, lenkes ikke før den er publisert.",
       "create": "Opprett ny personvernside",
       "newTitle": "Personvernerklæring"
+    },
+    "permalinks": {
+      "title": "Permalenkeinnstillinger",
+      "intro": "Velg hvordan adressene til innleggene skal se ut. Gamle adresser sendes videre til de nye, så lenker som er delt, fortsetter å virke.",
+      "common": "Vanlige innstillinger",
+      "plain": "Enkel",
+      "day": "Dag og navn",
+      "month": "Måned og navn",
+      "numeric": "Numerisk",
+      "postname": "Innleggsnavn",
+      "custom": "Egendefinert struktur",
+      "structure": "Struktur",
+      "structureHelp": "Må inneholde %postname% eller %post_id%. Tom struktur er «Enkel».",
+      "tags": "Tilgjengelige merker",
+      "optional": "Valgfritt",
+      "optionalHelp": "Du kan bruke egne prefikser for kategori- og stikkordadressene. Tomt gir category og tag.",
+      "categoryBase": "Kategoribase",
+      "tagBase": "Stikkordbase"
     }
   }
 }
