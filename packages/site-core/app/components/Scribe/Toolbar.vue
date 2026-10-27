@@ -19,6 +19,10 @@ if (auth.session.value.status === 'unknown') {
   else auth.session.value = { status: 'anonymous' }
 }
 
+// Maintenance mode (M1.7): an account that sees the site anyway is told, as WordPress' admin bar does.
+const settings = useSettings()
+const maintenanceOn = computed(() => settings.value?.maintenance.enabled === true)
+
 const account = computed(() => (auth.session.value.status === 'authenticated' ? auth.session.value.account : undefined))
 const editPath = computed(() => {
   const item = content.value
@@ -35,6 +39,9 @@ const editPath = computed(() => {
     <ul>
       <li>
         <a href="/admin/">{{ t('scribe.toolbar.dashboard') }}</a>
+      </li>
+      <li v-if="maintenanceOn" class="scribe-toolbar-notice">
+        <span role="status">{{ t('scribe.maintenance.notice') }}</span>
       </li>
       <li v-if="editPath">
         <a :href="editPath">{{ t('scribe.toolbar.edit') }}</a>

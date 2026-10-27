@@ -21,6 +21,8 @@ export interface SeoInput {
     readonly date: (date: string) => string
     readonly search: (query: string) => string
     readonly notFound: string
+    /** The maintenance page's title (M1.7). */
+    readonly maintenance: string
   }
 }
 
@@ -91,6 +93,7 @@ export function seoHead(input: SeoInput): SeoHead {
     own = input.labels.date([archive.year, archive.month, archive.day].filter((part) => part !== null).join('-'))
   else if (archive?.type === 'search') own = input.labels.search(archive.query)
   else if (input.kind === '404') own = input.labels.notFound
+  else if (input.kind === 'maintenance') own = input.labels.maintenance
   // The SEO panel's title goes first, also on a static front page («Tittel – Nettstedstittel» then, as everywhere else).
   const frontTitle = content?.seo.title
   const title =
@@ -104,11 +107,17 @@ export function seoHead(input: SeoInput): SeoHead {
     !settings.searchEngineVisible ||
     input.preview ||
     input.kind === '404' ||
+    input.kind === 'maintenance' ||
     input.kind === 'search' ||
     content?.seo.noindex === true
 
   // The canonical address: the item (its page of a split post), or the list's page. None for a search, a 404 or a preview.
-  const indexable = !input.preview && input.kind !== '404' && input.kind !== 'search' && input.kind !== 'redirect'
+  const indexable =
+    !input.preview &&
+    input.kind !== '404' &&
+    input.kind !== 'maintenance' &&
+    input.kind !== 'search' &&
+    input.kind !== 'redirect'
   let canonical: string | undefined
   const links: { rel: 'canonical' | 'prev' | 'next'; href: string }[] = []
   if (indexable && content !== undefined) {

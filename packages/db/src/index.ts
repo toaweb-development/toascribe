@@ -36,6 +36,7 @@ export { DEFAULT_CONTENT_STRINGS, defaultContentStrings } from './default-conten
 export type { DefaultContentLocale, DefaultContentStrings } from './default-content/strings.ts'
 export { parseBlockMarkup } from './default-content/blocks.ts'
 export type { ParsedBlock } from './default-content/blocks.ts'
+export { readMaintenanceMode, setMaintenanceMode } from './maintenance.ts'
 export * as schema from './schema/index.ts'
 export {
   HIERARCHICAL_TYPES,

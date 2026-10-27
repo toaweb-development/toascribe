@@ -35,6 +35,7 @@ const SETTINGS: PublicSettings = {
   searchEngineVisible: true,
   privacyPolicyPath: null,
   embed: { clickToLoad: true, frameHosts: ['www.youtube-nocookie.com'] },
+  maintenance: { enabled: false, message: '', retryAfter: 600 },
   origin: ORIGIN,
   seo: { defaultImage: DEFAULT, publisher: { type: 'organization', name: 'Fjell AS', logo: LOGO } },
   cacheTags: [],
@@ -95,6 +96,7 @@ const LABELS: SeoInput['labels'] = {
   date: (date) => `Arkiv: ${date}`,
   search: (query) => `Søk etter «${query}»`,
   notFound: 'Fant ikke siden',
+  maintenance: 'Kort utilgjengelig for planlagt vedlikehold',
 }
 
 function input(overrides: Partial<SeoInput>): SeoInput {

@@ -43,6 +43,12 @@ async function read(event: H3Event, path: string): Promise<unknown> {
 export default defineEventHandler(async (event) => {
   if (event.method !== 'GET' && event.method !== 'HEAD') return
   const { pathname } = getRequestURL(event)
+  const ours =
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    SITEMAP_FILE.test(pathname) ||
+    feedTarget(pathname).kind !== 'none'
+  if (ours && (await inMaintenance(event))) return answer(event, 'text/plain', 'Service Unavailable\n')
 
   if (pathname === '/robots.txt') {
     const settings = PublicSettings.parse(await cachedFromPublicApi(event, '/settings'))

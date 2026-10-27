@@ -150,6 +150,21 @@
 .scribe-toolbar-account {
   margin-inline-start: auto;
 }
+/* Maintenance mode (M1.7): the notice an administrator sees in the toolbar, and the core's maintenance page. */
+.scribe-toolbar-notice {
+  font-weight: 600;
+}
+.scribe-maintenance {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-block: 3rem;
+}
+.scribe-maintenance h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--ui-text-highlighted);
+}
 .scribe-search {
   display: flex;
   flex-wrap: wrap;

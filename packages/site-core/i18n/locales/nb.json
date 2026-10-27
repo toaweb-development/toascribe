@@ -44,6 +44,11 @@
       "notice": "Innholdet lastes fra {service}. Når du laster det, kan {service} lagre informasjonskapsler og se at du er her.",
       "load": "Last inn fra {service}",
       "open": "Åpne hos {service}"
+    },
+    "maintenance": {
+      "title": "Kort utilgjengelig for planlagt vedlikehold",
+      "text": "Nettstedet er straks tilbake. Prøv igjen om litt.",
+      "notice": "Vedlikeholdsmodus er på: besøkende ser vedlikeholdssiden."
     }
   }
 }

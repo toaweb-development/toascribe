@@ -199,6 +199,8 @@ export const PublicSettings = z.object({
    * the listed Mastodon instances'): the site's `frame-src`, never `*`.
    */
   embed: z.object({ clickToLoad: z.boolean(), frameHosts: z.array(z.string().regex(/^[a-z0-9.-]+$/)) }),
+  /** Maintenance mode (M1.7, K-288): visitors get 503 and the maintenance page; an account with manage_options sees the site. */
+  maintenance: z.object({ enabled: z.boolean(), message: z.string(), retryAfter: z.int() }),
   cacheTags: CacheTags,
 })
 export type PublicSettings = z.infer<typeof PublicSettings>

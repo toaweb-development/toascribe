@@ -88,6 +88,15 @@ const urlBase = z
   .regex(/^[^\s?#]*$/)
   .max(200)
 
+/** Maintenance mode as stored (K-288): on or off, the message for visitors, how long to wait (seconds), and since when. */
+export const MaintenanceMode = z.object({
+  enabled: z.boolean(),
+  message: z.string().max(500),
+  retryAfter: z.int().min(30).max(86_400),
+  since: z.iso.datetime().nullable(),
+})
+export type MaintenanceMode = z.infer<typeof MaintenanceMode>
+
 export const CoreSettings = z.object({
   // Settings → General
   blogname: text,
@@ -137,6 +146,12 @@ export const CoreSettings = z.object({
   seo_publisher_logo: z.uuid().nullable(),
   /** The person (an account); null with `person`: no publisher is named. */
   seo_publisher_person: z.uuid().nullable(),
+
+  /**
+   * Maintenance mode (M1.7, K-288): visitors get 503 with Retry-After and the maintenance page; accounts with manage_options see
+   * the site. Set by `toa maintenance`, and by a restore or a migration while it runs.
+   */
+  maintenance_mode: MaintenanceMode,
 
   // Settings → Discussion
   default_comment_status: z.enum(COMMENT_STATUS),
@@ -315,6 +330,8 @@ export const CORE_SETTINGS: CoreSettings = {
   seo_publisher_name: '',
   seo_publisher_logo: null,
   seo_publisher_person: null,
+
+  maintenance_mode: { enabled: false, message: '', retryAfter: 600, since: null },
 
   // Discussion
   default_comment_status: 'open', // Tor and WordPress

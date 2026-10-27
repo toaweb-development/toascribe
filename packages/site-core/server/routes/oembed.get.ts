@@ -5,6 +5,7 @@ import { PublicOEmbedQuery, PublicOEmbedResponse } from '@toascribe/shared'
  * published, public content, through the cache by tag. Another address is 404, `format=xml` 501. The cache's tags stay here.
  */
 export default defineEventHandler(async (event) => {
+  if (await inMaintenance(event)) return { error: 'maintenance' }
   const query = PublicOEmbedQuery.safeParse(getQuery(event))
   if (!query.success) throw createError({ statusCode: 400, statusMessage: 'Bad Request' })
   if (query.data.format === 'xml') throw createError({ statusCode: 501, statusMessage: 'Not Implemented' })

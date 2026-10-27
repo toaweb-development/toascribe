@@ -14,7 +14,8 @@ interface Fixtures {
 /** The tests that said a refusal is expected. */
 const allowed = new Set<string>()
 
-const FAILED_REQUEST = /Failed to load resource: the server responded with a status of 4\d\d/
+// A refusal (4xx), or 503 from maintenance mode (M1.7), in a test that expects one.
+const FAILED_REQUEST = /Failed to load resource: the server responded with a status of (4\d\d|503)/
 
 export const test = base.extend<Fixtures>({
   // eslint-disable-next-line no-empty-pattern -- Playwright reads the fixtures a function needs from its first argument, and this needs none

@@ -20,6 +20,9 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- Maintenance mode (K-288, K-266): `toa maintenance on|off|status`, with an optional message and Retry-After. Visitors get 503 and a
+  maintenance page (a theme can draw its own with `templates/maintenance.vue`), and feeds, the sitemap, robots.txt and `/oembed`
+  answer 503 too; an account that may manage the site sees the site as usual, with a notice in the toolbar, and the admin works.
 - «Innbygging» (K-225): videos, music and posts from YouTube, Vimeo, Spotify, SoundCloud, TikTok, Bluesky and the Mastodon instances
   listed under «Innstillinger → Personvern». Paste a link alone on a line, or choose the service in the block inserter. The server
   reads the service when the post is saved and keeps only the player's address on the service's own hosts and a thumbnail in the

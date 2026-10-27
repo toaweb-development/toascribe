@@ -10,6 +10,7 @@ import { jsonLdText, seoHead } from '../../../lib/seo'
 const { t } = useI18n()
 const settings = useSettings()
 const customize = useCustomize()
+const maintenance = useMaintenance()
 const { kind, content, archive, preview } = useContent()
 
 const { list } = useContent()
@@ -19,7 +20,7 @@ const head = computed(() =>
     ? undefined
     : seoHead({
         settings: settings.value,
-        kind: kind.value,
+        kind: maintenance.value ? 'maintenance' : kind.value,
         content: content.value,
         archive: archive.value,
         list: list.value,
@@ -29,6 +30,7 @@ const head = computed(() =>
           date: (date) => t('scribe.head.date', { date }),
           search: (query) => t('scribe.head.search', { query }),
           notFound: t('scribe.head.notFound'),
+          maintenance: t('scribe.maintenance.title'),
         },
       }),
 )

@@ -65,6 +65,11 @@ export const EXIT_CODES_USAGE = `Exit codes:
       a bad environment (a variable that is missing or wrong).
   One exception: \`core is-installed\` is a question. It exits 0 when the site is installed, 1 when it is not and 2 on any error.`
 
+export const MAINTENANCE_USAGE = `  maintenance on [--message <text>] [--retry-after <seconds>] | off | status [--format table|json]
+                         Maintenance mode (K-288): visitors get 503 with Retry-After (default 600 s) and the maintenance page, with
+                         --message as its text; accounts with manage_options see the site, and the api answers, so an administrator
+                         can sign in and turn it off. A restore and a migration turn it on and off by themselves. Needs DATABASE_URL.`
+
 export const USAGE = `Usage: toa <command>
 
 Commands:
@@ -80,6 +85,7 @@ ${USER_RESET_PASSWORD_USAGE}
 ${USER_RESET_LOGIN_LIMIT_USAGE}
 ${USER_MFA_RESET_USAGE}
 ${MEDIA_REGENERATE_USAGE}
+${MAINTENANCE_USAGE}
 
 ${EXIT_CODES_USAGE}
 `

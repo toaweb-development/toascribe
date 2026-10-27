@@ -16,10 +16,30 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const settings = useSettings()
   const customize = useCustomizeState()
 
+  const maintenance = useMaintenance()
   const address = addressOf(to)
   const key = JSON.stringify(address)
   // The server resolved this address already: the browser takes its answer from the payload.
-  if (state.value?.key === key) return
+  if (state.value?.key === key || maintenance.value) return
+
+  // Maintenance mode (M1.7, K-288): the settings first, and for anyone who may not manage the site, nothing of the address is asked
+  // for (no content reaches the page or its payload): 503 with Retry-After, and the maintenance page (theme or core).
+  if (settings.value === null) {
+    try {
+      settings.value = await fetcher<PublicSettings>('/_toascribe/data/settings')
+    } catch {
+      return abortNavigation(createError({ statusCode: 503, statusMessage: 'Service Unavailable', fatal: true }))
+    }
+  }
+  if (settings.value.maintenance.enabled && !(await mayManageSite())) {
+    maintenance.value = true
+    if (event !== undefined) {
+      setResponseStatus(event, 503)
+      // The renderer writes its own headers: server/plugins/maintenance.ts adds Retry-After to the rendered response.
+      event.context['scribeRetryAfter'] = settings.value.maintenance.retryAfter
+    }
+    return
+  }
 
   const ask = async (): Promise<ResolveResponse> => {
     if (address.kind === 'resolve') {

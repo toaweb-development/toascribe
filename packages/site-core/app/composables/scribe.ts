@@ -15,6 +15,7 @@ import type {
   ResolveResponse,
   SiteCustomization,
 } from '@toascribe/shared'
+import { SESSION_COOKIE_NAME } from '@toascribe/shared'
 import type { MaybeRefOrGetter } from 'vue'
 
 import { addressOf, pageBlocks } from '../lib/scribe'
@@ -34,6 +35,28 @@ export function useScribeState() {
 /** The site's settings, read once per page load (the catch-all route reads them with the address). */
 export function useSettings() {
   return useState<PublicSettings | null>('scribe:settings', () => null)
+}
+
+/** True while maintenance mode keeps this page from the reader (M1.7, K-288): the page draws the maintenance template. */
+export function useMaintenance() {
+  return useState<boolean>('scribe:maintenance', () => false)
+}
+
+/**
+ * Whether the reader may manage the site (manage_options): such an account sees the site during maintenance. The session is asked
+ * for only when the request has the session cookie (as the toolbar does), and the answer is kept for the page load.
+ */
+export async function mayManageSite(): Promise<boolean> {
+  const auth = useAuth()
+  if (auth.session.value.status === 'unknown') {
+    const hasSession = import.meta.server
+      ? useRequestHeaders(['cookie']).cookie?.includes(`${SESSION_COOKIE_NAME}=`) === true
+      : true
+    if (hasSession) await auth.refresh().catch(() => undefined)
+    else auth.session.value = { status: 'anonymous' }
+  }
+  const session = auth.session.value
+  return session.status === 'authenticated' && session.account.capabilities.includes('manage_options')
 }
 
 /** What «Tilpass» set, read with the settings (the middleware); the admin's preview changes it in the browser. */
