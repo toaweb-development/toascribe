@@ -267,6 +267,12 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
           >
             {{ $t('media.processing.pending') }}
           </span>
+          <span
+            v-else-if="item.processing === 'failed'"
+            class="absolute inset-x-0 bottom-0 bg-default/80 px-1 py-0.5 text-xs text-error"
+          >
+            {{ $t('media.processing.failedShort') }}
+          </span>
           <UIcon
             v-if="item.visibility === 'private'"
             name="i-lucide-lock"
@@ -311,6 +317,9 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
             <template v-if="item.visibility === 'private'"> · {{ $t('media.details.private') }}</template>
             <template v-if="processingLabel($t, item.processing)">
               · {{ processingLabel($t, item.processing) }}</template
+            >
+            <template v-if="item.processing === 'failed' && item.processingError">
+              {{ $t('media.processing.reason', { reason: item.processingError }) }}</template
             >
           </p>
         </div>

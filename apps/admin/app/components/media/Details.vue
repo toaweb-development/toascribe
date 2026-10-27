@@ -289,6 +289,12 @@ const facts = computed(() => {
           <p v-if="processingLabel($t, item.processing)" class="text-sm text-warning" role="status">
             {{ processingLabel($t, item.processing) }}
           </p>
+          <template v-if="item.processing === 'failed'">
+            <p v-if="item.processingError" class="text-sm text-toned wrap-anywhere">
+              {{ $t('media.processing.reason', { reason: item.processingError }) }}
+            </p>
+            <p v-if="isImage && mayManage" class="text-sm text-toned">{{ $t('media.processing.retry') }}</p>
+          </template>
           <div class="flex flex-wrap gap-2">
             <UButton
               v-if="isImage && mayEdit"

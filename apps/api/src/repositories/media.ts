@@ -233,7 +233,12 @@ export async function insertMedia(db: Executor, values: MediaValues, at: Date): 
 }
 
 export type MediaChanges = Partial<
-  MediaValues & { readonly variants: MediaVariantsData; readonly processingError: string | null }
+  MediaValues & {
+    readonly variants: MediaVariantsData
+    readonly processingError: string | null
+    /** Back to 0 whenever the file is handed to the worker anew (MEDIA_MAX_ATTEMPTS). */
+    readonly processingAttempts: number
+  }
 >
 
 export async function updateMedia(db: Executor, id: string, changes: MediaChanges, at: Date): Promise<void> {

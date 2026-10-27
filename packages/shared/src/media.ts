@@ -80,6 +80,8 @@ export const MediaItem = z.object({
   uploadedBy: z.object({ id: z.uuid(), displayName: z.string() }).nullable(),
   attachedTo: z.uuid().nullable(),
   processing: MediaProcessing,
+  /** Why the worker could not make the sizes, when `processing` is `failed` (its own words, in English); null otherwise. */
+  processingError: z.string().nullable(),
   /** The address of the file as it is shown: the edited or `-scaled` image, or the original. Public files under /uploads/, private ones through the api. */
   url: z.string(),
   /** The original as uploaded. */
@@ -217,7 +219,14 @@ export const MediaJob = z.discriminatedUnion('kind', [
 ])
 export type MediaJob = z.infer<typeof MediaJob>
 
-/** How a media job is queued: two more tries a minute apart, and given up after ten minutes. */
+/**
+ * The worker tries a file at most this many times after an upload, a replacement, an edit or «Lag bildestørrelser på nytt»: the
+ * job's own retries and the sweep's new jobs count together (media.processing_attempts), so an image that kills the worker is not
+ * tried forever. Then it is `failed`, with the reason, until someone asks again.
+ */
+export const MEDIA_MAX_ATTEMPTS = 3
+
+/** How a media job is queued: two more tries a minute apart (MEDIA_MAX_ATTEMPTS in all), and given up after ten minutes. */
 export const MEDIA_JOB_OPTIONS = {
   retryLimit: 2,
   retryDelay: 60,

@@ -296,6 +296,7 @@ export function createMediaService(options: {
       uploadedBy: row.uploadedBy === null ? null : { id: row.uploadedBy, displayName: names.get(row.uploadedBy) ?? '' },
       attachedTo: row.attachedTo,
       processing: row.processing,
+      processingError: row.processing === 'failed' ? row.processingError : null,
       url: urlOf(row, shown.key, 'shown'),
       originalUrl: urlOf(row, row.storageKey, 'original'),
       sizes: Object.entries(row.variants.sizes)
@@ -669,6 +670,7 @@ export function createMediaService(options: {
               variants: { sizes: {} },
               processing: resizable ? 'pending' : 'ready',
               processingError: null,
+              processingAttempts: 0,
             },
             now,
           )
@@ -710,7 +712,7 @@ export function createMediaService(options: {
         }
         const shown = shownVariant(row)
         editedSize(shown.width ?? row.width ?? 1, shown.height ?? row.height ?? 1, request.operations)
-        await updateMedia(tx, id, { processing: 'pending', processingError: null }, clock())
+        await updateMedia(tx, id, { processing: 'pending', processingError: null, processingAttempts: 0 }, clock())
         await audit(tx, ctx, {
           actor: { id: auth.account.id, username: auth.account.username },
           action: 'media.edited',
@@ -748,7 +750,7 @@ export function createMediaService(options: {
         )
         const now = clock()
         for (const row of rows) {
-          await updateMedia(tx, row.id, { processing: 'pending', processingError: null }, now)
+          await updateMedia(tx, row.id, { processing: 'pending', processingError: null, processingAttempts: 0 }, now)
         }
         await audit(tx, ctx, {
           actor: { id: auth.account.id, username: auth.account.username },

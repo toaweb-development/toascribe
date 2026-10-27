@@ -10,7 +10,7 @@ import { MediaVariantsData } from '@toascribe/shared'
 import sharp from 'sharp'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import { runMediaJob, sweepPending } from '../src/jobs/media.ts'
+import { GAVE_UP, runMediaJob, sweepPending } from '../src/jobs/media.ts'
 import { TEST_DATABASE_URL, noticeIfSkipped } from './helpers.ts'
 import { memoryLogger, startJobDb } from './harness.ts'
 import type { JobDb } from './harness.ts'
@@ -202,16 +202,65 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('media jobs (needs TEST_DATABAS
     await env.query(`update setting set value = '300'::jsonb where key = 'medium_size_h'`)
   })
 
-  it('refuses to decode an image above the pixel limit, and marks the file failed', async () => {
-    await env.query(`update setting set value = '1000000'::jsonb where key = 'image_max_pixels'`)
-    const { id } = await stored(await photo(1500, 1000), 'image/jpeg', 'jpg')
-    await expect(runMediaJob(deps(), { kind: 'process', mediaId: id })).rejects.toThrow()
-    const [row] = await env.query<{ processing: string; processing_error: string }>(
-      'select processing, processing_error from media where id = $1',
+  async function stateOf(id: string) {
+    const [row] = await env.query<{ processing: string; processing_error: string | null; processing_attempts: number }>(
+      'select processing, processing_error, processing_attempts from media where id = $1',
       [id],
     )
-    expect(row?.processing).toBe('failed')
+    return row
+  }
+
+  it('refuses to decode an image above the pixel limit: tried three times, then failed with the reason', async () => {
+    await env.query(`update setting set value = '1000000'::jsonb where key = 'image_max_pixels'`)
+    const { id } = await stored(await photo(1500, 1000), 'image/jpeg', 'jpg')
+    // Two runs with tries left: still pending, and the job throws so pg-boss runs it again.
+    for (const attempt of [1, 2]) {
+      await expect(runMediaJob(deps(), { kind: 'process', mediaId: id })).rejects.toThrow()
+      expect(await stateOf(id)).toMatchObject({ processing: 'pending', processing_attempts: attempt })
+    }
+    // The third: failed, with the reason, and no throw (no fourth try).
+    await runMediaJob(deps(), { kind: 'process', mediaId: id })
+    const row = await stateOf(id)
+    expect(row).toMatchObject({ processing: 'failed', processing_attempts: 3 })
     expect(row?.processing_error).toMatch(/pixel/i)
+    // A job that still comes (an old one, a retry) does not run it again.
+    await runMediaJob(deps(), { kind: 'process', mediaId: id })
+    expect(await stateOf(id)).toMatchObject({ processing: 'failed', processing_attempts: 4 })
+  })
+
+  it('counts a run that never finished (the worker died), and gives up after three', async () => {
+    const { id } = await stored(await photo(100, 100), 'image/jpeg', 'jpg')
+    // Three runs started and none came back: the count is in its own commit, so it is there.
+    await env.query('update media set processing_attempts = 3 where id = $1', [id])
+    await runMediaJob(deps(), { kind: 'process', mediaId: id })
+    const row = await stateOf(id)
+    expect(row?.processing).toBe('failed')
+    expect(row?.processing_error).toBe(GAVE_UP)
+    // «Lag bildestørrelser på nytt» sets the count back (the api does), and it works again.
+    await env.query(
+      `update media set processing = 'pending', processing_error = null, processing_attempts = 0 where id = $1`,
+      [id],
+    )
+    await runMediaJob(deps(), { kind: 'regenerate', mediaId: id })
+    expect(await stateOf(id)).toMatchObject({ processing: 'ready', processing_error: null, processing_attempts: 1 })
+  })
+
+  it('marks an image whose tries ran out failed instead of queueing it again', async () => {
+    const { id } = await stored(await photo(100, 100), 'image/jpeg', 'jpg')
+    await env.query(`update media set modified_at = $2, processing_attempts = 3 where id = $1`, [
+      id,
+      new Date(NOW.getTime() - 15 * 60_000),
+    ])
+    const sent: unknown[] = []
+    const boss = {
+      send: (_name: string, data: object | null) => {
+        sent.push(data)
+        return Promise.resolve('job')
+      },
+    }
+    await sweepPending({ db: env.db, logger: memoryLogger().logger, now: () => NOW }, boss as never)
+    expect(sent).not.toContainEqual({ kind: 'process', mediaId: id })
+    expect(await stateOf(id)).toMatchObject({ processing: 'failed', processing_error: GAVE_UP })
   })
 
   it('queues the images that stayed pending, once each', async () => {

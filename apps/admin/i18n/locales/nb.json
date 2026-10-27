@@ -1066,7 +1066,10 @@
     },
     "processing": {
       "pending": "Bildestørrelsene lages …",
-      "failed": "Bildestørrelsene kunne ikke lages."
+      "failed": "Bildestørrelsene kunne ikke lages.",
+      "failedShort": "Feilet",
+      "reason": "Feilmelding: {reason}",
+      "retry": "Bildet er prøvd tre ganger. «Lag bildestørrelser på nytt» prøver igjen."
     },
     "errors": {
       "fileTooLarge": "Filen er større enn maksimal filstørrelse for opplasting.",
