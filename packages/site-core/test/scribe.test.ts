@@ -11,6 +11,7 @@ describe('the catch-all helpers', () => {
       kind: 'resolve',
       path: '/?s=fjell&p=12',
     })
+    expect(addressOf({ path: '/', query: { p: '12', page: '2' } })).toEqual({ kind: 'resolve', path: '/?p=12&page=2' })
     expect(addressOf({ path: '/', query: { preview: 'v1.a.b', page: '2' } })).toEqual({
       kind: 'preview',
       token: 'v1.a.b',

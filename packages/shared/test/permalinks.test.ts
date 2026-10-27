@@ -2,7 +2,15 @@
 // before it is stored.
 import { describe, expect, it } from 'vitest'
 
-import { PERMALINK_PRESETS, cleanBase, dateParts, matchPostPath, postPath, structureProblem } from '../src/index.ts'
+import {
+  PERMALINK_PRESETS,
+  cleanBase,
+  dateParts,
+  matchPostPath,
+  postPath,
+  slugSegment,
+  structureProblem,
+} from '../src/index.ts'
 import type { PermalinkParts } from '../src/index.ts'
 
 const POST: PermalinkParts = {
@@ -24,7 +32,8 @@ describe('the structures', () => {
     expect(postPath('/%category%/%author%/%hour%%minute%%second%/%postname%/', POST)).toBe(
       '/nyheter/lokalt/kari/003005/hei-verden/',
     )
-    expect(postPath('/%postname%/', { ...POST, slug: 'blåbær' })).toBe('/bl%C3%A5b%C3%A6r/')
+    // A slug is stored URL-safe and goes in as it is.
+    expect(postPath('/%postname%/', { ...POST, slug: 'bl%c3%a5b%c3%a6r' })).toBe('/bl%c3%a5b%c3%a6r/')
   })
 
   it('read each address back, with a page number after it and the closing slash optional', () => {
@@ -41,7 +50,7 @@ describe('the structures', () => {
       postname: 'hei-verden',
     })
     expect(matchPostPath('/%category%/%postname%/', '/nyheter/lokalt/hei-verden/3/')).toMatchObject({ page: 3 })
-    expect(matchPostPath('/%postname%/', '/bl%C3%A5b%C3%A6r/')?.postname).toBe('blåbær')
+    expect(matchPostPath('/%postname%/', '/bl%c3%a5b%c3%a6r/')?.postname).toBe('bl%c3%a5b%c3%a6r')
   })
 
   it('do not read what does not fit', () => {
@@ -49,7 +58,7 @@ describe('the structures', () => {
     expect(matchPostPath(PERMALINK_PRESETS.numeric, '/archives/hei/')).toBeUndefined()
     expect(matchPostPath(PERMALINK_PRESETS.plain, '/hei-verden/')).toBeUndefined()
     expect(matchPostPath('/%postname%/', '/a/b/')).toBeUndefined()
-    expect(matchPostPath('/%postname%/', '/%E0%A4%A/')).toBeUndefined()
+    expect(matchPostPath('/%postname%/', `/${'a'.repeat(2001)}/`)).toBeUndefined()
   })
 })
 
@@ -67,6 +76,13 @@ describe('what is stored', () => {
       '//%postname%/',
       '/%postname% /',
       '/100%/%postname%/',
+      '/blåbær/%postname%/',
+      '/a:b/%postname%/',
+      // Two or more free-text tags in one segment would make reading an address back slow (review M1.5).
+      '/%category%-%postname%-%author%/',
+      '/%category%%postname%%author%/',
+      '/%category%a%postname%a%author%a/',
+      '/%postname%-%author%/',
     ]) {
       expect(structureProblem(bad), bad).toBeDefined()
     }
@@ -75,5 +91,24 @@ describe('what is stored', () => {
   it('cleans a base, and falls back to the default for an empty one', () => {
     expect(cleanBase('/emne/', 'category')).toBe('emne')
     expect(cleanBase('  ', 'tag')).toBe('tag')
+  })
+})
+
+describe('reading an address back', () => {
+  it('takes linear time on a long address, for every structure the check lets through', () => {
+    const long = `/${'-'.repeat(1990)}/`
+    for (const structure of ['/%category%/%postname%/', '/%year%-%postname%/', '/%category%/%author%/%postname%/']) {
+      expect(structureProblem(structure), structure).toBeUndefined()
+      const started = performance.now()
+      matchPostPath(structure, long)
+      expect(performance.now() - started, structure).toBeLessThan(200)
+    }
+  })
+
+  it("compares segments in the slugs' stored form", () => {
+    expect(slugSegment('blåbær')).toBe('bl%c3%a5b%c3%a6r')
+    expect(slugSegment('о')).toBe('%d0%be')
+    expect(slugSegment('a/b\\c%')).toBe('a%2fb%5cc%25')
+    expect(slugSegment('Hei-1_2.3~')).toBe('Hei-1_2.3~')
   })
 })

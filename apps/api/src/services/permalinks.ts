@@ -118,12 +118,13 @@ export async function loadLinks(db: Database | Executor, onInvalidSetting?: (key
       return new Map(
         [...chains].map(([id, chain]) => [
           id,
-          `/${encodeBase(rules.categoryBase)}/${chain.split('/').map(encodeURIComponent).join('/')}/`,
+          // Slugs are stored URL-safe and go into the address as they are (slugSegment's form), as in WordPress.
+          `/${encodeBase(rules.categoryBase)}/${chain}/`,
         ]),
       )
     },
 
-    tagPath: (slug, rules = current) => `/${encodeBase(rules.tagBase)}/${encodeURIComponent(slug)}/`,
+    tagPath: (slug, rules = current) => `/${encodeBase(rules.tagBase)}/${slug}/`,
     authorPath: (nicename) => `/author/${encodeURIComponent(nicename)}/`,
   }
 }

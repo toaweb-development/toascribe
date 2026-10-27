@@ -47,6 +47,16 @@ export function structureProblem(structure: string): string | undefined {
   if (new Set(tags).size !== tags.length) return 'each tag once'
   if (!tags.includes('%postname%') && !tags.includes('%post_id%')) return 'needs %postname% or %post_id%'
   if (structure.replace(TAG, '').includes('%')) return 'a % that is no tag'
+  // Letters, digits and a few marks between the tags: the address is written as the structure says, and read back the same way.
+  if (!/^[A-Za-z0-9._~!*'()/-]*$/.test(structure.replace(TAG, '')))
+    return "only letters, digits and - . _ ~ ! * ' ( ) between the tags"
+  // At most one free-text tag in a segment: two or more make reading an address back slow (each can take any part of the segment).
+  for (const segment of structure.split('/')) {
+    const free = (segment.match(TAG) ?? []).filter(
+      (tag) => tag === '%postname%' || tag === '%category%' || tag === '%author%',
+    )
+    if (free.length > 1) return 'one of %postname%, %category% and %author% per segment'
+  }
   return undefined
 }
 
@@ -98,8 +108,6 @@ export function dateParts(
   }
 }
 
-const encodePath = (value: string) => value.split('/').map(encodeURIComponent).join('/')
-
 /** A post's address under a structure. Enkel gives `/?p=<id>`. */
 export function postPath(structure: string, parts: PermalinkParts): string {
   if (structure === '') return `/?p=${String(parts.shortId)}`
@@ -119,10 +127,11 @@ export function postPath(structure: string, parts: PermalinkParts): string {
         return parts.second
       case '%post_id%':
         return String(parts.shortId)
+      // Slugs are stored URL-safe (slugSegment's form) and go into the address as they are, as in WordPress.
       case '%postname%':
-        return encodeURIComponent(parts.slug)
+        return parts.slug
       case '%category%':
-        return encodePath(parts.category)
+        return parts.category
       case '%author%':
         return encodeURIComponent(parts.author)
       default:
@@ -144,12 +153,12 @@ export type PermalinkMatch = Partial<
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /**
- * Reads a path (`/2026/10/hei/`, `/archives/12/2/`) against a structure: the tags it holds, or undefined when it does not fit. The
+ * Reads a path in slugSegment's form (`/2026/10/hei/`, `/archives/12/2/`) against a structure: the tags it holds, or undefined when it does not fit. The
  * closing slash is optional, and a page number may follow (`/hei/2/`, WordPress' split posts). Enkel matches nothing: its address is
  * a query (`?p=`).
  */
 export function matchPostPath(structure: string, path: string): PermalinkMatch | undefined {
-  if (structure === '') return undefined
+  if (structure === '' || path.length > 2000) return undefined
   const body = structure
     .replace(/\/+$/, '')
     .split(TAG)
@@ -166,14 +175,9 @@ export function matchPostPath(structure: string, path: string): PermalinkMatch |
   const result: Record<string, string | number> = {
     page: found.groups['page'] === undefined ? 1 : Number(found.groups['page']),
   }
-  // A group that matched nothing is undefined at run time, whatever the type says.
+  // A group that matched nothing is undefined at run time, whatever the type says. The values are in the address' form (slugSegment).
   for (const [name, value] of Object.entries(found.groups as Record<string, string | undefined>)) {
-    if (name === 'page' || value === undefined) continue
-    try {
-      result[name] = decodeURIComponent(value).normalize('NFC')
-    } catch {
-      return undefined
-    }
+    if (name !== 'page' && value !== undefined) result[name] = value
   }
   return result as PermalinkMatch
 }

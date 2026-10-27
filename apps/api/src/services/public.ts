@@ -9,7 +9,15 @@ import { dummyPasswordHash, verifyPassword } from '@toascribe/auth'
 import type { Block } from '@toascribe/blocks'
 import { MORE, NEXTPAGE, documentMediaRefs, documentText, validateDocument } from '@toascribe/blocks'
 import type { Database } from '@toascribe/db'
-import { ContentSeo, CoreSettings, PREVIEW_LINK_MINUTES, matchPostPath, textSearchConfig } from '@toascribe/shared'
+import {
+  ContentSeo,
+  CoreSettings,
+  PREVIEW_LINK_MINUTES,
+  matchPostPath,
+  isSiteLocation,
+  slugSegment,
+  textSearchConfig,
+} from '@toascribe/shared'
 import type {
   CacheChanges,
   ContentMediaRef,
@@ -453,7 +461,13 @@ export function createPublicService(options: {
       return {
         kind: 'redirect',
         status: 301,
-        location: itemPage > 1 ? `${canonical.replace(/\/?$/, '/')}${String(itemPage)}/` : canonical,
+        // Under «Enkel» the page is a query parameter (`/?p=12&page=2`).
+        location:
+          itemPage <= 1
+            ? canonical
+            : canonical.startsWith('/?')
+              ? `${canonical}&page=${String(itemPage)}`
+              : `${canonical.replace(/\/?$/, '/')}${String(itemPage)}/`,
         cacheTags: [`content:${row.id}`, 'settings'],
       }
     }
@@ -469,7 +483,12 @@ export function createPublicService(options: {
         const current = taxonomy === 'category' ? settings.links.categoryBase : settings.links.tagBase
         const prefix = `/${base.split('/').map(encodeURIComponent).join('/')}/`
         if (base === current || !pathname.startsWith(prefix)) continue
-        const slug = decodeSegments(pathname)?.at(-1)
+        // The last segment before a `page/N` (an old archive address of a later page), in the stored form.
+        const slug = pathname
+          .replace(/\/page\/\d+\/?$/, '')
+          .split('/')
+          .filter((part) => part !== '')
+          .at(-1)
         const term = slug === undefined ? undefined : await findTermBySlug(db, taxonomy, slug)
         if (term === undefined) continue
         const location =
@@ -524,19 +543,16 @@ export function createPublicService(options: {
       const settings = await settingsOf()
       const { links } = settings
       const url = new URL(path.startsWith('/') ? path : `/${path}`, 'http://site.invalid')
-      let segments = decodeSegments(url.pathname)
-      if (segments === undefined) return notFound()
+      const decoded = decodeSegments(url.pathname)
+      if (decoded === undefined) return notFound()
+      // Each segment in the form slugs are stored in (slugSegment): lookups and addresses compare in it, as WordPress does.
+      let segments = decoded.map(slugSegment)
       // The address as the site writes it, from the decoded segments: `/.//hei` is `/hei`, and nothing in it can name another host.
-      const pathname =
-        segments.length === 0
-          ? '/'
-          : `/${segments.map(encodeURIComponent).join('/')}${url.pathname.endsWith('/') ? '/' : ''}`
-      const redirectTo = (location: string, tags: string[]): ResolveResponse => ({
-        kind: 'redirect',
-        status: 301,
-        location,
-        cacheTags: [...tags, 'settings'],
-      })
+      const pathname = segments.length === 0 ? '/' : `/${segments.join('/')}${url.pathname.endsWith('/') ? '/' : ''}`
+      const redirectTo = (location: string, tags: string[]): ResolveResponse =>
+        isSiteLocation(location)
+          ? { kind: 'redirect', status: 301, location, cacheTags: [...tags, 'settings'] }
+          : notFound()
 
       // `/?p=12` (K-065): the post's address. Under «Enkel» that is its address, and it is shown here (`&page=2` for its second page).
       const shortId = url.searchParams.get('p')
@@ -603,7 +619,8 @@ export function createPublicService(options: {
         const rest = afterBase(base)
         if (rest === undefined || rest.length === 0) return undefined
         const term = await findTermBySlug(db, 'category', rest.at(-1) ?? '')
-        if (term === undefined) return notFound()
+        // No such category: the address may still be a page or a post (a base may share a page's slug).
+        if (term === undefined) return undefined
         const termPath = (await links.categoryPaths([term.id])).get(term.id) ?? '/'
         if (withPage(termPath) !== pathname) return redirectTo(withPage(termPath), [`term:${term.id}`])
         return archive(
@@ -621,7 +638,7 @@ export function createPublicService(options: {
         const rest = afterBase(base)
         if (rest?.length !== 1 || rest[0] === undefined) return undefined
         const term = await findTermBySlug(db, 'post_tag', rest[0])
-        if (term === undefined) return notFound()
+        if (term === undefined) return undefined
         const termPath = links.tagPath(term.slug)
         if (withPage(termPath) !== pathname) return redirectTo(withPage(termPath), [`term:${term.id}`])
         return archive(
@@ -695,10 +712,10 @@ export function createPublicService(options: {
         pageNumber = Number(segments.at(-1))
         itemSegments = segments.slice(0, -1)
       }
-      const asPage = (await pageAt(segments)) ?? (pageNumber > 1 ? await pageAt(itemSegments) : undefined)
+      const ownPage = await pageAt(segments)
+      const asPage = ownPage ?? (pageNumber > 1 ? await pageAt(itemSegments) : undefined)
       if (asPage !== undefined) {
-        const own = (await pageAt(segments)) !== undefined
-        const pageOf = own ? 1 : pageNumber
+        const pageOf = ownPage !== undefined ? 1 : pageNumber
         if (frontPath(asPage, settings) !== undefined) return redirectTo('/', [`content:${asPage.id}`])
         const canonical = await pathOf(asPage, settings)
         const wanted = pageOf > 1 ? `${canonical}${String(pageOf)}/` : canonical

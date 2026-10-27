@@ -140,6 +140,22 @@ const HYPHENATED = [
 ] as const
 
 /** WordPress' `sanitize_title_with_dashes($title, '', 'save')`. */
+/**
+ * A decoded address segment in the form slugs are stored in (WordPress' `utf8_uri_encode`, lower-case hex): `blåbær` →
+ * `bl%c3%a5b%c3%a6r`. ASCII outside letters, digits and `-._~` is encoded too, so a segment can never hold a `/` or a `\`. Addresses
+ * are compared in this form (M1.5).
+ */
+export function slugSegment(decoded: string): string {
+  let result = ''
+  for (const character of decoded) {
+    const code = character.codePointAt(0) ?? 0
+    if (/^[A-Za-z0-9._~-]$/.test(character)) result += character
+    else if (code < 0x80) result += `%${code.toString(16).padStart(2, '0')}`
+    else result += utf8UriEncode(character, Number.MAX_SAFE_INTEGER).toLowerCase()
+  }
+  return result
+}
+
 export function sanitizeTitleWithDashes(title: string): string {
   let text = title.replace(/<[^>]*(>|$)/g, '')
   // Keep escaped octets, drop every other percent sign.

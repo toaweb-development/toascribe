@@ -183,4 +183,59 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('permalinks and redirects (need
       if (answer.kind === 'redirect') expect(answer.location, path).toMatch(/^\/(?!\/)/)
     }
   })
+
+  it('reaches a page and a post whose titles are not in the Latin alphabet (their slugs are stored encoded)', async () => {
+    const page = await create({ type: 'page', title: 'о нас' })
+    const article = await create({ type: 'post', title: '日本' })
+    expect(page.slug).toMatch(/^%/)
+    expect(shown(await resolve(`/${page.slug}/`))).toBe(page.id)
+    expect(shown(await resolve(`/${encodeURIComponent(decodeURIComponent(page.slug))}/`))).toBe(page.id)
+    expect(await pathOfPost(article.id)).toBe(`/${article.slug}/`)
+    expect(shown(await resolve(`/${article.slug}/`))).toBe(article.id)
+  })
+
+  it("refuses bases that take each other's addresses, or the site's own", async () => {
+    for (const body of [
+      { category_base: 'emne', tag_base: 'emne' },
+      { category_base: 'emne', tag_base: 'emne/tema' },
+      { category_base: 'author' },
+      { tag_base: 'page' },
+      { permalink_structure: '/category/%postname%/' },
+    ]) {
+      expect((await admin.patch('/api/v1/settings/permalinks', body)).status, JSON.stringify(body)).toBe(400)
+    }
+  })
+
+  it('lets a page through when a base shares its slug and no term matches', async () => {
+    const about = await create({ type: 'page', title: 'Info', slug: 'info' })
+    const sub = await create({ type: 'page', title: 'Lag', slug: 'lag', parentId: about.id })
+    await structure({ category_base: 'info' })
+    try {
+      expect(shown(await resolve('/info/lag/'))).toBe(sub.id)
+    } finally {
+      await structure({ category_base: '' })
+    }
+  })
+
+  it('sends an old address of a later page to «Enkel» with the page as a query', async () => {
+    const split = await create({
+      type: 'post',
+      title: 'Delt',
+      slug: 'delt',
+      blocks: [
+        { id: 'b_split1', type: 'core/paragraph', version: 1, attrs: { content: [] }, children: [] },
+        { id: 'b_split2', type: 'core/nextpage', version: 1, attrs: {}, children: [] },
+        { id: 'b_split3', type: 'core/paragraph', version: 1, attrs: { content: [] }, children: [] },
+      ],
+    })
+    await structure({ permalink_structure: '' })
+    try {
+      expect(await resolve('/delt/2/')).toMatchObject({
+        kind: 'redirect',
+        location: `/?p=${String(split.shortId)}&page=2`,
+      })
+    } finally {
+      await structure({ permalink_structure: '/%postname%/' })
+    }
+  })
 })

@@ -8,6 +8,9 @@ import type { Database } from '@toascribe/db'
 import { sql } from 'drizzle-orm'
 import {
   CoreSettings,
+  DEFAULT_CATEGORY_BASE,
+  DEFAULT_TAG_BASE,
+  cleanBase,
   GeneralSettings,
   ONE_TIME_LINK_HOURS,
   PermalinkSettings,
@@ -109,6 +112,31 @@ function knownTimeZone(zone: string): boolean {
  */
 async function lockAdminEmail(tx: Executor): Promise<void> {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended('toascribe:admin-email', 0))`)
+}
+
+/**
+ * What makes a set of address rules unusable: two bases that take each other's addresses (the same, or one inside the other), a base
+ * that takes the author archives or the archive pages, or a structure that starts inside a base (every post would be read as a term).
+ */
+export function rulesProblem(rules: {
+  structure: string
+  category_base: string
+  tag_base: string
+}): string | undefined {
+  const category = cleanBase(rules.category_base, DEFAULT_CATEGORY_BASE).split('/')
+  const tag = cleanBase(rules.tag_base, DEFAULT_TAG_BASE).split('/')
+  const inside = (a: readonly string[], b: readonly string[]) => a.every((part, index) => b[index] === part)
+  if (inside(category, tag) || inside(tag, category))
+    return 'the category and tag bases must differ, and neither be inside the other'
+  for (const base of [category, tag]) {
+    if (base[0] === 'author' || base[0] === 'page')
+      return 'a base cannot start with author or page (the site uses them)'
+  }
+  const first = rules.structure.split('/').find((part) => part !== '') ?? ''
+  if (!first.includes('%') && (first === category[0] || first === tag[0])) {
+    return 'the structure cannot start with a base'
+  }
+  return undefined
 }
 
 function invalid(field: string, message: string): AppError {
@@ -330,26 +358,40 @@ export function createSettingsService(options: {
 
     async updatePermalinks(auth, request, ctx) {
       requireManage(auth)
-      const before = await read(PERMALINK_STATE)
-      const next = {
-        structure: request.permalink_structure ?? before.permalink_structure,
-        category_base: request.category_base ?? before.category_base,
-        tag_base: request.tag_base ?? before.tag_base,
-      }
-      const old = {
-        structure: before.permalink_structure,
-        category_base: before.category_base,
-        tag_base: before.tag_base,
-      }
-      const same = (a: typeof old, b: typeof old) => JSON.stringify(a) === JSON.stringify(b)
-      const changed = !same(next, old)
-      // The rules the site had go first in the history: an address made under them is sent on to the new one with 301 (K-207).
-      const history = changed
-        ? [old, ...before.permalink_history.filter((entry) => !same(entry, old))]
-            .filter((entry) => !same(entry, next))
-            .slice(0, 10)
-        : before.permalink_history
-      await save(auth, 'permalinks', { ...request, ...(changed ? { permalink_history: history } : {}) }, ctx)
+      await inTransaction(db, async (tx) => {
+        // One change of the rules at a time: each reads the history the one before it wrote.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended('toascribe:permalinks', 0))`)
+        const before = await readSettings(tx, PERMALINK_STATE, options.onInvalidSetting)
+        const next = {
+          structure: request.permalink_structure ?? before.permalink_structure,
+          category_base: request.category_base ?? before.category_base,
+          tag_base: request.tag_base ?? before.tag_base,
+        }
+        const problem = rulesProblem(next)
+        if (problem !== undefined) throw invalid('permalinks', problem)
+        const old = {
+          structure: before.permalink_structure,
+          category_base: before.category_base,
+          tag_base: before.tag_base,
+        }
+        const same = (a: typeof old, b: typeof old) => JSON.stringify(a) === JSON.stringify(b)
+        const changed = !same(next, old)
+        // The rules the site had go first in the history: an address made under them is sent on to the new one with 301 (K-207).
+        const history = changed
+          ? [old, ...before.permalink_history.filter((entry) => !same(entry, old))]
+              .filter((entry) => !same(entry, next))
+              .slice(0, 10)
+          : before.permalink_history
+        const values = { ...request, ...(changed ? { permalink_history: history } : {}) }
+        await writeSettings(tx, values)
+        await audit(tx, ctx, {
+          actor: { id: auth.account.id, username: auth.account.username },
+          action: 'settings.updated',
+          objectType: 'settings',
+          objectId: 'permalinks',
+          newValue: { keys: Object.keys(values).sort() },
+        })
+      })
       return service.permalinks(auth)
     },
   }

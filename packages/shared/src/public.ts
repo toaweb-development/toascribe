@@ -94,11 +94,17 @@ export type PublicArchive = z.infer<typeof PublicArchive>
  * What an address is (GET /public/resolve?path=), after WordPress' template hierarchy (K-140): `templates` lists the templates to try,
  * most specific first and `index` last; the site takes the first its theme has. `status` is the HTTP status the page answers with.
  */
+/** A path on the site to send a visitor to: `/…`, never `//host` or `/\\host`, no control character (security §4). */
+export function isSiteLocation(location: string): boolean {
+  return /^\/(?![/\\])[^\p{Cc}\\]*$/u.test(location)
+}
+
 export const ResolveResponse = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('redirect'),
     status: z.union([z.literal(301), z.literal(302)]),
-    location: z.string(),
+    /** A path on the site only: `/…`, never `//host` or `/\host` (security §4), and no control character. */
+    location: z.string().refine(isSiteLocation, { message: 'a path on the site' }),
     cacheTags: CacheTags,
   }),
   z.object({

@@ -12,7 +12,7 @@ const firstOf = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined
 
 /**
- * The question an address asks. Only the query parameters the api reads go along (`s` for a search, `p` for `/?p=12`), so a
+ * The question an address asks. Only the query parameters the api reads go along (`s` for a search, `p` for `/?p=12` with its `page`), so a
  * tracking parameter makes no new answer; `preview` (with `page`) asks for a preview link's item instead.
  */
 export function addressOf(route: {
@@ -29,6 +29,9 @@ export function addressOf(route: {
     const value = firstOf(route.query[key])
     if (value !== undefined) params.set(key, value)
   }
+  // Under «Enkel» a post's second page is `/?p=12&page=2` (M1.5).
+  const page = firstOf(route.query['page'])
+  if (params.has('p') && page !== undefined && /^\d{1,5}$/.test(page)) params.set('page', page)
   const query = params.toString()
   return { kind: 'resolve', path: query === '' ? route.path : `${route.path}?${query}` }
 }
