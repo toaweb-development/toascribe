@@ -98,11 +98,13 @@ export default defineNuxtConfig({
 
   // The admin's part of the security headers (K-314); the rest is in nuxt-base. Nobody frames the admin, and its pages show
   // only its own images and inline `data:` ones (the QR code of the two-factor set-up). Images from other addresses are brought into
-  // the media library first (M1.2, Tor's decision after M0.6), so the editor shows none from another host either.
+  // the media library first (M1.2, Tor's decision after M0.6), so the editor shows none from another host either. «Tilpass» shows the
+  // site beside its panel in a frame (`frame-src 'self'`: the site, on the same origin behind Caddy, M1.5).
   security: {
     headers: {
       contentSecurityPolicy: {
         'img-src': ["'self'", 'data:'],
+        'frame-src': ["'self'"],
         'frame-ancestors': ["'none'"],
         'style-src-attr': ["'unsafe-hashes'", ...ADMIN_STYLE_ATTRIBUTES.map(({ value }) => sha256(value))],
       },

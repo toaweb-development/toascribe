@@ -78,9 +78,8 @@ separate step: say so.
 
 The site and the admin share one security setup in `packages/nuxt-base` (`nuxt-security`: a CSP with a nonce per response, no
 `unsafe-inline`, no `unsafe-eval`, HSTS from `X-Forwarded-Proto`). Each app adds only what differs: `img-src` (the site allows
-`https:`, themes show pictures from other hosts), `frame-ancestors` (`'none'` on both, with `X-Frame-Options: DENY`: by Tor's
-decision nothing is framed, the admin showing the site included, until the live preview of «Tilpass» in phase 3, which opens
-the site to `'self'` and `SAMEORIGIN`), and the cache rule. Do not repeat a shared directive in an app: layers concatenate
+`https:`, themes show pictures from other hosts), `frame-ancestors` (`'none'` with `X-Frame-Options: DENY` on the admin; `'self'` with `SAMEORIGIN` on the site since M1.5, so
+the admin's «Tilpass» preview can frame it, Tor's decision of M0.4; the admin has `frame-src 'self'` for it), and the cache rule. Do not repeat a shared directive in an app: layers concatenate
 arrays.
 
 The admin also sets `style-src-attr` with `'unsafe-hashes'` and the hashes of the inline style strings that Nuxt UI and Reka UI
