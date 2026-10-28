@@ -18,6 +18,7 @@ import {
   ReadingSettings,
   SITE_LOCALES,
   WritingSettings,
+  isRegistrationRole,
 } from '@toascribe/shared'
 import type {
   GeneralSettingsResponse,
@@ -201,8 +202,12 @@ export function createSettingsService(options: {
     async updateGeneral(auth, request, ctx) {
       requireManage(auth)
       const { new_admin_email: newAdminEmail, ...values } = request
-      if (values.default_role !== undefined && (await findRoleBySlug(db, values.default_role)) === undefined) {
-        throw invalid('default_role', 'no such role')
+      if (values.default_role !== undefined) {
+        const role = await findRoleBySlug(db, values.default_role)
+        if (role === undefined) throw invalid('default_role', 'no such role')
+        // Anyone who registers gets it: no role that manages the site, its users or its code, nor raw HTML.
+        if (!isRegistrationRole(role))
+          throw invalid('default_role', 'a role that may not be given to anyone who registers')
       }
       if (values.locale !== undefined && !SITE_LOCALES.some((locale) => locale.code === values.locale)) {
         throw invalid('locale', 'not a language the site has')

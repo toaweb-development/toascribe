@@ -108,6 +108,44 @@ const EDITOR_210 = [
 ] as const satisfies readonly Capability[]
 
 /** The built-in roles with WordPress' capability lists, the editor without unfiltered_html: 50, 25, 7, 3 and 1 names. */
+/**
+ * Capabilities a role must not have to be «Standard rolle for nye brukere» (anyone who fills in the registration form gets it): the
+ * ones that manage the site, its users or its code, and raw HTML, which runs with the page's rights on the public site. The settings
+ * screen refuses such a role, and registration refuses to give one (a role can change after it was chosen).
+ */
+export const REGISTRATION_FORBIDDEN_CAPABILITIES: readonly string[] = [
+  'manage_options',
+  'promote_users',
+  'edit_users',
+  'create_users',
+  'delete_users',
+  'remove_users',
+  'unfiltered_html',
+  'unfiltered_upload',
+  'edit_theme_options',
+  'switch_themes',
+  'edit_themes',
+  'install_themes',
+  'update_themes',
+  'delete_themes',
+  'activate_plugins',
+  'edit_plugins',
+  'install_plugins',
+  'update_plugins',
+  'delete_plugins',
+  'edit_files',
+  'update_core',
+  'import',
+]
+
+/** Whether a role may be given to anyone who registers: not the administrator, and none of REGISTRATION_FORBIDDEN_CAPABILITIES. */
+export function isRegistrationRole(role: { readonly slug: string; readonly capabilities: readonly string[] }): boolean {
+  return (
+    role.slug !== 'administrator' &&
+    !role.capabilities.some((capability) => REGISTRATION_FORBIDDEN_CAPABILITIES.includes(capability))
+  )
+}
+
 export const DEFAULT_ROLES: readonly RoleDefinition[] = [
   { slug: 'administrator', name: 'Administrator', capabilities: CAPABILITIES },
   {

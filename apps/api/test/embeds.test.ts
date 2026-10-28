@@ -243,6 +243,20 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('«Innbygging» on save (needs 
     expect(statuses.slice(0, 60).every((status) => status === 200)).toBe(true)
     expect(statuses[60]).toBe(429)
   })
+
+  it('counts the lookups of a save against the same limit: over it the save goes through and no provider is asked', async () => {
+    const author = env.client({ ip: '203.0.113.97' })
+    await env.createAccount({ username: 'emb-saver', role: 'author' })
+    expect((await author.login('emb-saver', TEST_PASSWORD)).status).toBe(200)
+    for (let i = 0; i < 60; i += 1) {
+      await author.post('/api/v1/oembed/preview', { url: `https://example.com/saver-${String(i)}` })
+    }
+    const before = asked.length
+    const item = await save(author, [embed('https://vimeo.com/424242')])
+    expect(asked.length - before).toBe(0)
+    expect(attrsOf(item)['url']).toBe('https://vimeo.com/424242')
+    expect(attrsOf(item)['frameSrc']).toBe('')
+  })
 })
 
 describe.skipIf(TEST_DATABASE_URL === undefined)('«Innbygging» and SSRF (needs TEST_DATABASE_URL)', () => {

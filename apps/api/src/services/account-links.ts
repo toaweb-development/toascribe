@@ -16,7 +16,7 @@ import {
   isTooObvious,
 } from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
-import { CoreSettings, ONE_TIME_LINK_HOURS } from '@toascribe/shared'
+import { CoreSettings, ONE_TIME_LINK_HOURS, isRegistrationRole } from '@toascribe/shared'
 import type { AccountTokenPurpose, AuthOptionsResponse } from '@toascribe/shared'
 import type { Logger } from 'pino'
 
@@ -109,9 +109,6 @@ const RegistrationSettings = CoreSettings.pick({
   notify_admin_new_user: true,
   notify_admin_password_change: true,
 })
-
-/** A role that may be given to anyone who fills in the form: not the administrator, and none that can manage the site or its users. */
-const FORBIDDEN_DEFAULT_ROLE_CAPABILITIES = ['manage_options', 'promote_users', 'edit_users', 'create_users']
 
 export function nicenameFor(username: string): string {
   const slug = username
@@ -408,11 +405,7 @@ export function createPublicFlows(options: {
         }
 
         const role = await findRoleBySlug(db, settings.default_role)
-        if (
-          role === undefined ||
-          role.slug === 'administrator' ||
-          role.capabilities.some((capability) => FORBIDDEN_DEFAULT_ROLE_CAPABILITIES.includes(capability))
-        ) {
+        if (role === undefined || !isRegistrationRole(role)) {
           // The settings schema refuses `administrator` already; this stops a custom role that is as good as one, and a role
           // that has been deleted. It is a site misconfiguration, not something the visitor did.
           logger.error(

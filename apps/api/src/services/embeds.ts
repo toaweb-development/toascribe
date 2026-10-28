@@ -25,7 +25,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
-import { ForbiddenError } from '../lib/errors.ts'
+import { ForbiddenError, TooManyRequestsError } from '../lib/errors.ts'
 import { readSettings } from '../repositories/settings.ts'
 import type { MediaService } from './media.ts'
 import type { PreviewLimit } from './preview-limit.ts'
@@ -158,6 +158,8 @@ export function createEmbedService(options: {
   async function lookup(
     url: string,
     mastodonHosts: readonly string[],
+    /** Asked before the provider is (a cache hit asks nobody); false skips the provider, and an expired answer is used if any. */
+    mayAsk: () => Promise<boolean> = () => Promise.resolve(true),
   ): Promise<{ key: string; data: Cached } | undefined> {
     if (url.length > MAX_URL) return undefined
     const provider = embedProviderOf(url, mastodonHosts)
@@ -165,6 +167,7 @@ export function createEmbedService(options: {
     const key = embedKey(provider, url)
     const cached = await fromCache(key)
     if (cached?.fresh === true) return { key, data: cached.data }
+    if (!(await mayAsk())) return cached === undefined ? undefined : { key, data: cached.data }
     const asked = await ask(provider, key)
     // The provider did not answer (or not with something that passes): an expired answer still shows the player it checked.
     if (asked === undefined) return cached === undefined ? undefined : { key, data: cached.data }
@@ -232,6 +235,17 @@ export function createEmbedService(options: {
     async fill(auth, blocks, ctx) {
       if (!Array.isArray(blocks)) return blocks
       const { oembed_mastodon_instances: hosts } = await readSettings(db, EMBED_SETTINGS, options.onInvalidSetting)
+      // A save that asks providers counts against the same per-account limit as the previews, so saving in a loop with new addresses
+      // cannot make the server send requests without end. Over the limit the save still goes through, without new answers.
+      const mayAsk = async (): Promise<boolean> => {
+        try {
+          await options.previewLimit.count(auth.account.id, clock().getTime())
+          return true
+        } catch (error) {
+          if (error instanceof TooManyRequestsError) return false
+          throw error
+        }
+      }
       let read = 0
       const walk = async (list: unknown[]): Promise<unknown[]> => {
         const out: unknown[] = []
@@ -250,7 +264,8 @@ export function createEmbedService(options: {
           }
           const attrs = block['attrs'] as Record<string, unknown>
           const url = typeof attrs['url'] === 'string' ? attrs['url'].trim() : ''
-          const looked = isSafeEmbedLink(url) && read < MAX_EMBEDS_PER_SAVE ? await lookup(url, hosts) : undefined
+          const looked =
+            isSafeEmbedLink(url) && read < MAX_EMBEDS_PER_SAVE ? await lookup(url, hosts, mayAsk) : undefined
           if (url.length <= MAX_URL && embedProviderOf(url, hosts) !== undefined) read += 1
           const found = looked?.data
           const set =

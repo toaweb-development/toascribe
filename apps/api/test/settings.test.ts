@@ -94,6 +94,25 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the settings screens (needs TE
     })
   })
 
+  describe('the default role for anyone who registers', () => {
+    it('refuses a role that manages the site or its users, or writes raw HTML; takes the editor and below', async () => {
+      await env.query(
+        `insert into role (slug, name, capabilities) values ('html-writer', 'HTML writer', array['read', 'edit_posts', 'unfiltered_html'])`,
+      )
+      try {
+        for (const slug of ['html-writer', 'administrator']) {
+          const res = await admin.patch('/api/v1/settings/general', { default_role: slug })
+          expect(res.status, slug).toBe(400)
+        }
+        for (const slug of ['editor', 'subscriber']) {
+          expect((await admin.patch('/api/v1/settings/general', { default_role: slug })).status, slug).toBe(200)
+        }
+      } finally {
+        await env.query(`delete from role where slug = 'html-writer'`)
+      }
+    })
+  })
+
   describe('the administrator address (K-192)', () => {
     it('changes only once the link sent to the new address is opened, by someone with manage_options', async () => {
       await env.query(

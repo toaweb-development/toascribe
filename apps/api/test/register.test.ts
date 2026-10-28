@@ -163,10 +163,11 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
     it('refuses a default role that can run the site, and one that does not exist, with 503 and no account', async () => {
       await withRegistration(async () => {
         await env.query(
-          `insert into role (slug, name, capabilities) values ('shop-manager', 'Shop manager', array['read', 'manage_options'])`,
+          `insert into role (slug, name, capabilities) values ('shop-manager', 'Shop manager', array['read', 'manage_options']),
+           ('html-writer', 'HTML writer', array['read', 'edit_posts', 'unfiltered_html'])`,
         )
         try {
-          for (const slug of ['shop-manager', 'no-such-role']) {
+          for (const slug of ['shop-manager', 'html-writer', 'no-such-role']) {
             await setSetting(env, 'default_role', slug)
             const name = unique('blocked')
             const res = await register(name, `${name}@example.test`)
@@ -176,7 +177,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
           }
         } finally {
           await setSetting(env, 'default_role', 'subscriber')
-          await env.query(`delete from role where slug = 'shop-manager'`)
+          await env.query(`delete from role where slug in ('shop-manager', 'html-writer')`)
         }
       })
     })
