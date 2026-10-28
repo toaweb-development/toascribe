@@ -20,6 +20,23 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- The dashboard (K-033): «Aktivitet» lists the posts that will be published soon and the latest published ones; «Hurtigutkast»
+  saves a title and some text as a draft and lists your three newest drafts; «Nettstedshelse» sums up the checks (background
+  jobs, database migrations, the last backup, a newer version, tested e-mail, the cache, debug mode, search engines) as good,
+  «bør forbedres» or «bør fikses», for administrators.
+- «Hjelp» in the admin bar (K-038) opens the page of the new user documentation (`docs/user/`, in bokmål: installation, update,
+  backup, content, media, menus, theme, settings, users; K-300) that covers the screen, for the version that runs.
+- Profile pictures (K-015, K-236): a public image from the media library on the profile, shown in the users list and on the
+  author's page on the site; the initials otherwise. Gravatar for accounts without a picture is a choice under «Personvern», off
+  by default, because the browser then fetches images from a service outside the site.
+- `/.well-known/security.txt` (K-319) from «Personvern → Sikkerhet» (a contact for security reports and a policy page), and
+  `SECURITY.md` in the repository on how to report a vulnerability.
+- The API (K-251, K-252): the content list takes `include=featured_media`, which adds each item's featured image. A route that
+  is to be retired answers with `Deprecation`, `Sunset` and `Link` headers and is marked in the OpenAPI document; `docs/API.md`
+  has the rules.
+- Spam protection on registration (K-006): the form carries a signed token, and a form sent within two seconds of loading, or
+  with a hidden field filled in, is refused with «Skjemaet ble ikke sendt. Last siden på nytt, vent et øyeblikk og prøv igjen.» (more than an hour old: the
+  same). The registration form of an older admin will not work against this api.
 - Moving to a new server (K-271): `toa secrets export` seals the encryption and signing keys with the recovery key from the setup
   wizard into a 0600 file, and refuses without this install's key; `toa secrets import` opens it on the new server and writes the
   keys as `.env` lines to be appended to `.env` (`>> .env`; the file can come on standard input, `import -`). `docs/RESTORE.md` describes the whole way. A restore now shows where a backup comes from
