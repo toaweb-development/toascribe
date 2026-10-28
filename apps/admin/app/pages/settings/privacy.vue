@@ -107,6 +107,20 @@ async function createPage(): Promise<void> {
           <UTextarea v-model="instances" :rows="4" autoresize spellcheck="false" class="w-full sm:w-80 font-mono" />
         </UFormField>
       </fieldset>
+      <fieldset class="flex flex-col gap-3">
+        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.privacy.security') }}</legend>
+        <p class="max-w-prose text-sm text-toned">{{ $t('settings.privacy.securityHelp') }}</p>
+        <UFormField
+          :label="$t('settings.privacy.securityContact')"
+          :help="$t('settings.privacy.securityContactHelp')"
+          name="security_contact"
+        >
+          <UInput v-model="form.security_contact" size="xl" spellcheck="false" class="w-full sm:w-96" />
+        </UFormField>
+        <UFormField :label="$t('settings.privacy.securityPolicy')" name="security_policy">
+          <UInput v-model="form.security_policy" type="url" size="xl" spellcheck="false" class="w-full sm:w-96" />
+        </UFormField>
+      </fieldset>
     </template>
   </SettingsScreen>
 </template>

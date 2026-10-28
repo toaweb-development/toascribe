@@ -270,6 +270,19 @@ export const CoreSettings = z.object({
   // Settings → Privacy
   /** The privacy policy page (WordPress: the draft «Personvernerklæring» the installer makes). A content uuid. */
   wp_page_for_privacy_policy: z.uuid().nullable(),
+  /**
+   * `/.well-known/security.txt` (M1.8, K-319; RFC 9116): where to report a security problem with this site, `mailto:` or an
+   * `https:` address. Empty: the site answers 404 there.
+   */
+  security_contact: z.union([
+    z.literal(''),
+    z
+      .string()
+      .max(500)
+      .regex(/^(?:mailto:[^\s@]+@[^\s@]+\.[^\s@]+|https:\/\/[^\s]+)$/),
+  ]),
+  /** The page with the site's security policy (`Policy:`), an `https:` address; empty for none. */
+  security_policy: z.union([z.literal(''), z.url({ protocol: /^https$/ }).max(500)]),
   // «Innbygginger» on the same screen (M1.6, K-225): a player from another service is loaded only after a click (on by default),
   // and the Mastodon instances whose posts may be embedded (they cannot be listed in advance).
   embed_click_to_load: z.boolean(),
@@ -433,6 +446,8 @@ export const CORE_SETTINGS: CoreSettings = {
 
   // Privacy
   wp_page_for_privacy_policy: null, // set by the install (the draft privacy page)
+  security_contact: '',
+  security_policy: '',
   embed_click_to_load: true,
   oembed_mastodon_instances: [],
 

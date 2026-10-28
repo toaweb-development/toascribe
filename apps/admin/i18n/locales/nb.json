@@ -1651,7 +1651,12 @@
       "clickToLoad": "Last inn innhold fra andre tjenester først når leseren klikker",
       "clickToLoadHelp": "Videoer, musikk og innlegg fra YouTube, Vimeo, Spotify og andre vises da som et forhåndsbilde med en knapp. Tjenesten får ikke vite om besøket før leseren klikker.",
       "mastodon": "Mastodon-instanser",
-      "mastodonHelp": "Én adresse per linje, for eksempel mastodon.social. Innlegg fra disse instansene kan bygges inn."
+      "mastodonHelp": "Én adresse per linje, for eksempel mastodon.social. Innlegg fra disse instansene kan bygges inn.",
+      "security": "Sikkerhet",
+      "securityHelp": "Nettstedet viser dette på /.well-known/security.txt, så den som finner en sikkerhetsfeil, vet hvor de skal melde fra. Uten kontakt finnes ikke filen.",
+      "securityContact": "Kontakt for sikkerhetsfeil",
+      "securityContactHelp": "En e-postadresse som mailto:sikkerhet{'@'}eksempel.no, eller en https-adresse til et skjema.",
+      "securityPolicy": "Side med sikkerhetsregler (valgfritt)"
     },
     "permalinks": {
       "title": "Permalenkeinnstillinger",

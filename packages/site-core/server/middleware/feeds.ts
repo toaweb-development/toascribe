@@ -12,7 +12,7 @@ import {
 } from '@toascribe/shared'
 import type { H3Event } from 'h3'
 
-import { feedHtml, feedTarget, robotsTxt, rssXml, sitemapIndexXml, sitemapXml } from '../../lib/feeds'
+import { feedHtml, feedTarget, robotsTxt, rssXml, securityTxt, sitemapIndexXml, sitemapXml } from '../../lib/feeds'
 
 const SITEMAP_FILE = /^\/sitemap-([a-z]+)-([1-9]\d{0,5})\.xml$/
 /** The api's highest sitemap page. */
@@ -45,10 +45,17 @@ export default defineEventHandler(async (event) => {
   const { pathname } = getRequestURL(event)
   const ours =
     pathname === '/robots.txt' ||
+    pathname === '/.well-known/security.txt' ||
     pathname === '/sitemap.xml' ||
     SITEMAP_FILE.test(pathname) ||
     feedTarget(pathname).kind !== 'none'
   if (ours && (await inMaintenance(event))) return answer(event, 'text/plain', 'Service Unavailable\n')
+
+  if (pathname === '/.well-known/security.txt') {
+    const settings = PublicSettings.parse(await cachedFromPublicApi(event, '/settings'))
+    const text = securityTxt(settings, new Date())
+    return text === undefined ? notFound(event) : answer(event, 'text/plain', text)
+  }
 
   if (pathname === '/robots.txt') {
     const settings = PublicSettings.parse(await cachedFromPublicApi(event, '/settings'))

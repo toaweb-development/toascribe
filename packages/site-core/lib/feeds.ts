@@ -116,6 +116,32 @@ export function sitemapXml(page: PublicSitemapPage): string {
  * `Disallow: /` for everyone, as WordPress writes when «Søkemotorsynlighet» is ticked. AI crawlers are not singled out (SEO
  * standard). Themes and extensions add lines in phase 3.
  */
+/**
+ * `/.well-known/security.txt` (M1.8, K-319; RFC 9116) from «Personvern»: Contact, Policy when there is one, Preferred-Languages,
+ * Canonical, and Expires half a year ahead (the RFC asks for less than a year). Undefined without a contact: then the site has none.
+ */
+export function securityTxt(
+  settings: {
+    readonly securityTxt: { readonly contact: string; readonly policy: string }
+    readonly origin: string
+    readonly locale?: string
+  },
+  now: Date,
+): string | undefined {
+  const { contact, policy } = settings.securityTxt
+  if (contact === '') return undefined
+  const expires = new Date(now.getTime() + 182 * 24 * 60 * 60 * 1000)
+  expires.setUTCHours(0, 0, 0, 0)
+  return [
+    `Contact: ${contact}`,
+    `Expires: ${expires.toISOString().replace('.000Z', 'Z')}`,
+    ...(policy === '' ? [] : [`Policy: ${policy}`]),
+    `Preferred-Languages: ${settings.locale === 'en' ? 'en' : 'no, en'}`,
+    `Canonical: ${settings.origin}/.well-known/security.txt`,
+    '',
+  ].join('\n')
+}
+
 export function robotsTxt(settings: { readonly searchEngineVisible: boolean; readonly origin: string }): string {
   if (!settings.searchEngineVisible) return 'User-agent: *\nDisallow: /\n'
   const origin = settings.origin.replace(/\/+$/, '')

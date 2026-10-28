@@ -9,6 +9,20 @@ it, and which version you tested.
 You can expect an answer that the report was received within a few days. We will tell you whether we can reproduce it,
 agree on a fix and a release, and credit you in the CHANGELOG if you want that.
 
+## Each toascribe site: security.txt
+
+Every site can name its own contact for security problems under «Innstillinger → Personvern → Sikkerhet». The site then serves
+`/.well-known/security.txt` (RFC 9116) with that contact, the policy page if one is given, the preferred languages and an
+expiry date half a year ahead (renewed on its own). Without a contact the site answers 404 there. Problems in toascribe itself go
+to this repository, as above.
+
+## How a report is handled
+
+1. Acknowledged within a few days, in the private advisory.
+2. Reproduced and rated (Critical, High, Medium, Low) against the latest release.
+3. Fixed on a private branch, with a test that fails without the fix; the fix is released as a patch version.
+4. The advisory is published with the release, crediting the reporter if they want it, and the CHANGELOG names it under «Security».
+
 ## Supported versions
 
 Only the latest 0.x release is supported. Fixes are released as a new patch version of it.

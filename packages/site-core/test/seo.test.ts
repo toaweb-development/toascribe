@@ -36,6 +36,7 @@ const SETTINGS: PublicSettings = {
   privacyPolicyPath: null,
   embed: { clickToLoad: true, frameHosts: ['www.youtube-nocookie.com'] },
   maintenance: { enabled: false, message: '', retryAfter: 600 },
+  securityTxt: { contact: '', policy: '' },
   origin: ORIGIN,
   seo: { defaultImage: DEFAULT, publisher: { type: 'organization', name: 'Fjell AS', logo: LOGO } },
   cacheTags: [],
@@ -396,5 +397,33 @@ describe('jsonLdText', () => {
     expect(text).not.toContain('<')
     expect(text).not.toContain('>')
     expect(JSON.parse(text)).toEqual({ name: '</script><script>alert(1)</script> & co' })
+  })
+})
+
+describe('security.txt (M1.8, K-319)', () => {
+  it('names the contact, the policy, the languages and the canonical address, and expires within a year', async () => {
+    const { securityTxt } = await import('../lib/feeds.ts')
+    const now = new Date('2026-10-28T12:00:00Z')
+    const text = securityTxt(
+      {
+        securityTxt: { contact: 'mailto:sikkerhet@blogg.example', policy: 'https://blogg.example/sikkerhet' },
+        origin: 'https://blogg.example',
+        locale: 'nb',
+      },
+      now,
+    )
+    expect(text).toBe(
+      [
+        'Contact: mailto:sikkerhet@blogg.example',
+        'Expires: 2027-04-28T00:00:00Z',
+        'Policy: https://blogg.example/sikkerhet',
+        'Preferred-Languages: no, en',
+        'Canonical: https://blogg.example/.well-known/security.txt',
+        '',
+      ].join('\n'),
+    )
+    expect(
+      securityTxt({ securityTxt: { contact: '', policy: '' }, origin: 'https://blogg.example' }, now),
+    ).toBeUndefined()
   })
 })

@@ -31,7 +31,12 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
   submitting.value = true
   error.value = undefined
   try {
-    await authApi.register(event.data.username.trim(), event.data.email.trim(), options.value?.formToken ?? '', trap.value)
+    await authApi.register(
+      event.data.username.trim(),
+      event.data.email.trim(),
+      options.value?.formToken ?? '',
+      trap.value,
+    )
     emit('sent')
   } catch (caught) {
     error.value = describeApiError(caught, t)

@@ -108,6 +108,8 @@ const SETTINGS = CoreSettings.pick({
   embed_click_to_load: true,
   oembed_mastodon_instances: true,
   maintenance_mode: true,
+  security_contact: true,
+  security_policy: true,
 })
 type StoredSettings = { readonly [K in keyof typeof SETTINGS.shape]: (typeof SETTINGS.shape)[K]['_output'] }
 /**
@@ -641,6 +643,7 @@ export function createPublicService(options: {
         privacyPolicyPath: privacyPage === undefined ? null : await pathOf(privacyPage, settings),
         origin: options.publicOrigin.replace(/\/+$/, ''),
         seo,
+        securityTxt: { contact: settings.security_contact, policy: settings.security_policy },
         maintenance: {
           enabled: settings.maintenance_mode.enabled,
           message: settings.maintenance_mode.message,

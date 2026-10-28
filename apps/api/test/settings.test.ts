@@ -242,5 +242,21 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the settings screens (needs TE
       )
       expect((await admin.patch('/api/v1/settings/privacy', { wp_page_for_privacy_policy: post.id })).status).toBe(400)
     })
+
+    it('keeps a security.txt contact that is mailto: or https: only, and the public settings carry it (K-319)', async () => {
+      for (const bad of ['javascript:alert(1)', 'http://plain.example', 'ola@example.test', 'mailto:']) {
+        expect((await admin.patch('/api/v1/settings/privacy', { security_contact: bad })).status, bad).toBe(400)
+      }
+      const ok = await admin.patch('/api/v1/settings/privacy', {
+        security_contact: 'mailto:sikkerhet@example.test',
+        security_policy: 'https://example.test/sikkerhet',
+      })
+      expect(ok.status).toBe(200)
+      const settings = (await (await env.client().get('/api/v1/public/settings')).json()) as { securityTxt: unknown }
+      expect(settings.securityTxt).toEqual({
+        contact: 'mailto:sikkerhet@example.test',
+        policy: 'https://example.test/sikkerhet',
+      })
+    })
   })
 })
