@@ -129,7 +129,12 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
           </td>
           <th scope="row" class="px-2 py-2 text-start align-middle font-medium text-highlighted wrap-anywhere">
             <span class="inline-flex flex-wrap items-center gap-2">
-              <UAvatar :src="user.avatarUrl ?? undefined" :alt="user.displayName" size="sm" />
+              <UAvatar
+                :src="user.avatarUrl ?? undefined"
+                :alt="user.displayName"
+                size="sm"
+                :ui="{ fallback: 'text-default' }"
+              />
               {{ user.username }}
               <UBadge v-if="user.id === signedInId" color="neutral" variant="outline" size="md">
                 {{ $t('users.you') }}

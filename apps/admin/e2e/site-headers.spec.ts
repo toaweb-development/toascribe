@@ -98,7 +98,9 @@ test('the built files of the site keep their long cache, and the admin keeps its
 
   const admin = (await request.get('/admin/login')).headers()
   expect(directivesOf(admin['content-security-policy'] ?? '').get('frame-ancestors')).toBe("'none'")
-  expect(directivesOf(admin['content-security-policy'] ?? '').get('img-src')).toBe("'self' data:")
+  expect(directivesOf(admin['content-security-policy'] ?? '').get('img-src')).toBe(
+    "'self' data: https://secure.gravatar.com",
+  )
   expect(admin['x-frame-options']).toBe('DENY')
   expect(admin['cache-control']).toBe('no-store')
 })

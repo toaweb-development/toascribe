@@ -62,7 +62,7 @@ test('the CSP is strict where it matters', async ({ request }) => {
   expect(directives.get('frame-ancestors')).toBe("'none'")
   expect(directives.get('form-action')).toBe("'self'")
   expect(directives.get('connect-src')).toBe("'self'")
-  expect(directives.get('img-src')).toBe("'self' data:")
+  expect(directives.get('img-src')).toBe("'self' data: https://secure.gravatar.com") // profile pictures (M1.8, K-236)
   expect(csp).not.toContain('unsafe-inline')
   expect(csp).not.toContain('unsafe-eval')
   expect(csp).not.toContain('upgrade-insecure-requests')

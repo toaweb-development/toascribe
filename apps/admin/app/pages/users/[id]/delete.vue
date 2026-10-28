@@ -23,17 +23,43 @@ if (import.meta.server && !mayDelete.value) {
 const { data: user, error } = await useAsyncData(`users:delete:${id.value}`, () => usersApi.get(id.value), {
   enabled: mayDelete,
 })
+// The new owner: the accounts that match what is typed (the api searches, so a site with thousands of users works), and always the
+// signed-in administrator, who is the default.
+const heirSearch = ref('')
+// Asked for when the typing pauses, not at every key.
+const heirQuery = ref('')
+let pause: ReturnType<typeof setTimeout> | undefined
+watch(heirSearch, (text) => {
+  clearTimeout(pause)
+  pause = setTimeout(() => {
+    heirQuery.value = text.trim()
+  }, 300)
+})
+onBeforeUnmount(() => clearTimeout(pause))
 const { data: others } = await useAsyncData(
   `users:delete:others:${id.value}`,
   async (): Promise<UserListItem[]> =>
-    (await usersApi.list({ orderby: 'username', order: 'asc', page: 1, per_page: 100 })).users.filter(
-      (other) => other.id !== id.value && other.status === 'active',
-    ),
-  { enabled: mayDelete },
+    (
+      await usersApi.list({
+        orderby: 'username',
+        order: 'asc',
+        page: 1,
+        per_page: 50,
+        ...(heirQuery.value === '' ? {} : { search: heirQuery.value }),
+      })
+    ).users.filter((other) => other.id !== id.value && other.status === 'active'),
+  { enabled: mayDelete, watch: [heirQuery] },
 )
-const heirItems = computed(() =>
-  (others.value ?? []).map((other) => ({ value: other.id, label: `${other.username} (${other.displayName})` })),
-)
+const heirItems = computed(() => {
+  const items = (others.value ?? []).map((other) => ({
+    value: other.id,
+    label: `${other.username} (${other.displayName})`,
+  }))
+  const self = me.value
+  return self === undefined || self.id === id.value || items.some((item) => item.value === self.id)
+    ? items
+    : [{ value: self.id, label: `${self.username} (${self.displayName})` }, ...items]
+})
 
 const choice = ref<'delete' | 'reassign'>('reassign')
 const heir = ref<string | undefined>(me.value?.id)
@@ -99,7 +125,15 @@ async function confirmDelete(): Promise<void> {
           </legend>
           <URadioGroup v-model="choice" :items="choiceItems" />
           <UFormField v-if="choice === 'reassign'" :label="$t('users.delete.heir')" name="heir">
-            <USelect v-model="heir" :items="heirItems" size="xl" class="w-full sm:w-96" />
+            <USelectMenu
+              v-model="heir"
+              v-model:search-term="heirSearch"
+              :items="heirItems"
+              value-key="value"
+              ignore-filter
+              size="xl"
+              class="w-full sm:w-96"
+            />
           </UFormField>
         </fieldset>
         <UAlert

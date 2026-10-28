@@ -25,7 +25,12 @@ const author = computed(() => {
 
 <template>
   <div v-if="author" class="mx-auto mt-8 flex max-w-3xl justify-center px-4">
-    <UAvatar :src="author.avatarUrl ?? undefined" :alt="author.displayName" size="3xl" />
+    <UAvatar
+      :src="author.avatarUrl ?? undefined"
+      :alt="author.displayName"
+      size="3xl"
+      :ui="{ fallback: 'text-default' }"
+    />
   </div>
   <ThemeListing :heading="heading" />
 </template>

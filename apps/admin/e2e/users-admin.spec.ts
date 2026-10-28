@@ -69,7 +69,10 @@ test('Slett bruker: the content goes to another account', async ({ page }) => {
   await expect(page.getByText(`${author.username} (${author.email})`)).toBeVisible()
   await page.getByRole('radio', { name: 'Tilordne alt innhold til:' }).check()
   await expectNoAxeViolations(page, 'Users → Delete')
-  await page.getByRole('combobox', { name: 'Ny eier' }).click()
+  // The new owner is searched for in the api (a site may have thousands of users); the signed-in administrator is the default.
+  await expect(page.getByRole('button', { name: 'Ny eier' })).toContainText(admin.username)
+  await page.getByRole('button', { name: 'Ny eier' }).click()
+  await page.keyboard.type(admin.username)
   await page.getByRole('option', { name: new RegExp(`^${admin.username} `) }).click()
   await expect(page.getByRole('listbox')).toHaveCount(0)
   await page.getByRole('button', { name: 'Bekreft sletting' }).click()

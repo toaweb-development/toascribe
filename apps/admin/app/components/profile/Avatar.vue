@@ -40,7 +40,7 @@ watch(avatarId, async (next, before) => {
 <template>
   <ProfileSection id="avatar" :title="$t('profile.avatar.title')">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-      <UAvatar :src="me.avatarUrl ?? undefined" :alt="me.displayName" size="3xl" />
+      <UAvatar :src="me.avatarUrl ?? undefined" :alt="me.displayName" size="3xl" :ui="{ fallback: 'text-default' }" />
       <div class="flex min-w-0 flex-1 flex-col gap-3" :aria-busy="saving">
         <ContentFeaturedImage
           v-if="canPick"
