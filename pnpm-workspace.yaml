@@ -127,6 +127,8 @@ allowBuilds:
   esbuild: false
   unrs-resolver: false
   vue-demi: false
+  # Pulled in by the OpenTelemetry SDK (M1.8): its postinstall only checks the versions of its optional CLI's dependencies.
+  protobufjs: false
 
 minimumReleaseAgeExclude:
   - '@iconify-json/lucide@1.2.147'
