@@ -218,7 +218,7 @@ These are choices Tor has not made yet. Say which one you hit if your work touch
 - **The owner password is in `docker/.env`.** `deployment-strategy` keeps `MIGRATION_DATABASE_URL` out of the server's
   `.env`. For a product that users start from one compose file, the same file also initialises the roles, so the owner
   password has to be there. Only the `migrate` service receives the owner URL.
-- **Two upstream images are rebuilt in `docker/`.** The proxy builds Caddy 2.11.7 with a current Go and x/net 0.60.0, and
+- **Two upstream images are rebuilt in `docker/`.** The proxy builds Caddy 2.11.7 with a current Go, x/net 0.60.0 and go-jose 4.1.6, and
   the postgres image rebuilds gosu 1.19 with Go 1.27.3, because the official images fail the Trivy gate
   (Critical and High with a fix) on Go standard-library findings. Remove both stages when the upstream images are rebuilt.
 - **The tag workflow is `release.yml`, not `deploy.yml`.** VERSIONING_STANDARD §7 names `deploy.yml` as the one workflow and no
