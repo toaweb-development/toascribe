@@ -130,7 +130,7 @@ export function validateProfile(state: ProfileFormState, t: KeyTranslator): Fiel
 }
 
 /** The body of `PATCH /me`: every profile field, trimmed (the biography keeps its line breaks), the display-name choice that works. */
-export function profileChanges(username: string, state: ProfileFormState): Required<UpdateMeRequest> {
+export function profileChanges(username: string, state: ProfileFormState): Required<Omit<UpdateMeRequest, 'avatarId'>> {
   return {
     firstName: state.firstName.trim(),
     lastName: state.lastName.trim(),

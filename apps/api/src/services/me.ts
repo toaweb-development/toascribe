@@ -12,6 +12,8 @@ import type {
 } from '@toascribe/shared'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
+import { avatarUrls, isPublicImage } from './avatars.ts'
+import type { MediaService } from './media.ts'
 import { AppError } from '../lib/errors.ts'
 import { findPendingEmailChange } from '../repositories/account-tokens.ts'
 import { mergePreferences, updateProfile } from '../repositories/accounts.ts'
@@ -30,6 +32,7 @@ export function mergeProfile(base: ProfileFields, changes: ProfileChanges): Prof
     website: changes.website ?? base.website,
     bio: changes.bio ?? base.bio,
     displayNameChoice: changes.displayNameChoice ?? base.displayNameChoice,
+    avatarId: changes.avatarId === undefined ? base.avatarId : changes.avatarId,
   }
 }
 
@@ -95,8 +98,23 @@ export interface MeService {
   updatePreferences: (auth: SessionAuth, changes: UpdatePreferencesRequest) => Promise<Preferences>
 }
 
-export function createMeService(options: { readonly db: Database; readonly clock: () => Date }): MeService {
+export function createMeService(options: {
+  readonly db: Database
+  readonly clock: () => Date
+  readonly media: Pick<MediaService, 'contentRefs'>
+  readonly onInvalidSetting?: (key: string) => void
+}): MeService {
   const { db, clock } = options
+
+  async function avatarOf(auth: SessionAuth, avatarId: string | null): Promise<string | null> {
+    const urls = await avatarUrls(
+      db,
+      options.media,
+      [{ id: auth.account.id, email: auth.account.email, avatarId }],
+      options.onInvalidSetting,
+    )
+    return urls.get(auth.account.id) ?? null
+  }
 
   /** The e-mail change this account has asked for and not confirmed, as /me shows it. */
   async function pendingEmailOf(accountId: string): Promise<MeResponse['pendingEmail']> {
@@ -106,9 +124,11 @@ export function createMeService(options: { readonly db: Database; readonly clock
 
   return {
     async get(auth) {
+      const profile = readProfile(auth.account.profile)
       return {
         ...toSessionAccount(auth),
-        profile: readProfile(auth.account.profile),
+        profile,
+        avatarUrl: await avatarOf(auth, profile.avatarId),
         preferences: readPreferences(auth.account.preferences),
         pendingEmail: await pendingEmailOf(auth.account.id),
       }
@@ -117,6 +137,18 @@ export function createMeService(options: { readonly db: Database; readonly clock
     async update(auth, changes) {
       const current = readProfile(auth.account.profile)
       const next = mergeProfile(current, changes)
+      // A profile picture is an image anyone may see: it is shown on the site and to every other account.
+      if (
+        changes.avatarId !== undefined &&
+        changes.avatarId !== null &&
+        !(await isPublicImage(options.media, changes.avatarId))
+      ) {
+        throw new AppError(
+          400,
+          'invalid_media',
+          'The profile picture must be an image in the media library that anyone may see',
+        )
+      }
       const touchesName =
         changes.firstName !== undefined ||
         changes.lastName !== undefined ||
@@ -142,6 +174,7 @@ export function createMeService(options: { readonly db: Database; readonly clock
         ...toSessionAccount(auth),
         displayName,
         profile: next,
+        avatarUrl: await avatarOf(auth, next.avatarId),
         preferences: readPreferences(auth.account.preferences),
         pendingEmail: await pendingEmailOf(auth.account.id),
       }

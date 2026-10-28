@@ -228,6 +228,11 @@ export const CoreSettings = z.object({
   avatar_rating: z.enum(['G', 'PG', 'R', 'X']),
   /** A built-in default picture (mystery, identicon, ...) or one an extension adds. */
   avatar_default: machineName,
+  /**
+   * Gravatar (M1.8, K-015): off by default, because it sends a hash of the e-mail address to a third party with every picture.
+   * Off, an account without a profile picture shows its initials.
+   */
+  avatar_gravatar: z.boolean(),
 
   // Settings → Media
   thumbnail_size_w: pixels,
@@ -423,6 +428,7 @@ export const CORE_SETTINGS: CoreSettings = {
   show_avatars: true,
   avatar_rating: 'G',
   avatar_default: 'mystery',
+  avatar_gravatar: false, // Tor (M1.8): a choice under «Personvern», off
 
   // Media
   thumbnail_size_w: 150,

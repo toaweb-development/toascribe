@@ -34,6 +34,13 @@ const clickToLoad = computed({
     form.value.embed_click_to_load = value === true
   },
 })
+// Gravatar (M1.8, K-015): off by default, a picture from a third party.
+const gravatar = computed({
+  get: () => form.value.avatar_gravatar,
+  set: (value: boolean | 'indeterminate') => {
+    form.value.avatar_gravatar = value === true
+  },
+})
 const instances = computed({
   get: () => (form.value.oembed_mastodon_instances ?? []).join('\n'),
   set: (value: string) => {
@@ -99,6 +106,8 @@ async function createPage(): Promise<void> {
         <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.privacy.embeds') }}</legend>
         <UCheckbox v-model="clickToLoad" :label="$t('settings.privacy.clickToLoad')" />
         <p class="max-w-prose text-sm text-toned">{{ $t('settings.privacy.clickToLoadHelp') }}</p>
+        <UCheckbox v-model="gravatar" :label="$t('settings.privacy.gravatar')" />
+        <p class="max-w-prose text-sm text-toned">{{ $t('settings.privacy.gravatarHelp') }}</p>
         <UFormField
           :label="$t('settings.privacy.mastodon')"
           :help="$t('settings.privacy.mastodonHelp')"

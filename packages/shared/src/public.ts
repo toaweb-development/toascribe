@@ -18,7 +18,14 @@ export type CacheTags = z.infer<typeof CacheTags>
 export const PublicTerm = z.object({ id: z.uuid(), name: z.string(), slug: z.string(), path: z.string() })
 export type PublicTerm = z.infer<typeof PublicTerm>
 
-export const PublicAuthor = z.object({ id: z.uuid(), displayName: z.string(), nicename: z.string(), path: z.string() })
+export const PublicAuthor = z.object({
+  id: z.uuid(),
+  displayName: z.string(),
+  nicename: z.string(),
+  path: z.string(),
+  /** With «Vis avatarer» on (M1.8, K-236): the picture, or null for the initials. Missing when avatars are off. */
+  avatarUrl: z.string().nullable().optional(),
+})
 export type PublicAuthor = z.infer<typeof PublicAuthor>
 
 /** One item in a list (an archive, the home page, a search, a Query Loop). */

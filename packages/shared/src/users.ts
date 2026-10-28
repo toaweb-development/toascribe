@@ -61,6 +61,8 @@ export const UserListItem = z.object({
   registeredAt: isoDate,
   /** Published posts (`content.type = post`, `status = publish`) the account is an author of: WordPress' «Innlegg» column. */
   postCount: z.int().min(0),
+  /** The picture to show (M1.8): as on /me; null shows the initials. */
+  avatarUrl: z.string().nullable(),
 })
 export type UserListItem = z.infer<typeof UserListItem>
 

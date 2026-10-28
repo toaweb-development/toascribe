@@ -105,6 +105,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users (needs TEST_DATABASE_URL
       const row = body.users.find((user) => user.username.startsWith('lister-'))
       expect(row).toBeDefined()
       expect(Object.keys(row ?? {}).sort()).toEqual([
+        'avatarUrl',
         'displayName',
         'email',
         'id',

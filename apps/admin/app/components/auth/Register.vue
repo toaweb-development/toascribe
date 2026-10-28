@@ -79,7 +79,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
       <!-- K-006: out of sight and out of the tab order; a person leaves it empty, a bot that fills every field does not. -->
       <div class="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">
         <label for="register-website">{{ $t('auth.register.trap') }}</label>
-        <input id="register-website" v-model="trap" name="website" type="text" tabindex="-1" autocomplete="off" />
+        <UInput id="register-website" v-model="trap" name="website" tabindex="-1" autocomplete="off" />
       </div>
       <UFormField eager-validation name="email" :label="$t('auth.register.email')">
         <UInput

@@ -48,6 +48,9 @@ import type {
 import type { SessionAuth } from '../lib/auth-context.ts'
 import { canEdit } from '../lib/content-access.ts'
 import { ForbiddenError, NotFoundError } from '../lib/errors.ts'
+import { findAccountById } from '../repositories/accounts.ts'
+import { avatarUrls } from './avatars.ts'
+import { readProfile } from './me.ts'
 import { authorsOf, capabilitiesOf, findContent } from '../repositories/content.ts'
 import type { Executor } from '../repositories/executor.ts'
 import {
@@ -110,6 +113,7 @@ const SETTINGS = CoreSettings.pick({
   maintenance_mode: true,
   security_contact: true,
   security_policy: true,
+  show_avatars: true,
 })
 type StoredSettings = { readonly [K in keyof typeof SETTINGS.shape]: (typeof SETTINGS.shape)[K]['_output'] }
 /**
@@ -794,9 +798,32 @@ export function createPublicService(options: {
       if (head === 'author' && segments.length === 2 && second !== undefined) {
         const author = await findAuthorByNicename(db, second)
         if (author === undefined) return notFound()
+        // «Vis avatarer» (K-236): the author's picture, or null for the initials. The e-mail address is only read for Gravatar
+        // and never leaves this function.
+        let avatar: { avatarUrl?: string | null } = {}
+        if (settings.show_avatars) {
+          const account = await findAccountById(db, author.id)
+          const avatarId = account === undefined ? null : readProfile(account.profile).avatarId
+          const urls = await avatarUrls(
+            db,
+            media,
+            [{ id: author.id, email: account?.email ?? '', avatarId }],
+            options.onInvalidSetting,
+          )
+          avatar = { avatarUrl: urls.get(author.id) ?? null }
+        }
         return archive(
           'archive',
-          { type: 'author', author: { ...author, path: links.authorPath(author.nicename) } },
+          {
+            type: 'author',
+            author: {
+              id: author.id,
+              displayName: author.displayName,
+              nicename: author.nicename,
+              path: links.authorPath(author.nicename),
+              ...avatar,
+            },
+          },
           [`author-${author.nicename}`, 'author', 'archive', 'index'],
           { type: 'post', authorId: author.id },
           page,

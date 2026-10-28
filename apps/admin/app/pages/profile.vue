@@ -52,7 +52,10 @@ function saved(next: MeResponse) {
             </UButton>
           </template>
         </UAlert>
-        <ProfileDetails v-else v-model:dirty="dirty" :me="me" @saved="saved" />
+        <template v-else>
+          <ProfileAvatar :me="me" @saved="saved" />
+          <ProfileDetails v-model:dirty="dirty" :me="me" @saved="saved" />
+        </template>
 
         <section aria-labelledby="account-heading" class="flex flex-col gap-4 sm:gap-6">
           <h2 id="account-heading" class="text-xl font-semibold text-highlighted">{{ $t('profile.account.title') }}</h2>

@@ -55,6 +55,8 @@ export const ProfileFields = z.object({
   website,
   bio: multiLine(5000),
   displayNameChoice: DisplayNameChoice,
+  /** «Profilbilde» (M1.8, K-015): an image in the media library that anyone may see; null shows the initials (or Gravatar). */
+  avatarId: z.uuid().nullable(),
 })
 export type ProfileFields = z.infer<typeof ProfileFields>
 
@@ -66,6 +68,7 @@ export const EMPTY_PROFILE: ProfileFields = {
   website: '',
   bio: '',
   displayNameChoice: 'username',
+  avatarId: null,
 }
 
 /** PATCH /me: any of the profile fields. At least one. */
@@ -77,6 +80,7 @@ export const UpdateMeRequest = z
     website: ProfileFields.shape.website,
     bio: ProfileFields.shape.bio,
     displayNameChoice: ProfileFields.shape.displayNameChoice,
+    avatarId: ProfileFields.shape.avatarId,
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one field' })
@@ -189,6 +193,8 @@ export type PendingEmailChange = z.infer<typeof PendingEmailChange>
  */
 export const MeResponse = SessionAccount.extend({
   profile: ProfileFields,
+  /** The picture to show (M1.8, K-015): the profile picture, else Gravatar when «Personvern» allows it, else null (initials). */
+  avatarUrl: z.string().nullable(),
   preferences: Preferences,
   pendingEmail: PendingEmailChange.nullable(),
 })

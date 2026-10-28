@@ -641,6 +641,14 @@
       "revokeTitle": "Tilbakekalle {name}?",
       "revokeText": "Programmer som bruker dette passordet, mister tilgangen med en gang.",
       "revoked": "{name} er tilbakekalt."
+    },
+    "avatar": {
+      "title": "Profilbilde",
+      "label": "Bilde fra mediebiblioteket",
+      "help": "Uten bilde vises forbokstavene dine. Bildet vises for alle, også på nettstedet.",
+      "saved": "Profilbildet er lagret.",
+      "removed": "Profilbildet er fjernet.",
+      "notPublic": "Bildet må ligge i mediebiblioteket og være synlig for alle."
     }
   },
   "roles": {
@@ -1656,7 +1664,9 @@
       "securityHelp": "Nettstedet viser dette på /.well-known/security.txt, så den som finner en sikkerhetsfeil, vet hvor de skal melde fra. Uten kontakt finnes ikke filen.",
       "securityContact": "Kontakt for sikkerhetsfeil",
       "securityContactHelp": "En e-postadresse som mailto:sikkerhet{'@'}eksempel.no, eller en https-adresse til et skjema.",
-      "securityPolicy": "Side med sikkerhetsregler (valgfritt)"
+      "securityPolicy": "Side med sikkerhetsregler (valgfritt)",
+      "gravatar": "Vis Gravatar for brukere uten profilbilde",
+      "gravatarHelp": "Gravatar er en tjeneste utenfor nettstedet. Når dette er på, henter nettleseren bilder derfra med en kode laget av brukerens e-postadresse."
     },
     "permalinks": {
       "title": "Permalenkeinnstillinger",

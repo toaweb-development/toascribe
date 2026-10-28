@@ -60,6 +60,9 @@ import {
   roleSlugsOf,
 } from '../repositories/users.ts'
 import type { Auditor, RequestContext, SafeMail } from './support.ts'
+import { avatarUrls } from './avatars.ts'
+import type { MediaService } from './media.ts'
+import { readProfile } from './me.ts'
 
 export interface UserService {
   /** One page of the users table with the views and the roles to filter and assign by. */
@@ -135,8 +138,10 @@ export function createUserService(options: {
   readonly clock: () => Date
   readonly audit: Auditor
   readonly mail: SafeMail
+  readonly media: Pick<MediaService, 'contentRefs'>
 }): UserService {
   const { db, clock, audit, mail } = options
+  const media = options.media
 
   return {
     async list(auth, query) {
@@ -148,7 +153,15 @@ export function createUserService(options: {
         listRoles(db),
       ])
       const ids = rows.map((row) => row.id)
-      const [roles, posts] = await Promise.all([roleSlugsOf(db, ids), publishedPostCounts(db, ids)])
+      const [roles, posts, avatars] = await Promise.all([
+        roleSlugsOf(db, ids),
+        publishedPostCounts(db, ids),
+        avatarUrls(
+          db,
+          media,
+          rows.map((row) => ({ id: row.id, email: row.email, avatarId: readProfile(row.profile).avatarId })),
+        ),
+      ])
       const users: UserListItem[] = rows.map((row) => ({
         id: row.id,
         username: row.username,
@@ -159,6 +172,7 @@ export function createUserService(options: {
         status: row.status as UserListItem['status'],
         registeredAt: row.createdAt.toISOString(),
         postCount: posts.get(row.id) ?? 0,
+        avatarUrl: avatars.get(row.id) ?? null,
       }))
       const options: UserRoleOption[] = roleRows
         .map((row) => ({ slug: row.slug, name: row.name, grantable: covers(auth.capabilities, row.capabilities) }))

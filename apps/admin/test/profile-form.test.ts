@@ -44,8 +44,10 @@ function account(profile: Partial<MeResponse['profile']> = {}): MeResponse {
       website: '',
       bio: '',
       displayNameChoice: 'username',
+      avatarId: null,
       ...profile,
     },
+    avatarUrl: null,
     preferences: DEFAULT_PREFERENCES,
     pendingEmail: null,
   }

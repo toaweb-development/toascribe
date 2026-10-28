@@ -29,6 +29,8 @@ export interface UserRow {
   readonly email: string
   readonly status: string
   readonly createdAt: Date
+  /** The stored profile, for the profile picture (M1.8). */
+  readonly profile: unknown
 }
 
 function filterCondition(filter: UserFilter): SQL | undefined {
@@ -89,6 +91,7 @@ export function listAccountPage(
       email: account.email,
       status: account.status,
       createdAt: account.createdAt,
+      profile: account.profile,
     })
     .from(account)
     .where(filterCondition(filter))

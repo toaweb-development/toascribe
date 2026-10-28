@@ -110,6 +110,7 @@ export const PrivacySettings = CoreSettings.pick({
   oembed_mastodon_instances: true,
   security_contact: true,
   security_policy: true,
+  avatar_gravatar: true,
 })
 export type PrivacySettings = z.infer<typeof PrivacySettings>
 export const PrivacySettingsResponse = z.object({ settings: PrivacySettings })

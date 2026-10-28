@@ -15,8 +15,17 @@ const heading = computed(() => {
   }
   return undefined
 })
+
+// «Vis avatarer» (M1.8, K-236): the author's picture, or the initials when there is none. Not there when avatars are off.
+const author = computed(() => {
+  const found = archive.value
+  return found?.type === 'author' && found.author.avatarUrl !== undefined ? found.author : undefined
+})
 </script>
 
 <template>
+  <div v-if="author" class="mx-auto mt-8 flex max-w-3xl justify-center px-4">
+    <UAvatar :src="author.avatarUrl ?? undefined" :alt="author.displayName" size="3xl" />
+  </div>
   <ThemeListing :heading="heading" />
 </template>

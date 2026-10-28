@@ -230,7 +230,12 @@ export function createServices(deps: ServiceDeps): Services {
     setupGate: createSetupGate({ install, limiter, clock }),
     sessions,
     auth: createAuthService({ db, clock, sessions, limiter }),
-    me: createMeService({ db, clock }),
+    me: createMeService({
+      db,
+      clock,
+      media,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
     system: createSystemService({ db, clock, mail: deps.mail }),
     adminMenu,
     dashboard: createDashboardService({ db, version: deps.version, content }),
@@ -241,7 +246,7 @@ export function createServices(deps: ServiceDeps): Services {
       audit,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
-    users: createUserService({ db, clock, audit, mail }),
+    users: createUserService({ db, clock, audit, mail, media }),
     content,
     terms: createTermService({
       db,

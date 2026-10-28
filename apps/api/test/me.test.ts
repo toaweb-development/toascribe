@@ -55,9 +55,18 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('profile (needs TEST_DATABASE_U
       email: account.email,
       displayName: account.username,
       roles: ['author'],
-      profile: { firstName: '', lastName: '', nickname: '', website: '', bio: '', displayNameChoice: 'username' },
+      profile: {
+        firstName: '',
+        lastName: '',
+        nickname: '',
+        website: '',
+        bio: '',
+        displayNameChoice: 'username',
+        avatarId: null,
+      },
     })
     expect(Object.keys(JSON.parse(text) as object).sort()).toEqual([
+      'avatarUrl',
       'capabilities',
       'displayName',
       'email',
@@ -88,6 +97,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('profile (needs TEST_DATABASE_U
       website: 'https://ada.example/about',
       bio: 'Line one\nLine two',
       displayNameChoice: 'username',
+      avatarId: null,
     })
     const second = await client.patch('/api/v1/me', { nickname: 'countess' })
     expect(MeResponse.parse(await second.json()).profile).toMatchObject({
@@ -99,8 +109,9 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('profile (needs TEST_DATABASE_U
     expect((await me(client)).profile.bio).toBe('Line one\nLine two')
     // The display name was not asked to change.
     expect((await stored(account.id))?.display_name).toBe(account.username)
-    // Exactly the six keys are stored.
+    // Exactly the seven keys are stored.
     expect(Object.keys((await stored(account.id))?.profile ?? {}).sort()).toEqual([
+      'avatarId',
       'bio',
       'displayNameChoice',
       'firstName',
@@ -267,6 +278,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('profile (needs TEST_DATABASE_U
       website: '',
       bio: '',
       displayNameChoice: 'username',
+      avatarId: null,
     })
     await env.query(`update account set profile = '[]'::jsonb where id = $1`, [account.id])
     expect((await me(client)).profile.firstName).toBe('')
