@@ -122,7 +122,8 @@ describe('the English messages', () => {
     ).toEqual([])
     for (const [key, message] of en) {
       const text = typeof message === 'string' ? message : ''
-      const norsk = String(nb.get(key) ?? '')
+      const known = nb.get(key)
+      const norsk = typeof known === 'string' ? known : ''
       expect(text.trim(), `${english}: ${key} is empty`).not.toBe('')
       expect(placeholders(text), `${english}: ${key} placeholders`).toEqual(placeholders(norsk))
       expect(forms(text), `${english}: ${key} plural forms`).toBe(forms(norsk))
