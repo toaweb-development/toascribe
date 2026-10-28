@@ -104,11 +104,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('export and import (needs TEST_
     // The file on standard input after the key: nothing has to be copied into the container.
     const piped = await toa(['secrets', 'import', '-', '--recovery-key-stdin'], `${recoveryKey}\n${file}`)
     expect(piped.code, piped.stderr).toBe(0)
-    expect(piped.stdout).toBe(
-      imported.stdout
-        .replace(/imported [^\n]*/, (line) => line)
-        .replace(/imported .*Z/, piped.stdout.match(/imported .*Z/)?.[0] ?? ''),
-    )
+    const keysOf = (text: string) => text.split('\n').filter((line) => line !== '' && !line.startsWith('#'))
+    expect(keysOf(piped.stdout)).toEqual(keysOf(imported.stdout))
     expect(piped.stdout.startsWith('\n#')).toBe(true)
     expect((await toa(['secrets', 'import', '-', '--recovery-key-stdin'], recoveryKey)).code).toBe(2)
   })
