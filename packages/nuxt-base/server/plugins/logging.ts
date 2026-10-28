@@ -13,7 +13,12 @@ export default defineNitroPlugin((nitroApp) => {
   // Its own error handler cannot be told to keep quiet without also showing the error's message to the visitor, so what reaches
   // console.error becomes a scrubbed line of this log instead (the address without its query, the error's name and message).
   Reflect.set(globalThis.console, 'error', (...args: unknown[]) => {
-    logLine('error', { console: consoleArgsForLog(args, useRuntimeConfig().toascribeDebug === '1') }, 'console.error')
+    try {
+      logLine('error', { console: consoleArgsForLog(args, useRuntimeConfig().toascribeDebug === '1') }, 'console.error')
+    } catch {
+      // Something that cannot be written as JSON (a cycle): the fact, not the thing; console.error must never throw.
+      logLine('error', {}, 'console.error (not shown: it could not be written as JSON)')
+    }
   })
 
   nitroApp.hooks.hook('request', (event) => {

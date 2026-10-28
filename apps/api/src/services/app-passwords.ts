@@ -39,14 +39,13 @@ import type { RateLimiter } from './rate-limit.ts'
 import { assertNotDelayed, shownIp } from './support.ts'
 import type { Auditor, RequestContext } from './support.ts'
 
-/** At most this many per account (a client each; WordPress has no limit, a list of thousands helps nobody). */
-
 /**
  * Capabilities an application password never carries, whatever the account's roles (M1.8 security review): raw HTML and unchecked
  * uploads stay with a signed-in person (cookie session, second factor).
  */
 export const APP_PASSWORD_WITHHELD: readonly string[] = ['unfiltered_html', 'unfiltered_upload']
 
+/** At most this many per account (a client each; WordPress has no limit, a list of thousands helps nobody). */
 export const MAX_APP_PASSWORDS = 50
 /** The last use is written at most this often. */
 const TOUCH_EVERY_MS = 60_000

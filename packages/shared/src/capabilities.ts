@@ -107,7 +107,6 @@ const EDITOR_210 = [
   'read_private_pages',
 ] as const satisfies readonly Capability[]
 
-/** The built-in roles with WordPress' capability lists, the editor without unfiltered_html: 50, 25, 7, 3 and 1 names. */
 /**
  * Capabilities a role must not have to be «Standard rolle for nye brukere» (anyone who fills in the registration form gets it): the
  * ones that manage the site, its users or its code, and raw HTML, which runs with the page's rights on the public site. The settings
@@ -146,6 +145,7 @@ export function isRegistrationRole(role: { readonly slug: string; readonly capab
   )
 }
 
+/** The built-in roles with WordPress' capability lists, the editor without unfiltered_html: 50, 25, 7, 3 and 1 names. */
 export const DEFAULT_ROLES: readonly RoleDefinition[] = [
   { slug: 'administrator', name: 'Administrator', capabilities: CAPABILITIES },
   {
