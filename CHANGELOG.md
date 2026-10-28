@@ -6,9 +6,9 @@ All notable changes to this project are documented here, newest first. Versionin
 `scripts/release.sh` refuses to release without it. The notes collect under `## [Unreleased]` until then. The sections below
 that heading keep the format they were written in (Keep a Changelog).
 
-## [Unreleased]
+## 0.7.0 — 2026-10-28
 
-**Phase 1 is complete (draft of the release notes; Tor sets the version).** toascribe now does the everyday work of a WordPress
+**Phase 1 is complete.** toascribe now does the everyday work of a WordPress
 site: posts and pages in a block editor, categories and tags, a media library, menus, a theme with «Tilpass» and global sets, the
 public site with feeds, sitemaps and SEO, users with roles, two-factor sign-in and application passwords, the settings screens,
 backups and restore, updates and site health, and an admin in bokmål or English. In short, for whoever runs a site:
