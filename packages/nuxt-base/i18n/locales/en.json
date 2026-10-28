@@ -1,0 +1,74 @@
+{
+  "brand": {
+    "name": "toascribe"
+  },
+  "apiStatus": {
+    "title": "API status",
+    "ok": {
+      "badge": "OK",
+      "text": "The API is answering. Version {version}."
+    },
+    "failed": {
+      "badge": "Unavailable",
+      "text": "Cannot reach the API."
+    },
+    "checking": {
+      "badge": "Checking",
+      "text": "Checking whether the API answers."
+    },
+    "retry": "Try again"
+  },
+  "error": {
+    "invalidCredentials": "The username, email address or password is wrong. Try again, or choose «Lost your password?».",
+    "unauthorized": "You are not signed in, or your session has expired. Sign in again.",
+    "mfaRequired": "You need to confirm with two-factor authentication before you continue. Sign in again.",
+    "forbidden": "The action was refused. The page may have been open too long: reload it and try again.",
+    "invalidPassword": "The password is wrong. Try again.",
+    "passwordRequired": "Enter your password to confirm the change.",
+    "invalidCode": "The code is wrong or has expired. Check the code in your authenticator app and try again.",
+    "registrationClosed": "Registration is turned off on this site.",
+    "registrationUnavailable": "Registration is unavailable for the moment. Try again later, or contact the administrator.",
+    "invalidToken": "The link is invalid, has expired or has already been used. Ask for a new link.",
+    "weakPassword": "The password cannot be the same as the username or the email address. Choose another password.",
+    "sameEmail": "This is already your email address.",
+    "emailUnavailable": "This email address cannot be used. Try another one.",
+    "originInvalid": "The request was refused because it came from another address. Open the page again from the address you usually use.",
+    "setupTokenRequired": "The setup code is missing. Paste it and try again.",
+    "invalidSetupToken": "The setup code does not match. Copy it again from the log of the api service, or make a new one with «toa core setup-token».",
+    "alreadyInstalled": "The site is already installed. Go to the login screen.",
+    "stepMissing": "One of the previous steps has not been saved. Go back and finish it.",
+    "usernameTaken": "That username is taken. Choose another.",
+    "emailTaken": "Another account uses that email address. Enter a different one.",
+    "contentExists": "The database already holds content the installation would have made. Nothing was changed. Contact whoever runs the site.",
+    "recoveryKeyMismatch": "The recovery key on the screen is not the latest one made. Make a new key, save it and try again.",
+    "validation": "Something in the form is not valid. Check the fields and try again.",
+    "tooManyFactors": "The account already has as many authenticator apps as it can have. Remove one of them first.",
+    "mfaRequiredByRole": "Your role requires two-factor authentication, so the last app cannot be removed. Set up a new app first.",
+    "noFactor": "The account has no two-factor authentication, so there are no recovery codes to make. Set up an app first.",
+    "mfaFinished": "The two-factor step is already done or has expired. Sign in again.",
+    "enrolmentUnreadable": "The stored key could not be read. Start the setup again.",
+    "tooManyRequests": "Too many attempts. Wait a moment and try again.",
+    "tooManyRequestsIn": "Too many attempts. Try again in {wait}.",
+    "network": "Cannot reach the service. Check your connection and try again. What you filled in has been kept.",
+    "server": "Something went wrong on our side. What you filled in has been kept. Try again in a little while.",
+    "serverWithReference": "Something went wrong on our side. What you filled in has been kept. Try again in a little while, and give the reference {id} if it goes on.",
+    "unknown": "Something went wrong. Reload the page and try again.",
+    "wait": {
+      "seconds": "{n} second | {n} seconds",
+      "minutes": "{n} minute | {n} minutes",
+      "hours": "{n} hour | {n} hours"
+    },
+    "formRejected": "The form was not sent. Reload the page, wait a moment and try again."
+  },
+  "errorPage": {
+    "notFound": {
+      "heading": "Page not found",
+      "text": "The address is wrong, or the page has been moved or removed. Go to the front page and find it from there."
+    },
+    "failed": {
+      "heading": "The page could not be shown",
+      "text": "Something went wrong on our side while showing the page. Try again in a little while."
+    },
+    "home": "Go to the front page"
+  }
+}

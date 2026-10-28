@@ -37,6 +37,8 @@ export const AuthOptionsResponse = z.object({
   privacyPolicyPath: z.string().nullable(),
   /** The registration form's token (M1.8, K-006): sent back with the form. */
   formToken: z.string(),
+  /** The site's language (`locale`, M1.8, K-330): the admin's language for whoever has not chosen one on the profile. */
+  locale: z.string(),
 })
 export type AuthOptionsResponse = z.infer<typeof AuthOptionsResponse>
 

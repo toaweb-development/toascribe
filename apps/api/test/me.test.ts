@@ -295,6 +295,29 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('profile (needs TEST_DATABASE_U
     })
   })
 
+  it("stores the admin language (K-330): nb or en, or null for the site's; nothing else", async () => {
+    const { account, client } = await signedIn()
+    const set = async (locale: unknown) => client.patch('/api/v1/me', { locale })
+    const english = await set('en')
+    expect(english.status).toBe(200)
+    expect(MeResponse.parse(await english.json()).locale).toBe('en')
+    expect((await me(client)).locale).toBe('en')
+    // The session answers with it too, so the admin switches on the next page.
+    expect(
+      ((await (await client.get('/api/v1/auth/session')).json()) as { account: { locale: unknown } }).account.locale,
+    ).toBe('en')
+    for (const bad of ['de', 'en-GB', '', 5]) expect((await set(bad)).status, String(bad)).toBe(400)
+    expect(MeResponse.parse(await (await set(null)).json()).locale).toBeNull()
+    expect(
+      (await env.query<{ locale: string | null }>(`select locale from account where id = $1`, [account.id]))[0]?.locale,
+    ).toBeNull()
+  })
+
+  it('the auth options name the site language, the fallback of the admin language (K-330)', async () => {
+    const options = (await (await env.client().get('/api/v1/auth/options')).json()) as { locale: unknown }
+    expect(options.locale).toBe('nb')
+  })
+
   describe('pendingEmail: an e-mail change that is asked for and not yet confirmed', () => {
     const request = async (client: TestClient, newEmail: string) =>
       (await client.post('/api/v1/me/email-change', { newEmail, password: TEST_PASSWORD })).status

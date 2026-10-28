@@ -15,7 +15,12 @@ export default defineNuxtConfig({
 
   // The app's own messages (i18n/locales/nb.json): a layer's messages are only read when the layer lists the file. The
   // first layer's `language` wins when the module merges the entries of one code, so it is repeated here.
-  i18n: { locales: [{ code: 'nb', language: 'nb', file: 'nb.json' }] },
+  i18n: {
+    locales: [
+      { code: 'nb', language: 'nb', file: 'nb.json' },
+      { code: 'en', language: 'en', file: 'en.json' },
+    ],
+  },
 
   // The end-to-end tests and the Playwright config are TypeScript too (e2e/README.md): typecheck them with the app.
   typescript: {

@@ -71,7 +71,18 @@ export const EMPTY_PROFILE: ProfileFields = {
   avatarId: null,
 }
 
-/** PATCH /me: any of the profile fields. At least one. */
+/**
+ * The languages of the admin (M1.8, K-330): an account picks one on its profile, or none to follow the site's language. The site
+ * itself is in bokmål in phase 1, whatever the admin's language.
+ */
+export const ADMIN_LOCALES = [
+  { code: 'nb', name: 'Norsk bokmål' },
+  { code: 'en', name: 'English' },
+] as const
+export const AdminLocale = z.enum(['nb', 'en'])
+export type AdminLocale = z.infer<typeof AdminLocale>
+
+/** PATCH /me: any of the profile fields, and the admin language (null: the site's). At least one. */
 export const UpdateMeRequest = z
   .strictObject({
     firstName: ProfileFields.shape.firstName,
@@ -81,6 +92,7 @@ export const UpdateMeRequest = z
     bio: ProfileFields.shape.bio,
     displayNameChoice: ProfileFields.shape.displayNameChoice,
     avatarId: ProfileFields.shape.avatarId,
+    locale: AdminLocale.nullable(),
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, { message: 'Send at least one field' })

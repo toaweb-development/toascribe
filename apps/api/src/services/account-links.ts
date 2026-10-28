@@ -100,6 +100,7 @@ const OptionsSettings = CoreSettings.pick({
   wp_page_for_privacy_policy: true,
   show_on_front: true,
   page_on_front: true,
+  locale: true,
 })
 
 const RegistrationSettings = CoreSettings.pick({
@@ -352,8 +353,9 @@ export function createPublicFlows(options: {
       return {
         registrationOpen: settings.users_can_register,
         siteName: settings.blogname.trim(),
-        // The same address the site gives it: `/` when it is the static front page.
         formToken: formToken(clock().getTime(), client.ip),
+        locale: settings.locale,
+        // The same address the site gives it: `/` when it is the static front page.
         privacyPolicyPath:
           privacyPage === undefined
             ? null

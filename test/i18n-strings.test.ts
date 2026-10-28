@@ -96,6 +96,42 @@ describe('the message files', () => {
   })
 })
 
+/**
+ * The English admin (M1.8, K-330): the admin and the shared layer have an en.json beside nb.json with every key of it, the same
+ * placeholders and the same number of plural forms, so no screen falls back to bokmål or shows a key. The site's layers are bokmål
+ * only in phase 1.
+ */
+const ENGLISH_DIRS = ['packages/nuxt-base', 'apps/admin']
+
+describe('the English messages', () => {
+  const placeholders = (text: string) => [...text.matchAll(/\{[A-Za-z_][A-Za-z0-9_]*\}/g)].map((m) => m[0]).sort()
+  const forms = (text: string) => text.split(' | ').length
+
+  it.each(ENGLISH_DIRS)('%s has an en.json with every key of nb.json and nothing else', (dir) => {
+    const english = `${dir}/i18n/locales/en.json`
+    expect(existsSync(path(english)), english).toBe(true)
+    const nb = messagesByFile.get(`${dir}/i18n/locales/nb.json`) ?? new Map<string, unknown>()
+    const en = flatten(JSON.parse(readFileSync(path(english), 'utf8')) as unknown)
+    expect(
+      [...en.keys()].filter((key) => !nb.has(key)),
+      `${english}: keys nb.json does not have`,
+    ).toEqual([])
+    expect(
+      [...nb.keys()].filter((key) => !en.has(key)),
+      `${english}: keys it is missing`,
+    ).toEqual([])
+    for (const [key, message] of en) {
+      const text = typeof message === 'string' ? message : ''
+      const norsk = String(nb.get(key) ?? '')
+      expect(text.trim(), `${english}: ${key} is empty`).not.toBe('')
+      expect(placeholders(text), `${english}: ${key} placeholders`).toEqual(placeholders(norsk))
+      expect(forms(text), `${english}: ${key} plural forms`).toBe(forms(norsk))
+      const outside = text.replace(/\{'[^']*'\}/g, '').replace(/\{[A-Za-z_][A-Za-z0-9_]*\}/g, '')
+      expect(outside, `${english}: ${key} (escape as {'@'}, {'{'})`).not.toMatch(/[@{}]/)
+    }
+  })
+})
+
 /** The keys that code asks for with t('…'), $t('…') or the <i18n-t keypath="…"> component. */
 function usedKeys(): Map<string, string> {
   const used = new Map<string, string>()

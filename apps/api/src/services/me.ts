@@ -16,7 +16,7 @@ import { avatarUrls, isPublicImage } from './avatars.ts'
 import type { MediaService } from './media.ts'
 import { AppError } from '../lib/errors.ts'
 import { findPendingEmailChange } from '../repositories/account-tokens.ts'
-import { mergePreferences, updateProfile } from '../repositories/accounts.ts'
+import { mergePreferences, updateLocale, updateProfile } from '../repositories/accounts.ts'
 import { inTransaction } from '../repositories/executor.ts'
 import { recordInvalidation } from '../repositories/public.ts'
 
@@ -165,8 +165,10 @@ export function createMeService(options: {
           )
         }
       }
+      const locale = changes.locale === undefined ? auth.account.locale : changes.locale
       await inTransaction(db, async (tx) => {
         await updateProfile(tx, auth.account.id, displayName, next, clock())
+        if (changes.locale !== undefined) await updateLocale(tx, auth.account.id, changes.locale, clock())
         // The site shows authors' names on every post and list, and their pictures on their pages: a new name or picture clears
         // everything (a removed picture must not linger in the site's cache).
         if (displayName !== auth.account.displayName || next.avatarId !== current.avatarId) {
@@ -176,6 +178,7 @@ export function createMeService(options: {
       return {
         ...toSessionAccount(auth),
         displayName,
+        locale,
         profile: next,
         avatarUrl: await avatarOf(auth, next.avatarId),
         preferences: readPreferences(auth.account.preferences),

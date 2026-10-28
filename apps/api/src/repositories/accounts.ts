@@ -101,6 +101,11 @@ export async function updateProfile(
   await db.update(account).set({ displayName, profile, modifiedAt: now }).where(eq(account.id, accountId))
 }
 
+/** Stores the account's admin language (M1.8, K-330); null follows the site's. */
+export async function updateLocale(db: Executor, accountId: string, locale: string | null, now: Date): Promise<void> {
+  await db.update(account).set({ locale, modifiedAt: now }).where(eq(account.id, accountId))
+}
+
 /**
  * Merges `changes` into the account's preferences in one statement (`||` on the JSON), so two requests that change different
  * keys at the same time both stay, and keys this version does not know are kept. Returns the preferences as stored.

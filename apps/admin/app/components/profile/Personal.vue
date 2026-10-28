@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { ADMIN_COLOR_SCHEMES } from '@toascribe/shared'
-import type { AdminColorScheme } from '@toascribe/shared'
+import { ADMIN_COLOR_SCHEMES, ADMIN_LOCALES } from '@toascribe/shared'
+import type { AdminColorScheme, AdminLocale } from '@toascribe/shared'
 
-// «Personlige valg» (WordPress): the admin colour scheme and the toolbar on the site. The two choices are saved the moment they are
-// made, not with «Oppdater profil»: WordPress previews a colour scheme at once, and the other choice is a single switch. The result is
+// «Personlige valg» (WordPress): the admin colour scheme, the toolbar on the site and the admin's language (M1.8, K-330). The choices
+// are saved the moment they are made, not with «Oppdater profil»: WordPress previews a colour scheme at once, and the other choice is a single switch. The result is
 // said in place (a status line under the choices), because the person is looking at it.
 const { t } = useI18n()
 const { preferences, failed, reload, update } = useAdminPreferences()
 const colorScheme = useAdminColorScheme()
+const auth = useAuth()
+const meApi = useMeApi()
+const adminLocale = useAdminLocale()
 
-const saving = ref<'scheme' | 'toolbar'>()
+const saving = ref<'scheme' | 'toolbar' | 'language'>()
 const message = ref('')
 const failure = ref<string>()
 
@@ -21,7 +24,7 @@ const items = computed(() =>
   })),
 )
 
-async function save(which: 'scheme' | 'toolbar', run: () => Promise<unknown>, done: string) {
+async function save(which: 'scheme' | 'toolbar' | 'language', run: () => Promise<unknown>, done: string) {
   saving.value = which
   failure.value = undefined
   message.value = ''
@@ -68,6 +71,35 @@ const toolbar = computed<boolean>({
       if (failure.value !== undefined) {
         toolbarShown.value = preferences.value?.showToolbarOnSite ?? true
       }
+    })
+  },
+})
+
+// The language: the site's (stored as null) or one of the admin's. Saved, then the session is read again and the admin switches.
+const SITE = 'site'
+const languageItems = computed(() => [
+  { value: SITE, label: t('profile.personal.languageSite') },
+  ...ADMIN_LOCALES.map((locale) => ({ value: locale.code, label: locale.name })),
+])
+const ownLocale = computed(() =>
+  auth.session.value.status === 'authenticated' ? auth.session.value.account.locale : null,
+)
+const language = computed<string>({
+  get: () => ownLocale.value ?? SITE,
+  set: (next) => {
+    const locale = next === SITE ? null : (next as AdminLocale)
+    if (locale === ownLocale.value) return
+    void save(
+      'language',
+      async () => {
+        await meApi.updateProfile({ locale })
+        await auth.refresh()
+        await adminLocale.apply()
+      },
+      // Asked for after the switch, so it is said in the new language.
+      '',
+    ).then(() => {
+      if (failure.value === undefined) message.value = t('profile.personal.languageSaved')
     })
   },
 })
@@ -132,6 +164,21 @@ async function retry() {
           :label="$t('profile.personal.toolbarLabel')"
         />
       </fieldset>
+
+      <UFormField
+        name="admin-language"
+        :label="$t('profile.personal.language')"
+        :description="$t('profile.personal.languageHelp')"
+      >
+        <USelect
+          id="admin-language"
+          v-model="language"
+          :items="languageItems"
+          size="lg"
+          class="w-full sm:w-72"
+          :disabled="saving === 'language'"
+        />
+      </UFormField>
 
       <!-- The region stays in the page, empty, so the text put into it is announced. -->
       <div role="status" class="min-h-6 text-sm text-default">

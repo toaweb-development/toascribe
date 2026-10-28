@@ -39,8 +39,13 @@ export default defineNuxtConfig({
   i18n: {
     defaultLocale: 'nb',
     strategy: 'no_prefix',
-    locales: [{ code: 'nb', language: 'nb', name: 'Norsk bokmål', file: 'nb.json' }],
-    // The language is fixed, so no cookie is written and no browser language is detected.
+    // English is the admin's second language (M1.8, K-330): the admin picks it from the profile or the site's language
+    // (apps/admin/app/middleware/locale.global.ts). The site has bokmål only in phase 1, and never switches.
+    locales: [
+      { code: 'nb', language: 'nb', name: 'Norsk bokmål', file: 'nb.json' },
+      { code: 'en', language: 'en', name: 'English', file: 'en.json' },
+    ],
+    // The language is chosen by the app, so no cookie is written and no browser language is detected.
     detectBrowserLanguage: false,
   },
 

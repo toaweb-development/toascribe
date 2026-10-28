@@ -1,0 +1,1988 @@
+{
+  "setup": {
+    "title": "Setup — toascribe admin",
+    "heading": "Set up the site",
+    "intro": "Welcome to toascribe. Answer a few questions and the site is ready.",
+    "starting": "Starting the setup …",
+    "stepHeading": "Step {n} of {total}: {title}",
+    "stepper": {
+      "done": "Done",
+      "current": "Current step",
+      "todo": "Not reached yet"
+    },
+    "nav": {
+      "back": "Back",
+      "next": "Continue"
+    },
+    "steps": {
+      "token": {
+        "title": "Setup code",
+        "heading": "Setup code"
+      },
+      "check": {
+        "title": "System check",
+        "heading": "Checking the system"
+      },
+      "site": {
+        "title": "The site",
+        "heading": "About the site"
+      },
+      "email": {
+        "title": "Email",
+        "heading": "Email"
+      },
+      "admin": {
+        "title": "Administrator",
+        "heading": "First administrator"
+      },
+      "content": {
+        "title": "Content",
+        "heading": "Default content"
+      },
+      "finish": {
+        "title": "Finish",
+        "heading": "Finish the installation"
+      }
+    },
+    "token": {
+      "hint": "The setup code is in the log of the api service, in the address that ends with “#token=”. Run {logs} to see the log. If you no longer have the code, {renew} makes a new one.",
+      "label": "Setup code",
+      "help": "The code works only for this setup, and stops working once the site is installed.",
+      "submit": "Check the code",
+      "accepted": "The setup code is accepted.",
+      "badAddress": "The address held a setup code that cannot be right. Paste the code from the log instead."
+    },
+    "validation": {
+      "token": "Paste the whole setup code from the log. It is made of letters, digits, hyphens and underscores, without spaces.",
+      "title": "Enter a title for the site, on one line and at most 200 characters.",
+      "timezone": "Choose a time zone from the list.",
+      "host": "Enter the address of the mail server, for example smtp.example.com.",
+      "port": "Enter a port number between 1 and 65535, or leave the field empty.",
+      "smtpUsername": "The username cannot contain line breaks and has at most 320 characters.",
+      "fromName": "The name must be on one line and have at most 200 characters.",
+      "passwordSame": "The password cannot be the same as the username or the email address."
+    },
+    "check": {
+      "intro": "Before the site is set up, we check that the services around it are in order.",
+      "working": "Checking the system …",
+      "passed": "The check is done, and everything that must be in order is.",
+      "failed": "The check is done. Items to fix before you can continue: {n}.",
+      "blocked": "Fix what is marked “Must be fixed”, restart the services if needed, and choose “Check again”. You cannot continue until everything is in order.",
+      "again": "Check again",
+      "level": {
+        "ok": "In order",
+        "problem": "Must be fixed",
+        "warning": "Warning",
+        "info": "For your information"
+      },
+      "database": {
+        "title": "Database",
+        "ok": "The database answers.",
+        "problem": "Cannot reach the database. Check that the “postgres” service is running and that the passwords in docker/.env are right, and restart the api service."
+      },
+      "migrations": {
+        "title": "Database setup",
+        "ok": "The database is up to date: {applied} of {expected} migrations have run.",
+        "problem": "The database is not up to date: {applied} of {expected} migrations have run. Run the “migrate” service again and check again."
+      },
+      "encryption": {
+        "title": "Encryption key",
+        "ok": "TOASCRIBE_ENCRYPTION_KEY is set and valid (version {version}).",
+        "problem": "TOASCRIBE_ENCRYPTION_KEY is missing or invalid. Make keys with “toa core gen-env”, put them in docker/.env and restart the services."
+      },
+      "signing": {
+        "title": "Signing key",
+        "ok": "TOASCRIBE_SIGNING_KEY is set and valid.",
+        "problem": "TOASCRIBE_SIGNING_KEY is missing, invalid or the same as the encryption key. Make keys with “toa core gen-env”, put them in docker/.env and restart the services."
+      },
+      "origin": {
+        "title": "Web address",
+        "ok": "The browser uses {origin}, which is what PUBLIC_ORIGIN says.",
+        "unknown": "The address the browser uses could not be checked. PUBLIC_ORIGIN is {configured}.",
+        "mismatch": "The browser uses {observed}, but PUBLIC_ORIGIN is {configured}. Signing in and links in emails work on one of the addresses only. Correct PUBLIC_ORIGIN in docker/.env, restart the services and open the setup at the right address."
+      },
+      "proxy": {
+        "title": "Proxy in front of the site",
+        "configured": "TOASCRIBE_TRUSTED_PROXY is set. The visitors' addresses are read from your proxy.",
+        "ok": "Visitors come from different addresses, so the proxy gives the right address for each of them.",
+        "watching": "We are still looking at which addresses visitors come from ({n} requests so far). There is nothing you need to do now.",
+        "warning": "TOASCRIBE_TRUSTED_PROXY is empty, and every request so far has come from the same internal address ({address}). All visitors then share one limit on login attempts, and the addresses in the log are the proxy's. Set the variable to the proxy's address in docker/.env and restart the proxy service. You can continue without doing it now."
+      }
+    },
+    "site": {
+      "intro": "These are settings you can change later.",
+      "title": "Site title",
+      "titleHelp": "The name of the site. It is shown on the login screens and in emails from the site.",
+      "language": {
+        "label": "Site language",
+        "help": "The language also decides the text of the default content made at the end.",
+        "nb": "Norsk bokmål",
+        "en": "English"
+      },
+      "timezone": {
+        "label": "Time zone",
+        "help": "Choose your city or a city in the same time zone. You can type to search.",
+        "search": "Search for a time zone"
+      },
+      "adminEmail": "Administration email address",
+      "adminEmailHelp": "The site sends notifications here. Visitors do not see the address.",
+      "visibility": {
+        "legend": "Search engine visibility",
+        "label": "Discourage search engines from indexing this site",
+        "help": "It is up to search engines to honour this request."
+      }
+    },
+    "email": {
+      "intro": "The site sends email, for example links to choose a new password. Fill in the mail server (SMTP) and send a test email to see that it works.",
+      "skippedBefore": "You skipped email earlier. Fill in the form and send a test email if you want to set it up now.",
+      "host": "SMTP server",
+      "hostHelp": "For example smtp.example.com.",
+      "encryption": {
+        "label": "Encryption",
+        "starttls": "STARTTLS (usually port 587)",
+        "tls": "TLS (SSL, usually port 465)",
+        "none": "None (usually port 25)"
+      },
+      "port": "Port",
+      "portHelp": "Leave the field empty to use the default port of the chosen encryption ({port}).",
+      "username": "Username",
+      "usernameHelp": "Leave the field empty if the server does not require a login.",
+      "password": "Password",
+      "passwordSaved": "Saved",
+      "passwordKeep": "A password is saved and is not shown. Leave the field empty to keep it, or type a new one.",
+      "passwordHelp": "Leave the field empty if the server does not require a login. The password is stored encrypted and is not shown again.",
+      "fromAddress": "From address",
+      "fromAddressHelp": "The address the email is sent from, for example site{'@'}example.com.",
+      "fromName": "From name",
+      "fromNameHelp": "Optional. If you leave the field empty, the site title is used.",
+      "test": {
+        "legend": "Test the email setup",
+        "to": "Send a test email to",
+        "toHelp": "The address gets a short message from the site.",
+        "submit": "Send test email",
+        "sending": "Saving and sending the test email …",
+        "sent": "The test email has been sent to {to}. Check the inbox. You can continue.",
+        "failed": {
+          "sendFailed": "The mail server did not accept the message. Check the server, port, encryption, username and password, and try again.",
+          "mailConfig": "The email settings are incomplete. Fill in the server and the from address and try again.",
+          "timeout": "Sending took too long. Check that the server and port are right and that the worker service is running, and try again.",
+          "queueUnavailable": "The message did not get into the queue. Check that the database and the worker service are running, and try again.",
+          "busy": "A test email is already on its way. Wait a few seconds and try again."
+        }
+      },
+      "mustTest": "Send a test email first. You can continue once it is sent, or skip email below.",
+      "skip": {
+        "heading": "Skip email",
+        "warning": "If you skip, the site cannot send email, for example links to choose a new password, until you have set up email. The dashboard shows a notice about it until that is done.",
+        "button": "Skip email"
+      }
+    },
+    "admin": {
+      "intro": "This will be the first account, and it gets every right. When the setup is done, you are signed in with it.",
+      "username": "Username",
+      "usernameHelp": "3 to 60 characters: letters and digits, and optionally full stops, underscores, hyphens or {'@'}.",
+      "email": "Email address",
+      "emailHelp": "Used for notifications, and if you lose your password.",
+      "password": "Password",
+      "toKey": "Continue to the recovery key"
+    },
+    "key": {
+      "title": "Recovery key",
+      "intro": "The key protects the backups of the site, and you need it to move the site to a new server. Save it in a password manager, or print it and keep the paper.",
+      "once": "We show the key only now. The server stores only a check value, so the key cannot be made again if you lose it. If you reload the page before the installation is done, we make a new key, and the old one stops working.",
+      "copy": "Copy the key",
+      "download": "Download as a text file",
+      "copied": "The key has been copied.",
+      "copyFailed": "Could not copy. Select the key and copy it by hand.",
+      "downloaded": "The text file has been downloaded.",
+      "saved": "I have saved the recovery key",
+      "mustConfirm": "Confirm that you have saved the key to continue.",
+      "file": "Recovery key for {site}\nMade {date}\n\n{key}\n\nKeep the key somewhere safe, apart from the backups. It cannot be made again.\n"
+    },
+    "content": {
+      "intro": "As in WordPress, the site gets a little content to start with, so it is not empty. You can change or delete all of it later. This is made:",
+      "post": "A post, “{title}”, with one comment.",
+      "page": "A page, “{title}”.",
+      "privacy": "A draft privacy policy page, “{title}”, set as the site's privacy policy page.",
+      "category": "The category “{title}”.",
+      "outro": "None of this is made until you finish the installation in the last step."
+    },
+    "finish": {
+      "intro": "This is what will be set up. Check that it is right, and choose “Finish the installation”.",
+      "siteTitle": "Site title",
+      "language": "Language",
+      "timezone": "Time zone",
+      "search": "Search engines",
+      "searchAllowed": "The site may be indexed",
+      "searchDiscouraged": "Search engines are asked not to index the site",
+      "email": "Email",
+      "emailTested": "Set up, and the test email has been sent",
+      "emailSkipped": "Skipped. A notice will remind you.",
+      "admin": "Administrator",
+      "adminValue": "{username} ({email})",
+      "key": "Recovery key",
+      "keyValue": "You have confirmed that it is saved",
+      "submit": "Finish the installation",
+      "working": "Installing. This can take a few seconds …",
+      "signin": "The site is installed, but we could not sign you in automatically. Sign in with the username and password you chose."
+    }
+  },
+  "auth": {
+    "title": "{page} — toascribe admin",
+    "shell": {
+      "linksLabel": "Other choices",
+      "toSite": "← Go to {site}"
+    },
+    "links": {
+      "register": "Register",
+      "lost": "Lost your password?",
+      "login": "Log in",
+      "privacy": "Privacy policy"
+    },
+    "notice": {
+      "loggedOut": "You are now logged out.",
+      "passwordChanged": "Your password has been changed. You can now log in with the new password.",
+      "checkEmail": "Check your email. If the account exists, we have sent a link to choose a new password.",
+      "registered": "Your registration has been received. If the details were valid, you will get an email with a link to choose a password. If nothing arrives, the username may be taken, or you may already have an account."
+    },
+    "login": {
+      "heading": "Log in",
+      "username": "Username or email address",
+      "password": "Password",
+      "remember": "Remember me",
+      "submit": "Log in"
+    },
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
+    "validation": {
+      "loginRequired": "Enter your username or email address.",
+      "passwordRequired": "Enter the password.",
+      "newPassword": "The password must have at least 8 characters.",
+      "username": "The username must have 3 to 60 characters: letters and digits, and optionally full stops, underscores, hyphens or {'@'}. It cannot contain spaces.",
+      "email": "Enter a valid email address, for example name{'@'}example.com.",
+      "totpCode": "Enter the six-digit code from your authenticator app.",
+      "recoveryCode": "Enter the whole recovery code, for example ABCD-EFGH-JKMN-PQRS."
+    },
+    "mfa": {
+      "heading": "Confirm the login",
+      "intro": "Open your authenticator app and enter the code it shows.",
+      "recoveryIntro": "Enter one of your recovery codes. Each code can be used once.",
+      "code": "Code from the app",
+      "codeHelp": "Six digits. You can paste the code.",
+      "recoveryCode": "Recovery code",
+      "recoveryCodeHelp": "It is written as ABCD-EFGH-JKMN-PQRS. Upper and lower case and hyphens do not matter.",
+      "submit": "Confirm",
+      "useRecovery": "Use a recovery code",
+      "useApp": "Use the code from the app",
+      "lowCodes": "You have {n} recovery code left. Make new codes as soon as you can, so you are not locked out. | You have {n} recovery codes left. Make new codes as soon as you can, so you are not locked out.",
+      "continue": "Continue"
+    },
+    "enrol": {
+      "heading": "Set up two-factor authentication",
+      "starting": "Getting the setup ready …",
+      "retry": "Try again",
+      "intro": "Your role requires two-factor authentication. Scan the QR code with an authenticator app, or enter the key below. Then enter the code the app shows.",
+      "qrAlt": "QR code to add toascribe to your authenticator app",
+      "keyLabel": "Key to enter by hand",
+      "codeHelp": "Six digits from the app.",
+      "submit": "Confirm and finish",
+      "finish": "Continue",
+      "finishHint": "Confirm that you have saved the recovery codes to continue.",
+      "introProfile": "Scan the QR code with an authenticator app, or enter the key below. Then enter the code the app shows, and your password.",
+      "password": "Your current password",
+      "passwordHelp": "We ask for your password because a new app gives access to your account.",
+      "submitProfile": "Confirm and add the app",
+      "cancel": "Cancel"
+    },
+    "recovery": {
+      "title": "Recovery codes",
+      "intro": "We show these codes only now. Use one of them if you lose access to the app. Each code can be used once. Save them somewhere safe.",
+      "listLabel": "Recovery codes",
+      "copy": "Copy the codes",
+      "print": "Print",
+      "copied": "The codes have been copied.",
+      "copyFailed": "Could not copy. Select the codes and copy them by hand.",
+      "saved": "I have saved the codes"
+    },
+    "lost": {
+      "heading": "Lost password",
+      "intro": "Enter your username or email address. If the account exists, we send a link to choose a new password.",
+      "submit": "Get new password"
+    },
+    "choose": {
+      "headingReset": "Set a new password",
+      "headingSet": "Choose a password",
+      "introReset": "Choose a new password for your account.",
+      "introSet": "Welcome. Choose a password to start using your account.",
+      "password": "New password",
+      "help": "At least 8 characters. A long password is better than a complicated one.",
+      "generate": "Generate password",
+      "generated": "A new password has been filled in and shown, so you can copy it. Save it in your password manager before you continue.",
+      "submit": "Save password",
+      "newLink": "Ask for a new link"
+    },
+    "register": {
+      "heading": "Register",
+      "closedHeading": "Registration is turned off",
+      "closed": "This site does not take new users right now. Contact the administrator if you need an account.",
+      "intro": "Enter a username and an email address. We send a link where you choose a password.",
+      "username": "Username",
+      "usernameHelp": "3 to 60 characters: letters and digits, and optionally full stops, underscores, hyphens or {'@'}.",
+      "email": "Email address",
+      "submit": "Register",
+      "trap": "Leave this field empty"
+    },
+    "confirm": {
+      "heading": "Confirm the email address",
+      "working": "Confirming the new email address …",
+      "done": "The email address is confirmed. The account now uses {email}.",
+      "continue": "Go to the admin",
+      "adminDone": "The site's administration email address is now {email}."
+    },
+    "logout": {
+      "heading": "Log out",
+      "question": "You are attempting to log out of {site}. Do you really want to log out?",
+      "submit": "Log out",
+      "cancel": "Cancel",
+      "link": "Log out"
+    },
+    "strength": {
+      "tooShort": "Password strength: too short",
+      "weak": "Password strength: weak",
+      "fair": "Password strength: medium",
+      "good": "Password strength: strong",
+      "strong": "Password strength: very strong"
+    }
+  },
+  "shell": {
+    "skipToContent": "Skip to main content",
+    "bar": {
+      "visit": "Visit site",
+      "howdy": "Howdy, {name}",
+      "userMenu": "Your user menu",
+      "profile": "Edit profile",
+      "help": "Help",
+      "helpLabel": "Help with this page (opens in a new tab)"
+    },
+    "menu": {
+      "label": "Main menu",
+      "loading": "Loading the menu",
+      "failed": {
+        "title": "The menu could not be loaded.",
+        "text": "You can still use the addresses directly. Try loading the menu again.",
+        "retry": "Try again"
+      }
+    }
+  },
+  "menu": {
+    "dashboard": "Dashboard",
+    "dashboardHome": "Home",
+    "dashboardUpdates": "Updates",
+    "tools": "Tools",
+    "toolsSiteHealth": "Site Health",
+    "users": "Users",
+    "usersAll": "All Users",
+    "usersProfile": "Profile",
+    "profile": "Profile",
+    "unknown": "Menu",
+    "posts": "Posts",
+    "postsAll": "All Posts",
+    "postsNew": "Add New Post",
+    "pages": "Pages",
+    "pagesAll": "All Pages",
+    "pagesNew": "Add New Page",
+    "postsCategories": "Categories",
+    "postsTags": "Tags",
+    "media": "Media",
+    "mediaLibrary": "Library",
+    "mediaNew": "Add New Media File",
+    "settings": "Settings",
+    "settingsMedia": "Media",
+    "settingsGeneral": "General",
+    "settingsWriting": "Writing",
+    "settingsReading": "Reading",
+    "settingsPrivacy": "Privacy",
+    "settingsPermalinks": "Permalinks",
+    "appearance": "Appearance",
+    "appearanceCustomize": "Customize",
+    "appearanceMenus": "Menus",
+    "appearanceGlobalSets": "Global Sets",
+    "usersNew": "Add New User"
+  },
+  "notices": {
+    "emailNotVerified": "Email from the site has not been tested. Password links and confirmations may not arrive until a test message has gone through. The email settings come in a later version.",
+    "proxyNotTrusted": "The site sees every visitor as {address}. That is the address of the proxy in front of toascribe, so the login limits and the audit log get the wrong address. Set TOASCRIBE_TRUSTED_PROXY to the proxy's address in docker/.env and restart toascribe.",
+    "setupEmailSkipped": "You skipped the email setup. Without email, the site cannot send password links or confirmations.",
+    "unknown": "There is a notice here that this version of the admin cannot show."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "notices": {
+      "heading": "Notices",
+      "level": {
+        "error": "Error",
+        "warning": "Warning",
+        "success": "Success",
+        "info": "Information"
+      },
+      "dismiss": "Dismiss",
+      "dismissed": "The notice has been dismissed.",
+      "dismissFailed": "The notice was not dismissed, and it is still shown.",
+      "failed": {
+        "title": "The notices could not be loaded.",
+        "text": "There may be notices you cannot see now. Try again.",
+        "retry": "Try again"
+      }
+    },
+    "welcome": {
+      "heading": "Welcome to toascribe!",
+      "intro": "Here are some links to get you started.",
+      "profile": "Edit your profile",
+      "users": "See all users",
+      "dismiss": "Dismiss",
+      "dismissFailed": "The welcome panel was not dismissed, and it is still shown.",
+      "failed": {
+        "title": "The welcome panel could not be loaded.",
+        "text": "The rest of the dashboard works. Try again.",
+        "retry": "Try again"
+      }
+    },
+    "glance": {
+      "heading": "At a Glance",
+      "posts": "{n} post | {n} posts",
+      "pages": "{n} page | {n} pages",
+      "comments": "{n} comment | {n} comments",
+      "pending": "{n} awaiting moderation",
+      "version": "toascribe {version}",
+      "failed": {
+        "title": "The counts could not be loaded.",
+        "text": "The rest of the dashboard works. Try again.",
+        "retry": "Try again"
+      }
+    },
+    "activity": {
+      "heading": "Activity",
+      "soon": "Publishing soon",
+      "recent": "Recently published",
+      "empty": "No posts have been published or scheduled yet.",
+      "untitled": "(no title)",
+      "failed": {
+        "title": "The activity could not be loaded.",
+        "text": "The rest of the dashboard works. Try again.",
+        "retry": "Try again"
+      }
+    },
+    "quickDraft": {
+      "heading": "Quick Draft",
+      "title": "Title",
+      "content": "Content",
+      "placeholder": "What's on your mind?",
+      "save": "Save draft",
+      "empty": "Write a title or some content first.",
+      "failed": "The draft was not saved.",
+      "saved": "The draft has been saved.",
+      "edit": "Edit the draft",
+      "yourDrafts": "Your recent drafts",
+      "allDrafts": "View all drafts"
+    },
+    "health": {
+      "heading": "Site Health",
+      "overall": {
+        "good": "Good",
+        "recommended": "Should be improved",
+        "critical": "Should be fixed"
+      },
+      "summary": {
+        "good": "No problems found.",
+        "recommended": "{n} item should be improved. | {n} items should be improved.",
+        "critical": "{n} item needs attention soon. | {n} items need attention, at least one of them soon."
+      },
+      "tests": {
+        "worker": {
+          "recommended": "The background jobs have not run for a while.",
+          "critical": "The background jobs are not running: email, backups and scheduled posts are waiting."
+        },
+        "migrations": {
+          "recommended": "The database is not up to date.",
+          "critical": "The database is not up to date with this version."
+        },
+        "backup": {
+          "recommended": "There is no backup from the last two days.",
+          "critical": "The last backup failed."
+        },
+        "updates": {
+          "recommended": "A newer version of toascribe is available.",
+          "critical": "A newer version of toascribe is available."
+        },
+        "email": {
+          "recommended": "The email settings have not been confirmed with a test message.",
+          "critical": "The email settings have not been confirmed with a test message."
+        },
+        "cache": {
+          "recommended": "The cache (Valkey) does not answer.",
+          "critical": "The cache (Valkey) does not answer."
+        },
+        "debug": {
+          "recommended": "Debug mode is on (TOASCRIBE_DEBUG).",
+          "critical": "Debug mode is on (TOASCRIBE_DEBUG)."
+        },
+        "searchEngines": {
+          "recommended": "Search engines are asked not to index the site.",
+          "critical": "Search engines are asked not to index the site."
+        }
+      },
+      "more": "Go to Site Health",
+      "failed": {
+        "title": "Site health could not be loaded.",
+        "text": "The rest of the dashboard works. Try again.",
+        "retry": "Try again"
+      }
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "save": "Update Profile",
+    "saved": "Profile updated.",
+    "nothingToSave": "No changes to save.",
+    "loadFailed": {
+      "title": "The profile could not be loaded.",
+      "text": "Try again. If it goes on, reload the page."
+    },
+    "summary": {
+      "title": "Check these fields"
+    },
+    "unsaved": {
+      "title": "Leave the page without saving?",
+      "text": "You have changes to your profile that are not saved. They are lost if you leave the page.",
+      "leave": "Leave the page",
+      "stay": "Stay on the page"
+    },
+    "reauth": {
+      "password": "Your current password",
+      "help": "We ask for your password to be sure it is you.",
+      "passwordRequired": "Enter your password.",
+      "cancel": "Cancel"
+    },
+    "personal": {
+      "title": "Personal Options",
+      "scheme": "Admin Color Scheme",
+      "schemeSaved": "The color scheme “{name}” has been saved.",
+      "toolbar": "Toolbar",
+      "toolbarLabel": "Show Toolbar when viewing site",
+      "toolbarOn": "The toolbar is shown when you view the site.",
+      "toolbarOff": "The toolbar is not shown when you view the site.",
+      "language": "Language",
+      "languageHelp": "The language of the admin. The site itself is in Norwegian Bokmål.",
+      "languageSite": "Site language",
+      "languageSaved": "The language has been saved.",
+      "failed": "The choice was not saved.",
+      "loadFailed": {
+        "title": "Your options could not be loaded.",
+        "text": "The color scheme is as before. Try again."
+      }
+    },
+    "scheme": {
+      "default": "Default",
+      "defaultHint": "Green, and light or dark as your system.",
+      "light": "Light",
+      "lightHint": "Green, always light.",
+      "midnight": "Midnight",
+      "midnightHint": "Indigo, always dark.",
+      "ocean": "Ocean",
+      "oceanHint": "Blue, and light or dark as your system."
+    },
+    "name": {
+      "title": "Name",
+      "username": "Username",
+      "usernameHelp": "Usernames cannot be changed.",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "nickname": "Nickname",
+      "displayAs": "Display name publicly as",
+      "displayAsHelp": "The name shown in “Howdy, …” and on posts. The choices are made from the names above."
+    },
+    "contact": {
+      "title": "Contact Info",
+      "email": "Email",
+      "emailHelp": "If you change the address, we send a link to the new one. The address does not change until you have opened the link.",
+      "website": "Website",
+      "confirmTitle": "Confirm the new email address",
+      "confirmText": "We send a link to {email}. Your address does not change until you have opened the link.",
+      "confirmButton": "Send link",
+      "sent": "We have sent a link to {email}. Your email address does not change until you have opened it.",
+      "skipped": "The email address was not changed. What you typed is still in the field.",
+      "pendingTitle": "Waiting for the new email to be confirmed"
+    },
+    "about": {
+      "title": "About Yourself",
+      "bio": "Biographical Info",
+      "bioHelp": "Write a few sentences about yourself. The text may be shown publicly."
+    },
+    "validation": {
+      "firstName": "The first name can have up to 100 characters, on one line.",
+      "lastName": "The last name can have up to 100 characters, on one line.",
+      "nicknameRequired": "Enter a nickname. It can be the same as the username.",
+      "nickname": "The nickname can have up to 100 characters, on one line.",
+      "emailRequired": "Enter your email address.",
+      "email": "Enter a valid email address, for example name{'@'}example.com.",
+      "website": "Enter an address that starts with http:// or https://, for example https://example.com.",
+      "bio": "The text can have up to 5000 characters."
+    },
+    "account": {
+      "title": "Account Management"
+    },
+    "password": {
+      "title": "New Password",
+      "intro": "If you change your password, your other sessions are logged out.",
+      "set": "Set New Password",
+      "new": "New password",
+      "save": "Save new password",
+      "cancel": "Cancel",
+      "confirmTitle": "Change the password?",
+      "confirmText": "Enter the password you use now. We change it and log out your other sessions.",
+      "confirmButton": "Change password",
+      "changed": "The password has been changed. Your other sessions have been logged out."
+    },
+    "mfa": {
+      "title": "Two-Factor Authentication",
+      "on": "Two-factor authentication is on, with {n} authenticator app. | Two-factor authentication is on, with {n} authenticator apps.",
+      "off": "Two-factor authentication is off.",
+      "intro": "With two-factor authentication you need a code from an app on your phone, as well as your password, when you log in.",
+      "required": "Your role requires two-factor authentication. The last app therefore cannot be removed; set up a new one first if you want to switch.",
+      "unnamed": "Authenticator app",
+      "createdAt": "Added {when}",
+      "lastUsed": "last used {when}",
+      "neverUsed": "never used",
+      "codesLeft": "You have {n} recovery code left. | You have {n} recovery codes left.",
+      "setUp": "Set up an authenticator app",
+      "newCodes": "Make new recovery codes",
+      "remove": "Remove",
+      "removeLabel": "Remove {name}",
+      "removeTitle": "Remove “{name}”?",
+      "removeText": "The app can no longer be used to log in. We send you an email about the change.",
+      "removeLastText": "This is your last app. Two-factor authentication is turned off, and the recovery codes are deleted. We send you an email about the change.",
+      "removeButton": "Remove the app",
+      "removed": "“{name}” has been removed.",
+      "appAdded": "The authenticator app has been added.",
+      "codesTitle": "Make new recovery codes?",
+      "codesText": "The old codes stop working. We show the new codes only once, and send you an email about the change.",
+      "codesButton": "Make new codes",
+      "codesDone": "Done",
+      "codesKept": "The new recovery codes now apply.",
+      "loadFailed": {
+        "title": "The two-factor settings could not be loaded.",
+        "text": "The rest of the profile works as before. Try again."
+      }
+    },
+    "sessions": {
+      "title": "Sessions",
+      "help": "If you have lost a device or think someone else has access to your account, you can log out everywhere else. You stay logged in here.",
+      "onlyThis": "You are only logged in at this location.",
+      "listLabel": "Active sessions",
+      "deviceBoth": "{browser} on {system}",
+      "deviceUnknown": "Unknown device",
+      "current": "This session",
+      "ip": "IP address {ip}",
+      "lastSeen": "last active {when}",
+      "signedIn": "Logged in {when}",
+      "end": "Log out",
+      "endLabel": "Log out the session on {device}",
+      "endTitle": "Log out the session on {device}?",
+      "endText": "Whoever uses the session is logged out at once.",
+      "ended": "The session on {device} has been logged out.",
+      "endOthers": "Log Out Everywhere Else",
+      "endOthersTitle": "Log out everywhere else?",
+      "endOthersText": "{n} other session is ended. You stay logged in here. | {n} other sessions are ended. You stay logged in here.",
+      "endedOthers": "{n} session has been ended. | {n} sessions have been ended.",
+      "loadFailed": {
+        "title": "The sessions could not be loaded.",
+        "text": "The rest of the profile works as before. Try again."
+      }
+    },
+    "appPasswords": {
+      "title": "Application Passwords",
+      "help": "Application passwords let programs and scripts use the API as you, without your usual password. They work only over HTTPS with Basic authentication, and never to log in here. Revoke a password when the program should no longer have access.",
+      "name": "New Application Password Name",
+      "add": "Add New Application Password",
+      "nameTaken": "You already have an application password with this name.",
+      "madeTitle": "Your new password for {name}",
+      "madeOnce": "Save it somewhere safe. It is shown this one time only.",
+      "copy": "Copy",
+      "copied": "The password has been copied.",
+      "copyFailed": "Could not copy. Select the password and copy it yourself.",
+      "loadFailed": "The application passwords could not be loaded.",
+      "none": "You have no application passwords.",
+      "listLabel": "Your application passwords",
+      "created": "Created {when}",
+      "lastUsed": "Last used {when}",
+      "neverUsed": "Not used yet",
+      "revoke": "Revoke",
+      "revokeLabel": "Revoke {name}",
+      "revokeTitle": "Revoke {name}?",
+      "revokeText": "Programs that use this password lose access at once.",
+      "revoked": "{name} has been revoked."
+    },
+    "avatar": {
+      "title": "Profile Picture",
+      "label": "Image from the media library",
+      "help": "Without a picture, your initials are shown. The picture is shown to everyone, also on the site.",
+      "saved": "The profile picture has been saved.",
+      "removed": "The profile picture has been removed.",
+      "notPublic": "The image must be in the media library and visible to everyone.",
+      "noLibrary": "The profile picture is chosen from the media library, and your role has no access to it. Without a picture, your initials are shown."
+    }
+  },
+  "roles": {
+    "administrator": "Administrator",
+    "editor": "Editor",
+    "author": "Author",
+    "contributor": "Contributor",
+    "subscriber": "Subscriber"
+  },
+  "users": {
+    "title": "Users",
+    "you": "You",
+    "noRole": "No role",
+    "roleSeparator": ", ",
+    "unknownUser": "a user",
+    "count": "{n} item | {n} items",
+    "nameList": {
+      "more": "and {n} more"
+    },
+    "views": {
+      "label": "Users by role",
+      "all": "All",
+      "none": "No role",
+      "item": "{name} ({n})"
+    },
+    "search": {
+      "label": "Search Users",
+      "button": "Search Users",
+      "summary": "Search results for: {query}",
+      "clear": "Clear the search"
+    },
+    "bulk": {
+      "label": "Change role to",
+      "choose": "Choose a role…",
+      "submit": "Change",
+      "needUsers": "Tick the users whose role you want to change.",
+      "needRole": "Choose the role they should get.",
+      "selected": "{n} selected"
+    },
+    "confirm": {
+      "title": "Change the role of one administrator? | Change the role of {n} administrators?",
+      "text": "The administrator loses access to everything only administrators can do, and gets the role {role}. You can give the role back later. | The {n} administrators lose access to everything only administrators can do, and get the role {role}. You can give the role back later.",
+      "submit": "Change role"
+    },
+    "roleChanged": {
+      "title": "Changed the role of one user. | Changed the role of {n} users.",
+      "none": "No roles were changed.",
+      "skippedCount": "{n} user was not changed. | {n} users were not changed.",
+      "unchanged": "{users} already had the role {role}."
+    },
+    "roleSkipped": {
+      "self": "You cannot change your own role. Your role was not changed.",
+      "lastAdministrator": "The site must have at least one administrator, so {users} keeps the role.",
+      "forbiddenUser": "You are not allowed to change {users}, because the account has rights you do not have yourself.",
+      "notFound": "{users} no longer exists."
+    },
+    "roleError": {
+      "title": "The role was not changed. Your choice has been kept.",
+      "unknownRole": "The role no longer exists. Reload the page and choose another role.",
+      "forbiddenRole": "You cannot give this role, because it has rights you do not have yourself. Choose another role."
+    },
+    "table": {
+      "caption": "Users list",
+      "selectAll": "Select all users on the page",
+      "select": "Select {user}",
+      "username": "Username",
+      "name": "Name",
+      "email": "Email",
+      "roles": "Role",
+      "posts": "Posts",
+      "postsCount": "{n} posts"
+    },
+    "sort": {
+      "label": "Sort the users",
+      "by": "Sort by:",
+      "ascending": "sorted ascending",
+      "descending": "sorted descending"
+    },
+    "pagination": {
+      "label": "Pagination"
+    },
+    "empty": {
+      "title": "No users found.",
+      "showAll": "Show all"
+    },
+    "failed": {
+      "title": "The users could not be loaded.",
+      "text": "Nothing has changed. Try again, or reload the page.",
+      "stale": "The list below may be out of date. Try again to fetch it anew.",
+      "retry": "Try again"
+    },
+    "denied": {
+      "title": "You do not have access to the users",
+      "text": "Your role does not allow you to see the users list. Ask an administrator if you need access.",
+      "back": "To the dashboard"
+    },
+    "new": {
+      "button": "Add New User",
+      "title": "Add New User",
+      "intro": "Create a brand new user and add them to this site.",
+      "denied": "You are not allowed to create users. An administrator can give you the right.",
+      "username": "Username",
+      "usernameHelp": "Cannot be changed later. Use letters, digits and the characters . _ - {'@'}",
+      "email": "Email",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "website": "Website",
+      "role": "Role",
+      "sendInvite": "Send an invitation by email",
+      "sendInviteHelp": "The user gets a link to choose their own password. The link is valid for 24 hours.",
+      "password": "Password",
+      "passwordHelp": "Give the password to the user in a safe way. They can change it on their profile.",
+      "submit": "Add New User",
+      "failed": "The user was not created",
+      "usernameTaken": "That username is already in use. Choose another.",
+      "emailTaken": "That email address is already used by another user.",
+      "weakPassword": "The password cannot be the same as the username or the email address.",
+      "done": "The user {user} has been created.",
+      "doneInvited": "The user {user} has been created and has been sent an invitation by email."
+    },
+    "delete": {
+      "row": "Delete",
+      "rowLabel": "Delete {user}",
+      "title": "Delete User",
+      "denied": "You are not allowed to delete users. An administrator can give you the right.",
+      "notFound": "The user was not found. It may already have been deleted.",
+      "intro": "You have specified this user for deletion:",
+      "contentQuestion": "What should be done with content owned by this user? The user has one item. | What should be done with content owned by this user? The user has {n} items.",
+      "deleteAll": "Delete all content",
+      "reassign": "Attribute all content to:",
+      "heir": "New owner",
+      "chooseHeir": "Choose who the content should be attributed to.",
+      "submit": "Confirm Deletion",
+      "failed": "The user was not deleted",
+      "lastAdministrator": "This is the last administrator and cannot be deleted.",
+      "self": "You cannot delete your own user.",
+      "done": "The user {user} has been deleted."
+    },
+    "reset": {
+      "submit": "Send password reset",
+      "sent": "One password reset link has been sent. | {n} password reset links have been sent.",
+      "partly": "{sent} links have been sent. {skipped} users were skipped because they are disabled or do not exist."
+    }
+  },
+  "editorPrototype": {
+    "invalid": "The draft was not saved because some blocks are not valid:",
+    "issue": "{block}: {problem}",
+    "unsaved": "Unsaved changes",
+    "undo": "Undo",
+    "redo": "Redo",
+    "toolbarLabel": "Document",
+    "canvasLabel": "Content",
+    "empty": "The document is empty.",
+    "addBlock": "Add block",
+    "insertHere": "Insert block here",
+    "blockLabel": "Block: {name}",
+    "blockTools": "Block tools for {name}",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Delete block",
+    "insertAfter": "Insert block after",
+    "cannotMove": "The block cannot be moved further that way.",
+    "paragraph": {
+      "label": "Paragraph",
+      "placeholder": "Type text, or / to choose a block",
+      "formatting": "Formatting",
+      "bold": "Bold",
+      "italic": "Italic",
+      "code": "Code",
+      "link": "Link",
+      "linkUrl": "Link address",
+      "linkApply": "Apply the link",
+      "linkRemove": "Remove the link",
+      "linkCancel": "Cancel",
+      "linkInvalid": "The address must start with https://, http://, mailto:, / or #.",
+      "slashMenu": "Choose a block",
+      "slashNone": "No blocks match."
+    },
+    "image": {
+      "empty": "Choose an image from the media library, or upload a new one.",
+      "alt": "Alternative text",
+      "altHelp": "Learn how to describe the purpose of the image. Leave it empty if the image is purely decorative.",
+      "caption": "Caption",
+      "replace": "Replace",
+      "library": "Media Library",
+      "missing": "The image is no longer in the media library, or you do not have access to it.",
+      "decorative": "The image is purely decorative"
+    },
+    "columns": {
+      "add": "Add column",
+      "removeLast": "Remove the last column",
+      "column": "Column {n}",
+      "count": "{n} columns"
+    },
+    "issues": {
+      "invalidShape": "The block has the wrong shape.",
+      "invalidId": "The block has an invalid id.",
+      "duplicateId": "Two blocks have the same id.",
+      "unknownBlock": "The block type does not exist.",
+      "unsupportedVersion": "The block has a version the editor does not know.",
+      "notAllowedHere": "The block cannot be placed here.",
+      "unknownAttribute": "The block has a field it should not have.",
+      "invalidAttribute": "A field in the block has a value that is not allowed.",
+      "childCount": "The block has too few or too many columns.",
+      "tooLarge": "The document is too large.",
+      "altRequired": "The image has no alternative text. Describe the image, or mark it as decorative.",
+      "capabilityRequired": "Only accounts that may use custom HTML can add or change this block.",
+      "wrongContentType": "The block cannot be used in this content type (“More” in posts only)."
+    },
+    "previewPage": {
+      "invalid": "The draft has blocks that cannot be shown."
+    }
+  },
+  "blocks": {
+    "paragraph": "Paragraph",
+    "image": "Image",
+    "columns": "Columns",
+    "column": "Column",
+    "heading": "Heading",
+    "list": "List",
+    "listItem": "List item",
+    "quote": "Quote",
+    "code": "Code",
+    "preformatted": "Preformatted",
+    "table": "Table",
+    "gallery": "Gallery",
+    "buttons": "Buttons",
+    "button": "Button",
+    "group": "Group",
+    "separator": "Separator",
+    "spacer": "Spacer",
+    "more": "More",
+    "nextpage": "Page Break",
+    "html": "Custom HTML",
+    "query": "Query Loop",
+    "globalSet": "Global Set",
+    "embed": "Embed"
+  },
+  "content": {
+    "posts": {
+      "title": "Posts",
+      "add": "Add New Post",
+      "addTitle": "Add New Post",
+      "edit": "Edit Post",
+      "search": "Search Posts",
+      "caption": "Posts list",
+      "views": "Posts by status",
+      "empty": "No posts found.",
+      "emptyTrash": "No posts found in Trash.",
+      "denied": "You do not have access to the posts",
+      "singular": "Post"
+    },
+    "pages": {
+      "title": "Pages",
+      "add": "Add New Page",
+      "addTitle": "Add New Page",
+      "edit": "Edit Page",
+      "search": "Search Pages",
+      "caption": "Pages list",
+      "views": "Pages by status",
+      "empty": "No pages found.",
+      "emptyTrash": "No pages found in Trash.",
+      "denied": "You do not have access to the pages",
+      "singular": "Page"
+    },
+    "denied": {
+      "text": "Your role does not allow you to see this list. Ask an administrator if you need access.",
+      "back": "To the dashboard"
+    },
+    "views": {
+      "all": "All",
+      "mine": "Mine",
+      "publish": "Published",
+      "draft": "Draft",
+      "pending": "Pending Review",
+      "future": "Scheduled",
+      "private": "Private",
+      "trash": "Trash",
+      "item": "{name} ({n})"
+    },
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending Review",
+      "future": "Scheduled",
+      "publish": "Published",
+      "private": "Private"
+    },
+    "states": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "future": "Scheduled",
+      "private": "Private",
+      "password": "Password protected",
+      "sticky": "Sticky"
+    },
+    "date": {
+      "published": "Published",
+      "scheduled": "Scheduled",
+      "modified": "Last Modified"
+    },
+    "columns": {
+      "title": "Title",
+      "author": "Author",
+      "date": "Date"
+    },
+    "noTitle": "(no title)",
+    "count": "{n} item | {n} items",
+    "searchSummary": "Search results for: {query}",
+    "searchClear": "Clear the search",
+    "showAll": "Show all",
+    "pagination": "Pagination",
+    "actionFailed": "The action was not carried out.",
+    "failed": {
+      "title": "The list could not be loaded.",
+      "text": "Nothing has changed. Try again, or reload the page.",
+      "stale": "The list below may be out of date. Try again to fetch it anew.",
+      "retry": "Try again"
+    },
+    "filter": {
+      "month": "Filter by date",
+      "allMonths": "All dates",
+      "apply": "Filter",
+      "category": "Filter by category"
+    },
+    "table": {
+      "selectAll": "Select all on the page",
+      "select": "Select “{title}”",
+      "sortLabel": "Sort the list",
+      "sortBy": "Sort by:",
+      "ascending": "sorted ascending",
+      "descending": "sorted descending"
+    },
+    "actions": {
+      "label": "Actions for “{title}”",
+      "edit": "Edit",
+      "editNamed": "Edit “{title}”",
+      "quickEdit": "Quick Edit",
+      "quickEditNamed": "Quick edit “{title}”",
+      "trash": "Trash",
+      "trashNamed": "Move “{title}” to the Trash",
+      "preview": "Preview",
+      "previewNamed": "Preview “{title}”",
+      "restore": "Restore",
+      "restoreNamed": "Restore “{title}” from the Trash",
+      "remove": "Delete Permanently",
+      "removeNamed": "Delete “{title}” permanently"
+    },
+    "bulk": {
+      "label": "Bulk actions",
+      "choose": "Choose a bulk action",
+      "edit": "Edit",
+      "trash": "Move to Trash",
+      "restore": "Restore",
+      "delete": "Delete Permanently",
+      "apply": "Apply",
+      "emptyTrash": "Empty Trash",
+      "needItems": "Tick what you want to change.",
+      "needAction": "Choose an action.",
+      "selected": "{n} selected | {n} selected"
+    },
+    "bulkDone": {
+      "edited": "{n} item updated. | {n} items updated.",
+      "trashed": "{n} item moved to the Trash. | {n} items moved to the Trash.",
+      "restored": "{n} item restored from the Trash. | {n} items restored from the Trash.",
+      "deleted": "{n} item permanently deleted. | {n} items permanently deleted."
+    },
+    "bulkSkipped": {
+      "forbidden": "{n} item could not be changed because you do not have access to it. | {n} items could not be changed because you do not have access to them.",
+      "state": "{n} item was not in the right state for the action. | {n} items were not in the right state for the action.",
+      "invalid": "{n} item did not fit the change. | {n} items did not fit the change.",
+      "unchanged": "{n} item was already so. | {n} items were already so."
+    },
+    "confirmDelete": {
+      "title": "Delete permanently? | Delete {n} items permanently?",
+      "text": "“{title}” is deleted for good and cannot be restored.",
+      "many": "The item is deleted for good and cannot be restored. | The {n} items are deleted for good and cannot be restored."
+    },
+    "confirmEmpty": {
+      "title": "Empty the Trash?",
+      "text": "Everything in the Trash that you may delete is deleted for good and cannot be restored."
+    },
+    "quickEdit": {
+      "title": "Quick Edit",
+      "titleField": "Title",
+      "slug": "Slug",
+      "date": "Date",
+      "dateHelp": "An empty date publishes with the time you save.",
+      "password": "Password",
+      "passwordSet": "A password is set. Type a new one to change it.",
+      "or": "– OR –",
+      "private": "Private",
+      "removePassword": "Remove the password",
+      "author": "Author",
+      "status": "Status",
+      "sticky": "Make this post sticky",
+      "parent": "Parent",
+      "noParent": "(no parent)",
+      "order": "Order",
+      "template": "Template",
+      "defaultTemplate": "Default template",
+      "update": "Update",
+      "cancel": "Cancel",
+      "saved": "The changes have been saved.",
+      "failed": "The changes were not saved."
+    },
+    "bulkEdit": {
+      "title": "Bulk Edit",
+      "description": "The changes apply to {n} item. | The changes apply to {n} items.",
+      "keep": "— No Change —",
+      "comments": "Comments",
+      "commentsOpen": "Allow",
+      "commentsClosed": "Do not allow",
+      "stickyField": "Sticky",
+      "sticky": "Sticky",
+      "notSticky": "Not sticky",
+      "failed": "The changes were not saved.",
+      "addCategories": "Add categories",
+      "addTags": "Add tags"
+    },
+    "screenOptions": {
+      "open": "Screen Options",
+      "title": "Screen Options",
+      "columns": "Columns",
+      "perPage": "Number of items per page",
+      "perPageInvalid": "Enter a number from 1 to 100.",
+      "apply": "Apply",
+      "failed": "The options were not saved."
+    },
+    "editor": {
+      "title": "Title",
+      "titlePlaceholder": "Add title",
+      "saveDraft": "Save draft",
+      "update": "Update",
+      "publish": "Publish",
+      "saved": "Saved.",
+      "published": "Published.",
+      "saveFailed": "The changes were not saved.",
+      "loadFailed": "The content could not be fetched.",
+      "readOnly": "You can see this, but not change it.",
+      "legacy": "The content is in WordPress' block format and cannot be edited here yet. The title can be changed.",
+      "status": "Status: {status}",
+      "shortLink": "Shortlink:"
+    },
+    "preview": {
+      "title": "Preview: {title}",
+      "heading": "Preview",
+      "back": "Back to editing"
+    },
+    "errors": {
+      "cannotPublish": "You cannot publish, schedule or make this private. Submit it for review instead.",
+      "cannotAssignAuthors": "You cannot choose other authors.",
+      "cannotStick": "You cannot make posts sticky.",
+      "invalidSchedule": "The date does not fit: a scheduled publication needs a date in the future, and unpublishing must come after publishing.",
+      "invalidParent": "The parent cannot be used: it must be another page in the same language, not in the Trash and not below this page.",
+      "invalidAuthor": "The author must be an account that can write this content.",
+      "privateWithPassword": "A private item cannot have a password.",
+      "trashed": "The item is in the Trash. Restore it before you change it.",
+      "notTrashed": "The item is not in the Trash.",
+      "notFound": "The item does not exist, or you do not have access to it."
+    }
+  },
+  "terms": {
+    "categories": {
+      "title": "Categories",
+      "add": "Add New Category",
+      "edit": "Edit Category",
+      "search": "Search Categories",
+      "caption": "Categories list",
+      "none": "No categories found.",
+      "empty": "There are no categories yet.",
+      "all": "All Categories",
+      "added": "Category added.",
+      "updated": "Category updated.",
+      "deleted": "Category deleted.",
+      "confirmTitle": "Delete the category?",
+      "denied": "You do not have access to the categories"
+    },
+    "tags": {
+      "title": "Tags",
+      "add": "Add New Tag",
+      "edit": "Edit Tag",
+      "search": "Search Tags",
+      "caption": "Tags list",
+      "none": "No tags found.",
+      "added": "Tag added.",
+      "updated": "Tag updated.",
+      "deleted": "Tag deleted.",
+      "confirmTitle": "Delete the tag?",
+      "denied": "You do not have access to the tags",
+      "separate": "Separate tags with commas"
+    },
+    "name": "Name",
+    "slug": "Slug",
+    "parent": "Parent Category",
+    "description": "Description",
+    "noParent": "None",
+    "countLabel": "{n} post | {n} posts",
+    "delete": "Delete",
+    "deleteNamed": "Delete “{name}”",
+    "editNamed": "Edit “{name}”",
+    "nameRequired": "Enter a name.",
+    "bulkDeleted": "{n} deleted. | {n} deleted.",
+    "help": {
+      "name": "The name is how it appears on your site.",
+      "slug": "The “slug” is the URL-friendly version of the name. It is usually all lowercase and contains only letters, numbers, and hyphens.",
+      "parent": "Assign a parent term to create a hierarchy. The term Jazz, for example, would be the parent of Bebop and Big Band.",
+      "description": "The description is not prominent by default; however, some themes may show it."
+    },
+    "confirm": {
+      "category": "“{name}” is deleted. Posts that have no other category get “Uncategorized”, and the subcategories move up one level.",
+      "tag": "“{name}” is deleted and removed from the posts that have it.",
+      "many": "The term is deleted. | The {n} terms are deleted."
+    },
+    "errors": {
+      "exists": "A term with this name already exists here.",
+      "invalidParent": "The parent category cannot be used: choose another category, not this one or one below it.",
+      "defaultTerm": "The default category can be renamed, but not deleted.",
+      "notFound": "The term no longer exists."
+    }
+  },
+  "media": {
+    "denied": "You do not have permission to upload files.",
+    "groups": {
+      "image": "Images",
+      "audio": "Audio",
+      "video": "Video",
+      "document": "Documents",
+      "spreadsheet": "Spreadsheets",
+      "archive": "Archives",
+      "text": "Text"
+    },
+    "processing": {
+      "pending": "Making the image sizes …",
+      "failed": "The image sizes could not be made.",
+      "failedShort": "Failed",
+      "reason": "Reason: {reason}",
+      "reasons": {
+        "tooManyPixels": "the image has more pixels than the site allows.",
+        "unreadable": "the image cannot be read; the file may be damaged.",
+        "missingFile": "the file no longer exists on the server.",
+        "workerStopped": "the processing stopped every time, probably because the image needs too much memory.",
+        "unknown": "an unknown error. See the log of the worker."
+      },
+      "retry": "The image has been tried three times. “Regenerate image sizes” tries again."
+    },
+    "errors": {
+      "fileTooLarge": "The file is larger than the maximum upload file size.",
+      "unsupportedType": "Sorry, you are not allowed to upload this file type.",
+      "typeMismatch": "The content of the file does not match the file name.",
+      "emptyFile": "The file is empty.",
+      "unreadableImage": "The image cannot be read.",
+      "imageTooLarge": "The image has more pixels than the site allows.",
+      "invalidFolder": "The folder does not exist, or a folder cannot be put inside itself.",
+      "folderExists": "A folder with this name already exists here.",
+      "fetchFailed": "The file could not be fetched from the web address.",
+      "notEditable": "Only images can be edited.",
+      "invalidAttachedTo": "The post or page the file was to be uploaded to no longer exists.",
+      "busy": "The image is still being processed. Try again in a moment.",
+      "invalidEdit": "The crop must be inside the image, and an image can only be scaled down.",
+      "aboveUploadCap": "The limit cannot be higher than the largest file size the server accepts.",
+      "aborted": "The upload was cancelled."
+    },
+    "filters": {
+      "label": "Filter media",
+      "type": "Filter by type",
+      "allTypes": "All media items",
+      "date": "Filter by date"
+    },
+    "library": {
+      "title": "Media Library",
+      "addNew": "Add New Media File",
+      "view": "View",
+      "grid": "Grid view",
+      "list": "List view",
+      "search": "Search media",
+      "loadFailed": "The media library could not be loaded.",
+      "count": "{n} items | {n} item | {n} items",
+      "empty": "No media files found.",
+      "items": "Media files"
+    },
+    "folders": {
+      "title": "Folders",
+      "manage": "Folders",
+      "folder": "Folder",
+      "all": "All folders",
+      "none": "No folder",
+      "top": "None (top level)",
+      "name": "Name",
+      "parent": "Parent folder",
+      "add": "Add folder",
+      "empty": "No folders yet.",
+      "delete": "Delete",
+      "deleteTitle": "Delete the folder?",
+      "deleteConfirm": "The folder “{name}” and the folders in it are deleted. Their files move to the top of the library; no files are deleted.",
+      "editNamed": "Edit “{name}”",
+      "deleteNamed": "Delete “{name}”"
+    },
+    "upload": {
+      "drop": "Drop files to upload",
+      "or": "or",
+      "choose": "Select Files",
+      "maxSize": "Maximum upload file size: {size}.",
+      "types": "Allowed file types: {types}.",
+      "queue": "Uploads",
+      "cancel": "Cancel",
+      "done": "Uploaded",
+      "progress": "Uploading {name}",
+      "fromUrl": "Insert from URL",
+      "fromUrlHelp": "The file is fetched into the media library. Addresses on internal networks are not fetched.",
+      "fetch": "Fetch",
+      "addressInvalid": "Enter an address that starts with https:// or http://."
+    },
+    "details": {
+      "title": "Attachment details",
+      "uploadedOn": "Uploaded on:",
+      "uploadedBy": "Uploaded by:",
+      "fileName": "File name:",
+      "fileType": "File type:",
+      "fileSize": "File size:",
+      "dimensions": "Dimensions:",
+      "pixels": "{width} by {height} pixels",
+      "alt": "Alternative Text",
+      "altHelp": "Learn how to describe the purpose of the image. Leave it empty if the image is purely decorative.",
+      "fileTitle": "Title",
+      "caption": "Caption",
+      "description": "Description",
+      "visibility": "Visibility",
+      "visibilityHelp": "A private file is shown only to whoever uploaded it and to editors, and gets no public address.",
+      "public": "Public",
+      "private": "Private",
+      "fileUrl": "File URL",
+      "copyUrl": "Copy URL to clipboard",
+      "copied": "Copied!",
+      "copyFailed": "The address could not be copied. Select it and copy it yourself.",
+      "usedBy": "Used on",
+      "unused": "The file is not used in any content.",
+      "usedByOthers": "and {n} other | and {n} others",
+      "usedOnlyByOthers": "The file is used in {n} post or page you do not have access to. | The file is used in {n} posts or pages you do not have access to.",
+      "inTrash": "Trash",
+      "editImage": "Edit Image",
+      "replace": "Replace",
+      "regenerate": "Regenerate image sizes",
+      "regenerating": "The image sizes are being made again.",
+      "replaced": "The file has been replaced. Everything that uses it shows the new file.",
+      "edited": "The image is being saved. The image sizes are being made again.",
+      "delete": "Delete permanently",
+      "deleteTitle": "Delete the file permanently?",
+      "deleteConfirm": "You are about to permanently delete this file from your site. This action cannot be undone.",
+      "deleteUsed": "The file is used on {list}. If it is deleted, the image will be missing there. This action cannot be undone. | The file is used on {list}. If it is deleted, the image will be missing there. This action cannot be undone. | The file is used in {n} places: {list}. If it is deleted, the image will be missing there. This action cannot be undone.",
+      "deleteUsedHidden": "The file is used in {n} post or page you do not have access to. If it is deleted, the image will be missing there. This action cannot be undone. | The file is used in {n} posts or pages you do not have access to. If it is deleted, the image will be missing there. This action cannot be undone.",
+      "save": "Save",
+      "saved": "The changes have been saved.",
+      "close": "Close"
+    },
+    "edit": {
+      "title": "Edit Image",
+      "preview": "Preview of “{title}”",
+      "turnAndFlip": "Rotate and flip",
+      "rotateLeft": "Rotate 90° left",
+      "rotateRight": "Rotate 90° right",
+      "flipVertical": "Flip vertically",
+      "flipHorizontal": "Flip horizontally",
+      "crop": "Crop",
+      "cropX": "From the left",
+      "cropY": "From the top",
+      "cropClear": "Clear the selection",
+      "dragHelp": "Drag over the image to choose the selection, or type the numbers.",
+      "scale": "Scale Image",
+      "scaleHelp": "New width in pixels, less than {width}. The height follows.",
+      "result": "Result: {width} by {height} pixels",
+      "originalKept": "The original file is kept as it was uploaded.",
+      "reset": "Reset",
+      "save": "Save",
+      "failed": "The image could not be saved."
+    },
+    "new": {
+      "title": "Upload New Media",
+      "uploaded": "Uploaded",
+      "editNamed": "Edit “{name}”"
+    },
+    "picker": {
+      "title": "Select or Upload Media",
+      "choose": "Select",
+      "chosen": "Selected: {name}"
+    },
+    "settings": {
+      "title": "Media Settings",
+      "denied": "You do not have permission to change the settings.",
+      "loadFailed": "The settings could not be loaded.",
+      "sizes": "Image sizes",
+      "sizesHelp": "The maximum dimensions in pixels of the image sizes made when an image is uploaded.",
+      "thumbnail": "Thumbnail size",
+      "medium": "Medium size",
+      "large": "Large size",
+      "width": "Width",
+      "height": "Height",
+      "thumbnailCrop": "Crop thumbnail to exact dimensions (normally thumbnails are proportional)",
+      "regenerate": "Regenerate image sizes",
+      "regenerateTitle": "Regenerate the image sizes?",
+      "regenerateConfirm": "Every image in the media library gets new image sizes from the saved settings. It happens in the background and can take time.",
+      "regenerateQueued": "No images to regenerate. | {n} image gets new image sizes. | {n} images get new image sizes.",
+      "sizesChanged": "New sizes apply to images uploaded from now on. Regenerate the image sizes for the images already uploaded.",
+      "uploads": "Uploading Files",
+      "yearMonth": "Organize my uploads into month- and year-based folders",
+      "maxSize": "Maximum upload file size (MB)",
+      "maxSizeHelp": "At most {cap} MB, the limit the server is set up with (TOASCRIBE_UPLOAD_MAX_SIZE_MB).",
+      "maxPixels": "Largest image (megapixels)",
+      "maxPixelsHelp": "An image with more pixels is refused before it is opened, so it cannot fill the memory.",
+      "types": "File types per role",
+      "typesHelp": "Which file types each role may upload. SVG, HTML and programs can never be uploaded.",
+      "save": "Save Changes",
+      "saved": "The settings have been saved.",
+      "saveFailed": "The settings could not be saved."
+    }
+  },
+  "editor": {
+    "addBlock": "Add block",
+    "blockTab": "Block",
+    "sidebar": "Settings",
+    "unknownBlock": "The block “{name}” cannot be edited here.",
+    "previewSaveFirst": "The preview shows the saved version. Update to see the changes.",
+    "previewFailed": "The preview could not be made. Try again.",
+    "trashConfirm": "The content is moved to the Trash. You can restore it from there.",
+    "actions": {
+      "schedule": "Schedule",
+      "submit": "Submit for Review"
+    },
+    "saved": {
+      "scheduled": "Scheduled.",
+      "submitted": "Submitted for review."
+    },
+    "selection": {
+      "count": "{n} blocks selected. | {n} block selected. | {n} blocks selected."
+    },
+    "heading": {
+      "label": "Heading {n}",
+      "level": "Heading {n}",
+      "levelLabel": "Heading level",
+      "placeholder": "Heading"
+    },
+    "list": {
+      "item": "List item",
+      "bullets": "Convert to unordered list",
+      "numbers": "Convert to ordered list",
+      "numbered": "Ordered list",
+      "indent": "Indent",
+      "outdent": "Outdent"
+    },
+    "quote": {
+      "citation": "Add citation"
+    },
+    "code": {
+      "label": "Code",
+      "placeholder": "Write code …"
+    },
+    "preformatted": {
+      "label": "Preformatted text",
+      "placeholder": "Write preformatted text …"
+    },
+    "table": {
+      "cell": "Row {row}, column {column}",
+      "addRow": "Insert row after",
+      "addColumn": "Insert column after",
+      "removeRow": "Delete row",
+      "removeColumn": "Delete column",
+      "header": "Header row",
+      "caption": "Table caption"
+    },
+    "gallery": {
+      "add": "Add image",
+      "remove": "Remove from the gallery",
+      "empty": "The gallery has no images yet.",
+      "columns": "Columns",
+      "crop": "Crop images to the same size",
+      "link": "Link to",
+      "linkNone": "None",
+      "linkFile": "Media file"
+    },
+    "button": {
+      "text": "Button text",
+      "placeholder": "Add text …",
+      "url": "Link address",
+      "style": "Style",
+      "fill": "Fill",
+      "outline": "Outline"
+    },
+    "spacer": {
+      "label": "Spacer: {size}",
+      "size": "Size",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "xLarge": "Extra large"
+    },
+    "more": {
+      "text": "Text of the “Read more” link",
+      "placeholder": "Read more",
+      "noTeaser": "Hide the excerpt on the full post page"
+    },
+    "html": {
+      "placeholder": "Write HTML …",
+      "readOnly": "Only accounts that may use custom HTML can change the block. You can move or delete it."
+    },
+    "inserter": {
+      "search": "Search for a block",
+      "text": "Text",
+      "media": "Media",
+      "design": "Design",
+      "widgets": "Widgets",
+      "embed": "Embeds"
+    },
+    "settings": {
+      "none": "Choose a block to see its settings.",
+      "nothing": "The block has no more settings.",
+      "toHeading": "Transform to heading",
+      "toParagraph": "Transform to paragraph"
+    },
+    "document": {
+      "summary": "Summary",
+      "visibility": "Visibility",
+      "public": "Public",
+      "publicHelp": "Visible to everyone.",
+      "private": "Private",
+      "privateHelp": "Only visible to site admins and editors.",
+      "password": "Password protected",
+      "passwordHelp": "Only those with the password can view the content.",
+      "passwordField": "Password",
+      "passwordKeep": "A password is set. Type a new one to change it.",
+      "chooseTime": "Choose a time to publish",
+      "immediately": "Publish: Immediately",
+      "publishAt": "Publish",
+      "unpublishAt": "Unpublish",
+      "unpublishHelp": "The content goes back to draft at this time. Leave empty for never.",
+      "authors": "Authors",
+      "comments": "Allow comments",
+      "terms": "Categories and tags",
+      "categories": "Categories",
+      "tags": "Tags",
+      "tagsHelp": "Separate tags with commas.",
+      "excerpt": "Excerpt",
+      "excerptHelp": "A short summary shown in archives and when the content is shared. Leave empty to use the start of the text.",
+      "pageAttributes": "Page Attributes",
+      "trash": "Move to Trash"
+    },
+    "featured": {
+      "title": "Featured image",
+      "choose": "Set featured image",
+      "replace": "Replace the image",
+      "remove": "Remove the image"
+    },
+    "seo": {
+      "heading": "SEO",
+      "title": "Title for search engines",
+      "description": "Description",
+      "image": "Image when shared",
+      "imageHelp": "Used when the content is shared. Without an image of its own, the featured image is used.",
+      "noindex": "Hide from search engines",
+      "searchPreview": "How it may look in a search result",
+      "sharePreview": "How it may look when shared",
+      "noDescription": "No description. The search engine picks text itself.",
+      "chooseImage": "Choose an image for sharing"
+    },
+    "login": {
+      "title": "Your session has expired",
+      "description": "Log in again to continue. What you have written is not lost.",
+      "enrol": "The account must set up an authenticator app before you can log in. Do it in a new tab, and come back here.",
+      "openLogin": "Open the login in a new tab",
+      "later": "Later",
+      "done": "You are logged in again.",
+      "saveWaits": "Your session has expired. Log in again, and the changes are saved.",
+      "otherAccount": "You logged in with another account. What was not saved was not sent, and the page has been reloaded.",
+      "previewAgain": "You are logged in again. Choose “Preview” once more."
+    },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "global": "Global",
+      "blocks": "Blocks",
+      "text": "Text",
+      "save": "Save",
+      "insertBefore": "Insert a new block before",
+      "insertAfter": "Insert a new block after",
+      "move": "Move the block up or down",
+      "select": "Select several blocks",
+      "selectClick": "Select all blocks up to this one",
+      "shiftClick": "Shift+click",
+      "deleteSelected": "Delete the selected blocks",
+      "slash": "Choose a block in an empty paragraph",
+      "lineBreak": "Line break",
+      "indent": "Indent or outdent in a list"
+    },
+    "query": {
+      "posts": "{n} posts",
+      "pages": "{n} pages",
+      "newest": "The newest:",
+      "oldest": "The oldest:",
+      "byTitle": "By title:",
+      "inCategory": "in the category “{slug}”",
+      "withTag": "with the tag “{slug}”",
+      "empty": "Nothing published to show yet.",
+      "failed": "The posts could not be fetched. The site shows them anyway.",
+      "untitled": "(no title)",
+      "type": "Content type",
+      "perPage": "Number",
+      "category": "Category",
+      "allCategories": "All categories",
+      "tag": "Tag (slug)",
+      "order": "Order",
+      "orderNewest": "Newest first",
+      "orderOldest": "Oldest first",
+      "orderTitle": "Title A–Z",
+      "sticky": "Sticky posts",
+      "stickyInclude": "Include",
+      "stickyExclude": "Exclude",
+      "stickyFirst": "First",
+      "showDate": "Show date",
+      "showExcerpt": "Show excerpt"
+    },
+    "globalSet": {
+      "choose": "Set",
+      "placeholder": "— Choose a set —",
+      "help": "The set is edited under “Appearance → Global Sets”, and changes show everywhere it is used."
+    },
+    "embed": {
+      "address": "Address",
+      "placeholder": "Paste the address of the content",
+      "placeholderProvider": "Paste an address from {service}",
+      "embed": "Embed",
+      "reading": "Fetching …",
+      "found": "From {service}: {title}",
+      "notFound": "This address cannot be embedded. It is shown as a link.",
+      "help": "Supported: YouTube, Vimeo, Spotify, SoundCloud, TikTok, Bluesky and the Mastodon instances under “Settings → Privacy”. The content is fetched when the post is saved.",
+      "caption": "Caption"
+    }
+  },
+  "settings": {
+    "saved": "Settings saved.",
+    "save": "Save Changes",
+    "denied": "You do not have access to the settings",
+    "loadFailed": "The settings could not be fetched.",
+    "saveFailed": "The settings were not saved",
+    "general": {
+      "title": "General Settings",
+      "blogname": "Site Title",
+      "tagline": "Tagline",
+      "taglineHelp": "In a few words, explain what this site is about.",
+      "siteUrl": "Site Address (URL)",
+      "siteUrlHelp": "The address is set with PUBLIC_ORIGIN in docker/.env.",
+      "adminEmail": "New Administration Email Address",
+      "adminEmailHelp": "The address now is {email}. It is used for admin purposes. If you change it, we send an email to the new address, and the new address applies only once it is confirmed.",
+      "adminEmailPending": "Waiting for {email} to be confirmed. The link has been sent there.",
+      "membership": "Membership",
+      "anyoneCanRegister": "Anyone can register",
+      "defaultRole": "New User Default Role",
+      "locale": "Site Language",
+      "timezone": "Timezone",
+      "dateFormat": "Date Format",
+      "dateFormatHelp": "As in WordPress, for example F j, Y (October 27, 2026) or Y-m-d (2026-10-27).",
+      "timeFormat": "Time Format",
+      "timeFormatHelp": "As in WordPress, for example g:i a (2:30 pm).",
+      "startOfWeek": "Week Starts On"
+    },
+    "writing": {
+      "title": "Writing Settings",
+      "defaultCategory": "Default Post Category",
+      "defaultFormat": "Default Post Format",
+      "formatStandard": "Standard"
+    },
+    "reading": {
+      "title": "Reading Settings",
+      "frontShows": "Your homepage displays",
+      "latestPosts": "Your latest posts",
+      "staticPage": "A static page",
+      "frontPage": "Homepage",
+      "postsPage": "Posts page",
+      "choose": "— Select —",
+      "postsPerPage": "Blog pages show at most",
+      "postsPerRss": "Syndication feeds show the most recent",
+      "feedShows": "For each post in a feed, include",
+      "feedFull": "Full text",
+      "feedExcerpt": "Excerpt",
+      "visibility": "Search engine visibility",
+      "discourage": "Discourage search engines from indexing this site",
+      "discourageHelp": "It is up to search engines to honor this request.",
+      "sharing": "Sharing and search engines",
+      "sharingHelp": "Used when content is shared on social media and when search engines read the site. The title is “Title – Site Title”, and the front page “Site Title – Tagline”.",
+      "defaultImage": "Default sharing image",
+      "defaultImageHelp": "Shown when the content has neither its own sharing image nor a featured image. 1200 × 630 pixels works best.",
+      "chooseImage": "Choose image",
+      "publisher": "The site represents",
+      "organization": "An organization",
+      "person": "A person",
+      "organizationName": "Organization name",
+      "organizationNameHelp": "If the field is empty, the site title is used.",
+      "organizationLogo": "Organization logo",
+      "organizationLogoHelp": "Without a choice of its own, the logo from “Customize” is used.",
+      "personChoice": "Person",
+      "personHelp": "Only users who have published something can be chosen: their author page becomes the person's address.",
+      "noPeople": "No users have published anything yet."
+    },
+    "privacy": {
+      "title": "Privacy",
+      "intro": "Choose the page that is the site's privacy policy. It is linked in the footer and on the registration form once it is published.",
+      "page": "Privacy Policy page",
+      "pageHelp": "A page that is not published is not linked until it is published.",
+      "create": "Create New Privacy Policy Page",
+      "newTitle": "Privacy Policy",
+      "embeds": "Embeds",
+      "clickToLoad": "Load content from other services only when the reader clicks",
+      "clickToLoadHelp": "Videos, music and posts from YouTube, Vimeo, Spotify and others are then shown as a preview with a button. The service does not learn of the visit until the reader clicks.",
+      "mastodon": "Mastodon instances",
+      "mastodonHelp": "One address per line, for example mastodon.social. Posts from these instances can be embedded.",
+      "security": "Security",
+      "securityHelp": "The site shows this at /.well-known/security.txt, so whoever finds a security flaw knows where to report it. Without a contact, the file does not exist.",
+      "securityContact": "Contact for security reports",
+      "securityContactHelp": "An email address such as mailto:security{'@'}example.com, or an https address of a form.",
+      "securityPolicy": "Page with the security policy (optional)",
+      "gravatar": "Show Gravatar for users without a profile picture",
+      "gravatarHelp": "Gravatar is a service outside the site. When this is on, the browser fetches images from it with a code made from the user's email address."
+    },
+    "permalinks": {
+      "title": "Permalink Settings",
+      "intro": "Choose how the addresses of your posts look. Old addresses are redirected to the new ones, so links that have been shared keep working.",
+      "common": "Common Settings",
+      "plain": "Plain",
+      "day": "Day and name",
+      "month": "Month and name",
+      "numeric": "Numeric",
+      "postname": "Post name",
+      "custom": "Custom Structure",
+      "structure": "Structure",
+      "structureHelp": "Must contain %postname% or %post_id%. An empty structure is “Plain”.",
+      "tags": "Available tags",
+      "optional": "Optional",
+      "optionalHelp": "You may enter custom prefixes for your category and tag URLs. Empty gives category and tag.",
+      "categoryBase": "Category base",
+      "tagBase": "Tag base"
+    }
+  },
+  "appearance": {
+    "denied": "You do not have access to the appearance",
+    "menus": {
+      "title": "Menus",
+      "editTab": "Edit Menus",
+      "locationsTab": "Manage Locations",
+      "failed": "It did not work",
+      "choose": "Select a menu to edit",
+      "newName": "New menu",
+      "create": "Create Menu",
+      "created": "The menu “{name}” has been created.",
+      "saved": "The menu has been saved.",
+      "delete": "Delete Menu",
+      "deleteConfirm": "The menu “{name}” is deleted for good. Locations that showed it become empty.",
+      "deleted": "The menu has been deleted.",
+      "add": "Add menu items",
+      "pages": "Pages",
+      "posts": "Posts",
+      "categories": "Categories",
+      "tags": "Tags",
+      "none": "Nothing to choose yet.",
+      "addTo": "Add to Menu: {what}",
+      "custom": "Custom Links",
+      "url": "URL",
+      "linkText": "Link Text",
+      "structure": "Menu structure",
+      "name": "Menu Name",
+      "structureHelp": "Drag the items to change their order and level, or use the buttons. With the keyboard: Alt and the arrow keys on an item.",
+      "empty": "The menu is empty. Add items from the boxes.",
+      "items": "Menu items",
+      "untitled": "(no title)",
+      "kindPage": "Page",
+      "kindPost": "Post",
+      "kindCategory": "Category",
+      "kindTag": "Tag",
+      "kindCustom": "Custom Link",
+      "notShown": "Not shown (not published)",
+      "itemLabel": "{label}, level {level}",
+      "drag": "Drag to move",
+      "up": "Move “{label}” up",
+      "down": "Move “{label}” down",
+      "in": "Move “{label}” under the item above",
+      "out": "Move “{label}” out one level",
+      "editItem": "Edit “{label}”",
+      "navLabel": "Navigation Label",
+      "cssClass": "CSS Classes (optional)",
+      "description": "Description",
+      "newTab": "Open link in a new tab",
+      "remove": "Remove",
+      "removed": "The item has been removed.",
+      "movedTo": "“{label}” has been moved, level {level}.",
+      "save": "Save Menu",
+      "first": "There are no menus yet. Create the first one above.",
+      "locationsHelp": "The theme shows menus in these places. Choose which menu appears where.",
+      "noLocations": "The theme has no menu locations.",
+      "noMenu": "— Select a Menu —",
+      "saveLocations": "Save Changes",
+      "locationsSaved": "The locations have been saved."
+    },
+    "sets": {
+      "title": "Global Sets",
+      "intro": "A global set is a collection of blocks used in several places on the site, for example contact details or a footer. If you change the set, it changes everywhere.",
+      "failed": "It did not work",
+      "newName": "New set",
+      "create": "Create set",
+      "empty": "No global sets yet.",
+      "fromTheme": "Used by the theme",
+      "delete": "Delete",
+      "deleteNamed": "Delete “{name}”",
+      "deleteConfirm": "The set “{name}” is deleted for good. Places that show it become empty.",
+      "editTitle": "Global set: {name}",
+      "name": "Name",
+      "slugHelp": "Slug:",
+      "save": "Save set",
+      "saved": "The set has been saved.",
+      "saveFailed": "The set was not saved",
+      "deleteThemeConfirm": "The set “{name}” is deleted. The theme uses it, so it is made again, empty, the next time this page is opened."
+    },
+    "customize": {
+      "title": "Customize",
+      "publish": "Publish",
+      "published": "The changes have been published.",
+      "failed": "It did not work",
+      "loading": "Fetching the theme and the options …",
+      "identity": "Site Identity",
+      "siteTitle": "Site Title",
+      "tagline": "Tagline",
+      "logo": "Logo",
+      "chooseLogo": "Select logo",
+      "icon": "Site Icon",
+      "iconHelp": "Shown in the browser tab. A square image of at least 512 × 512 pixels works best.",
+      "chooseIcon": "Select site icon",
+      "colors": "Colors",
+      "reset": "Reset",
+      "resetNamed": "Reset “{name}” to the theme's color",
+      "fonts": "Fonts",
+      "frontHelp": "The homepage is shown in the preview once it is published.",
+      "css": "Additional CSS",
+      "cssHelp": "CSS added after the theme's own. The character < is not allowed.",
+      "preview": "Preview",
+      "previewFrame": "Preview of the site with the changes that are not published"
+    }
+  },
+  "updates": {
+    "title": "Updates",
+    "loadFailed": "The updates could not be loaded.",
+    "current": "You are running toascribe {version}",
+    "checkedAt": "Last checked {time}.",
+    "never": "Nobody has looked for new versions yet. The worker checks once a day, or run “toa check-update” on the host.",
+    "failed": "The last check for new versions failed. The worker tries again tomorrow.",
+    "available": "toascribe {version} is available.",
+    "newest": "You have the latest version.",
+    "changelog": "See what is new in {version}",
+    "howTitle": "How to update",
+    "how": "The admin cannot update the containers itself. Run this in the folder with compose.yaml on the server:",
+    "command": "docker compose pull\ndocker compose up -d",
+    "backupNote": "Before the database is changed, toascribe takes a backup and turns on maintenance mode until the changes are done.",
+    "checkTitle": "Check for new versions",
+    "checkLabel": "Check for new versions once a day",
+    "checkHelp": "The worker fetches the list of published versions from ghcr.io. Nothing about the site is sent.",
+    "offByServer": "The check is turned off on the server (TOASCRIBE_UPDATE_CHECK=off)."
+  },
+  "siteHealth": {
+    "title": "Site Health",
+    "info": "Info",
+    "loadFailed": "The information could not be loaded.",
+    "intro": "Facts about the installation, for troubleshooting. The copy to the clipboard hides email addresses, addresses, paths and anything that looks like a key, so you can paste it into a request for help.",
+    "copy": "Copy site info to clipboard",
+    "copied": "The information has been copied.",
+    "copyFailed": "Could not copy. Select the text and copy it yourself.",
+    "none": "–",
+    "yes": "Yes",
+    "no": "No",
+    "groups": {
+      "toascribe": "toascribe",
+      "server": "Server",
+      "database": "Database",
+      "cache": "Cache",
+      "worker": "Worker",
+      "site": "Site",
+      "media": "Media",
+      "backup": "Backup",
+      "updates": "Updates"
+    },
+    "fields": {
+      "error": "Status",
+      "toascribe": {
+        "version": "Version",
+        "migration": "Last migration",
+        "environment": "Environment",
+        "debug": "Debug mode (TOASCRIBE_DEBUG)"
+      },
+      "server": {
+        "node": "Node.js",
+        "os": "Operating system",
+        "memoryTotal": "Total memory",
+        "memoryFree": "Free memory",
+        "apiMemory": "Memory used by the API"
+      },
+      "database": {
+        "version": "PostgreSQL",
+        "size": "Size"
+      },
+      "cache": {
+        "backend": "Store",
+        "answers": "Answers"
+      },
+      "worker": {
+        "status": "Status",
+        "lastSeen": "Last seen",
+        "queues": "Queues",
+        "queued": "Jobs in queue",
+        "active": "Jobs running",
+        "failed": "Failed jobs"
+      },
+      "site": {
+        "theme": "Theme",
+        "language": "Language",
+        "timezone": "Time zone",
+        "permalinks": "Permalinks",
+        "public": "Visible to search engines"
+      },
+      "media": {
+        "files": "Files",
+        "size": "Storage used (originals)",
+        "uploadMax": "Largest upload"
+      },
+      "backup": {
+        "last": "Last backup",
+        "ok": "Succeeded",
+        "file": "File",
+        "size": "Size",
+        "scheduled": "Daily backup"
+      },
+      "updates": {
+        "enabled": "Checks for new versions",
+        "lastCheck": "Last checked",
+        "latest": "Newest version found",
+        "available": "New version available"
+      }
+    },
+    "values": {
+      "production": "Production",
+      "development": "Development",
+      "test": "Test",
+      "memory": "Memory (each process on its own)",
+      "valkey": "Valkey",
+      "running": "Running",
+      "notRunning": "Not answering",
+      "unavailable": "Could not be read"
+    },
+    "debugOn": "Debug mode is on (TOASCRIBE_DEBUG=1). The logs get more detail. Turn it off when the troubleshooting is done."
+  }
+}

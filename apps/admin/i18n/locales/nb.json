@@ -575,6 +575,10 @@
       "toolbarLabel": "Vis verktøylinjen når du ser på nettstedet",
       "toolbarOn": "Verktøylinjen vises når du ser på nettstedet.",
       "toolbarOff": "Verktøylinjen vises ikke når du ser på nettstedet.",
+      "language": "Språk",
+      "languageHelp": "Språket i administrasjonen. Nettstedet selv er på bokmål.",
+      "languageSite": "Nettstedets språk",
+      "languageSaved": "Språket er lagret.",
       "failed": "Valget ble ikke lagret.",
       "loadFailed": {
         "title": "Valgene dine kunne ikke lastes.",
