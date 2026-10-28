@@ -13,6 +13,8 @@ const Env = z
     DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }), // the app role (toascribe_app), never the owner
     PUBLIC_ORIGIN: z.url(),
     LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
+    /** Optional OpenTelemetry (M1.8, K-298): traces and metrics go here over OTLP/HTTP. Empty: off, nothing is loaded or sent. */
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.union([z.literal(''), z.url({ protocol: /^https?$/ })]).default(''),
     /** Encrypts secrets kept in the database (the TOTP secret, the SMTP password): AES-256-GCM, 32 random bytes (K-318). */
     TOASCRIBE_ENCRYPTION_KEY: keyMaterialEnv,
     /** The version number that names TOASCRIBE_ENCRYPTION_KEY in what it encrypts (`v1:...`). Raise it when the key is replaced. */
@@ -99,4 +101,19 @@ export function loadHealthcheckConfig(env: EnvSource = process.env): { readonly 
     throw new ConfigError(parsed.error.issues)
   }
   return parsed.data
+}
+
+const TelemetryEnv = z.object({
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.union([z.literal(''), z.url({ protocol: /^https?$/ })]).default(''),
+})
+
+/**
+ * OTEL_EXPORTER_OTLP_ENDPOINT (M1.8, K-298), read before anything else is loaded: the collector's address, or undefined when it is
+ * not set (or not an http(s) address: then telemetry stays off and the start-up check names the variable).
+ */
+export function readTelemetryEndpoint(env: EnvSource = process.env): string | undefined {
+  const parsed = TelemetryEnv.safeParse(env)
+  return parsed.success && parsed.data.OTEL_EXPORTER_OTLP_ENDPOINT !== ''
+    ? parsed.data.OTEL_EXPORTER_OTLP_ENDPOINT
+    : undefined
 }

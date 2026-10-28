@@ -34,6 +34,7 @@
     "@toascribe/install": "workspace:*",
     "@toascribe/media": "workspace:*",
     "@toascribe/shared": "workspace:*",
+    "@toascribe/telemetry": "workspace:*",
     "@toascribe/updates": "workspace:*",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",

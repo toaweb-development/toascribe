@@ -65,6 +65,7 @@ COPY --from=prod-deps /app/packages/http/node_modules ./packages/http/node_modul
 COPY --from=prod-deps /app/packages/install/node_modules ./packages/install/node_modules
 COPY --from=prod-deps /app/packages/media/node_modules ./packages/media/node_modules
 COPY --from=prod-deps /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY --from=prod-deps /app/packages/telemetry/node_modules ./packages/telemetry/node_modules
 COPY --from=prod-deps /app/packages/updates/node_modules ./packages/updates/node_modules
 
 # Compiled code and package.json (the version is read from apps/api and cli at run time).
@@ -89,6 +90,8 @@ COPY --from=build /app/packages/media/package.json ./packages/media/package.json
 COPY --from=build /app/packages/media/dist ./packages/media/dist
 COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/packages/telemetry/package.json ./packages/telemetry/package.json
+COPY --from=build /app/packages/telemetry/dist ./packages/telemetry/dist
 COPY --from=build /app/packages/updates/package.json ./packages/updates/package.json
 COPY --from=build /app/packages/updates/dist ./packages/updates/dist
 COPY --from=build /app/cli/package.json ./cli/package.json

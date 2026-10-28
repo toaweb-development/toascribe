@@ -201,6 +201,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # `1`: debug lines, and on a 500 the kind of error (never a message or a stack) (M1.8, K-297).
       TOASCRIBE_DEBUG: ${TOASCRIBE_DEBUG:-}
+      # Optional OpenTelemetry (M1.8): traces and metrics over OTLP/HTTP to this address. Empty: off, nothing loaded or sent.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     read_only: true
     tmpfs:
       - /tmp
@@ -248,6 +250,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # `1`: debug lines, and on a 500 the kind of error (never a message or a stack) (M1.8, K-297).
       TOASCRIBE_DEBUG: ${TOASCRIBE_DEBUG:-}
+      # Optional OpenTelemetry (M1.8): traces and metrics over OTLP/HTTP to this address. Empty: off, nothing loaded or sent.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       WORKER_HEARTBEAT_FILE: /tmp/toascribe-worker.heartbeat
       # The media library (M1.2): the worker reads the originals and writes the sizes.
       UPLOADS_DIR: /var/lib/toascribe/uploads

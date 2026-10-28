@@ -20,6 +20,12 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- Logs and traces (K-297, K-298): the api, the worker, the site and the admin write JSON lines, and one fixed list of fields is
+  never written (passwords, tokens, cookies, `Authorization`, secrets, e-mail addresses), nor an e-mail address or credential in any
+  text. A request id follows a page from the site to the api and into the jobs it queues. `TOASCRIBE_DEBUG=1` adds debug lines and
+  the kind of error in a 500 answer (never a stack or a secret to visitors), and Nettstedshelse warns while it is on. Optional
+  OpenTelemetry: set `OTEL_EXPORTER_OTLP_ENDPOINT` and the api and the worker send traces and metrics there, with the same fields
+  hidden; without it nothing is loaded or sent. New dependencies: the OpenTelemetry SDK (only loaded when the address is set).
 - Users (K-016, K-020 to K-022): «Brukere → Legg til ny» makes an account with a password set there, or sends an invitation by
   e-mail so the person chooses their own. «Slett» on a user moves their content (and files) to another account, or deletes what
   they wrote alone; one's own account and the last administrator cannot be deleted. The bulk action «Send tilbakestilling av

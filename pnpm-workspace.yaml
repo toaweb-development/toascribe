@@ -79,6 +79,18 @@ catalog:
   ioredis: ^5.11.1 # the site's data cache in Valkey when several instances share it (PLAN «Cache og invalidering»); the major Nitro itself uses
   smol-toml: ^1.9.1 # reads toascribe.toml (PLAN: the theme is chosen there) in apps/site's nuxt.config; TOML has rules a hand parser would get wrong
   tar: ^7.5.22 # reads a backup archive entry by entry on restore (M1.7), so each path is checked before anything is written; 7.5.22 has every fix up to CVE-2026-73566
+  # OpenTelemetry (M1.8, K-298): optional, loaded only when OTEL_EXPORTER_OTLP_ENDPOINT is set. The 3.x SDK packages and the 0.300
+  # experimental line pin each other exactly, so they are bumped together (verified 2026-10-28 against the npm tarballs).
+  '@opentelemetry/api': 1.10.0
+  '@opentelemetry/sdk-node': 0.300.0
+  '@opentelemetry/exporter-trace-otlp-http': 0.300.0
+  '@opentelemetry/exporter-metrics-otlp-http': 0.300.0
+  '@opentelemetry/instrumentation': 0.300.0
+  '@opentelemetry/instrumentation-http': 0.300.0
+  '@opentelemetry/instrumentation-pg': 0.77.0
+  '@opentelemetry/sdk-trace': 3.0.0
+  '@opentelemetry/sdk-metrics': 3.0.0
+  '@opentelemetry/resources': 3.0.0
   ofetch: ^1.5.1 # the fetch that Nuxt's $fetch is built on; nuxt-base's tests run the API client on the real one, not a stand-in
   nuxt-security: ^2.6.0 # the nonce-based CSP of the site and the admin (nuxt-base) and security headers (K-314): a per-request nonce on Nuxt's inline scripts is what a static header cannot give
 
