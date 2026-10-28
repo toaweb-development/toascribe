@@ -1,5 +1,11 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
-import { ApiError, SiteHealthInfoResponse, UpdateUpdatesSettingsRequest, UpdatesResponse } from '@toascribe/shared'
+import {
+  ApiError,
+  SiteHealthInfoResponse,
+  SiteHealthStatusResponse,
+  UpdateUpdatesSettingsRequest,
+  UpdatesResponse,
+} from '@toascribe/shared'
 
 import { getClientIp } from '../lib/client-ip.ts'
 import type { AppEnv } from '../lib/env.ts'
@@ -66,6 +72,23 @@ const healthInfoRoute = defineRoute({
   },
 })
 
+const healthStatusRoute = defineRoute({
+  method: 'get',
+  path: '/site-health/status',
+  tags: ['system'],
+  summary: 'Nettstedshelse-status (the dashboard)',
+  description:
+    "The checks of the dashboard's site health widget, each good, recommended or critical: the worker, the migrations, the last " +
+    'backup, an available update, verified e-mail, the cache, TOASCRIBE_DEBUG and whether search engines may index the site. ' +
+    'Critical first. A check that could not be made is critical.',
+  policy: requireCapability('manage_options'),
+  responses: {
+    200: { content: { 'application/json': { schema: SiteHealthStatusResponse } }, description: 'The checks' },
+    401: errorResponse('Not signed in'),
+    403: errorResponse('No manage_options'),
+  },
+})
+
 export function createSiteToolsApp(services: Services): OpenAPIHono<AppEnv> {
   const tools = services.siteTools
   return new OpenAPIHono<AppEnv>()
@@ -80,4 +103,5 @@ export function createSiteToolsApp(services: Services): OpenAPIHono<AppEnv> {
       ),
     )
     .openapi(healthInfoRoute, async (c) => c.json(await tools.healthInfo(await requireSession(c)), 200))
+    .openapi(healthStatusRoute, async (c) => c.json(await tools.healthStatus(await requireSession(c)), 200))
 }

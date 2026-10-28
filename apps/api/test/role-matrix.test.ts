@@ -115,7 +115,11 @@ const CASES: readonly MatrixCase[] = [
     route: 'POST /api/v1/auth/register',
     method: 'POST',
     path: '/api/v1/auth/register',
-    body: (actor) => ({ username: `registered-${actor}`, email: `registered-${actor}@example.test` }),
+    body: async (actor, _account, client) => ({
+      username: `registered-${actor}`,
+      email: `registered-${actor}@example.test`,
+      formToken: ((await (await client.get('/api/v1/auth/options')).json()) as { formToken: string }).formToken,
+    }),
     expected: {
       ...ok,
       anonymous: 202,
@@ -275,6 +279,12 @@ const CASES: readonly MatrixCase[] = [
     route: 'GET /api/v1/site-health/info',
     method: 'GET',
     path: '/api/v1/site-health/info',
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  {
+    route: 'GET /api/v1/site-health/status',
+    method: 'GET',
+    path: '/api/v1/site-health/status',
     expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
   },
   // M1.8: adding, reading, deleting users and sending resets are the administrator's; application passwords everyone's own.

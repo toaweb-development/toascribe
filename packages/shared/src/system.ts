@@ -84,6 +84,34 @@ export const SiteHealthInfoResponse = z.object({
 })
 export type SiteHealthInfoResponse = z.infer<typeof SiteHealthInfoResponse>
 
+// «Nettstedshelse-status» on the dashboard (M1.8, K-033; WordPress' Site Health Status widget): GET /api/v1/site-health/status, with
+// `manage_options`. A short list of checks drawn from the same facts as «Info», each good, recommended («bør forbedres») or critical
+// («bør fikses»). The screen words each through i18n (`siteHealth.status.tests.<key>.<status>`); the api sends no text.
+
+export const SITE_HEALTH_TESTS = [
+  'worker',
+  'migrations',
+  'backup',
+  'updates',
+  'email',
+  'cache',
+  'debug',
+  'searchEngines',
+] as const
+export const SITE_HEALTH_STATUSES = ['good', 'recommended', 'critical'] as const
+
+export const SiteHealthTest = z.object({
+  key: z.enum(SITE_HEALTH_TESTS),
+  status: z.enum(SITE_HEALTH_STATUSES),
+})
+export type SiteHealthTest = z.infer<typeof SiteHealthTest>
+
+export const SiteHealthStatusResponse = z.object({
+  /** Critical first, then recommended, then good; in the order of SITE_HEALTH_TESTS within each. */
+  tests: z.array(SiteHealthTest),
+})
+export type SiteHealthStatusResponse = z.infer<typeof SiteHealthStatusResponse>
+
 /** What replaces a hidden value in the copy. */
 export const REDACTED = '[skjult]'
 

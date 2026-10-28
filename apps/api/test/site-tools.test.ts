@@ -6,7 +6,13 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { SITE_HEALTH_GROUPS, SiteHealthInfoResponse, UpdatesResponse } from '@toascribe/shared'
+import {
+  SITE_HEALTH_GROUPS,
+  SITE_HEALTH_TESTS,
+  SiteHealthInfoResponse,
+  SiteHealthStatusResponse,
+  UpdatesResponse,
+} from '@toascribe/shared'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { TEST_DATABASE_URL, noticeIfSkipped } from './db.ts'
@@ -114,11 +120,60 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('updates and site health (needs
     expect(info.text).not.toMatch(/[0-9a-f]{32,}/)
   })
 
+  it('gives the dashboard every check, critical first, from the same facts as Info (K-033)', async () => {
+    const status = async () => {
+      const res = await admin.get('/api/v1/site-health/status')
+      expect(res.status).toBe(200)
+      const body = SiteHealthStatusResponse.parse(await res.json())
+      return Object.fromEntries(body.tests.map((test) => [test.key, test.status]))
+    }
+    const set = (key: string, value: unknown) =>
+      env.query(`update setting set value = $1::jsonb where key = $2`, [JSON.stringify(value), key])
+    const recent = { at: new Date().toISOString(), ok: true, file: 'a.tar.zst', size: 10, error: null, scheduled: true }
+    await set('backup_status', recent)
+    await set('blog_public', true)
+    await set('smtp_verified_at', new Date().toISOString())
+    const res = await admin.get('/api/v1/site-health/status')
+    const body = SiteHealthStatusResponse.parse(await res.json())
+    expect(body.tests.map((test) => test.key).sort()).toEqual([...SITE_HEALTH_TESTS].sort())
+    // No worker in the tests: the one critical check, and first.
+    expect(body.tests[0]).toEqual({ key: 'worker', status: 'critical' })
+    expect(await status()).toMatchObject({
+      migrations: 'good',
+      backup: 'good',
+      email: 'good',
+      searchEngines: 'good',
+      debug: 'good',
+      cache: 'good',
+    })
+    // A failed backup is critical; an old one, or none, should be improved.
+    await set('backup_status', { ...recent, ok: false })
+    expect((await status())['backup']).toBe('critical')
+    await set('backup_status', { ...recent, at: new Date(Date.now() - 3 * 86_400_000).toISOString() })
+    expect((await status())['backup']).toBe('recommended')
+    await set('backup_status', null)
+    expect((await status())['backup']).toBe('recommended')
+    // Hidden from search engines, unverified e-mail and a newer release: should be improved.
+    await set('blog_public', false)
+    await set('smtp_verified_at', null)
+    await set('update_status', {
+      checkedAt: new Date().toISOString(),
+      current: '0.0.1',
+      ok: true,
+      latest: '999.0.0',
+      error: null,
+    })
+    expect(await status()).toMatchObject({ searchEngines: 'recommended', email: 'recommended', updates: 'recommended' })
+    await set('blog_public', true)
+    await set('update_status', null)
+  })
+
   it('is refused without manage_options, and without signing in', async () => {
     const account = await env.createAccount({ username: 'helse-editor', role: 'editor' })
     const editor = env.client()
     expect((await editor.login(account.username, 'correct horse battery staple')).status).toBe(200)
     expect((await editor.get('/api/v1/site-health/info')).status).toBe(403)
+    expect((await editor.get('/api/v1/site-health/status')).status).toBe(403)
     expect((await editor.get('/api/v1/updates')).status).toBe(403)
     expect((await env.client().get('/api/v1/site-health/info')).status).toBe(401)
   })

@@ -459,6 +459,84 @@
         "text": "Resten av kontrollpanelet virker. Prøv igjen.",
         "retry": "Prøv igjen"
       }
+    },
+    "activity": {
+      "heading": "Aktivitet",
+      "soon": "Publiseres snart",
+      "recent": "Nylig publisert",
+      "empty": "Ingen innlegg er publisert eller planlagt ennå.",
+      "untitled": "(uten tittel)",
+      "failed": {
+        "title": "Aktiviteten kunne ikke lastes.",
+        "text": "Resten av kontrollpanelet virker. Prøv igjen.",
+        "retry": "Prøv igjen"
+      }
+    },
+    "quickDraft": {
+      "heading": "Hurtigutkast",
+      "title": "Tittel",
+      "content": "Innhold",
+      "placeholder": "Hva tenker du på?",
+      "save": "Lagre utkast",
+      "empty": "Skriv en tittel eller litt innhold først.",
+      "failed": "Utkastet ble ikke lagret.",
+      "saved": "Utkastet er lagret.",
+      "edit": "Rediger utkastet",
+      "yourDrafts": "Dine siste utkast",
+      "allDrafts": "Se alle utkast"
+    },
+    "health": {
+      "heading": "Nettstedshelse",
+      "overall": {
+        "good": "Bra",
+        "recommended": "Bør forbedres",
+        "critical": "Bør fikses"
+      },
+      "summary": {
+        "good": "Ingen problemer funnet.",
+        "recommended": "{n} ting bør forbedres. | {n} ting bør forbedres.",
+        "critical": "{n} ting trenger oppmerksomhet, minst én av dem snart. | {n} ting trenger oppmerksomhet, minst én av dem snart."
+      },
+      "tests": {
+        "worker": {
+          "recommended": "Bakgrunnsjobbene har ikke kjørt på en stund.",
+          "critical": "Bakgrunnsjobbene kjører ikke: e-post, sikkerhetskopier og planlagte innlegg venter."
+        },
+        "migrations": {
+          "recommended": "Databasen er ikke oppdatert.",
+          "critical": "Databasen er ikke oppdatert til denne versjonen."
+        },
+        "backup": {
+          "recommended": "Det er ingen sikkerhetskopi fra de siste to døgnene.",
+          "critical": "Den siste sikkerhetskopien feilet."
+        },
+        "updates": {
+          "recommended": "En nyere versjon av toascribe er tilgjengelig.",
+          "critical": "En nyere versjon av toascribe er tilgjengelig."
+        },
+        "email": {
+          "recommended": "E-postinnstillingene er ikke bekreftet med en testmelding.",
+          "critical": "E-postinnstillingene er ikke bekreftet med en testmelding."
+        },
+        "cache": {
+          "recommended": "Hurtigbufferen (Valkey) svarer ikke.",
+          "critical": "Hurtigbufferen (Valkey) svarer ikke."
+        },
+        "debug": {
+          "recommended": "Feilsøkingsmodus er på (TOASCRIBE_DEBUG).",
+          "critical": "Feilsøkingsmodus er på (TOASCRIBE_DEBUG)."
+        },
+        "searchEngines": {
+          "recommended": "Søkemotorer blir bedt om ikke å indeksere nettstedet.",
+          "critical": "Søkemotorer blir bedt om ikke å indeksere nettstedet."
+        }
+      },
+      "more": "Se Nettstedshelse",
+      "failed": {
+        "title": "Nettstedshelsen kunne ikke lastes.",
+        "text": "Resten av kontrollpanelet virker. Prøv igjen.",
+        "retry": "Prøv igjen"
+      }
     }
   },
   "profile": {

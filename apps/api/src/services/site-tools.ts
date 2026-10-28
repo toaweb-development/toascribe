@@ -7,11 +7,19 @@ import { arch, freemem, release, totalmem, type as osType } from 'node:os'
 import { readBackupConfig } from '@toascribe/backup'
 import { getMigrationStatus } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
-import { CoreSettings, RELEASE_REPOSITORY, siteHealthText } from '@toascribe/shared'
+import {
+  CoreSettings,
+  RELEASE_REPOSITORY,
+  SITE_HEALTH_STATUSES,
+  SITE_HEALTH_TESTS,
+  siteHealthText,
+} from '@toascribe/shared'
 import type {
   SiteHealthField,
   SiteHealthGroup,
   SiteHealthInfoResponse,
+  SiteHealthStatusResponse,
+  SiteHealthTest,
   UpdateUpdatesSettingsRequest,
   UpdatesResponse,
 } from '@toascribe/shared'
@@ -29,6 +37,9 @@ import type { Auditor, RequestContext } from './support.ts'
 /** The worker counts as running when its scheduler ticked within this long (pg-boss ticks about every 30 s). */
 const WORKER_STALE_MS = 3 * 60 * 1000
 
+/** A backup older than this, or none at all, is «bør forbedres» on the dashboard: the daily backup should have made a newer one. */
+const BACKUP_STALE_MS = 2 * 24 * 60 * 60 * 1000
+
 const UPDATE_SETTINGS = CoreSettings.pick({ update_check: true, update_status: true })
 const HEALTH_SETTINGS = CoreSettings.pick({
   locale: true,
@@ -41,11 +52,18 @@ const HEALTH_SETTINGS = CoreSettings.pick({
   update_check: true,
   update_status: true,
 })
+const STATUS_SETTINGS = CoreSettings.pick({
+  blog_public: true,
+  backup_status: true,
+  update_status: true,
+  smtp_verified_at: true,
+})
 
 export interface SiteToolsService {
   updates(auth: SessionAuth): Promise<UpdatesResponse>
   updateUpdates(auth: SessionAuth, request: UpdateUpdatesSettingsRequest, ctx: RequestContext): Promise<UpdatesResponse>
   healthInfo(auth: SessionAuth): Promise<SiteHealthInfoResponse>
+  healthStatus(auth: SessionAuth): Promise<SiteHealthStatusResponse>
 }
 
 const field = (key: string, kind: SiteHealthField['kind'], value: SiteHealthField['value']): SiteHealthField => ({
@@ -228,6 +246,48 @@ export function createSiteToolsService(options: {
         }),
       ])
       return { groups, text: siteHealthText(groups) }
+    },
+
+    async healthStatus(auth) {
+      requireCapability(auth, 'manage_options')
+      const settings = await readSettings(db, STATUS_SETTINGS, options.onInvalidSetting)
+      const now = clock().getTime()
+      // A check that cannot be made counts as critical: the dashboard should not call a site healthy when it could not look.
+      const check = async (
+        key: SiteHealthTest['key'],
+        status: () => Promise<SiteHealthTest['status']> | SiteHealthTest['status'],
+      ): Promise<SiteHealthTest> => {
+        try {
+          return { key, status: await status() }
+        } catch {
+          return { key, status: 'critical' }
+        }
+      }
+      const tests = await Promise.all([
+        check('worker', async () => {
+          const { lastTick } = await queueFacts(db)
+          return lastTick !== null && now - lastTick.getTime() < WORKER_STALE_MS ? 'good' : 'critical'
+        }),
+        check('migrations', async () => ((await getMigrationStatus(db)).upToDate ? 'good' : 'critical')),
+        check('backup', () => {
+          const last = settings.backup_status
+          if (last?.ok === false) return 'critical'
+          if (last === null || now - new Date(last.at).getTime() > BACKUP_STALE_MS) return 'recommended'
+          return 'good'
+        }),
+        check('updates', () => {
+          const status = settings.update_status
+          return status !== null && isNewer(status.latest, options.version) ? 'recommended' : 'good'
+        }),
+        check('email', () => (settings.smtp_verified_at === null ? 'recommended' : 'good')),
+        check('cache', async () => ((await options.previewLimit.probe()).answers === false ? 'recommended' : 'good')),
+        check('debug', () => (options.debug ? 'recommended' : 'good')),
+        check('searchEngines', () => (settings.blog_public ? 'good' : 'recommended')),
+      ])
+      const rank = (test: SiteHealthTest) =>
+        (SITE_HEALTH_STATUSES.length - SITE_HEALTH_STATUSES.indexOf(test.status)) * 100 +
+        SITE_HEALTH_TESTS.indexOf(test.key)
+      return { tests: tests.sort((a, b) => rank(a) - rank(b)) }
     },
   }
 }

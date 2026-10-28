@@ -170,6 +170,7 @@ describe('the OpenAPI document', () => {
         '/api/v1/setup/status',
         '/api/v1/setup/token/verify',
         '/api/v1/site-health/info',
+        '/api/v1/site-health/status',
         '/api/v1/system/test-email',
         '/api/v1/taxonomies',
         '/api/v1/taxonomies/{tax}/terms',

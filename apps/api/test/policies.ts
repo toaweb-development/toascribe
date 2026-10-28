@@ -34,6 +34,7 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   'GET /api/v1/updates': 'capability:update_core',
   'PATCH /api/v1/updates/settings': 'capability:update_core',
   'GET /api/v1/site-health/info': 'capability:manage_options',
+  'GET /api/v1/site-health/status': 'capability:manage_options',
   // The admin shell (M0.5): the menu, the dashboard counts and the notices. Every account that can sign in has `read`.
   'GET /api/v1/admin/menu': 'capability:read',
   'GET /api/v1/dashboard/glance': 'capability:read',
