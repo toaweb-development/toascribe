@@ -47,7 +47,7 @@ import type {
 
 import type { SessionAuth } from '../lib/auth-context.ts'
 import { canEdit } from '../lib/content-access.ts'
-import { NotFoundError } from '../lib/errors.ts'
+import { ForbiddenError, NotFoundError } from '../lib/errors.ts'
 import { authorsOf, capabilitiesOf, findContent } from '../repositories/content.ts'
 import type { Executor } from '../repositories/executor.ts'
 import {
@@ -1190,6 +1190,8 @@ export function createPublicService(options: {
     },
 
     async previewLink(auth, contentId) {
+      // A preview link is signed for a browser session; an application password is not one (M1.8 review).
+      if (auth.via !== 'cookie') throw new ForbiddenError()
       if (!(await mayEdit(auth.account.id, contentId))) throw new NotFoundError()
       const row = { id: contentId }
       const expires = new Date(clock().getTime() + PREVIEW_LINK_MINUTES * 60_000)

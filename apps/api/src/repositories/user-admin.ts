@@ -66,6 +66,11 @@ export async function reassignUploads(db: Executor, from: string, to: string): P
   await db.update(media).set({ uploadedBy: to }).where(eq(media.uploadedBy, from))
 }
 
+/** Locks the account row for the rest of the transaction (a concurrent new author link waits for it). */
+export async function lockAccount(db: Executor, accountId: string): Promise<void> {
+  await db.execute(sql`select 1 from account where id = ${accountId} for update`)
+}
+
 /** Deletes the account; its sessions, tokens, application passwords and factors go with it (cascade). */
 export async function deleteAccount(db: Executor, accountId: string): Promise<boolean> {
   const rows = await db.delete(account).where(eq(account.id, accountId)).returning({ id: account.id })

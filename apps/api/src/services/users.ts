@@ -39,6 +39,7 @@ import {
   authoredContent,
   countAuthoredContent,
   deleteAccount,
+  lockAccount,
   dropAuthorship,
   reassignAuthorship,
   reassignUploads,
@@ -120,6 +121,15 @@ function requireCapability(auth: SessionAuth, capability: string): void {
   if (!auth.capabilities.has(capability)) throw new ForbiddenError()
 }
 
+/**
+ * Accounts, roles and passwords are changed by a person in the admin, never by a client with an application password (M1.8
+ * review): otherwise a leaked administrator's application password could make a new administrator with a known password and sign
+ * in to the admin with it, past the second factor.
+ */
+function requireCookieSession(auth: SessionAuth): void {
+  if (auth.via !== 'cookie') throw new AppError(403, 'session_required', 'Sign in to the admin to change users')
+}
+
 export function createUserService(options: {
   readonly db: Database
   readonly clock: () => Date
@@ -157,6 +167,7 @@ export function createUserService(options: {
     },
 
     assignRole(auth, request, ctx) {
+      requireCookieSession(auth)
       const actor = { id: auth.account.id, username: auth.account.username }
       return inTransaction(db, async (tx) => {
         await lockRoleChanges(tx)
@@ -228,6 +239,7 @@ export function createUserService(options: {
     },
 
     async create(auth, request, ctx) {
+      requireCookieSession(auth)
       requireCapability(auth, 'create_users')
       const role = await findRoleBySlug(db, request.role)
       if (role === undefined) throw new AppError(400, 'unknown_role', 'There is no such role')
@@ -312,6 +324,7 @@ export function createUserService(options: {
     },
 
     remove(auth, id, request, ctx) {
+      requireCookieSession(auth)
       const actor = { id: auth.account.id, username: auth.account.username }
       return inTransaction(db, async (tx) => {
         // Under the role lock: two deletions (or a deletion and a demotion) cannot both take the last administrator.
@@ -319,6 +332,8 @@ export function createUserService(options: {
         const held = new Set((await listRoleGrants(tx, actor.id)).flatMap((grant) => grant.capabilities))
         if (!held.has('delete_users')) throw new ForbiddenError()
         if (id === actor.id) throw new AppError(409, 'self', 'You cannot delete your own account')
+        // The account row first: an author link added meanwhile waits for this and then fails, instead of failing the delete.
+        await lockAccount(tx, id)
         const target = (await loadTargets(tx, [id])).get(id)
         if (target === undefined) throw new NotFoundError()
         if (!covers(held, target.capabilities))
@@ -373,6 +388,7 @@ export function createUserService(options: {
     },
 
     async sendPasswordResets(auth, request, ctx) {
+      requireCookieSession(auth)
       requireCapability(auth, 'edit_users')
       const targets = await loadTargets(db, request.ids)
       const sent: { email: string; username: string; purpose: 'set_password' | 'password_reset'; token: string }[] = []

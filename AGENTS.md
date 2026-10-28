@@ -232,6 +232,12 @@ create` and the daily backup), so code running in either could plant an archive 
   SQL as `toascribe_owner` (NOSUPERUSER, NOCREATEROLE: DDL in this database, not the host). The restore refuses SQL without the
   `\restrict` line pg_restore 17.6+ writes, so psql meta-commands in a dump do not run. Signing backups, or making them only in a
   service the internet does not reach, is Tor's call.
+- **Application passwords skip the origin and CSRF checks, and the second factor (M1.8, K-016).** `security` §3 lists CSRF exemptions by
+  path; here the exemption follows the `Authorization: Basic` header, on every route outside `/api/v1/{auth,me,setup,admin}`. It is safe
+  because the api never answers `WWW-Authenticate` (no browser caches the credentials), a page on another site cannot set the header
+  without a CORS preflight the api never allows, the cookie is not looked at when the header is there, and the body rule still holds.
+  As in WordPress, an application password does not ask for the second factor; it cannot change users, roles or passwords (cookie
+  session only) and works only over HTTPS.
 - **Audit exceptions.** `pnpm audit --prod` reports two High advisories without a patched version
   (GHSA-86w9-cpqp-85rv node-forge, GHSA-vfj7-8cjw-p6xm braces), both from nitropack and absent from every runtime image.
   They are listed in `pnpm-workspace.yaml` with a review date; `scripts/audit.sh` (the release's audit) fails after it.

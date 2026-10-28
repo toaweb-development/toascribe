@@ -252,6 +252,34 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users and application password
       expect(attempts.length).toBeGreaterThan(0)
     })
 
+    it('keeps working while the account waits after failed form logins, and cannot change users', async () => {
+      // Someone who knows the name pushes the account into a wait at the login form.
+      const outsider = env.client({ ip: '203.0.113.9' })
+      for (let attempt = 0; attempt < 8; attempt += 1) await outsider.login('apiklient', 'feil passord her')
+      const client = env.client({ origin: null })
+      const headers = { ...https, authorization: basic('apiklient', password) }
+      expect((await client.get('/api/v1/content?type=post', { headers, cookie: null })).status).toBe(200)
+
+      // Users are changed by a person in the admin, never with an application password (review M2).
+      const adminPassword = CreateAppPasswordResponse.parse(
+        await (await admin.post('/api/v1/me/app-passwords', { name: 'Adminskript' })).json(),
+      ).password
+      const asAdmin = { ...https, authorization: basic('brukeradmin', adminPassword) }
+      const made = await client.post(
+        '/api/v1/users',
+        {
+          username: 'bakdor',
+          email: 'bakdor@example.test',
+          role: 'administrator',
+          sendInvite: false,
+          password: 'et godt nytt passord',
+        },
+        { headers: asAdmin, cookie: null, csrf: 'none', origin: null },
+      )
+      expect(made.status).toBe(403)
+      expect(await made.text()).toContain('session_required')
+    })
+
     it('stops working the moment it is revoked', async () => {
       const client = env.client({ origin: null })
       const headers = { ...https, authorization: basic('apiklient', password) }

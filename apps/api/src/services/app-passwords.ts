@@ -180,8 +180,10 @@ export function createAppPasswordService(options: {
     async authenticate(credentials, request, logger) {
       const now = clock()
       const account = credentials.login === '' ? undefined : await findAccountByLogin(db, credentials.login)
-      const subject = { ip: request.ip, accountId: account?.id ?? null, login: credentials.login }
-      // A wait already running is told before anything is compared.
+      // Counted by the address only (M1.8 review): guessing 143 random bits is hopeless, so a wait on the account would only let
+      // anyone who knows the name block the account's API clients with wrong logins, and a stale password in a script would keep
+      // slowing its owner's own login. An address that keeps failing still waits, as at the login form.
+      const subject = { ip: request.ip }
       assertNotDelayed(await limiter.check('login', subject), now)
       const presented = hashToken(normalized(credentials.password))
       const match =
