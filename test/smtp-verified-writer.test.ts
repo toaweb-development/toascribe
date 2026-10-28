@@ -43,6 +43,7 @@ const ALL = ['apps', 'packages', 'cli', 'themes'].flatMap((dir) => sources(join(
 const MAY_NAME_THE_KEY: Readonly<Record<string, string>> = {
   'packages/shared/src/settings.ts': 'the schema, the default and READ_ONLY_SETTING_KEYS',
   'apps/api/src/services/notices.ts': 'reads it for the dashboard notice',
+  'apps/api/src/services/site-tools.ts': "reads it for the dashboard's site health check (K-033)",
   'packages/install/src/email-verified.ts': 'the one writer',
   'packages/install/src/service.ts': 'reads it for the wizard step; saveEmail clears it',
 }
@@ -70,6 +71,8 @@ describe('smtp_verified_at has one writer', () => {
       'packages/shared/src/settings.ts': 3,
       // pick, destructure, the null check
       'apps/api/src/services/notices.ts': 3,
+      // pick and the check
+      'apps/api/src/services/site-tools.ts': 2,
       // the timestamp
       'packages/install/src/email-verified.ts': 1,
       // the wizard step's read (destructure, pick, the check) and saveEmail's clearing

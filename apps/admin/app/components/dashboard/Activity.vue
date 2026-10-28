@@ -5,7 +5,7 @@
 import type { ContentListItem } from '@toascribe/shared'
 
 const contentApi = useContentApi()
-const { locale } = useI18n()
+const { t, locale } = useI18n()
 
 const { data, status, error, refresh } = await useAsyncData('dashboard:activity', async () => {
   const [soon, recent] = await Promise.all([
@@ -42,7 +42,7 @@ const when = (item: ContentListItem): string =>
       <template v-for="part in ['soon', 'recent'] as const" :key="part">
         <section v-if="data[part].length > 0" :aria-labelledby="`activity-${part}`">
           <h3 :id="`activity-${part}`" class="text-base font-semibold text-highlighted">
-            {{ $t(`dashboard.activity.${part}`) }}
+            {{ ACTIVITY_PARTS[part](t) }}
           </h3>
           <ul class="mt-1 flex flex-col">
             <li v-for="item in data[part]" :key="item.id" class="flex flex-col gap-x-3 sm:flex-row sm:items-center">

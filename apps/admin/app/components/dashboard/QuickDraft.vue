@@ -28,7 +28,7 @@ const { data: drafts, refresh } = await useAsyncData(
   { watch: [accountId] },
 )
 
-const state = reactive({ title: '', content: '' })
+const state = reactive({ heading: '', text: '' })
 const saving = ref(false)
 const failure = ref<string>()
 const empty = ref(false)
@@ -37,19 +37,19 @@ const saved = ref<{ id: string; title: string }>()
 async function save(): Promise<void> {
   failure.value = undefined
   saved.value = undefined
-  empty.value = state.title.trim() === '' && state.content.trim() === ''
+  empty.value = state.heading.trim() === '' && state.text.trim() === ''
   if (empty.value) return
   saving.value = true
   try {
     const item = await contentApi.create({
       type: 'post',
       status: 'draft',
-      title: state.title.trim(),
-      blocks: textToParagraphs(state.content),
+      title: state.heading.trim(),
+      blocks: textToParagraphs(state.text),
     })
     saved.value = { id: item.id, title: item.title }
-    state.title = ''
-    state.content = ''
+    state.heading = ''
+    state.text = ''
     await refresh()
   } catch (caught) {
     failure.value = describeApiError(caught, t)
@@ -77,7 +77,7 @@ const format = computed(
 
     <form class="flex flex-col gap-4" novalidate @submit.prevent="save">
       <UFormField name="quick-draft-title" :label="$t('dashboard.quickDraft.title')">
-        <UInput id="quick-draft-title" v-model="state.title" size="lg" class="w-full" maxlength="500" />
+        <UInput id="quick-draft-title" v-model="state.heading" size="lg" class="w-full" maxlength="500" />
       </UFormField>
       <UFormField
         name="quick-draft-content"
@@ -86,7 +86,7 @@ const format = computed(
       >
         <UTextarea
           id="quick-draft-content"
-          v-model="state.content"
+          v-model="state.text"
           :placeholder="$t('dashboard.quickDraft.placeholder')"
           :rows="4"
           autoresize

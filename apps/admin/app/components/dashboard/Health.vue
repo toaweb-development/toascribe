@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // «Nettstedshelse-status» (M1.8, K-033; WordPress' Site Health Status widget): the api's checks summed up as good, «bør forbedres» or
 // «bør fikses», each check that is not good in a line, and a link to «Verktøy → Nettstedshelse». For `manage_options`, as the api asks.
+const { t } = useI18n()
 const siteTools = useSiteToolsApi()
 const { data, status, error, refresh } = await useAsyncData('dashboard:health', () => siteTools.healthStatus())
 
@@ -23,11 +24,9 @@ const color = computed(() => ({ good: 'success', recommended: 'warning', critica
 
     <div v-if="data" class="flex flex-col gap-3">
       <p class="flex items-center gap-2 text-base text-default">
-        <UBadge :color="color[overall]" variant="subtle" size="lg">{{
-          $t(`dashboard.health.overall.${overall}`)
-        }}</UBadge>
+        <UBadge :color="color[overall]" variant="subtle" size="lg">{{ HEALTH_OVERALL[overall](t) }}</UBadge>
       </p>
-      <p class="text-base text-default">{{ $t(`dashboard.health.summary.${overall}`, { n: issues.length }) }}</p>
+      <p class="text-base text-default">{{ HEALTH_SUMMARY[overall](t, issues.length) }}</p>
       <ul v-if="issues.length > 0" class="flex flex-col gap-1">
         <li v-for="test in issues" :key="test.key" class="flex items-start gap-2 text-base text-default">
           <UIcon
@@ -37,8 +36,8 @@ const color = computed(() => ({ good: 'success', recommended: 'warning', critica
             aria-hidden="true"
           />
           <span>
-            <span class="sr-only">{{ $t(`dashboard.health.overall.${test.status}`) }}: </span>
-            {{ $t(`dashboard.health.tests.${test.key}.${test.status}`) }}
+            <span class="sr-only">{{ HEALTH_OVERALL[test.status](t) }}: </span>
+            {{ HEALTH_TESTS[test.key][test.status === 'critical' ? 'critical' : 'recommended'](t) }}
           </span>
         </li>
       </ul>
