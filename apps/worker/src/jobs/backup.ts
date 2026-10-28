@@ -42,6 +42,7 @@ export async function runDailyBackup(deps: BackupJobDeps): Promise<void> {
     configFile: deps.configFile,
     version: deps.version,
     now: deps.now?.() ?? new Date(),
+    logger: deps.logger,
   })
   const removed = await pruneBackups(deps.backupsDir, settings.keep)
   deps.logger.info({ file: made.file.split('/').pop(), size: made.size, pruned: removed.length }, 'daily backup made')

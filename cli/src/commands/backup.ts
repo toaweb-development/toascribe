@@ -18,7 +18,9 @@ import {
   restoreBackup,
   takeBackup,
   readBackupLog,
+  manifestDigest,
 } from '@toascribe/backup'
+import type { Manifest } from '@toascribe/backup'
 import {
   createDb,
   getMigrationStatus,
@@ -105,7 +107,11 @@ export function makeBackup(
     readonly BACKUPS_DIR: string
     readonly TOASCRIBE_CONFIG_FILE: string
   },
-  options: { readonly includeSecrets: boolean; readonly env: CommandOptions['env'] },
+  options: {
+    readonly includeSecrets: boolean
+    readonly env: CommandOptions['env']
+    readonly logger?: { warn(object: object, message: string): void }
+  },
 ) {
   return takeBackup({
     databaseUrl: config.databaseUrl,
@@ -115,6 +121,7 @@ export function makeBackup(
     version: readVersion(),
     now: new Date(),
     ...(options.includeSecrets ? { secrets: loadSecretValues(options.env) } : {}),
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
   })
 }
 
@@ -156,7 +163,7 @@ async function backupCreate(args: readonly string[], options: CommandOptions): P
   try {
     const made = await makeBackup(
       { ...config, databaseUrl: config.DATABASE_URL },
-      { includeSecrets: flags['include-secrets'] === true, env: options.env },
+      { includeSecrets: flags['include-secrets'] === true, env: options.env, logger },
     )
     await audit(config.DATABASE_URL, 'backup.created', {
       file: made.file.split('/').pop() ?? '',
@@ -301,11 +308,7 @@ async function backupRestore(args: readonly string[], options: CommandOptions): 
     const summary = `toascribe ${manifest.toascribe}, migration ${manifest.migration.tag}, ${String(manifest.files.length)} files, made ${manifest.createdAt}`
     // Where it comes from (M1.8, Tor's decision): the manifest's origin, and a warning when this install did not make it. The sha256s
     // prove the file is whole, not who made it (AGENTS.md «Known deviations»).
-    const madeHere = await madeByThisInstall(
-      config.MIGRATION_DATABASE_URL,
-      path.split('/').pop() ?? '',
-      manifest.createdAt,
-    )
+    const madeHere = await madeByThisInstall(config.MIGRATION_DATABASE_URL, path.split('/').pop() ?? '', manifest)
     const origin =
       `Origin: made ${manifest.createdAt} by toascribe ${manifest.toascribe}` +
       `${manifest.origin === undefined ? ' (no host name: made before 0.7)' : ` on the host ${JSON.stringify(manifest.origin.host)}`}.\n` +
@@ -401,7 +404,10 @@ export async function dbMigrate(
       )
     } else {
       try {
-        const made = await makeBackup({ ...config, databaseUrl: ownerUrl }, { includeSecrets: false, env: options.env })
+        const made = await makeBackup(
+          { ...config, databaseUrl: ownerUrl },
+          { includeSecrets: false, env: options.env, logger },
+        )
         lines.push(`Backup made before the migrations: ${made.file.split('/').pop() ?? made.file}.`)
       } catch (err) {
         const result = failed(err, logger, `${command} (the backup before the migrations)`)
@@ -447,11 +453,14 @@ export async function dbMigrate(
 }
 
 /** Whether the backup is in `backup_log` of the database as it is now (false when it cannot be read: then the warning shows). */
-async function madeByThisInstall(ownerUrl: string, file: string, createdAt: string): Promise<boolean> {
+async function madeByThisInstall(ownerUrl: string, file: string, manifest: Manifest): Promise<boolean> {
+  const digest = manifestDigest(manifest)
   const { db, pool } = createDb({ connectionString: ownerUrl, max: 1, applicationName: 'toascribe-cli' })
   try {
     const log = await readBackupLog(db)
-    return log.some((made) => made.file === file && made.createdAt === createdAt)
+    // The name, the time and the manifest's fingerprint: a backup changed since it was made (or one before 0.7, which has no
+    // fingerprint in the list) is not taken for one made here. Still not proof: the list is in the database the app writes.
+    return log.some((made) => made.file === file && made.createdAt === manifest.createdAt && made.manifest === digest)
   } catch {
     return false
   } finally {

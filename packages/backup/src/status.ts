@@ -22,12 +22,23 @@ export async function recordBackupStatus(databaseUrl: string, status: LastBackup
 }
 
 /** Adds a backup to `backup_log` (the newest 200 this install made), so a restore can tell one made here from one made elsewhere. */
-export async function recordBackupMade(databaseUrl: string, entry: { file: string; createdAt: string }): Promise<void> {
+export async function recordBackupMade(
+  databaseUrl: string,
+  entry: { file: string; createdAt: string; manifest: string },
+): Promise<void> {
   const { db, pool } = createDb({ connectionString: databaseUrl, max: 1, applicationName: 'toascribe-backup' })
   try {
     await db.transaction(async (tx) => {
       const log = await readBackupLog(tx)
-      await writeSetting(tx, 'backup_log', [entry, ...log.filter((made) => made.file !== entry.file)].slice(0, 200))
+      // Entries from before the fingerprint have none: written without the key, never as `undefined` (not JSON).
+      const kept = log
+        .filter((made) => made.file !== entry.file)
+        .map((made) => ({
+          file: made.file,
+          createdAt: made.createdAt,
+          ...(made.manifest === undefined ? {} : { manifest: made.manifest }),
+        }))
+      await writeSetting(tx, 'backup_log', [entry, ...kept].slice(0, 200))
     })
   } finally {
     await pool.end()
@@ -37,7 +48,7 @@ export async function recordBackupMade(databaseUrl: string, entry: { file: strin
 /** The backups this install made, newest first (empty when the setting is missing or broken). */
 export async function readBackupLog<TSchema extends Record<string, unknown>>(
   db: DbExecutor<TSchema>,
-): Promise<{ file: string; createdAt: string }[]> {
+): Promise<{ file: string; createdAt: string; manifest?: string | undefined }[]> {
   const [row] = await db
     .select({ value: schema.setting.value })
     .from(schema.setting)

@@ -92,16 +92,20 @@ const SECRET_BYTES = 32
  * are guaranteed (the api refuses a signing key equal to the encryption key), not left to chance.
  */
 export function coreGenEnv(args: readonly string[], options: CommandOptions = {}): CliResult {
-  const extra = noArguments(args, CORE_GEN_ENV_USAGE)
+  // --passwords-only (M1.8): only the three database passwords, for a new server whose keys come from `toa secrets import`
+  // (docs/RESTORE.md), so no key lines have to be found and deleted by hand.
+  const passwordsOnly = args.length === 1 && args[0] === '--passwords-only'
+  const extra = passwordsOnly ? undefined : noArguments(args, CORE_GEN_ENV_USAGE)
   if (extra !== undefined) {
     return extra
   }
+  const names = passwordsOnly ? GEN_ENV_NAMES.filter((name) => name.startsWith('POSTGRES_')) : GEN_ENV_NAMES
   const values = new Set<string>()
-  while (values.size < GEN_ENV_NAMES.length) {
+  while (values.size < names.length) {
     values.add(randomBytes(SECRET_BYTES).toString('hex'))
   }
-  const lines = GEN_ENV_NAMES.map((name, index) => `${name}=${[...values][index] ?? ''}\n`)
-  const present = namesSet(GEN_ENV_NAMES, options.env)
+  const lines = names.map((name, index) => `${name}=${[...values][index] ?? ''}\n`)
+  const present = namesSet(names, options.env)
   return {
     code: 0,
     stdout: lines.join(''),

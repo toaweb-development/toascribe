@@ -19,12 +19,13 @@ Slik får du toascribe tilbake fra en sikkerhetskopi, på samme server eller på
 Kjør dette én gang etter installasjonen, og igjen når du har rotert nøklene (`toa secrets rotate`):
 
 ```sh
-docker compose exec -T api toa secrets export --recovery-key-stdin < gjenopprettingsnokkel.txt
+read -rs NOKKEL && printf '%s\n' "$NOKKEL" | docker compose exec -T api toa secrets export --recovery-key-stdin; unset NOKKEL
 ```
 
-Kommandoen skriver en fil `toascribe-secrets-<tid>.json` med modus 0600 i volumet `backups`. Den er kryptert med
+Lim inn gjenopprettingsnøkkelen når terminalen venter (den vises ikke), og trykk Enter. Slik havner nøkkelen aldri i en fil eller i
+historikken. Kommandoen skriver en fil `toascribe-secrets-<tid>.json` med modus 0600 i volumet `backups`. Den er kryptert med
 gjenopprettingsnøkkelen og avviser en nøkkel som ikke hører til denne installasjonen. Ingen verdi skrives til skjermen. Kopier filen
-ut av serveren sammen med sikkerhetskopiene, og slett `gjenopprettingsnokkel.txt` etterpå.
+ut av serveren sammen med sikkerhetskopiene (`toa backup list` viser den ikke, og `prune` sletter den ikke).
 
 ## Gjenopprette på samme server
 
@@ -35,8 +36,11 @@ Bruk dette når databasen eller filene er ødelagt, men `.env` er i behold.
    `docker compose stop api worker`.
 3. Prøv kopien først: `docker compose run --rm migrate toa backup restore <fil> --dry-run`.
    Den kontrollerer hele filen mot manifestet og endrer ingenting. Den viser også hvor kopien kommer fra: når og av hvilken versjon
-   den ble laget, og på hvilken maskin. Står det en advarsel om at kopien ikke er laget av denne installasjonen, gjenoppretter du den
-   bare hvis du vet hvor den kommer fra. Kontrollsummene viser at filen er hel, ikke hvem som laget den.
+   den ble laget, og vertsnavnet til containeren som laget den (et tilfeldig navn som skifter når containeren lages på nytt). Står
+   det en advarsel om at kopien ikke er laget av denne installasjonen, gjenoppretter du den bare hvis du vet hvor den kommer fra.
+   Ingen advarsel er ikke et bevis: lista over kopier ligger i databasen som appen selv skriver til, og kontrollsummene viser at
+   filen er hel, ikke hvem som laget den. Signerte kopier kommer i fase 2. Etter en gjenoppretting gjelder lista slik den var da
+   kopien ble tatt, så kopier som er laget senere, kan gi advarselen selv om de ble laget her.
 4. Gjenopprett: `docker compose run --rm migrate toa backup restore <fil>` (skriv «gjenopprett» når du blir spurt), eller legg til
    `--yes` i et skript. En kryptert kopi trenger `--identity <fil med age-nøkkelen>`, montert inn i containeren.
 5. Start igjen: `docker compose up -d`.
@@ -48,20 +52,23 @@ En kopi fra en eldre versjon migreres opp. En kopi fra en nyere versjon avvises:
 
 1. Installer Docker på den nye serveren og hent `compose.yaml` for samme versjon som kopien (eller nyere). Se README, «Installer uten
    å klone repoet».
-2. Lag nye databasepassord: `docker compose run --rm --no-deps -T api toa core gen-env >> .env`.
-   Fjern linjene for `TOASCRIBE_ENCRYPTION_KEY` og `TOASCRIBE_SIGNING_KEY` som denne kommandoen la til. De kommer fra nøkkelfilen i
-   neste steg.
-3. Legg nøkkelfilen og sikkerhetskopien i volumet `backups`, for eksempel med `docker compose cp` til en container som har volumet.
-4. Legg nøklene fra den gamle serveren inn i `.env`:
+2. Lag nye databasepassord, uten nøkler (de kommer fra nøkkelfilen i neste steg):
+   `docker compose run --rm --no-deps -T api toa core gen-env --passwords-only >> .env`.
+3. Legg nøklene fra den gamle serveren inn i `.env`. Nøkkelfilen ligger på verten; den sendes inn på standard input etter
+   gjenopprettingsnøkkelen, så den aldri må kopieres inn i en container:
 
    ```sh
-   docker compose run --rm --no-deps -T api toa secrets import /var/lib/toascribe/backups/<nøkkelfil> \
-     --recovery-key-stdin < gjenopprettingsnokkel.txt >> .env
+   read -rs NOKKEL && { printf '%s\n' "$NOKKEL"; cat toascribe-secrets-<tid>.json; } | docker compose run --rm --no-deps -T api toa secrets import - --recovery-key-stdin >> .env; unset NOKKEL
    ```
 
-   Kommandoen skriver nøklene som `.env`-linjer, og nekter å skrive dem til en terminal. En feil nøkkel eller en endret fil avvises,
-   og da skrives ingenting.
+   Kommandoen skriver nøklene som `.env`-linjer. **Avslutt alltid med `>> .env`.** Kommandoen nekter å skrive til en terminal, men
+   gjennom `docker compose … -T` ser den bare containerens egen utdata. Glemmer du `>> .env`, havner nøklene på skjermen og i
+   historikken til terminalen. En feil nøkkel eller en endret fil avvises, og da skrives ingenting.
+4. Legg sikkerhetskopien i volumet `backups`. Send den inn på standard input, så filen eies av appens bruker og kan leses:
+   `docker compose run --rm --no-deps -T migrate sh -c 'cat > /var/lib/toascribe/backups/<fil>' < <fil>`.
 5. Start databasen og gjenopprett: `docker compose up -d postgres`, så `docker compose run --rm migrate toa backup restore <fil>`.
+   Her viser gjenopprettingen alltid advarselen om at kopien ikke er laget av denne installasjonen. Det er ventet: den nye serveren
+   har ikke laget noen kopier ennå.
 6. Start alt: `docker compose up -d`. Sett `PUBLIC_ORIGIN` i `.env` hvis adressen er ny. Interne lenker følger med, så det trengs
    ikke noe søk-og-erstatt.
 

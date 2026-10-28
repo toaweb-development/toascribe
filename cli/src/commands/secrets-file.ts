@@ -112,36 +112,63 @@ export async function secretsExport(args: readonly string[], options: CommandOpt
   }
 }
 
-/** `toa secrets import <file> --recovery-key-stdin >> .env`. */
+/**
+ * `toa secrets import <file> --recovery-key-stdin >> .env`, or `toa secrets import - --recovery-key-stdin`: then standard input is the
+ * recovery key on its first line and the file after it (`cat key.txt secrets.json | … import - …`), so the file never has to be
+ * copied into the container (a file `docker compose cp` puts there belongs to root, and the api user could not read it).
+ *
+ * The guard against a terminal sees only the container's own standard output: through `docker compose run -T` (or `exec -T`) it is
+ * never a terminal, and the lines go wherever the host sends them. The command must end with `>> .env` (docs/RESTORE.md).
+ */
 export async function secretsImport(args: readonly string[], options: CommandOptions = {}): Promise<CliResult> {
   const [file, ...rest] = args
-  let key: string
+  let input: string
   try {
-    if (file === undefined || file.startsWith('--')) throw new UsageError('Give the secrets file after import.')
+    if (file === undefined || (file.startsWith('--') && file !== '-'))
+      throw new UsageError('Give the secrets file (or -) after import.')
     const flags = parseFlags(rest, { 'recovery-key-stdin': 'boolean' })
-    key = await recoveryKeyFrom(options, flags['recovery-key-stdin'] === true)
+    if (flags['recovery-key-stdin'] !== true) {
+      throw new UsageError(
+        'Give the recovery key on standard input with --recovery-key-stdin; it is never taken from the command line.',
+      )
+    }
+    input = await (options.readStdin ?? readProcessStdin)()
   } catch (err) {
     if (err instanceof UsageError) return usageResult(err.message, SECRETS_USAGE)
     throw err
   }
   if (options.stdoutIsTerminal ?? process.stdout.isTTY) {
     return invalidInput(
-      'The keys are written as .env lines to standard output, never to a screen: send it to the file, e.g. ' +
-        '`toa secrets import <file> --recovery-key-stdin < recovery-key.txt >> docker/.env`.',
+      'The keys are written as .env lines to standard output, never to a screen: end the command with `>> docker/.env`.',
     )
   }
+  const newline = input.indexOf('\n')
+  const key = (file === '-' && newline !== -1 ? input.slice(0, newline) : input).trim()
+  if (key === '') return usageResult('Standard input held no recovery key.', SECRETS_USAGE)
   let text: string
-  try {
-    text = await readFile(resolve(file), 'utf8')
-  } catch {
-    return refusal('The file cannot be read.')
+  if (file === '-') {
+    if (newline === -1)
+      return usageResult('After the recovery key line, standard input must hold the secrets file.', SECRETS_USAGE)
+    text = input.slice(newline + 1)
+  } else {
+    try {
+      text = await readFile(resolve(file), 'utf8')
+    } catch (err) {
+      const code: unknown = typeof err === 'object' && err !== null ? Reflect.get(err, 'code') : undefined
+      return refusal(
+        code === 'EACCES'
+          ? 'The file cannot be read by the api user (EACCES). Give it on standard input instead: import - (docs/RESTORE.md).'
+          : `The file cannot be read (${typeof code === 'string' ? code : 'error'}).`,
+      )
+    }
   }
   try {
     const { secrets, createdAt } = openSecrets(text, key)
     const lines = Object.entries(secrets).map(([name, value]) => `${name}=${value}`)
     return {
       code: 0,
-      stdout: `# toascribe secrets, exported ${createdAt}, imported ${new Date().toISOString()}\n${lines.join('\n')}\n`,
+      // A blank line first: a .env without a final newline would glue the comment onto its last line.
+      stdout: `\n# toascribe secrets, exported ${createdAt}, imported ${new Date().toISOString()}\n${lines.join('\n')}\n`,
       stderr: `Wrote ${String(lines.length)} keys (${Object.keys(secrets).sort().join(', ')}) as .env lines.\n`,
     }
   } catch (err) {

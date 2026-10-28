@@ -1,6 +1,7 @@
 // The manifest of a backup (M1.7): the first entry of every archive, `manifest.json`. It names the toascribe version and the newest
 // migration the database had, when it was made, and every other file in the archive with its size and sha256. A restore reads it
 // first and checks every file against it before it changes anything.
+import { createHash } from 'node:crypto'
 import { z } from 'zod'
 
 /** A path inside an archive: `database.dump`, `secrets.json`, or `uploads/<the file's key>`; nothing else (see isArchivePath). */
@@ -73,4 +74,14 @@ export function compareVersions(a: string, b: string): number {
   if (left.pre === undefined) return 1
   if (right.pre === undefined) return -1
   return left.pre < right.pre ? -1 : 1
+}
+
+/**
+ * The manifest's fingerprint (M1.8 review): SHA-256 of the manifest as the schema reads it. It lists every part's sha256, so a backup
+ * with any part changed has another one. `backup_log` keeps it for each backup made here; a restore compares it.
+ */
+export function manifestDigest(manifest: Manifest): string {
+  return createHash('sha256')
+    .update(JSON.stringify(Manifest.parse(manifest)))
+    .digest('hex')
 }

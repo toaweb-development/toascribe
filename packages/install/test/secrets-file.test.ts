@@ -34,5 +34,8 @@ describe('the sealed secrets file', () => {
     )
     expect(() => openSecrets('{"format":"x"}', key)).toThrow(SecretsFileError)
     expect(() => openSecrets(text, 'not a key')).toThrow(/not a recovery key/)
+    // A value .env would read differently (a line break, a comment, an interpolation) is never sealed.
+    expect(() => sealSecrets({ TOASCRIBE_SIGNING_KEY: 'a\nTOASCRIBE_X=1' }, key, new Date())).toThrow()
+    expect(() => sealSecrets({ TOASCRIBE_SIGNING_KEY: 'a$b' }, key, new Date())).toThrow()
   })
 })

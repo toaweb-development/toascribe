@@ -44,12 +44,13 @@ export const MEDIA_REGENERATE_USAGE = `  media regenerate [--id <uuid>]
 export const CORE_IS_INSTALLED_USAGE = `  core is-installed
                          Exit 0 when the site is installed, 1 when it is not, 2 on an error. Prints nothing. Needs DATABASE_URL.`
 
-export const CORE_GEN_ENV_USAGE = `  core gen-env
+export const CORE_GEN_ENV_USAGE = `  core gen-env [--passwords-only]
                          Print five new random values as .env lines: POSTGRES_PASSWORD, POSTGRES_OWNER_PASSWORD,
                          POSTGRES_APP_PASSWORD, TOASCRIBE_ENCRYPTION_KEY and TOASCRIBE_SIGNING_KEY (32 random bytes each,
                          hex). Needs no database and no environment, and writes no file: append it with
                            toa core gen-env >> docker/.env
-                         Run it once for a new site. Back up TOASCRIBE_ENCRYPTION_KEY outside the server.`
+                         Run it once for a new site. Back up TOASCRIBE_ENCRYPTION_KEY outside the server. --passwords-only
+                         prints only the three database passwords: for a new server whose keys come from toa secrets import.`
 
 export const CORE_SETUP_TOKEN_USAGE = `  core setup-token
                          Make a new setup token (the old one stops working) and print it with the address of the wizard,
@@ -123,9 +124,11 @@ export const SECRETS_USAGE = `  secrets list [--format table|json]
   secrets export [--out <file>] --recovery-key-stdin
                          The keys sealed with the recovery key from the setup wizard, into a 0600 file (in the backups volume by
                          default). Refused without this install's recovery key; no value is ever printed.
-  secrets import <file> --recovery-key-stdin >> docker/.env
+  secrets import <file | -> --recovery-key-stdin >> docker/.env
                          On a new server: opens the file with the recovery key and writes the keys as .env lines to standard
-                         output, which must not be a terminal. A wrong key or a changed file is refused. See docs/RESTORE.md.`
+                         output; always end with >> .env (through docker compose -T the guard against a terminal cannot see the
+                         host's). With - standard input is the key on its first line and the file after it. A wrong key or a
+                         changed file is refused. See docs/RESTORE.md.`
 
 export const SHELL_USAGE = `  shell
                          A Node REPL with db, schema, sql, the api's services and actAs(login), in the container only and at

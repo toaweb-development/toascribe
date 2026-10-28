@@ -100,5 +100,27 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('export and import (needs TEST_
     const refused = await toa(['secrets', 'import', out, '--recovery-key-stdin'], generateRecoveryKey())
     expect(refused.code).toBe(1)
     expect(refused.stdout).toBe('')
+
+    // The file on standard input after the key: nothing has to be copied into the container.
+    const piped = await toa(['secrets', 'import', '-', '--recovery-key-stdin'], `${recoveryKey}\n${file}`)
+    expect(piped.code, piped.stderr).toBe(0)
+    expect(piped.stdout).toBe(
+      imported.stdout
+        .replace(/imported [^\n]*/, (line) => line)
+        .replace(/imported .*Z/, piped.stdout.match(/imported .*Z/)?.[0] ?? ''),
+    )
+    expect(piped.stdout.startsWith('\n#')).toBe(true)
+    expect((await toa(['secrets', 'import', '-', '--recovery-key-stdin'], recoveryKey)).code).toBe(2)
+  })
+
+  it('prints only the database passwords with gen-env --passwords-only', async () => {
+    const result = await run(['core', 'gen-env', '--passwords-only'], '0.6.0', { env: {} })
+    expect(result.code).toBe(0)
+    expect(
+      result.stdout
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => line.split('=')[0]),
+    ).toEqual(['POSTGRES_PASSWORD', 'POSTGRES_OWNER_PASSWORD', 'POSTGRES_APP_PASSWORD'])
   })
 })

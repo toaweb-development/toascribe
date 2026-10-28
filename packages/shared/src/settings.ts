@@ -182,7 +182,19 @@ export const CoreSettings = z.object({
    * The backups this install made (M1.8): the newest 200, by file name and time. A restore warns about a backup that is not in it
    * (made by another install, or not by toascribe at all: a backup's sha256s prove it is whole, not who made it).
    */
-  backup_log: z.array(z.object({ file: z.string().max(200), createdAt: z.iso.datetime() })).max(200),
+  backup_log: z
+    .array(
+      z.object({
+        file: z.string().max(200),
+        createdAt: z.iso.datetime(),
+        /** SHA-256 of the manifest (it lists every part's sha256); a backup changed since has another. */
+        manifest: z
+          .string()
+          .regex(/^[0-9a-f]{64}$/)
+          .optional(),
+      }),
+    )
+    .max(200),
   /**
    * Look for a new release once a day (M1.7, K-290): a plain GET of the public image tags, nothing about the site sent. Also off when
    * the server sets TOASCRIBE_UPDATE_CHECK=off.

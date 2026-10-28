@@ -6,6 +6,7 @@ import { createBackup } from './archive.ts'
 import type { CreatedBackup } from './archive.ts'
 import { readBackupConfig } from './config.ts'
 import { readDatabaseMigration } from './files.ts'
+import { manifestDigest } from './manifest.ts'
 import { recordBackupMade, recordBackupStatus, statusReason } from './status.ts'
 
 export interface TakeOptions {
@@ -18,6 +19,8 @@ export interface TakeOptions {
   /** The keys to keep (--include-secrets); never from the worker. */
   readonly secrets?: Readonly<Record<string, string>>
   readonly now: Date
+  /** Told when the backup could not be added to `backup_log`. */
+  readonly logger?: { warn(object: object, message: string): void }
 }
 
 export async function takeBackup(options: TakeOptions): Promise<CreatedBackup> {
@@ -58,7 +61,14 @@ export async function takeBackup(options: TakeOptions): Promise<CreatedBackup> {
     await recordBackupMade(options.databaseUrl, {
       file: made.file.split('/').pop() ?? made.file,
       createdAt: made.manifest.createdAt,
-    }).catch(() => undefined)
+      manifest: manifestDigest(made.manifest),
+    }).catch((error: unknown) => {
+      // A restore of this backup would then warn that it was not made here: say why now.
+      options.logger?.warn(
+        { err: error },
+        'the backup is made, but it could not be added to the list of backups made here',
+      )
+    })
     return made
   } catch (error) {
     await record({

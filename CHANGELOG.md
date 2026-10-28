@@ -22,7 +22,7 @@ worker only), `file-type` and `image-size`.
 
 - Moving to a new server (K-271): `toa secrets export` seals the encryption and signing keys with the recovery key from the setup
   wizard into a 0600 file, and refuses without this install's key; `toa secrets import` opens it on the new server and writes the
-  keys as `.env` lines (never to a screen). `docs/RESTORE.md` describes the whole way. A restore now shows where a backup comes from
+  keys as `.env` lines to be appended to `.env` (`>> .env`; the file can come on standard input, `import -`). `docs/RESTORE.md` describes the whole way. A restore now shows where a backup comes from
   (when, which version, which host) and warns when this install did not make it.
 - Logs and traces (K-297, K-298): the api, the worker, the site and the admin write JSON lines, and one fixed list of fields is
   never written (passwords, tokens, cookies, `Authorization`, secrets, e-mail addresses), nor an e-mail address or credential in any

@@ -14,15 +14,22 @@ export const SecretsFile = z.strictObject({
   format: z.literal('toascribe-secrets'),
   version: z.literal(1),
   createdAt: z.iso.datetime(),
-  salt: z.base64().length(44),
-  iv: z.base64().length(16),
-  tag: z.base64().length(24),
+  salt: z.base64().refine((text) => Buffer.from(text, 'base64').length === 32),
+  iv: z.base64().refine((text) => Buffer.from(text, 'base64').length === 12),
+  tag: z.base64().refine((text) => Buffer.from(text, 'base64').length === 16),
   data: z.base64().max(100_000),
 })
 export type SecretsFile = z.infer<typeof SecretsFile>
 
 /** What is sealed: variable names and their values, nothing else. */
-export const SealedSecrets = z.record(z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/), z.string().max(10_000))
+export const SealedSecrets = z.record(
+  z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/),
+  // As .env takes them unquoted: no space, line break, comment, `$` (compose interpolates it), quote or backslash.
+  z
+    .string()
+    .regex(/^[^\s#$"'\\]*$/)
+    .max(10_000),
+)
 export type SealedSecrets = z.infer<typeof SealedSecrets>
 
 export class SecretsFileError extends Error {
@@ -75,6 +82,7 @@ export function openSecrets(text: string, recoveryKey: string): { secrets: Seale
     'aes-256-gcm',
     keyFor(recoveryKey, Buffer.from(file.salt, 'base64')),
     Buffer.from(file.iv, 'base64'),
+    { authTagLength: 16 },
   )
   decipher.setAAD(Buffer.from(`${LABEL}|${file.createdAt}`))
   decipher.setAuthTag(Buffer.from(file.tag, 'base64'))
@@ -84,7 +92,14 @@ export function openSecrets(text: string, recoveryKey: string): { secrets: Seale
   } catch {
     throw new SecretsFileError('The recovery key does not open this file (a wrong key, or the file was changed).')
   }
-  const secrets = SealedSecrets.safeParse(JSON.parse(plain))
+  let inner: unknown
+  try {
+    inner = JSON.parse(plain)
+  } catch {
+    // Never the parser's own message: it would quote the opened text.
+    throw new SecretsFileError('The file is not a toascribe secrets file.')
+  }
+  const secrets = SealedSecrets.safeParse(inner)
   if (!secrets.success) throw new SecretsFileError('The file is not a toascribe secrets file.')
   return { secrets: secrets.data, createdAt: file.createdAt }
 }
