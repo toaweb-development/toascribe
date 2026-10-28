@@ -1,7 +1,9 @@
 // @toascribe/telemetry (M1.8, K-298): OpenTelemetry for the api and the worker, off by default. The app's entry point imports this
 // only when OTEL_EXPORTER_OTLP_ENDPOINT is set (after registering the ESM hook, `@toascribe/telemetry/hook`), so without the
-// variable nothing of it is loaded and nothing is sent. Traces and metrics go over OTLP/HTTP to that address and nowhere else (the
-// exporters are given their addresses; nothing is read from other OTEL_* variables), with the log's hidden fields hidden in every span.
+// variable nothing of it is loaded and nothing is sent. Traces and metrics go over OTLP/HTTP to that address (the exporters are given
+// their addresses), with the log's hidden fields hidden in every span. No log records are exported, no resource is detected from
+// the machine, and no trace context or baggage is taken from incoming requests. The SDK still reads some OTEL_* variables of its
+// own (headers, timeouts, sampling): compose passes none of them.
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http'
@@ -37,6 +39,9 @@ export function startTelemetry(options: TelemetryOptions): Telemetry {
       'service.name': options.serviceName,
       'service.version': options.serviceVersion,
     }),
+    autoDetectResources: false,
+    logRecordProcessors: [],
+    textMapPropagator: null,
     spanProcessors: [
       scrubbingSpanProcessor(),
       new BatchSpanProcessor({

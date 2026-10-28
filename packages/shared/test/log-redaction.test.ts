@@ -39,7 +39,9 @@ describe('scrubForLog', () => {
   it('compares names without case, - or _', () => {
     expect(isRedactedField('Set-Cookie')).toBe(true)
     expect(isRedactedField('PROXY_AUTHORIZATION')).toBe(true)
-    expect(isRedactedField('tokenHash')).toBe(false)
+    expect(isRedactedField('tokenHash')).toBe(true)
+    expect(isRedactedField('contentHash')).toBe(false)
+    expect(isRedactedField('key')).toBe(false)
     expect(scrubLogText('Basic dXNlcjpwYXNz')).toBe(`Basic ${LOG_REDACTED}`)
   })
 })

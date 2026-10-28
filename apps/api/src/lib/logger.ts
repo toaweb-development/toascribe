@@ -1,4 +1,4 @@
-import { scrubForLog, scrubLogArguments } from '@toascribe/shared'
+import { SCRUBBING_LOG_OPTIONS, scrubChildBindings } from '@toascribe/shared'
 import { pino } from 'pino'
 import type { Logger, LoggerOptions as PinoOptions } from 'pino'
 
@@ -20,14 +20,11 @@ export function createLogger(options: LoggerOptions): Logger {
     // Defence in depth: request logging records no headers or bodies, but if one is ever added
     // these never reach the log (security §8).
     redact: ['req.headers.authorization', 'req.headers.cookie', 'headers.authorization', 'headers.cookie'],
-    // The fixed list of K-297 at any depth, and e-mail addresses and credentials in every string (shared log-redaction.ts).
-    formatters: { log: (object) => scrubForLog(object) },
-    hooks: {
-      logMethod(args, method) {
-        method.apply(this, scrubLogArguments(args) as Parameters<typeof method>)
-      },
-    },
+    // The fixed list of K-297 at any depth, e-mail addresses and credentials in every string, the message and its arguments
+    // (shared log-redaction.ts).
+    ...(SCRUBBING_LOG_OPTIONS as Pick<PinoOptions, 'formatters' | 'hooks' | 'serializers'>),
     ...(options.pretty ? { transport: { target: 'pino-pretty' } } : {}),
   }
-  return options.destination === undefined ? pino(settings) : pino(settings, options.destination)
+  // Child loggers' bindings are written outside the formatter: `child()` scrubs them first.
+  return scrubChildBindings(options.destination === undefined ? pino(settings) : pino(settings, options.destination))
 }

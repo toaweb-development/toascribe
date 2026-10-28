@@ -87,6 +87,51 @@ describe('the api log', () => {
     expect(log).toContain('[skjult]')
   })
 
+  it("scrubs what pino writes outside the object: child bindings, an error's message, interpolation, deep nesting (review)", () => {
+    const { lines, logger } = captured()
+    logger.child({ token: 'barn-token', user: { email: 'barn@example.test' } }).info('fra et barn')
+    logger.child({ jobId: 'j1' }).child({ smtpPassword: 'barnebarn-passord' }).info('fra et barnebarn')
+    logger.error(new Error('mail til feil1@example.test feilet'))
+    logger.error({ err: new Error('mail til feil2@example.test feilet') })
+    logger.info('fmt %j %s', { password: 'fmt-passord' }, 'til fmt@example.test')
+    let deep: Record<string, unknown> = { password: 'dypt-passord' }
+    for (let level = 0; level < 12; level += 1) deep = { next: deep }
+    logger.info({ deep }, 'dypt')
+    logger.info(
+      {
+        TOASCRIBE_SIGNING_KEY: 'signeringsnokkel',
+        TOASCRIBE_ENCRYPTION_KEY: 'krypteringsnokkel',
+        auth: { user: 'smtp', pass: 'smtp-pass' },
+        passwordHash: 'hash-verdi',
+        url: '/wp-login.php?action=rp&key=query-nokkel&login=ola',
+        name: 'pål@eksempel.no',
+      },
+      'navn',
+    )
+    const log = lines.join('')
+    for (const value of [
+      'barn-token',
+      'barn@example.test',
+      'barnebarn-passord',
+      'feil1@example.test',
+      'feil2@example.test',
+      'fmt-passord',
+      'fmt@example.test',
+      'dypt-passord',
+      'signeringsnokkel',
+      'krypteringsnokkel',
+      'smtp-pass',
+      'hash-verdi',
+      'query-nokkel',
+      'pål',
+    ]) {
+      expect(log, value).not.toContain(value)
+    }
+    expect(log).toContain('"jobId":"j1"')
+    expect(log).toContain('action=rp')
+    expect(log).not.toContain('"type":"Object"')
+  })
+
   it('carries the request id the site sent into the log, the answer and a queued job; a bad one is replaced', async () => {
     const { lines, logger } = captured()
     const res = await app(logger).request('/careless', {

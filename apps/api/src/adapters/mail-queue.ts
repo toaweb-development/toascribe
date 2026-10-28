@@ -7,7 +7,7 @@
 // supervises or schedules (only the worker does, AGENTS.md) and uses the app role, so no DDL runs here.
 import { createHash } from 'node:crypto'
 
-import { PGBOSS_APP_OPTIONS } from '@toascribe/db'
+import { PGBOSS_APP_OPTIONS, withRequestId } from '@toascribe/db'
 import { EMAIL_DEDUPE_SECONDS, EMAIL_JOB_OPTIONS, EMAIL_QUEUE, EmailMessage, sealEmailMessage } from '@toascribe/shared'
 import type { KeyRing } from '@toascribe/shared'
 import { PgBoss } from 'pg-boss'
@@ -84,7 +84,8 @@ export function createMailQueue(deps: MailQueueDeps): MailQueue {
       const message = parsed.data
       const payload = await sealEmailMessage(message, deps.keyRing)
       const boss = await ready()
-      const jobId = await boss.send(EMAIL_QUEUE, payload, {
+      // The request that queued it (M1.8, K-297): the worker logs its lines with the same id.
+      const jobId = await boss.send(EMAIL_QUEUE, withRequestId(payload), {
         ...EMAIL_JOB_OPTIONS,
         ...(options?.retryLimit === undefined ? {} : { retryLimit: options.retryLimit }),
         ...(options?.retentionSeconds === undefined ? {} : { retentionSeconds: options.retentionSeconds }),

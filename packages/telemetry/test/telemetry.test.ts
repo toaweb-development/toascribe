@@ -59,11 +59,13 @@ describe('the SDK, with a collector on this machine', () => {
       },
     })
     span.addEvent('exception', { 'exception.message': 'feil for hemmelig@example.test med Bearer hemmelig-3' })
+    // The instrumentations put an error's message in the status.
+    span.setStatus({ code: 2, message: 'invalid input for status@example.test' })
     span.end()
     await telemetry.shutdown()
     const sent = bodies.filter((body) => body.startsWith('/v1/traces')).join('\n')
     expect(sent).toContain('toascribe-test')
-    for (const secret of ['hemmelig-1', 'hemmelig-2', 'hemmelig-3', 'hemmelig@example.test'])
+    for (const secret of ['hemmelig-1', 'hemmelig-2', 'hemmelig-3', 'hemmelig@example.test', 'status@example.test'])
       expect(sent, secret).not.toContain(secret)
     expect(sent).toContain('[skjult]')
   })

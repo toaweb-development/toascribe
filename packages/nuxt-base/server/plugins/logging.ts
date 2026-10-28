@@ -36,8 +36,9 @@ export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook('error', (error, { event }) => {
     // The kind of error and its scrubbed message; the stack only with TOASCRIBE_DEBUG=1, and never in a response.
     const debug = useRuntimeConfig().toascribeDebug === '1'
+    const status: unknown = Reflect.get(error, 'statusCode')
     logLine(
-      'error',
+      typeof status === 'number' && status < 500 ? 'warn' : 'error',
       {
         requestId: event?.context['requestId'],
         err: {
