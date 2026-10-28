@@ -641,7 +641,7 @@ export function createMediaService(options: {
       }
       // The name from the address; when it has no known extension, the one the content shows (the content is checked anyway).
       const lastSegment = new URL(response.url).pathname.split('/').pop() ?? ''
-      let fileName = 'file'
+      let fileName: string
       try {
         fileName = decodeURIComponent(lastSegment) || 'file'
       } catch {
