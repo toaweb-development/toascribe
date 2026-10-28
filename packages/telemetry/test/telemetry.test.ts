@@ -41,7 +41,11 @@ describe('the SDK, with a collector on this machine', () => {
     endpoint = `http://127.0.0.1:${String((collector.address() as AddressInfo).port)}`
   })
   afterAll(async () => {
-    await new Promise<void>((resolve) => collector.close(() => resolve()))
+    await new Promise<void>((resolve) => {
+      collector.close(() => {
+        resolve()
+      })
+    })
   })
 
   it('sends spans with the hidden fields hidden', async () => {

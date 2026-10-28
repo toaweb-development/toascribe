@@ -1,7 +1,6 @@
 // The log's rules for traces (M1.8, K-298): before a span is exported, every attribute whose name is on the fixed list (by its last
 // part: `http.request.header.cookie` is `cookie`) is hidden, the query string of every address is dropped (it can carry tokens), and
 // every other string is scrubbed of e-mail addresses and credentials. The same for the attributes of the span's events.
-import type { AttributeValue, Attributes } from '@opentelemetry/api'
 import type { Span, SpanProcessor } from '@opentelemetry/sdk-trace'
 import { LOG_REDACTED, isRedactedField, scrubLogText } from '@toascribe/shared'
 
@@ -14,35 +13,36 @@ function withoutQuery(value: string, key: string): string {
   return at === -1 ? scrubLogText(value) : `${scrubLogText(value.slice(0, at))}?${LOG_REDACTED}`
 }
 
-export function scrubAttribute(key: string, value: AttributeValue): AttributeValue {
+/** One attribute's value with the rules applied; anything that is not a string (or a list of them) stays as it was. */
+export function scrubAttribute(key: string, value: unknown): unknown {
   if (isRedactedField(key.split('.').pop() ?? key)) return LOG_REDACTED
   if (typeof value === 'string') return ADDRESS_KEYS.has(key) ? withoutQuery(value, key) : scrubLogText(value)
-  if (Array.isArray(value))
-    return value.map((entry) => (typeof entry === 'string' ? scrubLogText(entry) : entry)) as AttributeValue
+  if (Array.isArray(value)) {
+    const entries: unknown[] = value
+    return entries.map((entry) => (typeof entry === 'string' ? scrubLogText(entry) : entry))
+  }
   return value
 }
 
-/** A copy of the attributes with the rules applied. */
-export function scrubAttributes(attributes: Attributes): Attributes {
-  const out: Attributes = {}
+/** Applies the rules to a record of attributes, in place. */
+function scrubRecord(attributes: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(attributes)) {
-    if (value !== undefined) out[key] = scrubAttribute(key, value)
+    if (value !== undefined) attributes[key] = scrubAttribute(key, value)
   }
-  return out
 }
 
 /** Applies the rules while the span can still be changed (the SDK's `onEnding`, before `onEnd` and the export). */
 export function scrubSpan(span: Span): void {
-  for (const [key, value] of Object.entries(span.attributes)) {
-    if (value === undefined) continue
-    const next = scrubAttribute(key, value)
-    if (next !== value) span.setAttribute(key, next)
+  const attributes: Record<string, unknown> = { ...span.attributes }
+  scrubRecord(attributes)
+  // The span's own setter keeps its limits and checks; an attribute set to the same value is left alone.
+  for (const [key, value] of Object.entries(attributes)) {
+    if (value !== span.attributes[key]) {
+      span.setAttribute(key, value)
+    }
   }
   for (const event of span.events) {
-    if (event.attributes === undefined) continue
-    const scrubbed = scrubAttributes(event.attributes)
-    for (const key of Object.keys(scrubbed))
-      (event.attributes as Record<string, AttributeValue | undefined>)[key] = scrubbed[key]
+    if (event.attributes !== undefined) scrubRecord(event.attributes)
   }
 }
 
@@ -50,7 +50,9 @@ export function scrubSpan(span: Span): void {
 export function scrubbingSpanProcessor(): SpanProcessor {
   return {
     onStart: () => undefined,
-    onEnding: scrubSpan,
+    onEnding: (span) => {
+      scrubSpan(span)
+    },
     onEnd: () => undefined,
     forceFlush: () => Promise.resolve(),
     shutdown: () => Promise.resolve(),

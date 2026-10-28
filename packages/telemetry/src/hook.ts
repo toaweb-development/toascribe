@@ -3,5 +3,8 @@
 import { register } from 'node:module'
 
 export function registerInstrumentationHook(): void {
+  // OpenTelemetry's documented way for ESM (doc/esm-support.md, verified 2026-10-28); Node marks `register` deprecated in favour of
+  // `registerHooks`, which the hook package does not offer for this yet. Tested in apps/api/test/telemetry-process.test.ts.
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
   register('@opentelemetry/instrumentation/hook.mjs', import.meta.url)
 }

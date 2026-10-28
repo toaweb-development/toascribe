@@ -14,7 +14,7 @@ import type { SpanExporter } from '@opentelemetry/sdk-trace'
 
 import { scrubbingSpanProcessor } from './scrub.ts'
 
-export { scrubAttribute, scrubAttributes, scrubSpan, scrubbingSpanProcessor } from './scrub.ts'
+export { scrubAttribute, scrubSpan, scrubbingSpanProcessor } from './scrub.ts'
 
 export interface TelemetryOptions {
   /** OTEL_EXPORTER_OTLP_ENDPOINT: the collector's base address (`/v1/traces` and `/v1/metrics` are added). */
