@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { AuthOptionsResponse } from '@toascribe/shared'
 
 // «Registrer»: a username and an e-mail address. The API answers the same whatever happened (the name may be taken, the
 // address may have an account), so the confirmation says what could have happened and never what did.
@@ -11,8 +10,8 @@ const authApi = useAuthApi()
 
 const state = reactive({ username: '', email: '' })
 // Spam protection (K-006): a form token, and a field a person never sees. The token is bound to the visitor's address, and the
-// page's options were fetched by the server (another address), so the browser asks for its own when the form is shown.
-const { data: options } = useNuxtData<AuthOptionsResponse | null>('auth:options')
+// page's options were fetched by the server (another address), so the browser asks for its own when the form is shown, and the
+// button waits for it. A token the server fetched would always be refused, so there is no fallback to it.
 const formToken = ref<string>()
 onMounted(() => {
   authApi
@@ -20,7 +19,10 @@ onMounted(() => {
     .then((fresh) => {
       formToken.value = fresh.formToken
     })
-    .catch(() => undefined)
+    .catch((caught: unknown) => {
+      error.value = describeApiError(caught, t)
+      failures.value += 1
+    })
 })
 const trap = ref('')
 const { validateOn, failed } = useSubmitValidation()
@@ -41,12 +43,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
   submitting.value = true
   error.value = undefined
   try {
-    await authApi.register(
-      event.data.username.trim(),
-      event.data.email.trim(),
-      formToken.value ?? options.value?.formToken ?? '',
-      trap.value,
-    )
+    await authApi.register(event.data.username.trim(), event.data.email.trim(), formToken.value ?? '', trap.value)
     emit('sent')
   } catch (caught) {
     error.value = describeApiError(caught, t)
@@ -104,9 +101,15 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
           class="w-full"
         />
       </UFormField>
-      <UButton type="submit" size="xl" block class="min-h-11" :loading="submitting">{{
-        $t('auth.register.submit')
-      }}</UButton>
+      <UButton
+        type="submit"
+        size="xl"
+        block
+        class="min-h-11"
+        :loading="submitting"
+        :disabled="formToken === undefined"
+        >{{ $t('auth.register.submit') }}</UButton
+      >
     </UForm>
   </div>
 </template>
