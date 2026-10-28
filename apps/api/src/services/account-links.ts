@@ -5,7 +5,16 @@
 // the same status and body, take about the same time (padded to a minimum, see lib/timing.ts), and when an account does exist
 // the difference is only a mail in its owner's inbox. The one exception, by Tor's decision (M0.4): registration says 409
 // `username_taken` for a name that is taken, as WordPress does; a name is public anyway.
-import { WEAK_PASSWORD_MESSAGE, generateToken, hashPassword, hashToken, isTooObvious } from '@toascribe/auth'
+import { createHmac } from 'node:crypto'
+
+import {
+  WEAK_PASSWORD_MESSAGE,
+  constantTimeEqual,
+  generateToken,
+  hashPassword,
+  hashToken,
+  isTooObvious,
+} from '@toascribe/auth'
 import type { Database } from '@toascribe/db'
 import { CoreSettings, ONE_TIME_LINK_HOURS } from '@toascribe/shared'
 import type { AccountTokenPurpose, AuthOptionsResponse } from '@toascribe/shared'
@@ -66,6 +75,18 @@ export class UsernameTakenError extends AppError {
   }
 }
 
+/** How old the registration form's token must be (K-006): a person reads the form and types; a bot sends at once. */
+export const REGISTER_FORM_MIN_MS = 2_000
+/** And at most this old: a form left open longer is drawn again. */
+export const REGISTER_FORM_MAX_MS = 60 * 60 * 1000
+
+/** The registration form failed the spam checks (K-006). The message says what a person can do, not what was checked. */
+export class FormRejectedError extends AppError {
+  constructor() {
+    super(400, 'form_rejected', 'The form could not be sent. Load the page again, wait a moment and try again.')
+  }
+}
+
 /** The new password is a choice the site refuses (the same as the username or the address). */
 export class WeakPasswordError extends AppError {
   constructor() {
@@ -108,7 +129,10 @@ export interface PublicFlows {
   setPassword: (token: string, password: string, ctx: RequestContext) => Promise<void>
   /** What the login screens need before anyone is signed in (GET /auth/options). */
   options: () => Promise<AuthOptionsResponse>
-  register: (input: { username: string; email: string }, ctx: RequestContext) => Promise<void>
+  register: (
+    input: { username: string; email: string; formToken: string; website?: string | undefined },
+    ctx: RequestContext,
+  ) => Promise<void>
 }
 
 /** Issues a one-time link: uses up the earlier ones of the purpose, stores the hash, returns the token for the mail. */
@@ -140,8 +164,33 @@ export function createPublicFlows(options: {
   readonly mail: SafeMail
   readonly minimumResponseMs: number
   readonly onInvalidSetting?: (key: string) => void
+  /** Signs the registration form's token (TOASCRIBE_SIGNING_KEY). */
+  readonly signingKey: Uint8Array
+  /** How old the form token must be before the form is taken (K-006). Default 2 s; tests set 0. */
+  readonly registerFormMinMs?: number
 }): PublicFlows {
   const { db, clock, logger, limiter, audit, mail, minimumResponseMs, onInvalidSetting } = options
+  const registerFormMinMs = options.registerFormMinMs ?? REGISTER_FORM_MIN_MS
+
+  /** `<issued ms>.<HMAC>`: when the form was drawn, signed so it cannot be made up. */
+  function formToken(at: number): string {
+    return `${String(at)}.${createHmac('sha256', options.signingKey)
+      .update(`register-form:${String(at)}`)
+      .digest('base64url')}`
+  }
+
+  /** The spam checks of K-006: the hidden field is empty, and the token is ours, old enough and not too old. */
+  function assertHuman(input: { formToken: string; website?: string | undefined }): void {
+    const issued = Number(input.formToken.split('.')[0])
+    const now = clock().getTime()
+    const ok =
+      (input.website ?? '') === '' &&
+      Number.isSafeInteger(issued) &&
+      constantTimeEqual(formToken(issued), input.formToken) &&
+      now - issued >= registerFormMinMs &&
+      now - issued <= REGISTER_FORM_MAX_MS
+    if (!ok) throw new FormRejectedError()
+  }
 
   const issueLink = (tx: Executor, accountId: string, purpose: AccountTokenPurpose) =>
     issueAccountLink(tx, accountId, purpose, clock())
@@ -301,6 +350,7 @@ export function createPublicFlows(options: {
         registrationOpen: settings.users_can_register,
         siteName: settings.blogname.trim(),
         // The same address the site gives it: `/` when it is the static front page.
+        formToken: formToken(clock().getTime()),
         privacyPolicyPath:
           privacyPage === undefined
             ? null
@@ -326,6 +376,8 @@ export function createPublicFlows(options: {
           login: input.email,
         })
         assertNotDelayed(ticket.status, clock())
+        // After the limit is counted: a bot that keeps sending is slowed down as anyone else.
+        assertHuman(input)
 
         // The owner of the address, if there is one, is told about the attempt by mail, whatever the visitor is answered (Tor,
         // M0.4): the visitor learns nothing from it. A disabled account is left alone; one that is still waiting for its first

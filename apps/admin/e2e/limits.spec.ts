@@ -105,10 +105,13 @@ test('the wait is shown on the register screen too, keyed on the address that wa
   try {
     const origin = new URL(process.env.E2E_BASE_URL ?? 'http://localhost:18080').origin
     const email = `${uniqueName('waitreg')}@example.test`
+    // K-006: the form token the options give, two seconds old.
+    const { formToken } = (await (await request.get('/api/v1/auth/options')).json()) as { formToken: string }
+    await page.waitForTimeout(2100)
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const response = await request.post('/api/v1/auth/register', {
         headers: { Origin: origin },
-        data: { username: uniqueName('w'), email },
+        data: { username: uniqueName('w'), email, formToken },
       })
       expect(response.status()).toBe(202)
     }

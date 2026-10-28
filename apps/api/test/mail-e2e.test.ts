@@ -236,9 +236,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
       try {
         const address = uniqueAddress('e2e-register')
         const client = env.client({ ip: '198.51.100.44' })
-        expect((await client.post('/api/v1/auth/register', { username: 'e2e-newcomer', email: address })).status).toBe(
-          202,
-        )
+        expect((await client.register({ username: 'e2e-newcomer', email: address })).status).toBe(202)
         const message = await waitForMessage(config(), address)
         expect(message.Subject).toBe('[cms.example.test] Velkommen! Velg passord')
         const token = tokenInLink(message.Text, 'setpassword')

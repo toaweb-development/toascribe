@@ -156,6 +156,12 @@ export class TestClient {
     return this.request('GET', path, options)
   }
 
+  /** POST /auth/register with the form token GET /auth/options gives (K-006), as the registration form sends it. */
+  async register(body: Readonly<Record<string, unknown>>, options?: RequestOptions) {
+    const { formToken } = (await (await this.get('/api/v1/auth/options')).json()) as { formToken: string }
+    return this.post('/api/v1/auth/register', { ...body, formToken }, options)
+  }
+
   post(path: string, json?: unknown, options?: RequestOptions) {
     return this.request('POST', path, { ...(json === undefined ? {} : { json }), ...options })
   }
@@ -251,6 +257,8 @@ export interface StartOptions {
   readonly uploadsDir?: string
   /** UPLOAD_MAX_SIZE_MB. Default 64. */
   readonly uploadCapMb?: number
+  /** How old the registration form's token must be. Default 0: the tests send at once. */
+  readonly registerFormMinMs?: number
   /** toascribe.toml (Nettstedshelse reads [backup] schedule). Default: a file that does not exist. */
   readonly configFile?: string
   /** TOASCRIBE_UPDATE_CHECK is not `off`. Default true. */
@@ -301,6 +309,7 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
       mail: custom ?? mail,
       clock: clock.now,
       minimumResponseMs: options.minimumResponseMs ?? 0,
+      registerFormMinMs: options.registerFormMinMs ?? 0,
       uploadsDir,
       mediaJobs,
       ...(options.uploadCapMb === undefined ? {} : { uploadCapMb: options.uploadCapMb }),
@@ -376,6 +385,7 @@ export async function startAuthApp(options: StartOptions = {}): Promise<AuthTest
           mail: variantOptions.mail ?? recordingMail(),
           clock: clock.now,
           minimumResponseMs: variantOptions.minimumResponseMs ?? 0,
+          registerFormMinMs: 0,
         })
         return {
           client: (clientOptions) => new TestClient(other.app, clientOptions),

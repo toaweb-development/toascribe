@@ -35,6 +35,8 @@ export const AuthOptionsResponse = z.object({
   siteName: z.string(),
   /** The address of the published privacy policy page (K-199), linked on the registration form; null without one. */
   privacyPolicyPath: z.string().nullable(),
+  /** The registration form's token (M1.8, K-006): sent back with the form. */
+  formToken: z.string(),
 })
 export type AuthOptionsResponse = z.infer<typeof AuthOptionsResponse>
 
@@ -62,7 +64,17 @@ export const Username = z
 export type Username = z.infer<typeof Username>
 
 /** POST /auth/register. 202 whether or not the address was free; 409 `username_taken` when the username is (Tor, M0.4: as WordPress). */
-export const RegisterRequest = z.strictObject({ username: Username, email: Email })
+export const RegisterRequest = z.strictObject({
+  username: Username,
+  email: Email,
+  /**
+   * Spam protection (M1.8, K-006): the form token `GET /auth/options` gave when the form was drawn. It must be at least a couple of
+   * seconds old (a person reads and types) and at most an hour.
+   */
+  formToken: z.string().max(200),
+  /** A field a person never sees and so never fills in; a bot that fills every field fills this one. Must be empty or missing. */
+  website: z.string().max(500).optional(),
+})
 export type RegisterRequest = z.infer<typeof RegisterRequest>
 
 // ── Second factor (K-023) ────────────────────────────────────

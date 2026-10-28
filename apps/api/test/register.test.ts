@@ -35,7 +35,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
   })
 
   const register = (username: string, email: string, address = ip()) =>
-    env.client({ ip: address }).post('/api/v1/auth/register', { username, email })
+    env.client({ ip: address }).register({ username, email })
 
   const accountsNamed = (username: string) =>
     env.query<AccountRow>(
@@ -71,10 +71,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
     it('says so on GET /auth/options, which anyone may read', async () => {
       const res = await env.client({ ip: ip() }).get('/api/v1/auth/options')
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ registrationOpen: false, siteName: '', privacyPolicyPath: null })
+      expect(await res.json()).toMatchObject({ registrationOpen: false, siteName: '', privacyPolicyPath: null })
       await withRegistration(async () => {
         const open = await env.client({ ip: ip() }).get('/api/v1/auth/options')
-        expect(await open.json()).toEqual({ registrationOpen: true, siteName: '', privacyPolicyPath: null })
+        expect(await open.json()).toMatchObject({ registrationOpen: true, siteName: '', privacyPolicyPath: null })
       })
     })
 
@@ -345,7 +345,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration (needs TEST_DATAB
         const client = slow.client({ ip: ip() })
         const time = async (username: string, email: string) => {
           const started = performance.now()
-          expect((await client.post('/api/v1/auth/register', { username, email })).status).toBe(202)
+          expect((await client.register({ username, email })).status).toBe(202)
           return performance.now() - started
         }
         const free: number[] = []

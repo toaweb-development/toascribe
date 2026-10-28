@@ -45,6 +45,8 @@ export function describeApiError(error: unknown, t: Translate): string {
       return t('error.registrationClosed')
     case 'registration_unavailable':
       return t('error.registrationUnavailable')
+    case 'form_rejected':
+      return t('error.formRejected')
     case 'invalid_token':
       return t('error.invalidToken')
     case 'weak_password':

@@ -167,12 +167,10 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa core, used through the api
     expect((await toa(install(), `${PASSWORD}\n`)).code).toBe(0)
     env.services.install.forgetInstalled()
     await env.query(`update setting set value = 'true'::jsonb where key = 'users_can_register'`)
-    const taken = await env
-      .client({ ip: ip() })
-      .post('/api/v1/auth/register', { username: 'TOR', email: 'new@example.test' })
+    const taken = await env.client({ ip: ip() }).register({ username: 'TOR', email: 'new@example.test' })
     expect(taken.status).toBe(409)
     expect(((await taken.json()) as { error: { code: string } }).error.code).toBe('username_taken')
-    const address = await env.client({ ip: ip() }).post('/api/v1/auth/register', {
+    const address = await env.client({ ip: ip() }).register({
       username: 'someone-new',
       email: 'tor@example.test',
     })

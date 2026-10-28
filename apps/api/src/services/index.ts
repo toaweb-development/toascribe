@@ -97,6 +97,8 @@ export interface ServiceDeps {
   readonly activeTheme: ActiveThemeSource
   /** Who the audit log names: the api (the signed-in account) or `toa` («cli», M1.7). Default `api`. */
   readonly auditSource?: 'api' | 'cli'
+  /** How old the registration form's token must be (K-006); tests set 0. */
+  readonly registerFormMinMs?: number
   /** NODE_ENV, shown in Nettstedshelse. */
   readonly environment?: string
   /** TOASCRIBE_DEBUG=1: Nettstedshelse warns that it is on. */
@@ -322,6 +324,8 @@ export function createServices(deps: ServiceDeps): Services {
       audit,
       mail,
       minimumResponseMs,
+      signingKey: deps.signingKey,
+      ...(deps.registerFormMinMs === undefined ? {} : { registerFormMinMs: deps.registerFormMinMs }),
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
     ownAccount: createOwnAccountService({

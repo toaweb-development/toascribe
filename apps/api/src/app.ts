@@ -62,6 +62,8 @@ export interface AppDeps {
   readonly mail: MailPort
   /** How long the account flows that hide whether an account exists take at least (ms). Tests set 0. Default: lib/timing.ts. */
   readonly minimumResponseMs?: number
+  /** How old the registration form's token must be (K-006). Default 2 s; tests set 0. */
+  readonly registerFormMinMs?: number
   /** TOASCRIBE_TRUSTED_PROXY as set (empty when it is not). Empty makes the api watch its first requests and warn (services/proxy-check.ts). */
   readonly trustedProxy?: string
   /** The clock, for the session lifetimes and the waits after failed logins. Tests set it; the default is the real time. */
@@ -148,6 +150,7 @@ export function buildApp(deps: AppDeps) {
     activeTheme: deps.activeTheme ?? siteThemeSource({ siteUrl: deps.siteUrlInternal ?? 'http://site:3000' }),
     ...(deps.trustedProxy === undefined ? {} : { trustedProxy: deps.trustedProxy }),
     ...(deps.minimumResponseMs === undefined ? {} : { minimumResponseMs: deps.minimumResponseMs }),
+    ...(deps.registerFormMinMs === undefined ? {} : { registerFormMinMs: deps.registerFormMinMs }),
     onInvalidSetting: (key) => {
       deps.logger.warn({ key }, 'a stored setting is invalid; the default is used')
     },

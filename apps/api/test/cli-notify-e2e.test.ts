@@ -192,16 +192,12 @@ describe.skipIf(TEST_DATABASE_URL === undefined || mailpit === undefined)(
       await env.query(`update setting set value = 'true'::jsonb where key = 'users_can_register'`)
       try {
         // A free username: 202, and the owner gets «you already have an account».
-        const visitor = await env
-          .client({ ip: ip() })
-          .post('/api/v1/auth/register', { username: unique('visitor'), email: to })
+        const visitor = await env.client({ ip: ip() }).register({ username: unique('visitor'), email: to })
         expect(visitor.status).toBe(202)
         const message = await waitForMessage(config(), to)
         expect(message.Text).toContain(owner)
         // A taken username: 409 with a message.
-        const taken = await env
-          .client({ ip: ip() })
-          .post('/api/v1/auth/register', { username: owner, email: `${unique('x')}@example.test` })
+        const taken = await env.client({ ip: ip() }).register({ username: owner, email: `${unique('x')}@example.test` })
         expect(taken.status).toBe(409)
         expect(((await taken.json()) as { error: { code: string } }).error.code).toBe('username_taken')
       } finally {

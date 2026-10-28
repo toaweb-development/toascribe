@@ -81,8 +81,14 @@ export function createAuthApi(api: ApiCall) {
       await api(`${V1}/auth/password/set`, { method: 'POST', body: { token, password } })
     },
     /** Always accepted (202), whether or not the name or the address was free. */
-    register: async (username: string, email: string) =>
-      AcceptedResponse.parse(await api(`${V1}/auth/register`, { method: 'POST', body: { username, email } })),
+    /** `formToken` from `options()`, and the hidden field as the form had it (K-006). */
+    register: async (username: string, email: string, formToken: string, website = '') =>
+      AcceptedResponse.parse(
+        await api(`${V1}/auth/register`, {
+          method: 'POST',
+          body: { username, email, formToken, ...(website === '' ? {} : { website }) },
+        }),
+      ),
     confirmEmail: async (token: string) =>
       EmailChangeConfirmResponse.parse(await api(`${V1}/me/email-change/confirm`, { method: 'POST', body: { token } })),
   }

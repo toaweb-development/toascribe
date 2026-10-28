@@ -331,7 +331,8 @@
       "username": "Brukernavn",
       "usernameHelp": "3 til 60 tegn: bokstaver og tall, og eventuelt punktum, understrek, bindestrek eller {'@'}.",
       "email": "E-postadresse",
-      "submit": "Registrer"
+      "submit": "Registrer",
+      "trap": "La dette feltet stå tomt"
     },
     "confirm": {
       "heading": "Bekreft e-postadressen",

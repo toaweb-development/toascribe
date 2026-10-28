@@ -57,7 +57,8 @@
       "seconds": "{n} sekund | {n} sekunder",
       "minutes": "{n} minutt | {n} minutter",
       "hours": "{n} time | {n} timer"
-    }
+    },
+    "formRejected": "Skjemaet ble ikke sendt. Last siden på nytt, vent et øyeblikk og prøv igjen."
   },
   "errorPage": {
     "notFound": {

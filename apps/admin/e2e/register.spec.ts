@@ -47,6 +47,8 @@ test('registration open: form, generic confirmation, set a password from the wel
 
   await page.getByLabel('Brukernavn').fill(username)
   await page.getByLabel('E-postadresse').fill(email)
+  // K-006: a form sent less than two seconds after it was drawn is taken for a bot's; a person is never that fast.
+  await page.waitForTimeout(2100)
   await page.getByRole('button', { name: 'Registrer' }).click()
   await expect(page).toHaveURL(/\/admin\/login\?checkemail=registered$/)
   await expect(page.getByRole('status').filter({ hasText: 'Registreringen er mottatt.' })).toBeVisible()
@@ -72,6 +74,7 @@ test('an address that already has an account gets the same confirmation', async 
   await page.goto('/admin/register')
   await page.getByLabel('Brukernavn').fill(uniqueName('other'))
   await page.getByLabel('E-postadresse').fill(existing.email)
+  await page.waitForTimeout(2100) // K-006, as above
   await page.getByRole('button', { name: 'Registrer' }).click()
   await expect(page).toHaveURL(/\/admin\/login\?checkemail=registered$/)
   await expect(page.getByRole('status')).toContainText('Registreringen er mottatt.')
