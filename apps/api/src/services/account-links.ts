@@ -111,6 +111,26 @@ export interface PublicFlows {
   register: (input: { username: string; email: string }, ctx: RequestContext) => Promise<void>
 }
 
+/** Issues a one-time link: uses up the earlier ones of the purpose, stores the hash, returns the token for the mail. */
+export async function issueAccountLink(
+  tx: Executor,
+  accountId: string,
+  purpose: AccountTokenPurpose,
+  now: Date,
+): Promise<string> {
+  await invalidateUnusedTokens(tx, accountId, now, [purpose])
+  const token = generateToken()
+  await insertAccountToken(tx, {
+    accountId,
+    purpose,
+    tokenHash: hashToken(token),
+    newEmail: null,
+    expiresAt: new Date(now.getTime() + ONE_TIME_LINK_HOURS * HOUR_MS),
+    now,
+  })
+  return token
+}
+
 export function createPublicFlows(options: {
   readonly db: Database
   readonly clock: () => Date
@@ -123,21 +143,8 @@ export function createPublicFlows(options: {
 }): PublicFlows {
   const { db, clock, logger, limiter, audit, mail, minimumResponseMs, onInvalidSetting } = options
 
-  /** Issues a link: uses up the earlier ones of the purpose, stores the hash, returns the token for the mail. */
-  async function issueLink(tx: Executor, accountId: string, purpose: AccountTokenPurpose): Promise<string> {
-    const now = clock()
-    await invalidateUnusedTokens(tx, accountId, now, [purpose])
-    const token = generateToken()
-    await insertAccountToken(tx, {
-      accountId,
-      purpose,
-      tokenHash: hashToken(token),
-      newEmail: null,
-      expiresAt: new Date(now.getTime() + ONE_TIME_LINK_HOURS * HOUR_MS),
-      now,
-    })
-    return token
-  }
+  const issueLink = (tx: Executor, accountId: string, purpose: AccountTokenPurpose) =>
+    issueAccountLink(tx, accountId, purpose, clock())
 
   async function notifyAdministrators(
     exceptAccountId: string | null,

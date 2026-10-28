@@ -1,6 +1,9 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
 import {
   ApiError,
+  AppPasswordListResponse,
+  CreateAppPasswordRequest,
+  CreateAppPasswordResponse,
   MeResponse,
   RevokeSessionsResponse,
   SessionIdParams,
@@ -119,6 +122,59 @@ const revokeOtherSessionsRoute = defineRoute({
 })
 
 /** Routes under /api/v1/me. */
+// Application passwords (K-016): only from the admin with the session cookie; a client holding one cannot list, make or revoke
+// them (the /me routes never take an application password).
+const listAppPasswordsRoute = defineRoute({
+  method: 'get',
+  path: '/me/app-passwords',
+  tags: ['me'],
+  summary: "The account's application passwords",
+  description: 'Name, when made, and when and from where last used. Never the password.',
+  policy: requireCapability('read'),
+  responses: {
+    200: { content: { 'application/json': { schema: AppPasswordListResponse } }, description: 'The list' },
+    401: errorResponse('Not signed in'),
+  },
+})
+
+const createAppPasswordRoute = defineRoute({
+  method: 'post',
+  path: '/me/app-passwords',
+  tags: ['me'],
+  summary: 'Make an application password',
+  description:
+    'The answer holds the password, once: only its hash is kept. It signs in to the API with `Authorization: Basic` over HTTPS, ' +
+    `never to the admin. 409 \`name_taken\` or \`too_many\`. ${STATE_CHANGING_NOTE}`,
+  policy: requireCapability('read'),
+  request: { body: { required: true, content: { 'application/json': { schema: CreateAppPasswordRequest } } } },
+  responses: {
+    201: {
+      content: { 'application/json': { schema: CreateAppPasswordResponse } },
+      description: 'Made; the password is shown once',
+    },
+    400: errorResponse('Invalid request'),
+    401: errorResponse('Not signed in'),
+    403: errorResponse('CSRF token missing or wrong'),
+    409: errorResponse('The name is taken, or the account has the most it may have'),
+  },
+})
+
+const revokeAppPasswordRoute = defineRoute({
+  method: 'delete',
+  path: '/me/app-passwords/{id}',
+  tags: ['me'],
+  summary: 'Revoke an application password',
+  description: `It stops working at once. ${STATE_CHANGING_NOTE}`,
+  policy: requireCapability('read'),
+  request: { params: SessionIdParams },
+  responses: {
+    204: { description: 'Revoked' },
+    401: errorResponse('Not signed in'),
+    403: errorResponse('CSRF token missing or wrong'),
+    404: errorResponse('The account has no such application password'),
+  },
+})
+
 export function createMeApp(services: Services) {
   return new OpenAPIHono<AppEnv>()
     .openapi(getMeRoute, async (c) => c.json(await services.me.get(await requireSession(c)), 200))
@@ -151,5 +207,22 @@ export function createMeApp(services: Services) {
       const auth = await requireSession(c)
       const revoked = await services.auth.revokeOtherSessions(auth, getClientIp(c), c.get('requestId'))
       return c.json({ revoked }, 200)
+    })
+    .openapi(listAppPasswordsRoute, async (c) => c.json(await services.appPasswords.list(await requireSession(c)), 200))
+    .openapi(createAppPasswordRoute, async (c) => {
+      const auth = await requireSession(c)
+      const made = await services.appPasswords.create(auth, c.req.valid('json'), {
+        ip: getClientIp(c),
+        requestId: c.get('requestId'),
+      })
+      return c.json(made, 201)
+    })
+    .openapi(revokeAppPasswordRoute, async (c) => {
+      const auth = await requireSession(c)
+      await services.appPasswords.revoke(auth, c.req.valid('param').id, {
+        ip: getClientIp(c),
+        requestId: c.get('requestId'),
+      })
+      return c.body(null, 204)
     })
 }

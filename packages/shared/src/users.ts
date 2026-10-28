@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { NewPassword } from './password.ts'
 import { AccountStatus } from './values.ts'
 
 // The users list and role assignment (M0.5; WordPress' users.php). `GET /api/v1/users` needs `list_users`, `PUT /api/v1/users/roles`
@@ -128,3 +129,106 @@ export const AssignRoleResponse = z.object({
   skipped: z.array(z.object({ id: z.uuid(), reason: AssignRoleSkipReason })),
 })
 export type AssignRoleResponse = z.infer<typeof AssignRoleResponse>
+
+// ── «Legg til ny bruker» (K-020) ──────────────────────────────
+
+/** POST /users (`create_users`). With `sendInvite` the account waits for its first password (a link by mail, 24 hours) and no
+ * password is sent; without it a password is required and the account is active at once. As WordPress' user-new.php. */
+export const CreateUserRequest = z
+  .strictObject({
+    username: z
+      .string()
+      .min(3)
+      .max(60)
+      .regex(/^[A-Za-z0-9][A-Za-z0-9._@-]*$/),
+    email: z.email().max(254),
+    firstName: z.string().trim().max(100).optional(),
+    lastName: z.string().trim().max(100).optional(),
+    website: z
+      .url({ protocol: /^https?$/ })
+      .max(2000)
+      .optional(),
+    role: RoleSlug,
+    sendInvite: z.boolean(),
+    /** Required without `sendInvite`, refused with it. The password rules apply (`weak_password`). */
+    password: NewPassword.optional(),
+  })
+  .refine((value) => (value.sendInvite ? value.password === undefined : value.password !== undefined), {
+    message: 'Give a password, or send an invitation without one',
+    path: ['password'],
+  })
+export type CreateUserRequest = z.infer<typeof CreateUserRequest>
+
+export const CreateUserResponse = z.object({ id: z.uuid(), username: z.string(), invited: z.boolean() })
+export type CreateUserResponse = z.infer<typeof CreateUserResponse>
+
+// ── Slett bruker (K-021) ──────────────────────────────────────
+
+/** GET /users/{id}: what the delete screen shows. `contentCount` is everything the account is an author of, any status. */
+export const UserDetail = z.object({
+  id: z.uuid(),
+  username: z.string(),
+  displayName: z.string(),
+  email: z.string(),
+  roles: z.array(z.string()),
+  status: AccountStatus,
+  contentCount: z.int().min(0),
+})
+export type UserDetail = z.infer<typeof UserDetail>
+
+/**
+ * DELETE /users/{id} (`delete_users`), as WordPress: «Slett alt innhold» (`reassignTo: null`) or «Tilordne alt innhold til»
+ * another account. Content the account wrote with others keeps the other authors. Never the caller, never the last administrator.
+ */
+export const DeleteUserRequest = z.strictObject({ reassignTo: z.uuid().nullable() })
+export type DeleteUserRequest = z.infer<typeof DeleteUserRequest>
+
+export const DeleteUserResponse = z.object({
+  /** Content moved to `reassignTo`. */
+  reassigned: z.int().min(0),
+  /** Content deleted for good (the account was its only author). */
+  deleted: z.int().min(0),
+})
+export type DeleteUserResponse = z.infer<typeof DeleteUserResponse>
+
+// ── Massehandling: send tilbakestilling av passord (K-022) ────
+
+export const SEND_RESET_MAX_USERS = 100
+
+export const SendPasswordResetRequest = z.strictObject({
+  ids: z
+    .array(z.uuid())
+    .min(1)
+    .max(SEND_RESET_MAX_USERS)
+    .transform((ids) => [...new Set(ids)]),
+})
+export type SendPasswordResetRequest = z.infer<typeof SendPasswordResetRequest>
+
+export const SendPasswordResetResponse = z.object({
+  sent: z.int().min(0),
+  skipped: z.array(z.object({ id: z.uuid(), reason: z.enum(['not_found', 'disabled']) })),
+})
+export type SendPasswordResetResponse = z.infer<typeof SendPasswordResetResponse>
+
+// ── Applikasjonspassord (K-016) ───────────────────────────────
+
+export const APP_PASSWORD_NAME_MAX = 100
+
+export const AppPasswordItem = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  createdAt: isoDate,
+  lastUsedAt: isoDate.nullable(),
+  lastUsedIp: z.string().nullable(),
+})
+export type AppPasswordItem = z.infer<typeof AppPasswordItem>
+
+export const AppPasswordListResponse = z.object({ items: z.array(AppPasswordItem) })
+export type AppPasswordListResponse = z.infer<typeof AppPasswordListResponse>
+
+export const CreateAppPasswordRequest = z.strictObject({ name: z.string().trim().min(1).max(APP_PASSWORD_NAME_MAX) })
+export type CreateAppPasswordRequest = z.infer<typeof CreateAppPasswordRequest>
+
+/** The password is in this answer and nowhere else: only its hash is kept (as WordPress, shown once). */
+export const CreateAppPasswordResponse = z.object({ item: AppPasswordItem, password: z.string() })
+export type CreateAppPasswordResponse = z.infer<typeof CreateAppPasswordResponse>

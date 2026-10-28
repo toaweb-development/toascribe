@@ -277,6 +277,48 @@ const CASES: readonly MatrixCase[] = [
     path: '/api/v1/site-health/info',
     expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
   },
+  // M1.8: adding, reading, deleting users and sending resets are the administrator's; application passwords everyone's own.
+  {
+    route: 'POST /api/v1/users',
+    method: 'POST',
+    path: '/api/v1/users',
+    json: { username: 'x', email: 'bad', role: 'subscriber', sendInvite: true },
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403, administrator: 400 },
+  },
+  {
+    route: 'GET /api/v1/users/:id',
+    method: 'GET',
+    path: '/api/v1/users/7c9e6679-7425-40de-944b-e07fc1f90ae7',
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403, administrator: 404 },
+  },
+  {
+    route: 'DELETE /api/v1/users/:id',
+    method: 'DELETE',
+    path: '/api/v1/users/7c9e6679-7425-40de-944b-e07fc1f90ae7',
+    json: { reassignTo: null },
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403, administrator: 404 },
+  },
+  {
+    route: 'POST /api/v1/users/password-reset',
+    method: 'POST',
+    path: '/api/v1/users/password-reset',
+    json: { ids: ['7c9e6679-7425-40de-944b-e07fc1f90ae7'] },
+    expected: { ...ok, editor: 403, author: 403, contributor: 403, subscriber: 403 },
+  },
+  { route: 'GET /api/v1/me/app-passwords', method: 'GET', path: '/api/v1/me/app-passwords', expected: ok },
+  {
+    route: 'POST /api/v1/me/app-passwords',
+    method: 'POST',
+    path: '/api/v1/me/app-passwords',
+    json: { name: '' },
+    expected: { anonymous: 401, administrator: 400, editor: 400, author: 400, contributor: 400, subscriber: 400 },
+  },
+  {
+    route: 'DELETE /api/v1/me/app-passwords/:id',
+    method: 'DELETE',
+    path: '/api/v1/me/app-passwords/7c9e6679-7425-40de-944b-e07fc1f90ae7',
+    expected: { anonymous: 401, administrator: 404, editor: 404, author: 404, contributor: 404, subscriber: 404 },
+  },
   // The `list_users` and `promote_users` capabilities: only the administrator
   {
     route: 'GET /api/v1/users',

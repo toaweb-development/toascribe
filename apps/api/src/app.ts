@@ -206,7 +206,14 @@ export function buildApp(deps: AppDeps) {
 
   // CORS stays off (PLAN.md, «API-versjonering»): the browser calls the api from its own origin only. CSRF is checked per
   // route by the policy guard (middleware/policy.ts), because it depends on the route's policy and not on the path.
-  app.use(authContext({ sessions: services.sessions, publicOrigin, setupGate: services.setupGate }))
+  app.use(
+    authContext({
+      sessions: services.sessions,
+      appPasswords: services.appPasswords,
+      publicOrigin,
+      setupGate: services.setupGate,
+    }),
+  )
   // Nothing under /auth or /me is cached by a browser or a proxy (security §3, §7). The guard adds the same header for
   // every route that needs a session, so an error response from either carries it too.
   const noStore: MiddlewareHandler<AppEnv> = async (c, next) => {

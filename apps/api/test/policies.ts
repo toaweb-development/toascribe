@@ -42,6 +42,15 @@ export const EXPECTED_POLICIES: Readonly<Record<string, string>> = {
   // The users table and role assignment (M0.5): `list_users` and `promote_users`, both the administrator's.
   'GET /api/v1/users': 'capability:list_users',
   'PUT /api/v1/users/roles': 'capability:promote_users',
+  // «Legg til ny bruker», «Slett», «Send tilbakestilling av passord» (M1.8, K-020 to K-022): the administrator's capabilities.
+  'POST /api/v1/users': 'capability:create_users',
+  'GET /api/v1/users/:id': 'capability:list_users',
+  'DELETE /api/v1/users/:id': 'capability:delete_users',
+  'POST /api/v1/users/password-reset': 'capability:edit_users',
+  // Application passwords (M1.8, K-016): every account's own.
+  'GET /api/v1/me/app-passwords': 'capability:read',
+  'POST /api/v1/me/app-passwords': 'capability:read',
+  'DELETE /api/v1/me/app-passwords/:id': 'capability:read',
   // The content API (M1.1): `edit_posts` or `edit_pages` at the door; the type's own capabilities and the item's are checked by the service.
   'GET /api/v1/content': 'capability:edit_posts|edit_pages',
   'POST /api/v1/content': 'capability:edit_posts|edit_pages',

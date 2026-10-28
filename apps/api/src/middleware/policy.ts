@@ -10,7 +10,7 @@ import { describePolicy } from '../lib/policy.ts'
 import type { BodyType, Policy } from '../lib/policy.ts'
 import { getClientIp } from '../lib/client-ip.ts'
 import { BadRequestError, ForbiddenError, UnauthorizedError } from '../lib/errors.ts'
-import { currentAuth } from './auth.ts'
+import { currentAuth, usesAppPassword } from './auth.ts'
 
 /** Methods that must not change anything; every other method is state-changing and gets the CSRF checks. */
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -40,15 +40,19 @@ function hasBody(headers: { header: (name: string) => string | undefined }): boo
  * 2. What: the body is JSON (or multipart on a route that says so). A cross-site form can send neither.
  */
 function checkRequestOrigin(c: Parameters<MiddlewareHandler<AppEnv>>[0], bodyType: BodyType): void {
-  const { publicOrigin } = c.get('security')
-  const site = c.req.header('sec-fetch-site')
-  const origin = c.req.header('origin')
+  // A client with an application password is not a browser: it sends neither header, and it cannot be forged by a page on
+  // another site (see services/app-passwords.ts). The body rule still holds.
+  if (!usesAppPassword(c)) {
+    const { publicOrigin } = c.get('security')
+    const site = c.req.header('sec-fetch-site')
+    const origin = c.req.header('origin')
 
-  if (site !== undefined && site !== 'same-origin') {
-    throw new BadRequestError('Cross-site request refused', 'origin_invalid')
-  }
-  if (origin !== undefined ? origin !== publicOrigin : site === undefined) {
-    throw new BadRequestError('Cross-site request refused', 'origin_invalid')
+    if (site !== undefined && site !== 'same-origin') {
+      throw new BadRequestError('Cross-site request refused', 'origin_invalid')
+    }
+    if (origin !== undefined ? origin !== publicOrigin : site === undefined) {
+      throw new BadRequestError('Cross-site request refused', 'origin_invalid')
+    }
   }
 
   const type = c.req.header('content-type')

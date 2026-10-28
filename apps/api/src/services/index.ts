@@ -24,6 +24,8 @@ import type { MediaService } from './media.ts'
 import { createPublicService } from './public.ts'
 import { createSettingsService } from './settings.ts'
 import { createSiteToolsService } from './site-tools.ts'
+import { createAppPasswordService } from './app-passwords.ts'
+import type { AppPasswordService } from './app-passwords.ts'
 import type { SiteToolsService } from './site-tools.ts'
 import { safeFetch } from '@toascribe/http'
 
@@ -133,6 +135,8 @@ export interface Services {
   readonly settings: SettingsService
   /** «Oppdateringer» and «Nettstedshelse → Info» (M1.7). */
   readonly siteTools: SiteToolsService
+  /** Application passwords (K-016): the profile's list, and the Basic sign-in of API clients. */
+  readonly appPasswords: AppPasswordService
   /** The public reading API of the site and its theme (M1.4). */
   readonly public: PublicService
   /** Second factor: enrolment, recovery codes, the second step of a login (K-023). */
@@ -233,7 +237,7 @@ export function createServices(deps: ServiceDeps): Services {
       audit,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
-    users: createUserService({ db, clock, audit }),
+    users: createUserService({ db, clock, audit, mail }),
     content,
     terms: createTermService({
       db,
@@ -270,6 +274,7 @@ export function createServices(deps: ServiceDeps): Services {
       media,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
+    appPasswords: createAppPasswordService({ db, clock, audit, limiter }),
     siteTools: createSiteToolsService({
       db,
       clock,

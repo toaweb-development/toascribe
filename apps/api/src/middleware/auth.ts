@@ -5,6 +5,9 @@ import type { AuthContext, SessionAuth } from '../lib/auth-context.ts'
 import { clearSessionCookie, readSessionCookie } from '../lib/cookies.ts'
 import type { AppEnv, SetupGate } from '../lib/env.ts'
 import { UnauthorizedError } from '../lib/errors.ts'
+import { getClientIp } from '../lib/client-ip.ts'
+import type { AppPasswordService } from '../services/app-passwords.ts'
+import { InsecureTransportError, hasBasicHeader, parseBasic, takesAppPassword } from '../services/app-passwords.ts'
 import type { SessionService } from '../services/sessions.ts'
 
 /**
@@ -16,15 +19,26 @@ import type { SessionService } from '../services/sessions.ts'
  */
 export function authContext(options: {
   readonly sessions: SessionService
+  readonly appPasswords: AppPasswordService
   readonly publicOrigin: string
   readonly setupGate: SetupGate
 }): MiddlewareHandler<AppEnv> {
-  const { sessions, publicOrigin, setupGate } = options
+  const { sessions, appPasswords, publicOrigin, setupGate } = options
   return async (c, next) => {
     c.set('security', { publicOrigin, csrfTokenFor: (sessionId) => sessions.csrfToken(sessionId), setupGate })
     let pending: Promise<AuthContext> | undefined
     c.set('resolveAuth', () => {
       pending ??= (async () => {
+        // An application password (K-016), on the routes that take one: it decides alone, the cookie is not looked at.
+        const authorization = c.req.header('authorization')
+        if (usesAppPassword(c)) {
+          if (c.req.header('x-forwarded-proto') !== 'https') throw new InsecureTransportError()
+          return appPasswords.authenticate(
+            parseBasic(authorization) ?? { login: '', password: '' },
+            { ip: getClientIp(c) },
+            c.get('logger'),
+          )
+        }
         const token = readSessionCookie(c)
         if (token === undefined) {
           return ANONYMOUS
@@ -39,6 +53,11 @@ export function authContext(options: {
     })
     await next()
   }
+}
+
+/** Whether this request signs in with an application password: a Basic header on a route that takes one. */
+export function usesAppPassword(c: Context<AppEnv>): boolean {
+  return hasBasicHeader(c.req.header('authorization')) && takesAppPassword(c.req.path)
 }
 
 /** Who is making this request. A session is looked up on the first call and remembered for the rest of the request. */

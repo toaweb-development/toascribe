@@ -179,6 +179,10 @@ describe('the OpenAPI document', () => {
         '/api/v1/updates/settings',
         '/api/v1/users',
         '/api/v1/users/roles',
+        '/api/v1/users/{id}',
+        '/api/v1/users/password-reset',
+        '/api/v1/me/app-passwords',
+        '/api/v1/me/app-passwords/{id}',
       ].sort(),
     )
     expect(Object.keys(doc.paths['/api/v1/me'] ?? {}).sort()).toEqual(['get', 'patch'])
