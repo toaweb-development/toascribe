@@ -8,6 +8,24 @@ that heading keep the format they were written in (Keep a Changelog).
 
 ## [Unreleased]
 
+**Phase 1 is complete (draft of the release notes; Tor sets the version).** toascribe now does the everyday work of a WordPress
+site: posts and pages in a block editor, categories and tags, a media library, menus, a theme with «Tilpass» and global sets, the
+public site with feeds, sitemaps and SEO, users with roles, two-factor sign-in and application passwords, the settings screens,
+backups and restore, updates and site health, and an admin in bokmål or English. In short, for whoever runs a site:
+
+- **Before you update:** take a backup (`docker compose exec api toa backup create`) and copy it off the server. The update runs
+  eight database migrations (`0007` to `0014`); `migrate` makes a backup of its own first when the site has content.
+- **New in `.env` (all optional):** `TOASCRIBE_UPLOAD_MAX_SIZE_MB` (64), `TOASCRIBE_CONFIG_DIR` (a folder with `toascribe.toml`
+  for daily, encrypted backups), `TOASCRIBE_UPDATE_CHECK=off`, `TOASCRIBE_DEBUG=1`, `OTEL_EXPORTER_OTLP_ENDPOINT`,
+  `TOASCRIBE_CACHE_VALKEY_URL` and `SITE_URL_INTERNAL`. New volumes: `uploads`, `backups` and `config`.
+- **After you update:** run `toa secrets export` once and keep the file with the recovery key (docs/RESTORE.md), and look at
+  «Kontrollpanel → Nettstedshelse» for anything that should be fixed.
+- **For API clients:** `POST /api/v1/auth/register` needs the `formToken` from `GET /api/v1/auth/options`, fetched from the same
+  address. Scripts use application passwords over HTTPS; they never write raw HTML.
+- The user documentation is in `docs/user/` (bokmål), and «Hjelp» in the admin opens the page for each screen.
+
+The details, milestone by milestone:
+
 Posts and pages (M1.1): the content API and the lists «Alle innlegg» and «Alle sider». One migration (`0007_content_api`): three
 indexes for the scheduler and the trash, and the removal of the editor prototype's per-account drafts.
 
@@ -251,6 +269,19 @@ worker only), `file-type` and `image-size`.
   The prototype's image upload is gone too (M1.2): images come from the media library.
 - Images from another address in the editor: they will be brought into the media library first (M1.2). The admin no longer lets
   images in from other hosts on any page.
+
+### Security
+
+- From a security review of the whole product before the phase 1 release:
+  - An application password never writes raw HTML or «Ekstra CSS», whatever the account's role: a script on the site would run in a
+    signed-in administrator's browser.
+  - The role every new registration gets cannot be one that manages the site, its users or its code, or writes raw HTML; the
+    settings screen refuses it.
+  - Saving content with embeds counts against the same per-account limit as the editor's previews.
+  - Errors in the site and the admin are logged without the query string of the address and without stacks (unless
+    `TOASCRIBE_DEBUG=1`); the old encryption keys are hidden in every log line.
+  - The keys a restore takes out of a backup are removed from the backups volume after an hour; `toa secrets import` refuses a file
+    with other names than an export writes.
 
 ## [0.6.0] - 2026-10-26
 
