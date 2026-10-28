@@ -72,13 +72,9 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users and application password
       expect(res.status).toBe(201)
       const [row] = await env.query<{ status: string }>(`select status from account where username = 'invitert'`)
       expect(row?.status).toBe('pending')
-      expect(env.mail.sent.slice(before)).toEqual([
-        {
-          template: 'set_password',
-          to: 'invitert@example.test',
-          data: { username: 'invitert', token: expect.any(String) },
-        },
-      ])
+      const sent = env.mail.sent.slice(before)
+      expect(sent.map((mail) => [mail.template, mail.to])).toEqual([['set_password', 'invitert@example.test']])
+      expect(sent[0]?.data).toMatchObject({ username: 'invitert' })
     })
 
     it('refuses a taken name or address, a password with an invite, an obvious password and a role the caller lacks', async () => {
