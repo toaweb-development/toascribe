@@ -4,11 +4,18 @@
 // queues carry the same id. The path is logged without its query string (it can carry tokens); never headers or bodies.
 import { randomUUID } from 'node:crypto'
 
-import { REQUEST_ID_PATTERN } from '@toascribe/shared'
+import { REQUEST_ID_PATTERN, consoleArgsForLog } from '@toascribe/shared'
 
 const QUIET = /^\/(?:admin\/)?(?:_nuxt|__nuxt_error|healthz)/
 
 export default defineNitroPlugin((nitroApp) => {
+  // Nitro writes «[request error] … <the whole address>» and the raw error to console.error for an unhandled error, past this log.
+  // Its own error handler cannot be told to keep quiet without also showing the error's message to the visitor, so what reaches
+  // console.error becomes a scrubbed line of this log instead (the address without its query, the error's name and message).
+  Reflect.set(globalThis.console, 'error', (...args: unknown[]) => {
+    logLine('error', { console: consoleArgsForLog(args, useRuntimeConfig().toascribeDebug === '1') }, 'console.error')
+  })
+
   nitroApp.hooks.hook('request', (event) => {
     const incoming = getRequestHeader(event, 'x-request-id')
     const requestId = incoming !== undefined && REQUEST_ID_PATTERN.test(incoming) ? incoming : randomUUID()

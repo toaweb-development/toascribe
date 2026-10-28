@@ -40,6 +40,13 @@ import { assertNotDelayed, shownIp } from './support.ts'
 import type { Auditor, RequestContext } from './support.ts'
 
 /** At most this many per account (a client each; WordPress has no limit, a list of thousands helps nobody). */
+
+/**
+ * Capabilities an application password never carries, whatever the account's roles (M1.8 security review): raw HTML and unchecked
+ * uploads stay with a signed-in person (cookie session, second factor).
+ */
+export const APP_PASSWORD_WITHHELD: readonly string[] = ['unfiltered_html', 'unfiltered_upload']
+
 export const MAX_APP_PASSWORDS = 50
 /** The last use is written at most this often. */
 const TOUCH_EVERY_MS = 60_000
@@ -210,7 +217,13 @@ export function createAppPasswordService(options: {
         kind: 'session',
         account: view,
         roles: grants.map((grant) => grant.slug),
-        capabilities: new Set(grants.flatMap((grant) => grant.capabilities)),
+        // Without raw HTML: an application password cannot write markup or «Ekstra CSS» that runs with the page's rights on the
+        // site, where a signed-in administrator's cookie would carry it to the user routes the password itself may not use.
+        capabilities: new Set(
+          grants
+            .flatMap((grant) => grant.capabilities)
+            .filter((capability) => !APP_PASSWORD_WITHHELD.includes(capability)),
+        ),
         // Not a session: the password's own id stands in for one, so nothing that lists sessions mistakes it for one.
         session: {
           id: match.id,

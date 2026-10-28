@@ -175,6 +175,14 @@ export async function secretsImport(args: readonly string[], options: CommandOpt
   }
   try {
     const { secrets, createdAt } = openSecrets(text, key)
+    // Only the names an export writes: a file holding others (TOASCRIBE_HTTP_BIND, a database password) would quietly change them
+    // once appended to .env, where a later line wins.
+    const unknown = Object.keys(secrets).filter((name) => !(EXPORTED as readonly string[]).includes(name))
+    if (unknown.length > 0) {
+      return refusal(
+        `The file holds names toa secrets export never writes (${unknown.sort().join(', ')}). Nothing was written.`,
+      )
+    }
     const lines = Object.entries(secrets).map(([name, value]) => `${name}=${value}`)
     return {
       code: 0,

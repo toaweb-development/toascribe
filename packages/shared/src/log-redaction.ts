@@ -57,6 +57,10 @@ const REDACTED_SUFFIXES = [
   'privatekey',
   'signingkey',
   'encryptionkey',
+  // TOASCRIBE_ENCRYPTION_OLD_KEYS, an object's `oldKeys`, an age `identity`, the recovery key
+  'oldkeys',
+  'identity',
+  'recoverykey',
 ]
 
 const FIELDS = new Set(REDACTED_LOG_FIELDS)
@@ -170,3 +174,21 @@ export function scrubChildBindings<L extends object>(logger: L): L {
 
 /** A request id as it may travel between the site, the api and a job: letters, digits, `-`, `_` and `=` (as hono takes it), at most 128. */
 export const REQUEST_ID_PATTERN = /^[A-Za-z0-9_=-]{1,128}$/
+
+/**
+ * What a library wrote to `console.error` (Nitro's «[request error] … <url>», an error object), as fields for a scrubbed log line:
+ * a text loses every query string of an address in it, an error keeps its name and message (the stack only when asked for).
+ */
+export function consoleArgsForLog(args: readonly unknown[], withStack = false): unknown[] {
+  return args.map((arg) => {
+    if (typeof arg === 'string') return arg.replace(/(\bhttps?:\/\/[^\s?#]*)\?[^\s#]*/g, '$1?[skjult]')
+    if (arg instanceof Error) {
+      return {
+        name: arg.name,
+        message: arg.message,
+        ...(withStack && arg.stack !== undefined ? { stack: arg.stack } : {}),
+      }
+    }
+    return arg
+  })
+}

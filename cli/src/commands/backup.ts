@@ -342,7 +342,7 @@ async function backupRestore(args: readonly string[], options: CommandOptions): 
     const secrets =
       restored.secretsFile === undefined
         ? ''
-        : `The backup held the keys: they are in ${restored.secretsFile} (mode 0600). Put them in .env, restart, and delete the file.\n`
+        : `The backup held the keys: they are in ${restored.secretsFile} (mode 0600). Put them in .env now, restart, and delete the file: the next backup or restore removes it once it is an hour old.\n`
     return { code: 0, stdout: `${flags['yes'] === true ? origin : ''}Restored: ${summary}.\n${secrets}`, stderr: '' }
   } catch (err) {
     return failed(err, logger, 'backup restore')

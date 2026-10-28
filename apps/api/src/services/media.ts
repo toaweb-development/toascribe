@@ -640,7 +640,14 @@ export function createMediaService(options: {
         throw new AppError(400, 'fetch_failed', 'The address did not answer with a file')
       }
       // The name from the address; when it has no known extension, the one the content shows (the content is checked anyway).
-      let fileName = decodeURIComponent(new URL(response.url).pathname.split('/').pop() ?? '') || 'file'
+      const lastSegment = new URL(response.url).pathname.split('/').pop() ?? ''
+      let fileName = 'file'
+      try {
+        fileName = decodeURIComponent(lastSegment) || 'file'
+      } catch {
+        // A malformed escape (`%E0%A4`): the name as it was written.
+        fileName = lastSegment || 'file'
+      }
       if (MEDIA_TYPES[extensionOf(fileName)] === undefined) {
         fileName = `${fileName.replace(/\.[^.]*$/, '')}.${(await contentExtension(response.body)) ?? 'bin'}`
       }

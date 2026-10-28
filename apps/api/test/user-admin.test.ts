@@ -224,6 +224,30 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('users and application password
       expect(row?.last_used_at).not.toBeNull()
     })
 
+    it("never writes raw HTML, not even for an administrator's password: the same block works from the browser", async () => {
+      const { client: browser } = await signIn('htmladmin', 'administrator')
+      const made = CreateAppPasswordResponse.parse(
+        await (await browser.post('/api/v1/me/app-passwords', { name: 'Skript' })).json(),
+      )
+      const block = {
+        id: 'b_html0001',
+        type: 'core/html',
+        version: 1,
+        attrs: { content: '<script>x()</script>' },
+        children: [],
+      }
+      const body = { type: 'post', title: 'Med HTML', blocks: [block] }
+      const api = await env.client({ origin: null }).post('/api/v1/content', body, {
+        headers: { ...https, authorization: basic('htmladmin', made.password) },
+        cookie: null,
+        csrf: 'none',
+        origin: null,
+      })
+      expect(api.status).toBe(400)
+      expect(await api.text()).toContain('capability_required')
+      expect((await browser.post('/api/v1/content', body)).status).toBe(201)
+    })
+
     it('is refused over plain HTTP, for the account routes, for the login, and from a client holding one', async () => {
       const client = env.client({ origin: null })
       const auth = { authorization: basic('apiklient', password) }

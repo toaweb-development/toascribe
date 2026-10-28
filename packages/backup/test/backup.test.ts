@@ -18,6 +18,7 @@ import {
   BackupError,
   archiveName,
   checkBackup,
+  sweepWorkFolders,
   compareVersions,
   createBackup,
   isArchivePath,
@@ -374,3 +375,23 @@ async function craft(
   ])
   return target
 }
+
+describe('sweepWorkFolders', () => {
+  it('removes the keys a restore wrote out once they are an hour old, and only those of its own names', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'toascribe-sweep-'))
+    try {
+      const keys = join(dir, 'restored-secrets-20261028T120000000Z.json')
+      const backup = join(dir, 'toascribe-20261028-120000Z-0.6.0.tar.zst')
+      await writeFile(keys, '{}', { mode: 0o600 })
+      await writeFile(backup, 'x')
+      const now = Date.now()
+      expect(await sweepWorkFolders(dir, new Date(now + 30 * 60 * 1000))).toEqual([])
+      expect(await sweepWorkFolders(dir, new Date(now + 61 * 60 * 1000))).toEqual([
+        'restored-secrets-20261028T120000000Z.json',
+      ])
+      expect(await readdir(dir)).toEqual(['toascribe-20261028-120000Z-0.6.0.tar.zst'])
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+})

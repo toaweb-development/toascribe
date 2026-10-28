@@ -237,7 +237,8 @@ create` and the daily backup), so code running in either could plant an archive 
   because the api never answers `WWW-Authenticate` (no browser caches the credentials), a page on another site cannot set the header
   without a CORS preflight the api never allows, the cookie is not looked at when the header is there, and the body rule still holds.
   As in WordPress, an application password does not ask for the second factor; it cannot change users, roles or passwords (cookie
-  session only) and works only over HTTPS.
+  session only) and works only over HTTPS. Unlike WordPress it never carries `unfiltered_html` or `unfiltered_upload`
+  (`APP_PASSWORD_WITHHELD`): raw HTML on the site would run in a signed-in administrator's browser and reach the user routes.
 - **Audit exceptions.** `pnpm audit --prod` reports two High advisories without a patched version
   (GHSA-86w9-cpqp-85rv node-forge, GHSA-vfj7-8cjw-p6xm braces), both from nitropack and absent from every runtime image.
   They are listed in `pnpm-workspace.yaml` with a review date; `scripts/audit.sh` (the release's audit) fails after it.

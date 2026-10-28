@@ -7,7 +7,7 @@ import { join } from 'node:path'
 
 import { runMigrations, setSiteSecret } from '@toascribe/db'
 import { createDb } from '@toascribe/db'
-import { generateRecoveryKey, recoveryKeyVerifier } from '@toascribe/install'
+import { generateRecoveryKey, recoveryKeyVerifier, sealSecrets } from '@toascribe/install'
 import { pino } from 'pino'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
@@ -110,6 +110,18 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('export and import (needs TEST_
     expect(keysOf(piped.stdout)).toEqual(keysOf(imported.stdout))
     expect(piped.stdout.startsWith('\n#')).toBe(true)
     expect((await toa(['secrets', 'import', '-', '--recovery-key-stdin'], recoveryKey)).code).toBe(2)
+  })
+
+  it('refuses a sealed file with names an export never writes, and writes nothing', async () => {
+    const crafted = sealSecrets(
+      { TOASCRIBE_ENCRYPTION_KEY: KEY, TOASCRIBE_HTTP_BIND: '0.0.0.0' },
+      recoveryKey,
+      new Date(),
+    )
+    const res = await toa(['secrets', 'import', '-', '--recovery-key-stdin'], `${recoveryKey}\n${crafted}`)
+    expect(res.code).not.toBe(0)
+    expect(res.stdout).toBe('')
+    expect(res.stderr).toContain('TOASCRIBE_HTTP_BIND')
   })
 
   it('prints only the database passwords with gen-env --passwords-only', async () => {
