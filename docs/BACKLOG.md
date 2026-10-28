@@ -13,6 +13,10 @@ line in the same commit; when it becomes a milestone task, move it into `docs/PL
 
 ## Code and structure
 
+- Phase 2 (moved from phase 1 in M1.8): own roles (K-019), the command palette Ctrl+K (K-041), AVIF sizes (K-111), the cache API of the theme SDK (K-175), overridable and translatable e-mail templates (K-285), Sentry (K-298), nynorsk in the admin (K-330). — M1.8 brief
+- SVG uploads cleaned and allowed (phase 2); phase 1 refuses SVG as WordPress' core does (K-125). — M1.8 brief
+- Signed backups (phase 2): sign each backup with a key that is not on the server, so a restore can tell who made it; phase 1 shows the manifest's origin and warns about a backup this install did not make. — M1.8 brief
+
 - Media storage on S3 (or a compatible service) as a second implementation of the storage interface; M1.2 has the local volume only. — M1.2 brief
 - Backups to S3 and other stores (an off-host copy without a script of one's own); M1.7 writes them to the `backups` volume only. — M1.7 brief
 - A static front page split by page breaks has no second page: `/2/` is read as a slug and gives 404 (WordPress: `/2/` or `/?page=2`). Item pages and archives are paged. — M1.4

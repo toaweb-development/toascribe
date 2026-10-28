@@ -24,7 +24,7 @@ Registeret er fasit for fase, tabell og API-område for hver funksjon i toascrib
 | K-016 | Innlogging/kontoer | Applikasjonspassord (navn/opprettet/sist brukt) | 1 | app\_password | Innlogging, Meg, Brukere og roller | Innlogging |
 | K-017 | Innlogging/kontoer | Varsel til admin ved ny bruker og passordbytte | 0 | setting | Innlogging, Meg, Brukere og roller | Innlogging |
 | K-018 | Innlogging/kontoer | Fem standardroller og capabilities med WP-navn | 0 | role,account\_role | Innlogging, Meg, Brukere og roller | Innlogging |
-| K-019 | Innlogging/kontoer | Administrator kan lage nye roller | 1 | role | Brukere og roller | Innlogging |
+| K-019 | Innlogging/kontoer | Administrator kan lage nye roller (flyttet fra fase 1, M1.8) | 2 | role | Brukere og roller | Innlogging |
 | K-020 | Innlogging/kontoer | Brukerliste og Legg til bruker | 1 | account | Brukere og roller | Admin |
 | K-021 | Innlogging/kontoer | Slett bruker med overføring eller sletting av innhold | 1 | content\_author | Brukere og roller | Gjennomgang |
 | K-022 | Innlogging/kontoer | Massehandling endre rolle + send tilbakestilling av passord | 1 | account\_role | Brukere og roller | Gjennomgang |
@@ -43,7 +43,7 @@ Registeret er fasit for fase, tabell og API-område for hver funksjon i toascrib
 | K-038 | Admin | Hjelp lenker til dokumentasjon | 1 | – | Meg | Gjennomgang |
 | K-039 | Admin | Admin-varsler som kan avvises (også fra utvidelser) | 1 | account.preferences | Meg | Admin |
 | K-040 | Admin | Fargeskjema per bruker | 1 | account.preferences | Meg | Admin |
-| K-041 | Admin | Kommandopalett Ctrl+K | 1 | – | Meg | Admin |
+| K-041 | Admin | Kommandopalett Ctrl+K (flyttet fra fase 1, M1.8) | 2 | – | Meg | Admin |
 | K-042 | Admin | Oppdateringsteller i menyen | 2 | – | Meg | Gjennomgang |
 | K-043 | Admin | Nyheter fra toascribe.dev i kontrollpanelet | 2 | – | Meg | toascribe.dev |
 | K-044 | Admin | Sidetre med dra-og-slipp | 2 | content.parent\_id,menu\_order | Innhold | Andre CMS |
@@ -99,7 +99,7 @@ Registeret er fasit for fase, tabell og API-område for hver funksjon i toascrib
 | K-106 | Innhold/editor/blokker | Globale innholdssett | 1 | global\_set | Globale sett | Andre CMS |
 | K-107 | Innhold/editor/blokker | Utdrag og Les mer | 1 | content.excerpt | Innhold | Nettstedet |
 | K-110 | Media | Mediebibliotek med opplasting lokalt eller S3 | 1 | media | Media | Funksjonskart |
-| K-111 | Media | Bildestørrelser + WebP/AVIF (pyvips) | 1 | media.variants | Media | Funksjonskart |
+| K-111 | Media | Bildestørrelser + WebP/AVIF (pyvips) (flyttet fra fase 1, M1.8) | 2 | media.variants | Media | Funksjonskart |
 | K-112 | Media | Rutenett/liste og dra-og-slipp | 1 | media | Media | Admin |
 | K-113 | Media | Detaljvindu: alt/bildetekst/beskrivelse/Kopier URL | 1 | media | Media | Admin |
 | K-114 | Media | Enkel bilderedigering (beskjær/roter/speil/skaler) | 1 | media.variants | Media | Admin |
@@ -113,7 +113,7 @@ Registeret er fasit for fase, tabell og API-område for hver funksjon i toascrib
 | K-122 | Media | Brukes på + advarsel før sletting | 1 | content\_ref | Media | Nettstedet |
 | K-123 | Media | Vedleggssider av/på | 2 | – | Media | Gjennomgang |
 | K-124 | Media | Privat media (visibility) | 1 | media.visibility | Media | Datamodell |
-| K-125 | Media | Opplastingsvern (filtyper per rolle/SVG-rens/pikselgrense) | 1 | – | Media | Nettstedet |
+| K-125 | Media | Opplastingsvern (filtyper per rolle/SVG-rens/pikselgrense) (SVG nektes i fase 1; rensing i fase 2, M1.8) | 1 | – | Media | Nettstedet |
 | K-126 | Media | Responsive bilder srcset og lat lasting | 1 | media.variants | Media | Nettstedet |
 | K-130 | Taxonomies/menyer | Kategorier/stikkord/hierarkiske termer | 1 | taxonomy,term,content\_term | Taxonomies; Menyer | Funksjonskart |
 | K-131 | Taxonomies/menyer | Egne taxonomies fra kode og utvidelser | 2 | taxonomy | Taxonomies | Utvidelsesspes |
@@ -156,7 +156,7 @@ Registeret er fasit for fase, tabell og API-område for hver funksjon i toascrib
 | K-172 | Utvidelser | Katalog med gjennomgang/signering/sårbarhetsvarsler | 3 | extension\_state | Temaer og utvidelser | toascribe.dev |
 | K-173 | Utvidelser | Plugin-utviklerverktøy + pytest-hjelpere + hook-oversikt | 3 | – | Temaer og utvidelser | Utvidelsesspes |
 | K-174 | Utvidelser | Endrede permissions krever ny godkjenning | 3 | extension\_state | Temaer og utvidelser | toascribe.dev |
-| K-175 | Utvidelser | Cache-API i SDK (transients) | 1 | – | – | Gjennomgang |
+| K-175 | Utvidelser | Cache-API i SDK (transients) (flyttet fra fase 1, M1.8) | 2 | – | – | Gjennomgang |
 | K-176 | Utvidelser | Egne adresser via manifest (Rewrite API) | 3 | – | Temaer og utvidelser | Gjennomgang |
 | K-177 | Utvidelser | Webhooks med signatur og logg | 2 | webhook,webhook\_delivery | Verktøy (webhooks) | Andre CMS |
 | K-178 | Utvidelser | Skjemabygger (første-parts) | 3 | plugin-tabeller | Temaer og utvidelser | Andre CMS |
@@ -225,7 +225,7 @@ Registeret er fasit for fase, tabell og API-område for hver funksjon i toascrib
 | K-268 | CLI | toa db export/import + toa search-replace | 2 | – | CLI | CLI |
 | K-269 | CLI | toa import / toa export | 2 | – | CLI | CLI |
 | K-270 | CLI | toa jobs list/run | 1 | – | CLI | CLI |
-| K-271 | CLI | toa secrets export | 1 | – | CLI | CLI |
+| K-271 | CLI | toa secrets export (+ toa secrets import, M1.8) | 1 | – | CLI | CLI |
 | K-272 | CLI | toa shell | 1 | – | CLI | CLI |
 | K-273 | CLI | toa plugin deactivate (fungerer uten admin) | 3 | extension\_state | CLI | Utvidelsesspes |
 | K-274 | CLI | toa block create | 3 | – | CLI | Blokkspes |
@@ -236,7 +236,7 @@ Registeret er fasit for fase, tabell og API-område for hver funksjon i toascrib
 | K-282 | Drift/oppdatering/backup | Genererte hemmeligheter på volumet secrets/ + gjenopprettingsnøkkel | 0 | – | System | Installasjon |
 | K-283 | Drift/oppdatering/backup | Admin på eget domene (herdingsvalg) | 0 | setting | Innstillinger | Kjøremodell |
 | K-284 | Drift/oppdatering/backup | E-posttjeneste med SMTP via jobbkø | 0 | setting | System | Nettstedet |
-| K-285 | Drift/oppdatering/backup | E-postmaler overstyrbare og oversettbare | 1 | – | System | Nettstedet |
+| K-285 | Drift/oppdatering/backup | E-postmaler overstyrbare og oversettbare (flyttet fra fase 1, M1.8) | 2 | – | System | Nettstedet |
 | K-286 | Drift/oppdatering/backup | Jobbkø pg-boss + faste tidsplaner | 0 | skjemaet pgboss | System | Funksjonskart |
 | K-287 | Drift/oppdatering/backup | Automatiske migrasjoner ved oppstart med lås | 1 | – | System | Installasjon |
 | K-288 | Drift/oppdatering/backup | Vedlikeholdsmodus | 1 | – | System | Installasjon |
@@ -249,7 +249,7 @@ Registeret er fasit for fase, tabell og API-område for hver funksjon i toascrib
 | K-295 | Drift/oppdatering/backup | Flytte nettsted | 2 | – | System | Sikkerhetskopi |
 | K-296 | Drift/oppdatering/backup | toa site clone (staging) | 2 | – | System | Sikkerhetskopi |
 | K-297 | Drift/oppdatering/backup | TOASCRIBE\_DEBUG og strukturert logg | 1 | – | System | Gjennomgang |
-| K-298 | Drift/oppdatering/backup | OpenTelemetry og valgfri Sentry | 1 | – | System | Nettstedet |
+| K-298 | Drift/oppdatering/backup | OpenTelemetry og valgfri Sentry (OpenTelemetry i fase 1; Sentry i fase 2, M1.8) | 1 | – | System | Nettstedet |
 | K-299 | Drift/oppdatering/backup | Flere instanser (S3 + Valkey) | 2 | – | System | Nettstedet |
 | K-300 | Drift/oppdatering/backup | toascribe.dev forside og brukerdokumentasjon | 1 | – | System | toascribe.dev |
 | K-301 | Drift/oppdatering/backup | Utviklerdokumentasjon + publiserte JSON Schema | 2 | – | System | toascribe.dev |
@@ -269,7 +269,7 @@ Registeret er fasit for fase, tabell og API-område for hver funksjon i toascrib
 | K-322 | Ytelse/cache | Ingen cache med innloggings- eller passordcookie | 1 | – | Tverrgående | Nettstedet |
 | K-323 | Ytelse/cache | Ytelsesmål (100 ms cache / API p95 150 ms) | Løpende | – | Tverrgående | Nettstedet |
 | K-324 | Ytelse/cache | GIN-indekser på fields og blocks | 0 | content | Tverrgående | Datamodell |
-| K-330 | i18n/a11y | Admin på bokmål/nynorsk/engelsk | 1 | – | Tverrgående | Admin |
+| K-330 | i18n/a11y | Admin på bokmål/nynorsk/engelsk (bokmål og engelsk i fase 1; nynorsk i fase 2, M1.8) | 1 | – | Tverrgående | Admin |
 | K-331 | i18n/a11y | Oversettelse av temaer og utvidelser med t() | 1 (temaer) / 3 (utvidelser) | – | Tverrgående | Temaspes |
 | K-332 | i18n/a11y | Flerspråklig innhold | 4 | content.locale,translation\_group | Tverrgående | Funksjonskart |
 | K-333 | i18n/a11y | WCAG 2.2 AA i admin/editor/tema/kasse | Løpende fra 0 | – | Tverrgående | Nettstedet |
