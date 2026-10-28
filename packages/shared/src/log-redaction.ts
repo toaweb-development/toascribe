@@ -134,7 +134,9 @@ export function scrubLogArguments(args: unknown[]): unknown[] {
   if (typeof first === 'string') return [scrubLogText(first), ...scrubbedRest]
   const err: unknown =
     first instanceof Error ? first : typeof first === 'object' && first !== null ? Reflect.get(first, 'err') : undefined
-  if (rest.length === 0 && err instanceof Error) return [first, scrubLogText(err.message)]
+  // Only when the object brings no message of its own (pino would otherwise write `msg` twice).
+  const ownMessage: unknown = typeof first === 'object' && first !== null ? Reflect.get(first, 'msg') : undefined
+  if (rest.length === 0 && err instanceof Error && ownMessage === undefined) return [first, scrubLogText(err.message)]
   return [first, ...scrubbedRest]
 }
 
