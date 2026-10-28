@@ -39,6 +39,8 @@ const Env = z
     TOASCRIBE_CONFIG_FILE: z.string().startsWith('/').max(500).default('/etc/toascribe/toascribe.toml'),
     /** `off`: no update check on this server (M1.7); «Oppdateringer» says so. Empty is on. */
     TOASCRIBE_UPDATE_CHECK: z.union([z.literal(''), z.enum(['on', 'off'])]).default(''),
+    /** `1`: debug-level logs, the kind of error on a 500, and a notice in Nettstedshelse (M1.8, K-297). Never stack traces to anyone. */
+    TOASCRIBE_DEBUG: z.union([z.literal(''), z.literal('0'), z.literal('1')]).default(''),
   })
   .superRefine((env, ctx) => {
     const versions = [

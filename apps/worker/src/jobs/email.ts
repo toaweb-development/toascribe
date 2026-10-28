@@ -1,6 +1,7 @@
 // The `email.send` job (K-284, K-286): validates the payload again, decrypts the one-time token, renders the mail in the
 // site's language, and sends it through SMTP. What the log gets: the job id, the template, the domain of the recipient and, on
 // a failure, error codes. Never the address, the data or the token (security §8).
+import { takeRequestId } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
 import { markEmailVerified } from '@toascribe/install'
 import { CoreSettings, EmailJobPayload, openEmailPayload, renderMail } from '@toascribe/shared'
@@ -60,9 +61,11 @@ function siteNameOf(blogname: string, origin: string): string {
 
 /** Handles one job. Never throws: the outcome says what pg-boss should do with it. */
 export async function processEmailJob(job: EmailJob, deps: EmailJobDeps): Promise<JobOutcome> {
-  const log = deps.logger.child({ jobId: job.id, queue: job.name })
+  // The request that queued the job (M1.8, K-297), so its lines can be found with the site's and the api's.
+  const { requestId, data } = takeRequestId(job.data)
+  const log = deps.logger.child({ jobId: job.id, queue: job.name, ...(requestId === undefined ? {} : { requestId }) })
 
-  const parsed = EmailJobPayload.safeParse(job.data)
+  const parsed = EmailJobPayload.safeParse(data)
   if (!parsed.success) {
     // Field names only: the values may hold an address or a sealed token.
     const fields = [...new Set(parsed.error.issues.map((issue) => issue.path.join('.') || '(payload)'))]

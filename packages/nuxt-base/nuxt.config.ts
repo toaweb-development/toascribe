@@ -113,6 +113,12 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Server only (env NUXT_API_URL_INTERNAL): where SSR reaches the API, e.g. http://api:3001. Empty = not set.
     apiUrlInternal: '',
+    // Server only (M1.8, K-297): the log level (env NUXT_LOG_LEVEL) and TOASCRIBE_DEBUG (env NUXT_TOASCRIBE_DEBUG, `1` = debug lines
+    // and the stack of an unhandled error in the log; never in a response).
+    logLevel: 'info',
+    toascribeDebug: '',
+    // Which app writes the log line (`toascribe-site`, `toascribe-admin`); each app sets its own.
+    appName: 'nuxt',
     public: {
       // Browser: the API is same-origin and Caddy routes /api/** to it (env NUXT_PUBLIC_API_BASE).
       apiBase: '/api',

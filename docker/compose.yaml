@@ -101,6 +101,9 @@ services:
     environment:
       # Where server-side rendering reaches the api (runtimeConfig.apiUrlInternal).
       NUXT_API_URL_INTERNAL: http://api:3001
+      # Logs (M1.8, K-297): JSON lines; TOASCRIBE_DEBUG=1 adds debug lines and the stack of an unhandled error (never to visitors).
+      NUXT_LOG_LEVEL: ${LOG_LEVEL:-info}
+      NUXT_TOASCRIBE_DEBUG: ${TOASCRIBE_DEBUG:-}
       # The shared data cache in Valkey (the `valkey` profile), e.g. redis://valkey:6379. Empty: the site caches in its own memory.
       NUXT_CACHE_VALKEY_URL: ${TOASCRIBE_CACHE_VALKEY_URL:-}
     read_only: true
@@ -138,6 +141,9 @@ services:
         HEALTH_PATH: /admin
     environment:
       NUXT_API_URL_INTERNAL: http://api:3001
+      # Logs (M1.8, K-297): JSON lines; TOASCRIBE_DEBUG=1 adds debug lines and the stack of an unhandled error (never to visitors).
+      NUXT_LOG_LEVEL: ${LOG_LEVEL:-info}
+      NUXT_TOASCRIBE_DEBUG: ${TOASCRIBE_DEBUG:-}
     read_only: true
     tmpfs:
       - /tmp
@@ -193,6 +199,8 @@ services:
       # `off`: no update check on this server (M1.7); «Oppdateringer» says so.
       TOASCRIBE_UPDATE_CHECK: ${TOASCRIBE_UPDATE_CHECK:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # `1`: debug lines, and on a 500 the kind of error (never a message or a stack) (M1.8, K-297).
+      TOASCRIBE_DEBUG: ${TOASCRIBE_DEBUG:-}
     read_only: true
     tmpfs:
       - /tmp
@@ -238,6 +246,8 @@ services:
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # `1`: debug lines, and on a 500 the kind of error (never a message or a stack) (M1.8, K-297).
+      TOASCRIBE_DEBUG: ${TOASCRIBE_DEBUG:-}
       WORKER_HEARTBEAT_FILE: /tmp/toascribe-worker.heartbeat
       # The media library (M1.2): the worker reads the originals and writes the sizes.
       UPLOADS_DIR: /var/lib/toascribe/uploads

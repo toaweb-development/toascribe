@@ -24,11 +24,15 @@ export function postPassCookie(event: H3Event): string | undefined {
 }
 
 /** A GET of the public api, with the post password cookie when given. The api's 404 stays a 404; any other failure is a 502. */
-export async function getPublicApi(path: string, postPass?: string): Promise<unknown> {
+export async function getPublicApi(path: string, postPass?: string, requestId?: string): Promise<unknown> {
   const base = publicApiBase()
   try {
     return await $fetch(`${base}${path}`, {
-      headers: postPass === undefined ? {} : { cookie: `${POST_PASSWORD_COOKIE_NAME}=${postPass}` },
+      headers: {
+        ...(postPass === undefined ? {} : { cookie: `${POST_PASSWORD_COOKIE_NAME}=${postPass}` }),
+        // The visitor's request id (M1.8, K-297; nuxt-base server/plugins/logging.ts).
+        ...(requestId === undefined ? {} : { 'x-request-id': requestId }),
+      },
       timeout: 5000,
       retry: 0,
     })
@@ -43,7 +47,8 @@ export async function getPublicApi(path: string, postPass?: string): Promise<unk
 
 /** A GET of the public api for this request: with the visitor's post password cookie when they have one. */
 export function fromPublicApi(event: H3Event, path: string): Promise<unknown> {
-  return getPublicApi(path, postPassCookie(event))
+  const requestId = event.context['requestId']
+  return getPublicApi(path, postPassCookie(event), typeof requestId === 'string' ? requestId : undefined)
 }
 
 /** What the site's data routes answer with: private (an unlocked item is the visitor's own), and not kept by the browser. */

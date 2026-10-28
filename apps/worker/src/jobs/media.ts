@@ -4,7 +4,7 @@
 // never changed. Each job locks its media row for the work, so two jobs of one file never write at once; the decoding is limited to the
 // pixel limit of the settings (sharp's limitInputPixels), so a file that got past the api's header check still cannot fill the memory.
 import type { Database } from '@toascribe/db'
-import { schema } from '@toascribe/db'
+import { schema, takeRequestId } from '@toascribe/db'
 import {
   RESIZABLE_MIMES,
   createLocalStorage,
@@ -153,7 +153,9 @@ async function markFailed(db: Database, mediaId: string, reason: string, now: Da
  * edit sets the count back to 0 (the api and the CLI).
  */
 export async function runMediaJob(deps: MediaJobDeps, input: unknown): Promise<void> {
-  const job = MediaJob.parse(input)
+  const { requestId, data } = takeRequestId(input)
+  const job = MediaJob.parse(data)
+  if (requestId !== undefined) deps = { ...deps, logger: deps.logger.child({ requestId }) }
   const storage = createLocalStorage(deps.uploadsDir)
   const now = (deps.now ?? (() => new Date()))()
   const [counted] = await deps.db

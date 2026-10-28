@@ -99,6 +99,8 @@ export interface ServiceDeps {
   readonly auditSource?: 'api' | 'cli'
   /** NODE_ENV, shown in Nettstedshelse. */
   readonly environment?: string
+  /** TOASCRIBE_DEBUG=1: Nettstedshelse warns that it is on. */
+  readonly debug?: boolean
   /** TOASCRIBE_UPDATE_CHECK is not `off` (default: allowed). The api never asks a registry; the worker and the CLI do. */
   readonly serverAllowsUpdateCheck?: boolean
   /** toascribe.toml, for whether the daily backup is on (Nettstedshelse). */
@@ -281,6 +283,7 @@ export function createServices(deps: ServiceDeps): Services {
       audit,
       version: deps.version,
       environment: deps.environment ?? 'production',
+      debug: deps.debug ?? false,
       serverAllowsUpdateCheck: deps.serverAllowsUpdateCheck ?? true,
       configFile: deps.configFile ?? '/etc/toascribe/toascribe.toml',
       uploadCapMb: deps.uploadCapMb,

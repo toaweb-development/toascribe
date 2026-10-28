@@ -42,6 +42,13 @@ function shown(field: SiteHealthField): string {
 const translator = { t, te }
 const label = (group: string, key: string) => siteHealthField(translator, group, key)
 
+/** TOASCRIBE_DEBUG=1 on the server (M1.8, K-297): said at the top, not only in its row. */
+const debugOn = computed(
+  () =>
+    data.value?.groups.find((group) => group.key === 'toascribe')?.fields.find((field) => field.key === 'debug')
+      ?.value === true,
+)
+
 const notice = ref<'copied' | 'failed'>()
 async function copy(): Promise<void> {
   if (!data.value) return
@@ -74,6 +81,13 @@ async function copy(): Promise<void> {
         :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
       />
       <div v-else-if="data" class="flex max-w-3xl flex-col gap-6">
+        <UAlert
+          v-if="debugOn"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-triangle-alert"
+          :title="$t('siteHealth.debugOn')"
+        />
         <h2 class="text-xl font-semibold text-highlighted">{{ $t('siteHealth.info') }}</h2>
         <p class="max-w-prose text-base text-default">{{ $t('siteHealth.intro') }}</p>
         <div class="flex flex-wrap items-center gap-3">

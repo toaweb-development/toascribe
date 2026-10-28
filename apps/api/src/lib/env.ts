@@ -9,6 +9,8 @@ export interface AppEnv {
     requestId: string
     /** A child logger carrying the request id; set by the request-logger middleware. */
     logger: Logger
+    /** TOASCRIBE_DEBUG=1 (M1.8, K-297): a 500 says what kind of error it was. Unset means off. */
+    debug?: boolean
     /**
      * Looks up who is making the request, once per request (the result is kept). Lazy, so a route that is public and does
      * not ask never touches the database for a session. Use `currentAuth(c)`, not this.

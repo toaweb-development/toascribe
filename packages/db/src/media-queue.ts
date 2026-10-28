@@ -1,6 +1,7 @@
 // The media jobs' producer (M1.2): the api queues a job after an upload, a replacement, an edit or «Lag bildestørrelser på nytt», and
 // `toa media regenerate` queues them from the command line. Sends only (no supervision, no schedules); the worker takes them. The queue
 // is `stately` with a key per file and kind, so a file never has two jobs of the same kind waiting.
+import { withRequestId } from './request-context.ts'
 import { MEDIA_JOB_OPTIONS, MEDIA_QUEUE, MediaJob } from '@toascribe/shared'
 import { PgBoss } from 'pg-boss'
 import type { Logger } from 'pino'
@@ -60,7 +61,7 @@ export function createMediaProducer(options: {
     async send(job) {
       const payload = MediaJob.parse(job)
       const boss = await ready()
-      await boss.send(MEDIA_QUEUE, payload, {
+      await boss.send(MEDIA_QUEUE, withRequestId(payload), {
         ...MEDIA_JOB_OPTIONS,
         singletonKey: `${payload.kind}:${payload.mediaId}`,
       })

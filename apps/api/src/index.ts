@@ -36,7 +36,8 @@ function loadConfigOrExit() {
 }
 
 const config = loadConfigOrExit()
-const logger = createLogger({ level: config.LOG_LEVEL, pretty: config.NODE_ENV === 'development' })
+const debug = config.TOASCRIBE_DEBUG === '1'
+const logger = createLogger({ level: debug ? 'debug' : config.LOG_LEVEL, pretty: config.NODE_ENV === 'development' })
 
 const keyRing = await createKeyRing(
   { version: config.TOASCRIBE_ENCRYPTION_KEY_VERSION, key: config.TOASCRIBE_ENCRYPTION_KEY },
@@ -68,6 +69,7 @@ const { app, services } = buildApp({
   siteUrlInternal: config.SITE_URL_INTERNAL,
   valkeyUrl: config.CACHE_VALKEY_URL,
   environment: config.NODE_ENV,
+  debug,
   serverAllowsUpdateCheck: config.TOASCRIBE_UPDATE_CHECK !== 'off',
   configFile: config.TOASCRIBE_CONFIG_FILE,
 })

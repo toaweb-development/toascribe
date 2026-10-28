@@ -9,6 +9,7 @@
 //
 // pg-boss is started on the first mail, as the app role, with PGBOSS_APP_OPTIONS (no DDL), and never supervises or schedules
 // (only the worker does, AGENTS.md). Call `stop()` when the process is done, or its pool keeps the process alive.
+import { withRequestId } from './request-context.ts'
 import { createHash } from 'node:crypto'
 
 import { EMAIL_DEDUPE_SECONDS, EMAIL_JOB_OPTIONS, EMAIL_QUEUE, EmailMessage, sealEmailMessage } from '@toascribe/shared'
@@ -102,7 +103,7 @@ export function createMailProducer(options: MailProducerOptions): MailProducer {
         throw err
       })
       const boss = await booting
-      const jobId = await boss.send(EMAIL_QUEUE, payload, {
+      const jobId = await boss.send(EMAIL_QUEUE, withRequestId(payload), {
         ...EMAIL_JOB_OPTIONS,
         singletonKey: contentKey(message),
         singletonSeconds: EMAIL_DEDUPE_SECONDS,

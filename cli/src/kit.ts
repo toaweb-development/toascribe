@@ -5,7 +5,7 @@ import { parseArgs } from 'node:util'
 
 import { createDb } from '@toascribe/db'
 import type { Database } from '@toascribe/db'
-import { NewPassword, generatePassword } from '@toascribe/shared'
+import { NewPassword, generatePassword, scrubForLog, scrubLogArguments } from '@toascribe/shared'
 import { pino } from 'pino'
 import type { Logger } from 'pino'
 import type { z } from 'zod'
@@ -172,7 +172,22 @@ export function failureFields(err: unknown): Record<string, unknown> {
 }
 
 export function loggerFor(options: CommandOptions, level: string): Logger {
-  return options.logger ?? pino({ name: 'toa', level }, pino.destination(2))
+  return (
+    options.logger ??
+    pino(
+      {
+        name: 'toa',
+        level,
+        formatters: { log: (object) => scrubForLog(object) },
+        hooks: {
+          logMethod(args, method) {
+            method.apply(this, scrubLogArguments(args) as Parameters<typeof method>)
+          },
+        },
+      },
+      pino.destination(2),
+    )
+  )
 }
 
 /** Runs `work` with a one-connection database as the app role, and ends the connection. */

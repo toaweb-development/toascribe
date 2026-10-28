@@ -1820,7 +1820,8 @@
       "toascribe": {
         "version": "Versjon",
         "migration": "Siste migrering",
-        "environment": "Miljø"
+        "environment": "Miljø",
+        "debug": "Feilsøkingsmodus (TOASCRIBE_DEBUG)"
       },
       "server": {
         "node": "Node.js",
@@ -1880,6 +1881,7 @@
       "running": "Kjører",
       "notRunning": "Svarer ikke",
       "unavailable": "Kunne ikke leses"
-    }
+    },
+    "debugOn": "Feilsøkingsmodus er på (TOASCRIBE_DEBUG=1). Loggene får mer detalj. Slå den av når feilsøkingen er ferdig."
   }
 }

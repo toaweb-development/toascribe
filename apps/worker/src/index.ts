@@ -37,7 +37,10 @@ function readVersion(): string {
 }
 
 const config = loadConfigOrExit()
-const logger = createLogger({ level: config.LOG_LEVEL, pretty: config.NODE_ENV === 'development' })
+const logger = createLogger({
+  level: config.TOASCRIBE_DEBUG === '1' ? 'debug' : config.LOG_LEVEL,
+  pretty: config.NODE_ENV === 'development',
+})
 
 const keyRing = await createKeyRing(
   { version: config.TOASCRIBE_ENCRYPTION_KEY_VERSION, key: config.TOASCRIBE_ENCRYPTION_KEY },

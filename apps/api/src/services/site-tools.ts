@@ -70,6 +70,8 @@ export function createSiteToolsService(options: {
   readonly version: string
   /** NODE_ENV. */
   readonly environment: string
+  /** TOASCRIBE_DEBUG=1. */
+  readonly debug: boolean
   /** TOASCRIBE_UPDATE_CHECK is not `off`. */
   readonly serverAllowsUpdateCheck: boolean
   /** toascribe.toml, for whether the daily backup is on. */
@@ -141,6 +143,7 @@ export function createSiteToolsService(options: {
                 : `${String(migrations.applied)} / ${String(migrations.expected)}`,
             ),
             field('environment', 'word', options.environment),
+            field('debug', 'boolean', options.debug),
           ]
         }),
         group('server', () =>

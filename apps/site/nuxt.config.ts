@@ -35,6 +35,8 @@ function chosenTheme(): string {
 }
 
 export default defineNuxtConfig({
+  // Which app writes the log line (nuxt-base server/utils/log.ts).
+  runtimeConfig: { appName: 'site' },
   extends: [chosenTheme()],
 
   // The site's part of the security headers (K-314); the nonce CSP and the rest are in nuxt-base. What is different here:

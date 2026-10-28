@@ -21,6 +21,7 @@ const FIELDS: Lookup = {
   'toascribe.version': (t) => t('siteHealth.fields.toascribe.version'),
   'toascribe.migration': (t) => t('siteHealth.fields.toascribe.migration'),
   'toascribe.environment': (t) => t('siteHealth.fields.toascribe.environment'),
+  'toascribe.debug': (t) => t('siteHealth.fields.toascribe.debug'),
   'server.node': (t) => t('siteHealth.fields.server.node'),
   'server.os': (t) => t('siteHealth.fields.server.os'),
   'server.memoryTotal': (t) => t('siteHealth.fields.server.memoryTotal'),

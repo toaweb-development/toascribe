@@ -37,6 +37,7 @@ export type { DefaultContentLocale, DefaultContentStrings } from './default-cont
 export { parseBlockMarkup } from './default-content/blocks.ts'
 export type { ParsedBlock } from './default-content/blocks.ts'
 export { readMaintenanceMode, setMaintenanceMode } from './maintenance.ts'
+export { currentRequestId, runWithRequestId, takeRequestId, withRequestId } from './request-context.ts'
 export * as schema from './schema/index.ts'
 export {
   HIERARCHICAL_TYPES,

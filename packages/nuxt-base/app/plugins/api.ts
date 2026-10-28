@@ -25,12 +25,18 @@ export default defineNuxtPlugin((nuxtApp) => {
   // $fetch does not send the visitor's cookies when it renders on the server, so the page request's cookie is forwarded:
   // without it the API sees nobody signed in on the first load.
   const cookie = import.meta.server ? useRequestHeaders(['cookie']).cookie : undefined
+  // The page request's id goes with the server's calls, so the api's lines carry it (M1.8, K-297; server/plugins/logging.ts).
+  const requestId = import.meta.server ? useRequestEvent()?.context['requestId'] : undefined
+  const forwarded = {
+    ...(cookie === undefined ? {} : { cookie }),
+    ...(typeof requestId === 'string' ? { 'x-request-id': requestId } : {}),
+  }
 
   const csrf = createCsrfStore()
   const api = createApiClient({
     create: (defaults) => $fetch.create(defaults),
     baseURL,
-    headers: cookie === undefined ? undefined : { cookie },
+    headers: Object.keys(forwarded).length === 0 ? undefined : forwarded,
     csrf,
     isClient: import.meta.client,
     onUnauthorized: (error) => {

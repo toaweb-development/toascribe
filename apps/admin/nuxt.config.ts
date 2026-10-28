@@ -95,7 +95,7 @@ export default defineNuxtConfig({
   colorMode: { storage: 'cookie', disableTransition: false },
 
   // This app has the setup wizard; the site sends visitors here until the site is installed (nuxt-base: setup-redirect.global.ts).
-  runtimeConfig: { public: { hostsSetupWizard: true } },
+  runtimeConfig: { appName: 'admin', public: { hostsSetupWizard: true } },
 
   // The admin's part of the security headers (K-314); the rest is in nuxt-base. Nobody frames the admin, and its pages show
   // only its own images and inline `data:` ones (the QR code of the two-factor set-up). Images from other addresses are brought into

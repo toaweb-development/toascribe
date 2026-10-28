@@ -77,6 +77,20 @@ export const onError: ErrorHandler<AppEnv> = (err, c) => {
     return errorResponse(c, 409, 'conflict', 'It already exists; it was made at the same time by another request')
   }
   c.get('logger').error({ err }, 'unhandled error')
+  if (c.get('debug') === true) {
+    // TOASCRIBE_DEBUG=1: the kind of error, to find it faster; never its message, stack or values (they may hold anything).
+    const code: unknown = typeof err === 'object' && 'code' in err ? Reflect.get(err, 'code') : undefined
+    const body = apiError('internal_error', 'Internal server error', c.get('requestId'))
+    return c.json(
+      {
+        error: {
+          ...body.error,
+          debug: { kind: err.name, ...(typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code) ? { code } : {}) },
+        },
+      },
+      500,
+    )
+  }
   return errorResponse(c, 500, 'internal_error', 'Internal server error')
 }
 

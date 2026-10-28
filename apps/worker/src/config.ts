@@ -32,6 +32,8 @@ const Env = z
     // The address visitors use. The links in the mails are built on it and on nothing else (no PORT: the worker has none).
     PUBLIC_ORIGIN: z.url(),
     LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
+    /** `1`: debug-level logs (M1.8, K-297). */
+    TOASCRIBE_DEBUG: z.union([z.literal(''), z.literal('0'), z.literal('1')]).default(''),
     // The heartbeat file the container healthcheck reads (see lib/heartbeat.ts). /tmp is writable
     // in a container even with a read-only root filesystem when it is a tmpfs.
     WORKER_HEARTBEAT_FILE: z.string().min(1).default('/tmp/toascribe-worker.heartbeat'),

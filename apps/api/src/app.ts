@@ -43,6 +43,7 @@ import { createSetupApp } from './routes/setup.ts'
 import { createSiteToolsApp } from './routes/site-tools.ts'
 import { createSystemApp } from './routes/system.ts'
 import { createServices } from './services/index.ts'
+import { runWithRequestId } from '@toascribe/db'
 
 /** Everything the app needs from outside, so tests can inject their own. */
 export interface AppDeps {
@@ -83,6 +84,8 @@ export interface AppDeps {
   readonly valkeyUrl?: string
   /** NODE_ENV, for Nettstedshelse. */
   readonly environment?: string
+  /** TOASCRIBE_DEBUG=1 (K-297): debug-level logs, the kind of error on a 500, and a notice in Nettstedshelse. */
+  readonly debug?: boolean
   /** TOASCRIBE_UPDATE_CHECK is not `off`. */
   readonly serverAllowsUpdateCheck?: boolean
   /** TOASCRIBE_CONFIG_FILE: toascribe.toml. */
@@ -139,6 +142,7 @@ export function buildApp(deps: AppDeps) {
       deps.logger.warn({ err }, 'valkey did not answer; the embed preview limit counts in this process')
     }),
     ...(deps.environment === undefined ? {} : { environment: deps.environment }),
+    ...(deps.debug === undefined ? {} : { debug: deps.debug }),
     ...(deps.serverAllowsUpdateCheck === undefined ? {} : { serverAllowsUpdateCheck: deps.serverAllowsUpdateCheck }),
     ...(deps.configFile === undefined ? {} : { configFile: deps.configFile }),
     activeTheme: deps.activeTheme ?? siteThemeSource({ siteUrl: deps.siteUrlInternal ?? 'http://site:3000' }),
@@ -165,8 +169,13 @@ export function buildApp(deps: AppDeps) {
   })
 
   // Order matters: the request id first (it is on every log line), then the logger that carries it.
-  app.use(requestId())
+  // The id the site sent (it follows a page from the site to the api to the jobs it queues, M1.8), or a new one.
+  app.use(requestId({ limitLength: 128 }))
   app.use(requestLogger(deps.logger))
+  app.use(async (c, next) => {
+    c.set('debug', deps.debug === true)
+    await runWithRequestId(c.get('requestId'), next)
+  })
   // Looks at the address the proxy says the visitor has, to warn when the stack is not told who its visitors are.
   app.use(async (c, next) => {
     services.proxy.observe(c.req.header('x-real-ip'))
