@@ -45,9 +45,10 @@ describe('describeDevice', () => {
 })
 
 describe('formatWhen', () => {
-  it('writes a date and a time in Norwegian', () => {
-    const text = formatWhen('2026-10-05T12:05:00.000Z')
-    expect(text).toMatch(/2026/)
-    expect(text).toMatch(/okt/)
+  it("writes a date and a time in the admin's language", () => {
+    const norsk = formatWhen('2026-10-05T12:05:00.000Z', 'nb')
+    expect(norsk).toMatch(/2026/)
+    expect(norsk).toMatch(/okt/)
+    expect(formatWhen('2026-10-05T12:05:00.000Z', 'en')).toMatch(/Oct/)
   })
 })

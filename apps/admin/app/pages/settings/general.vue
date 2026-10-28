@@ -6,7 +6,7 @@ import type { GeneralSettings } from '@toascribe/shared'
 // administrator address is used only after the link sent to it is opened (K-192), so it is asked for in a field of its own.
 definePageMeta({ layout: 'dashboard', middleware: 'signed-in' })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const settingsApi = useSettingsApi()
 useSeoMeta({ title: () => t('settings.general.title') })
 
@@ -34,7 +34,7 @@ const roles = computed(() =>
 const zones = ['UTC', ...Intl.supportedValuesOf('timeZone')].map((zone) => ({ label: zone, value: zone }))
 const days = computed(() =>
   [0, 1, 2, 3, 4, 5, 6].map((day) => ({
-    label: new Intl.DateTimeFormat('nb', { weekday: 'long', timeZone: 'UTC' }).format(
+    label: new Intl.DateTimeFormat(locale.value, { weekday: 'long', timeZone: 'UTC' }).format(
       new Date(Date.UTC(2024, 0, 7 + day)),
     ),
     value: day,

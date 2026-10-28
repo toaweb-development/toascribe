@@ -99,7 +99,7 @@
         "title": "Web address",
         "ok": "The browser uses {origin}, which is what PUBLIC_ORIGIN says.",
         "unknown": "The address the browser uses could not be checked. PUBLIC_ORIGIN is {configured}.",
-        "mismatch": "The browser uses {observed}, but PUBLIC_ORIGIN is {configured}. Signing in and links in emails work on one of the addresses only. Correct PUBLIC_ORIGIN in docker/.env, restart the services and open the setup at the right address."
+        "mismatch": "The browser uses {observed}, but PUBLIC_ORIGIN is {configured}. Logging in and links in emails work on one of the addresses only. Correct PUBLIC_ORIGIN in docker/.env, restart the services and open the setup at the right address."
       },
       "proxy": {
         "title": "Proxy in front of the site",
@@ -178,7 +178,7 @@
       }
     },
     "admin": {
-      "intro": "This will be the first account, and it gets every right. When the setup is done, you are signed in with it.",
+      "intro": "This will be the first account, and it gets every right. When the setup is done, you are logged in with it.",
       "username": "Username",
       "usernameHelp": "3 to 60 characters: letters and digits, and optionally full stops, underscores, hyphens or {'@'}.",
       "email": "Email address",
@@ -224,7 +224,7 @@
       "keyValue": "You have confirmed that it is saved",
       "submit": "Finish the installation",
       "working": "Installing. This can take a few seconds …",
-      "signin": "The site is installed, but we could not sign you in automatically. Sign in with the username and password you chose."
+      "signin": "The site is installed, but we could not log you in automatically. Log in with the username and password you chose."
     }
   },
   "auth": {
@@ -1104,7 +1104,7 @@
       "forbidden": "{n} item could not be changed because you do not have access to it. | {n} items could not be changed because you do not have access to them.",
       "state": "{n} item was not in the right state for the action. | {n} items were not in the right state for the action.",
       "invalid": "{n} item did not fit the change. | {n} items did not fit the change.",
-      "unchanged": "{n} item was already so. | {n} items were already so."
+      "unchanged": "{n} item already had that value. | {n} items already had that value."
     },
     "confirmDelete": {
       "title": "Delete permanently? | Delete {n} items permanently?",

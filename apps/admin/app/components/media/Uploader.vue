@@ -15,7 +15,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ uploaded: [item: MediaItem] }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const upload = useMediaUpload()
 const mediaApi = useMediaApi()
 const uid = useId()
@@ -52,7 +52,7 @@ const extensions = computed(() =>
     : props.limits.extensions,
 )
 const accept = computed(() => extensions.value.map((ext) => `.${ext}`).join(','))
-const maxSize = computed(() => formatBytes(props.limits.maxBytes))
+const maxSize = computed(() => formatBytes(props.limits.maxBytes, locale.value))
 
 function errorText(caught: unknown): string {
   return mediaErrorText(t, caught instanceof ApiRequestError ? caught.code : undefined) ?? describeApiError(caught, t)

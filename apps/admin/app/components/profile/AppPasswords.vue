@@ -4,7 +4,7 @@ import type { AppPasswordItem } from '@toascribe/shared'
 // «Applikasjonspassord» (K-016; WordPress' profile section): a name for each client, the password shown once when it is made (with
 // «Kopier»), and for each one when it was made, last used and from where, with «Tilbakekall». They work against the API with
 // `Authorization: Basic` over HTTPS, never for signing in here.
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const meApi = useMeApi()
 const confirm = useConfirmDialog()
 
@@ -130,12 +130,12 @@ async function revoke(item: AppPasswordItem): Promise<void> {
           <div class="min-w-0">
             <p class="font-medium break-words text-highlighted">{{ item.name }}</p>
             <p class="text-sm text-toned">
-              {{ $t('profile.appPasswords.created', { when: formatWhen(item.createdAt) }) }}
+              {{ $t('profile.appPasswords.created', { when: formatWhen(item.createdAt, locale) }) }}
             </p>
             <p class="text-sm text-toned">
               {{
                 item.lastUsedAt
-                  ? $t('profile.appPasswords.lastUsed', { when: formatWhen(item.lastUsedAt) })
+                  ? $t('profile.appPasswords.lastUsed', { when: formatWhen(item.lastUsedAt, locale) })
                   : $t('profile.appPasswords.neverUsed')
               }}
               <span v-if="item.lastUsedIp"> · {{ $t('profile.sessions.ip', { ip: item.lastUsedIp }) }}</span>

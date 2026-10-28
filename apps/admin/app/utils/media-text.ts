@@ -97,8 +97,8 @@ export function mediaErrorText(t: MessageT, code: string | undefined): string | 
   }
 }
 
-/** Bytes as WordPress writes them in nb_NO: «64 MB», «1,5 MB», «820 kB». */
-export function formatBytes(bytes: number, locale = 'nb-NO'): string {
+/** Bytes as WordPress writes them, in the admin's language: «64 MB», «1,5 MB» (1.5 MB), «820 kB». */
+export function formatBytes(bytes: number, locale: string): string {
   const units = ['B', 'kB', 'MB', 'GB'] as const
   let value = bytes
   let unit = 0

@@ -34,7 +34,10 @@ export function describeDevice(userAgent: string | null): Device {
   }
 }
 
-/** «5. okt. 2026, 14:05», in the browser's time zone. Used only after mount, so the server and the browser never disagree. */
-export function formatWhen(iso: string, locale = 'nb-NO'): string {
+/**
+ * «5. okt. 2026, 14:05» (or «Oct 5, 2026, 2:05 PM»), in the admin's language and the browser's time zone. Used only after mount,
+ * so the server and the browser never disagree.
+ */
+export function formatWhen(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 }

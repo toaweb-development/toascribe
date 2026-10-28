@@ -1,31 +1,33 @@
-import type { AdminLocale } from '@toascribe/shared'
+import type { AdminLocale, AuthOptionsResponse } from '@toascribe/shared'
 
-/** The site's language as the api last said it (`GET /auth/options`), kept in the page payload. Empty: not known. */
-const SITE_LOCALE_KEY = 'admin:site-locale'
+import { AUTH_OPTIONS_KEY } from './useAuthOptions'
 
 /**
  * The admin's language (M1.8, K-330): the profile's choice, else the site's language, else bokmål. `apply` sets it before a page
  * is drawn (the global middleware) and after the profile changes it, so the server and the browser draw the same language.
+ * The site's language comes with `GET /auth/options`, kept in the payload under the key the sign-in pages read
+ * (useAuthOptions), so a page asks for it once. A failed answer is not kept: the next page asks again.
  */
 export function useAdminLocale() {
   const nuxtApp = useNuxtApp()
   const auth = useAuth()
   const authApi = useAuthApi()
-  const siteLocale = useState<string | null>(SITE_LOCALE_KEY, () => null)
+
+  async function siteLocale(): Promise<string | undefined> {
+    const kept = nuxtApp.payload.data[AUTH_OPTIONS_KEY] as AuthOptionsResponse | null | undefined
+    if (kept) return kept.locale
+    const fetched = await authApi.options().catch(() => undefined)
+    if (fetched !== undefined) nuxtApp.payload.data[AUTH_OPTIONS_KEY] = fetched
+    return fetched?.locale
+  }
 
   async function apply(): Promise<AdminLocale> {
-    if (siteLocale.value === null) {
-      siteLocale.value = await authApi
-        .options()
-        .then((options) => options.locale)
-        .catch(() => '')
-    }
     const session = auth.session.value
     const own = session.status === 'authenticated' ? session.account.locale : null
-    const wanted = pickAdminLocale(own, siteLocale.value)
+    const wanted = pickAdminLocale(own, own === null ? await siteLocale() : undefined)
     if (nuxtApp.$i18n.locale.value !== wanted) await nuxtApp.$i18n.setLocale(wanted)
     return wanted
   }
 
-  return { siteLocale: readonly(siteLocale), apply }
+  return { apply }
 }

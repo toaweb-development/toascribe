@@ -4,7 +4,7 @@
 import { en, nb_no } from '@nuxt/ui/locale'
 
 // <html lang> and <html dir> come from the active locale. useLocaleHead is not used: it warns without the site's public
-// address (its `baseUrl`), which only its SEO links need, and with one locale there are none.
+// address (its `baseUrl`), which only its SEO links need, and the admin's languages are not separate addresses, so it has none.
 const { locale, localeProperties } = useI18n()
 const uiLocale = computed(() => (locale.value === 'en' ? en : nb_no))
 useHead({ htmlAttrs: { lang: () => localeProperties.value.language, dir: () => localeProperties.value.dir } })

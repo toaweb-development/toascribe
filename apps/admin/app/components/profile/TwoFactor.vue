@@ -2,7 +2,7 @@
 // «Tofaktorautentisering»: whether it is on, the authenticator apps, setting one up, new recovery codes and removing an app. Every
 // change that proves the owner asks for the password in the shared dialog (useReauth). It loads and fails by itself, so the rest of
 // the page works when this part cannot load.
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const meApi = useMeApi()
 const reauth = useReauth()
 
@@ -154,11 +154,11 @@ async function remove(factor: { id: string; name: string | null }) {
             <div class="min-w-0">
               <p class="font-medium break-words text-highlighted">{{ nameOf(factor) }}</p>
               <p class="text-sm text-toned">
-                {{ $t('profile.mfa.createdAt', { when: formatWhen(factor.createdAt) }) }}
+                {{ $t('profile.mfa.createdAt', { when: formatWhen(factor.createdAt, locale) }) }}
                 ·
                 {{
                   factor.lastUsedAt
-                    ? $t('profile.mfa.lastUsed', { when: formatWhen(factor.lastUsedAt) })
+                    ? $t('profile.mfa.lastUsed', { when: formatWhen(factor.lastUsedAt, locale) })
                     : $t('profile.mfa.neverUsed')
                 }}
               </p>

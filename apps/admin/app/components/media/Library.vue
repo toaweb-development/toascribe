@@ -312,7 +312,7 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
             {{ labelOf(item) }}
           </button>
           <p class="text-sm text-toned wrap-anywhere">
-            {{ item.fileName }} · {{ formatBytes(item.size) }}
+            {{ item.fileName }} · {{ formatBytes(item.size, locale) }}
             <template v-if="item.uploadedBy"> · {{ item.uploadedBy.displayName }}</template>
             <template v-if="item.visibility === 'private'"> · {{ $t('media.details.private') }}</template>
             <template v-if="processingLabel($t, item.processing)">

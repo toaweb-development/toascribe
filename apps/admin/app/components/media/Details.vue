@@ -248,7 +248,7 @@ const facts = computed(() => {
     ...(current.uploadedBy ? [{ label: t('media.details.uploadedBy'), value: current.uploadedBy.displayName }] : []),
     { label: t('media.details.fileName'), value: current.fileName },
     { label: t('media.details.fileType'), value: current.mime },
-    { label: t('media.details.fileSize'), value: formatBytes(current.size) },
+    { label: t('media.details.fileSize'), value: formatBytes(current.size, locale.value) },
     ...(current.width !== null && current.height !== null
       ? [
           {

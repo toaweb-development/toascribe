@@ -3,7 +3,7 @@ import type { SessionListItem } from '@toascribe/shared'
 
 // «Økter»: the sessions that are signed in to the account (device, address, when), «Logg ut» for each of the others and «Logg ut
 // overalt ellers». The list loads in the browser (it shows times in the person's own time zone) and fails by itself.
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const meApi = useMeApi()
 const confirm = useConfirmDialog()
 
@@ -127,10 +127,10 @@ async function endOthers() {
               </p>
               <p class="text-sm text-toned">
                 <span v-if="session.ip">{{ $t('profile.sessions.ip', { ip: session.ip }) }} · </span>
-                {{ $t('profile.sessions.lastSeen', { when: formatWhen(session.lastSeenAt) }) }}
+                {{ $t('profile.sessions.lastSeen', { when: formatWhen(session.lastSeenAt, locale) }) }}
               </p>
               <p class="text-sm text-toned">
-                {{ $t('profile.sessions.signedIn', { when: formatWhen(session.createdAt) }) }}
+                {{ $t('profile.sessions.signedIn', { when: formatWhen(session.createdAt, locale) }) }}
               </p>
             </div>
             <UButton
