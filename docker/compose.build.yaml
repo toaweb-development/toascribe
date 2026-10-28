@@ -19,14 +19,14 @@ x-labels: &labels
 
 services:
   proxy:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-proxy:${TOASCRIBE_VERSION:-0.6.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-proxy:${TOASCRIBE_VERSION:-0.7.0}
     build:
       context: .
       dockerfile: docker/proxy/Dockerfile
       labels: *labels
 
   site:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-site:${TOASCRIBE_VERSION:-0.6.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-site:${TOASCRIBE_VERSION:-0.7.0}
     build:
       context: .
       dockerfile: docker/nuxt/Dockerfile
@@ -36,7 +36,7 @@ services:
         HEALTH_PATH: /
 
   admin:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-admin:${TOASCRIBE_VERSION:-0.6.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-admin:${TOASCRIBE_VERSION:-0.7.0}
     build:
       context: .
       dockerfile: docker/nuxt/Dockerfile
@@ -46,14 +46,14 @@ services:
         HEALTH_PATH: /admin
 
   api:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-api:${TOASCRIBE_VERSION:-0.6.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-api:${TOASCRIBE_VERSION:-0.7.0}
     build:
       context: .
       dockerfile: docker/api/Dockerfile
       labels: *labels
 
   postgres:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-postgres:${TOASCRIBE_VERSION:-0.6.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-postgres:${TOASCRIBE_VERSION:-0.7.0}
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile
@@ -61,7 +61,7 @@ services:
 
   # Development only (the mailpit profile); built and scanned like the others.
   mailpit:
-    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-mailpit:${TOASCRIBE_VERSION:-0.6.0}
+    image: ${TOASCRIBE_REGISTRY:-ghcr.io/toaweb-development}/toascribe-mailpit:${TOASCRIBE_VERSION:-0.7.0}
     build:
       context: .
       dockerfile: docker/mailpit/Dockerfile

@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/admin",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "The admin app and the setup wizard: a Nuxt 4 app served under /admin.",

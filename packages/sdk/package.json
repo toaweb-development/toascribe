@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/sdk",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "Placeholder for the extension and theme SDK (definePlugin, hook types, test helpers); phase 3.",

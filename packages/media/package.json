@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/media",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "The media library's shared parts (M1.2): the allowed file types, type detection from the bytes, image dimensions from the header, storage keys, the size plan and the storage interface with its local-volume driver. Node only; imported by apps/api, apps/worker and cli. Image decoding (sharp) is the worker's.",

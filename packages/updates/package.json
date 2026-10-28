@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/updates",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "The update check (M1.7, K-290): the newest release from the public image tags (ghcr.io), behind a small source interface. Node only; the worker and the CLI use it.",

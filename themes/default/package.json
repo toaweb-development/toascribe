@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/theme-default",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "The default theme, a Nuxt layer on @toascribe/site-core that apps/site extends when toascribe.toml names it: the templates of WordPress' hierarchy, a layout and the look of every core block (WCAG 2.2 AA).",

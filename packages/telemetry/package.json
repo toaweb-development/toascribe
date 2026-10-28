@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/telemetry",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "Optional OpenTelemetry (M1.8, K-298): traces and metrics over OTLP/HTTP from the api and the worker, only when OTEL_EXPORTER_OTLP_ENDPOINT is set, with the log's hidden fields hidden in spans. Node only.",

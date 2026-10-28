@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/site-core",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "The core of the public site, a Nuxt layer: the theme SDK and core components, the catch-all route, and the theme module that reads theme.json, the templates and a theme's block views.",

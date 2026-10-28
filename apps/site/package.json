@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/site",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "The public site: a Nuxt 4 app that extends the theme chosen in toascribe.toml (a theme layer on @toascribe/site-core).",

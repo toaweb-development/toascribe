@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/auth",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "Password hashing and checking (argon2id, imported WordPress formats) and token helpers, shared by the api and the cli. Node only; no HTTP framework, no database.",

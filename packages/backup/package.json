@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/backup",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "Backups (M1.7, K-292, K-293): one file with the database dump, the uploads and a manifest; verify, list, prune and restore. Node only; the CLI and the worker use it, in the api image (pg_dump, psql, zstd, age).",

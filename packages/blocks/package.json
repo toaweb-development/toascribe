@@ -1,6 +1,6 @@
 {
   "name": "@toascribe/blocks",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "The block format: the core blocks' block.json, the validation the editor and the api share, and the editor model's document operations and undo history.",
