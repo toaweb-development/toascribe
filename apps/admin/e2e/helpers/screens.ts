@@ -11,6 +11,8 @@ export async function fillLogin(
   user: Pick<TestUser, 'username' | 'password'>,
   remember = false,
 ): Promise<void> {
+  // A field typed into before the page is hydrated is drawn again, empty (app/plugins/hydrated.client.ts).
+  await page.locator('html[data-hydrated]').waitFor({ state: 'attached' })
   await page.getByLabel('Brukernavn eller e-postadresse').fill(user.username)
   await page.getByLabel('Passord', { exact: true }).fill(user.password)
   if (remember) {
