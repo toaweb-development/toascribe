@@ -49,6 +49,20 @@ export const test = base.extend<Fixtures>({
         )
       })
     })
+    // Every admin page the test opens is hydrated before the test goes on: a field typed into before that is drawn again, empty
+    // (app/plugins/hydrated.client.ts sets the mark). Pages without the mark (the site, the proxy's own answers) are not waited for
+    // longer than a moment.
+    const goto = page.goto.bind(page)
+    page.goto = (async (url: string, options?: Parameters<Page['goto']>[1]) => {
+      const response = await goto(url, options)
+      if (new URL(page.url()).pathname.startsWith('/admin')) {
+        await page
+          .locator('html[data-hydrated]')
+          .waitFor({ state: 'attached', timeout: 15_000 })
+          .catch(() => undefined)
+      }
+      return response
+    }) as Page['goto']
     await use(page)
     const tolerated = allowed.has(testInfo.testId)
     const inMaintenance = maintenance.has(testInfo.testId)
