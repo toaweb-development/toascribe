@@ -127,8 +127,8 @@ export interface PublicFlows {
   resetPassword: (token: string, password: string, ctx: RequestContext) => Promise<void>
   /** The link of a welcome or registration mail: choose the first password. */
   setPassword: (token: string, password: string, ctx: RequestContext) => Promise<void>
-  /** What the login screens need before anyone is signed in (GET /auth/options). */
-  options: () => Promise<AuthOptionsResponse>
+  /** What the login screens need before anyone is signed in (GET /auth/options). The form token is bound to `client.ip`. */
+  options: (client: { readonly ip: string }) => Promise<AuthOptionsResponse>
   register: (
     input: { username: string; email: string; formToken: string; website?: string | undefined },
     ctx: RequestContext,
@@ -172,21 +172,24 @@ export function createPublicFlows(options: {
   const { db, clock, logger, limiter, audit, mail, minimumResponseMs, onInvalidSetting } = options
   const registerFormMinMs = options.registerFormMinMs ?? REGISTER_FORM_MIN_MS
 
-  /** `<issued ms>.<HMAC>`: when the form was drawn, signed so it cannot be made up. */
-  function formToken(at: number): string {
+  /**
+   * `<issued ms>.<HMAC>`: when the form was drawn and for which client address, signed so it cannot be made up. Bound to the
+   * address, so one fetched token does not open registration for every address a bot has.
+   */
+  function formToken(at: number, ip: string): string {
     return `${String(at)}.${createHmac('sha256', options.signingKey)
-      .update(`register-form:${String(at)}`)
+      .update(`register-form:${String(at)}:${ip}`)
       .digest('base64url')}`
   }
 
-  /** The spam checks of K-006: the hidden field is empty, and the token is ours, old enough and not too old. */
-  function assertHuman(input: { formToken: string; website?: string | undefined }): void {
+  /** The spam checks of K-006: the hidden field is empty, and the token is ours, for this address, old enough and not too old. */
+  function assertHuman(input: { formToken: string; website?: string | undefined }, ip: string): void {
     const issued = Number(input.formToken.split('.')[0])
     const now = clock().getTime()
     const ok =
       (input.website ?? '') === '' &&
       Number.isSafeInteger(issued) &&
-      constantTimeEqual(formToken(issued), input.formToken) &&
+      constantTimeEqual(formToken(issued, ip), input.formToken) &&
       now - issued >= registerFormMinMs &&
       now - issued <= REGISTER_FORM_MAX_MS
     if (!ok) throw new FormRejectedError()
@@ -342,7 +345,7 @@ export function createPublicFlows(options: {
       return chooseWith('set_password', token, password, ctx)
     },
 
-    async options() {
+    async options(client) {
       const settings = await readSettings(db, OptionsSettings, onInvalidSetting)
       const privacyId = settings.wp_page_for_privacy_policy
       const privacyPage = privacyId === null ? undefined : await findPublishedById(db, privacyId)
@@ -350,7 +353,7 @@ export function createPublicFlows(options: {
         registrationOpen: settings.users_can_register,
         siteName: settings.blogname.trim(),
         // The same address the site gives it: `/` when it is the static front page.
-        formToken: formToken(clock().getTime()),
+        formToken: formToken(clock().getTime(), client.ip),
         privacyPolicyPath:
           privacyPage === undefined
             ? null
@@ -377,7 +380,7 @@ export function createPublicFlows(options: {
         })
         assertNotDelayed(ticket.status, clock())
         // After the limit is counted: a bot that keeps sending is slowed down as anyone else.
-        assertHuman(input)
+        assertHuman(input, ctx.ip)
 
         // The owner of the address, if there is one, is told about the attempt by mail, whatever the visitor is answered (Tor,
         // M0.4): the visitor learns nothing from it. A disabled account is left alone; one that is still waiting for its first

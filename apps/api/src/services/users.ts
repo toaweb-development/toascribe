@@ -139,8 +139,9 @@ export function createUserService(options: {
   readonly audit: Auditor
   readonly mail: SafeMail
   readonly media: Pick<MediaService, 'contentRefs'>
+  readonly onInvalidSetting?: (key: string) => void
 }): UserService {
-  const { db, clock, audit, mail } = options
+  const { db, clock, audit, mail, onInvalidSetting } = options
   const media = options.media
 
   return {
@@ -160,6 +161,7 @@ export function createUserService(options: {
           db,
           media,
           rows.map((row) => ({ id: row.id, email: row.email, avatarId: readProfile(row.profile).avatarId })),
+          onInvalidSetting,
         ),
       ])
       const users: UserListItem[] = rows.map((row) => ({

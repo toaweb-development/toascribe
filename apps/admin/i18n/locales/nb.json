@@ -728,7 +728,8 @@
       "help": "Uten bilde vises forbokstavene dine. Bildet vises for alle, også på nettstedet.",
       "saved": "Profilbildet er lagret.",
       "removed": "Profilbildet er fjernet.",
-      "notPublic": "Bildet må ligge i mediebiblioteket og være synlig for alle."
+      "notPublic": "Bildet må ligge i mediebiblioteket og være synlig for alle.",
+      "noLibrary": "Profilbildet velges fra mediebiblioteket, og rollen din har ikke tilgang til det. Uten bilde vises forbokstavene dine."
     }
   },
   "roles": {

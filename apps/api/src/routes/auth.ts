@@ -240,7 +240,7 @@ export function createAuthApp(services: Services) {
       }
       return c.json({ status: 'mfa_required' as const, mfa: auth.mfa, csrfToken, expiresAt }, 200)
     })
-    .openapi(optionsRoute, async (c) => c.json(await services.flows.options(), 200))
+    .openapi(optionsRoute, async (c) => c.json(await services.flows.options({ ip: getClientIp(c) }), 200))
     .openapi(verifyMfaRoute, async (c) => {
       const auth = await requireSession(c)
       const verified = await services.mfa.verify(auth, c.req.valid('json'), {

@@ -167,8 +167,11 @@ export function createMeService(options: {
       }
       await inTransaction(db, async (tx) => {
         await updateProfile(tx, auth.account.id, displayName, next, clock())
-        // The site shows authors' names on every post and list: a new name clears everything.
-        if (displayName !== auth.account.displayName) await recordInvalidation(tx, ['*'], clock())
+        // The site shows authors' names on every post and list, and their pictures on their pages: a new name or picture clears
+        // everything (a removed picture must not linger in the site's cache).
+        if (displayName !== auth.account.displayName || next.avatarId !== current.avatarId) {
+          await recordInvalidation(tx, ['*'], clock())
+        }
       })
       return {
         ...toSessionAccount(auth),

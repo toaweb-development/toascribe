@@ -272,7 +272,9 @@ export function createSiteToolsService(options: {
         check('backup', () => {
           const last = settings.backup_status
           if (last?.ok === false) return 'critical'
-          if (last === null || now - new Date(last.at).getTime() > BACKUP_STALE_MS) return 'recommended'
+          // An unreadable time counts as old: NaN compares false, which would read as fresh.
+          const age = last === null ? Number.NaN : now - new Date(last.at).getTime()
+          if (!(age <= BACKUP_STALE_MS)) return 'recommended'
           return 'good'
         }),
         check('updates', () => {

@@ -284,10 +284,19 @@ export const CoreSettings = z.object({
     z
       .string()
       .max(500)
-      .regex(/^(?:mailto:[^\s@]+@[^\s@]+\.[^\s@]+|https:\/\/[^\s]+)$/),
+      // Printable ASCII only (no space, no control character, no line break): each value is one line of the file.
+      .regex(/^(?:mailto:[\x21-\x3f\x41-\x7e]+@[\x21-\x3f\x41-\x7e]+\.[\x21-\x3f\x41-\x7e]+|https:\/\/[\x21-\x7e]+)$/),
   ]),
-  /** The page with the site's security policy (`Policy:`), an `https:` address; empty for none. */
-  security_policy: z.union([z.literal(''), z.url({ protocol: /^https$/ }).max(500)]),
+  /** The page with the site's security policy (`Policy:`), an `https:` address in printable ASCII; empty for none. */
+  security_policy: z.union([
+    z.literal(''),
+    // Checked as written, not as zod's url() would normalise it: the stored value is the line of the file.
+    z
+      .string()
+      .max(500)
+      .regex(/^https:\/\/[\x21-\x7e]+$/)
+      .refine((value) => URL.canParse(value), { message: 'Not a URL' }),
+  ]),
   // «Innbygginger» on the same screen (M1.6, K-225): a player from another service is loaded only after a click (on by default),
   // and the Mastodon instances whose posts may be embedded (they cannot be listed in advance).
   embed_click_to_load: z.boolean(),

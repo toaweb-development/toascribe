@@ -130,6 +130,14 @@ export function securityTxt(
 ): string | undefined {
   const { contact, policyUrl: policy } = settings.securityTxt
   if (contact === '') return undefined
+  // Each value is one line: one with a line break or a control character (never stored, but the file must not depend on it) means
+  // no file rather than a file with lines nobody wrote.
+  const oneLine = (value: string) =>
+    [...value].every((char) => {
+      const code = char.codePointAt(0) ?? 0
+      return code > 0x20 && (code < 0x7f || code > 0x9f) && code !== 0x2028 && code !== 0x2029
+    })
+  if (![contact, policy].every(oneLine)) return undefined
   const expires = new Date(now.getTime() + 182 * 24 * 60 * 60 * 1000)
   expires.setUTCHours(0, 0, 0, 0)
   return [

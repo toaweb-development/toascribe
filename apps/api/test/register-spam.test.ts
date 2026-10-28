@@ -23,15 +23,17 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration spam checks (need
     await env.close()
   })
 
-  const tokenFor = async () =>
-    ((await (await env.client().get('/api/v1/auth/options')).json()) as { formToken: string }).formToken
+  /** The token the form gets when it is drawn for `address` (a token is bound to the address that asked for it). */
+  const tokenFor = async (address: string) =>
+    ((await (await env.client({ ip: address }).get('/api/v1/auth/options')).json()) as { formToken: string }).formToken
   const made = async (username: string) =>
     (await env.query(`select 1 from account where username = $1`, [username])).length
 
   it('takes a form sent after a person would have filled it in, with the hidden field empty', async () => {
-    const formToken = await tokenFor()
+    const address = ip()
+    const formToken = await tokenFor(address)
     env.clock.advance(2500)
-    const res = await env.client({ ip: ip() }).post('/api/v1/auth/register', {
+    const res = await env.client({ ip: address }).post('/api/v1/auth/register', {
       username: 'ekte-person',
       email: 'ekte@example.test',
       formToken,
@@ -44,16 +46,26 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration spam checks (need
   it.each([
     [
       'the hidden field filled',
-      async () => ({ formToken: await tokenFor(), wait: 2500, website: 'http://spam.example' }),
+      async (address: string) => ({ formToken: await tokenFor(address), wait: 2500, website: 'http://spam.example' }),
     ],
-    ['sent at once', async () => ({ formToken: await tokenFor(), wait: 0 })],
-    ['a token over an hour old', async () => ({ formToken: await tokenFor(), wait: 61 * 60 * 1000 })],
+    ['sent at once', async (address: string) => ({ formToken: await tokenFor(address), wait: 0 })],
+    [
+      'a token over an hour old',
+      async (address: string) => ({ formToken: await tokenFor(address), wait: 61 * 60 * 1000 }),
+    ],
     ['a token made up', () => Promise.resolve({ formToken: `${String(Date.now() - 10_000)}.made-up`, wait: 0 })],
+    // One fetched token does not open registration for every address a bot has.
+    ['a token fetched from another address', async () => ({ formToken: await tokenFor(ip()), wait: 2500 })],
   ])('refuses %s, and makes nothing', async (name, build) => {
-    const { formToken, wait, website } = (await build()) as { formToken: string; wait: number; website?: string }
+    const address = ip()
+    const { formToken, wait, website } = (await build(address)) as {
+      formToken: string
+      wait: number
+      website?: string
+    }
     env.clock.advance(wait)
     const username = `bot-${String(n)}`
-    const res = await env.client({ ip: ip() }).post('/api/v1/auth/register', {
+    const res = await env.client({ ip: address }).post('/api/v1/auth/register', {
       username,
       email: `${username}@example.test`,
       formToken,

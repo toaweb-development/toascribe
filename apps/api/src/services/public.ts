@@ -801,6 +801,8 @@ export function createPublicService(options: {
         // «Vis avatarer» (K-236): the author's picture, or null for the initials. The e-mail address is only read for Gravatar
         // and never leaves this function.
         let avatar: { avatarUrl?: string | null } = {}
+        // The picture's file: a change to it (private, edited, deleted) clears this page.
+        let avatarTags: string[] = []
         if (settings.show_avatars) {
           const account = await findAccountById(db, author.id)
           const avatarId = account === undefined ? null : readProfile(account.profile).avatarId
@@ -811,6 +813,7 @@ export function createPublicService(options: {
             options.onInvalidSetting,
           )
           avatar = { avatarUrl: urls.get(author.id) ?? null }
+          avatarTags = avatarId === null ? [] : [`media:${avatarId}`]
         }
         return archive(
           'archive',
@@ -829,6 +832,7 @@ export function createPublicService(options: {
           page,
           visitor,
           settings,
+          avatarTags,
         )
       }
       // Date archives: /2026/, /2026/10/, /2026/10/27/.

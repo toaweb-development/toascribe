@@ -246,7 +246,14 @@ export function createServices(deps: ServiceDeps): Services {
       audit,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
     }),
-    users: createUserService({ db, clock, audit, mail, media }),
+    users: createUserService({
+      db,
+      clock,
+      audit,
+      mail,
+      media,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
     content,
     terms: createTermService({
       db,

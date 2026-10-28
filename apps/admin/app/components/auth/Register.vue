@@ -10,8 +10,18 @@ const { t } = useI18n()
 const authApi = useAuthApi()
 
 const state = reactive({ username: '', email: '' })
-// Spam protection (K-006): the token that came with the page's options, and a field a person never sees.
+// Spam protection (K-006): a form token, and a field a person never sees. The token is bound to the visitor's address, and the
+// page's options were fetched by the server (another address), so the browser asks for its own when the form is shown.
 const { data: options } = useNuxtData<AuthOptionsResponse | null>('auth:options')
+const formToken = ref<string>()
+onMounted(() => {
+  authApi
+    .options()
+    .then((fresh) => {
+      formToken.value = fresh.formToken
+    })
+    .catch(() => undefined)
+})
 const trap = ref('')
 const { validateOn, failed } = useSubmitValidation()
 const submitting = ref(false)
@@ -34,7 +44,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
     await authApi.register(
       event.data.username.trim(),
       event.data.email.trim(),
-      options.value?.formToken ?? '',
+      formToken.value ?? options.value?.formToken ?? '',
       trap.value,
     )
     emit('sent')

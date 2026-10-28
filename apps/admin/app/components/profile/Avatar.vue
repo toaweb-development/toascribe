@@ -9,6 +9,8 @@ const emit = defineEmits<{ saved: [me: MeResponse] }>()
 
 const { t } = useI18n()
 const meApi = useMeApi()
+// The picker opens the media library, which needs `upload_files`; without it the picture is only shown.
+const canPick = computed(() => props.me.capabilities.includes('upload_files'))
 const avatarId = ref<string | null>(props.me.profile.avatarId)
 const saving = ref(false)
 const message = ref('')
@@ -41,10 +43,13 @@ watch(avatarId, async (next, before) => {
       <UAvatar :src="me.avatarUrl ?? undefined" :alt="me.displayName" size="3xl" />
       <div class="flex min-w-0 flex-1 flex-col gap-3" :aria-busy="saving">
         <ContentFeaturedImage
+          v-if="canPick"
           v-model="avatarId"
           :label="$t('profile.avatar.label')"
           :help="$t('profile.avatar.help')"
+          :preview="false"
         />
+        <p v-else class="text-sm text-muted">{{ $t('profile.avatar.noLibrary') }}</p>
         <p role="status" class="text-sm text-default">{{ message }}</p>
         <UAlert v-if="failure" color="error" variant="subtle" role="alert" :title="failure" />
       </div>

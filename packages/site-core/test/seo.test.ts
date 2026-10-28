@@ -426,4 +426,17 @@ describe('security.txt (M1.8, K-319)', () => {
       securityTxt({ securityTxt: { contact: '', policyUrl: '' }, origin: 'https://blogg.example' }, now),
     ).toBeUndefined()
   })
+
+  it('writes no file for a value with a line break or a control character, so no line can be slipped in', async () => {
+    const { securityTxt } = await import('../lib/feeds.ts')
+    const now = new Date('2026-10-28T12:00:00Z')
+    for (const [contact, policyUrl] of [
+      ['mailto:a@b.example', 'https://b.example/x\nContact: mailto:evil@x.example'],
+      ['mailto:a@b.example\r\nPolicy: https://evil.example', ''],
+      ['mailto:a@b.example', 'https://b.example/\u2028x'],
+      ['mailto:a\u0000@b.example', ''],
+    ] as const) {
+      expect(securityTxt({ securityTxt: { contact, policyUrl }, origin: 'https://b.example' }, now)).toBeUndefined()
+    }
+  })
 })
