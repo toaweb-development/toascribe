@@ -89,6 +89,15 @@ export const ContentListQuery = z.strictObject({
   order: z.enum(['asc', 'desc']).optional(),
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
   per_page: z.coerce.number().int().min(1).max(CONTENT_MAX_PER_PAGE).default(CONTENT_DEFAULT_PER_PAGE),
+  /**
+   * Relations to include (K-251; PLAN «API»), comma-separated: `featured_media` adds each item's featured image
+   * (`featuredMedia`). The authors and terms are always in an item; `author` and `terms` are taken and change nothing.
+   */
+  include: z
+    .string()
+    .max(100)
+    .regex(/^(?:author|terms|featured_media)(?:,(?:author|terms|featured_media))*$/)
+    .optional(),
 })
 export type ContentListQuery = z.infer<typeof ContentListQuery>
 export type ContentListQueryInput = z.input<typeof ContentListQuery>
@@ -151,6 +160,10 @@ export const ContentListItem = z.object({
   ...contentFields,
   /** 0 at the top. In a page tree, the number of ancestors shown above it («— » for each in the admin). */
   depth: z.int().min(0),
+  /** With `include=featured_media` only (K-251): the featured image (null without one, or one the caller may not see). */
+  get featuredMedia() {
+    return ContentMediaRef.nullable().optional()
+  },
 })
 export type ContentListItem = z.infer<typeof ContentListItem>
 

@@ -68,6 +68,27 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('featured image and SEO (needs 
     expect(cleared).toMatchObject({ featuredMediaId: null, seo: {}, media: [] })
   })
 
+  it('includes the featured image in a list only when asked (include=featured_media, K-251)', async () => {
+    const image = await upload(author, f.PNG, 'liste.png')
+    const made = (await (
+      await author.post('/api/v1/content', { type: 'post', title: 'Med bilde', featuredMediaId: image.id })
+    ).json()) as {
+      id: string
+    }
+    type Listed = {
+      items: { id: string; featuredMedia?: { id: string } | null; authors: unknown[]; tags: unknown[] }[]
+    }
+    const plain = (await (await author.get('/api/v1/content?type=post&status=all')).json()) as Listed
+    expect(plain.items.find((item) => item.id === made.id)).not.toHaveProperty('featuredMedia')
+    const asked = (await (
+      await author.get('/api/v1/content?type=post&status=all&include=author,terms,featured_media')
+    ).json()) as Listed
+    const item = asked.items.find((entry) => entry.id === made.id)
+    expect(item?.featuredMedia?.id).toBe(image.id)
+    expect(item?.authors).toHaveLength(1)
+    expect((await author.get('/api/v1/content?type=post&include=everything')).status).toBe(400)
+  })
+
   it('refuses an image the account may not see, a file that is not an image, and an unknown id', async () => {
     const secret = await upload(other, f.PNG, 'privat.png')
     expect((await other.patch(`/api/v1/media/${secret.id}`, { visibility: 'private' })).status).toBe(200)

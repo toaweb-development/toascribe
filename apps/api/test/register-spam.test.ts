@@ -48,7 +48,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration spam checks (need
     ],
     ['sent at once', async () => ({ formToken: await tokenFor(), wait: 0 })],
     ['a token over an hour old', async () => ({ formToken: await tokenFor(), wait: 61 * 60 * 1000 })],
-    ['a token made up', async () => ({ formToken: `${String(Date.now() - 10_000)}.made-up`, wait: 0 })],
+    ['a token made up', () => Promise.resolve({ formToken: `${String(Date.now() - 10_000)}.made-up`, wait: 0 })],
   ])('refuses %s, and makes nothing', async (name, build) => {
     const { formToken, wait, website } = (await build()) as { formToken: string; wait: number; website?: string }
     env.clock.advance(wait)

@@ -138,6 +138,33 @@ type RouteConfigWithPolicy<P extends string> = Omit<RouteConfig, 'path' | 'middl
   readonly policy: Policy
   /** Default `json`. `multipart` lets a route take file uploads. */
   readonly bodyType?: BodyType
+  /**
+   * A route on its way out (K-252, docs/API.md «Avvikling»): since when it is deprecated and the day it goes, both ISO dates, and
+   * the route to use instead. Every answer then carries `Deprecation` (RFC 9745), `Sunset` (RFC 8594) and `Link` headers, and the
+   * OpenAPI document marks it `deprecated`.
+   */
+  readonly retiring?: { readonly since: string; readonly sunset: string; readonly successor?: string }
+}
+
+/** Where a client reads the rule (docs/API.md «Avvikling»). */
+export const DEPRECATION_POLICY_URL = 'https://github.com/toaweb-development/toascribe/blob/main/docs/API.md#avvikling'
+
+/** The headers of a retiring route, set before anything else answers, so an error says it too. */
+export function retiringHeaders(
+  retiring: NonNullable<RouteConfigWithPolicy<string>['retiring']>,
+): MiddlewareHandler<AppEnv> {
+  const since = Math.floor(Date.parse(`${retiring.since}T00:00:00Z`) / 1000)
+  const sunset = new Date(`${retiring.sunset}T00:00:00Z`).toUTCString()
+  const links = [
+    `<${DEPRECATION_POLICY_URL}>; rel="deprecation"; type="text/html"`,
+    ...(retiring.successor === undefined ? [] : [`<${retiring.successor}>; rel="successor-version"`]),
+  ].join(', ')
+  return async (c, next) => {
+    c.header('Deprecation', `@${String(since)}`)
+    c.header('Sunset', sunset)
+    c.header('Link', links)
+    await next()
+  }
 }
 
 /**
@@ -146,7 +173,9 @@ type RouteConfigWithPolicy<P extends string> = Omit<RouteConfig, 'path' | 'middl
  */
 export function defineRoute<P extends string, R extends RouteConfigWithPolicy<P>>(config: R) {
   // `policy` and `bodyType` stay on the config: the OpenAPI generator only reads the properties it knows.
-  return createRoute({ ...config, middleware: [policyGuard(config.policy, config.bodyType)] })
+  const guard = policyGuard(config.policy, config.bodyType)
+  if (config.retiring === undefined) return createRoute({ ...config, middleware: [guard] })
+  return createRoute({ ...config, deprecated: true, middleware: [retiringHeaders(config.retiring), guard] })
 }
 
 /** The policy a handler carries, if it is a guard made by `policyGuard`. */
@@ -232,8 +261,12 @@ export function annotatePolicies<T extends object>(document: T): T {
           Reflect.set(operation, 'x-policy', text)
         }
       }
+      const retiring: unknown = Reflect.get(operation, 'retiring')
+      if (typeof retiring === 'object' && retiring !== null)
+        Reflect.set(operation, 'x-sunset', Reflect.get(retiring, 'sunset'))
       Reflect.deleteProperty(operation, 'policy')
       Reflect.deleteProperty(operation, 'bodyType')
+      Reflect.deleteProperty(operation, 'retiring')
     }
   }
   return document

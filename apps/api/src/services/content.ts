@@ -1053,9 +1053,20 @@ export function createContentService(options: {
           rows.map((row) => row.id),
         ),
       ])
+      // `include=featured_media` (K-251): one lookup for the page's images, with the same rights as the editor's.
+      const withMedia = query.include?.split(',').includes('featured_media') === true
+      const mediaIds = withMedia
+        ? [...new Set(rows.flatMap((row) => (row.featuredMediaId === null ? [] : [row.featuredMediaId])))]
+        : []
+      const refs = new Map(
+        (mediaIds.length === 0 ? [] : await media.contentRefs(actor, mediaIds)).map((ref) => [ref.id, ref]),
+      )
       const items: ContentListItem[] = rows.map((row) => ({
         ...baseFields(row, authors.get(row.id) ?? [], actor, terms.get(row.id)),
         depth: depths.get(row.id) ?? 0,
+        ...(withMedia
+          ? { featuredMedia: row.featuredMediaId === null ? null : (refs.get(row.featuredMediaId) ?? null) }
+          : {}),
       }))
       return {
         items,
