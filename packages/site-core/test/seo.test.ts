@@ -36,7 +36,7 @@ const SETTINGS: PublicSettings = {
   privacyPolicyPath: null,
   embed: { clickToLoad: true, frameHosts: ['www.youtube-nocookie.com'] },
   maintenance: { enabled: false, message: '', retryAfter: 600 },
-  securityTxt: { contact: '', policy: '' },
+  securityTxt: { contact: '', policyUrl: '' },
   origin: ORIGIN,
   seo: { defaultImage: DEFAULT, publisher: { type: 'organization', name: 'Fjell AS', logo: LOGO } },
   cacheTags: [],
@@ -406,7 +406,7 @@ describe('security.txt (M1.8, K-319)', () => {
     const now = new Date('2026-10-28T12:00:00Z')
     const text = securityTxt(
       {
-        securityTxt: { contact: 'mailto:sikkerhet@blogg.example', policy: 'https://blogg.example/sikkerhet' },
+        securityTxt: { contact: 'mailto:sikkerhet@blogg.example', policyUrl: 'https://blogg.example/sikkerhet' },
         origin: 'https://blogg.example',
         locale: 'nb',
       },
@@ -423,7 +423,7 @@ describe('security.txt (M1.8, K-319)', () => {
       ].join('\n'),
     )
     expect(
-      securityTxt({ securityTxt: { contact: '', policy: '' }, origin: 'https://blogg.example' }, now),
+      securityTxt({ securityTxt: { contact: '', policyUrl: '' }, origin: 'https://blogg.example' }, now),
     ).toBeUndefined()
   })
 })

@@ -93,7 +93,7 @@ export function describeRoleMatrix(
       describe(`${testCase.method} ${testCase.path}`, () => {
         it.each(ACTORS)('answers %s with the expected status', async (actor) => {
           const { client, account } = await clientFor(actor)
-          const json = testCase.body === undefined ? testCase.json : testCase.body(actor, account)
+          const json = testCase.body === undefined ? testCase.json : await testCase.body(actor, account, client)
           const res = await client.request(testCase.method, testCase.path, json === undefined ? {} : { json })
           expect(res.status).toBe(testCase.expected[actor])
         })

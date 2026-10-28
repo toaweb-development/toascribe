@@ -15,6 +15,7 @@ const LIST = {
       roles: ['editor'],
       status: 'active',
       registeredAt: '2026-10-24T08:00:00.000Z',
+      avatarUrl: null,
       postCount: 3,
     },
   ],

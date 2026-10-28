@@ -647,7 +647,7 @@ export function createPublicService(options: {
         privacyPolicyPath: privacyPage === undefined ? null : await pathOf(privacyPage, settings),
         origin: options.publicOrigin.replace(/\/+$/, ''),
         seo,
-        securityTxt: { contact: settings.security_contact, policy: settings.security_policy },
+        securityTxt: { contact: settings.security_contact, policyUrl: settings.security_policy },
         maintenance: {
           enabled: settings.maintenance_mode.enabled,
           message: settings.maintenance_mode.message,

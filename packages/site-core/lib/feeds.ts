@@ -122,13 +122,13 @@ export function sitemapXml(page: PublicSitemapPage): string {
  */
 export function securityTxt(
   settings: {
-    readonly securityTxt: { readonly contact: string; readonly policy: string }
+    readonly securityTxt: { readonly contact: string; readonly policyUrl: string }
     readonly origin: string
     readonly locale?: string
   },
   now: Date,
 ): string | undefined {
-  const { contact, policy } = settings.securityTxt
+  const { contact, policyUrl: policy } = settings.securityTxt
   if (contact === '') return undefined
   const expires = new Date(now.getTime() + 182 * 24 * 60 * 60 * 1000)
   expires.setUTCHours(0, 0, 0, 0)

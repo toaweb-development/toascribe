@@ -255,7 +255,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('the settings screens (needs TE
       const settings = (await (await env.client().get('/api/v1/public/settings')).json()) as { securityTxt: unknown }
       expect(settings.securityTxt).toEqual({
         contact: 'mailto:sikkerhet@example.test',
-        policy: 'https://example.test/sikkerhet',
+        policyUrl: 'https://example.test/sikkerhet',
       })
     })
   })

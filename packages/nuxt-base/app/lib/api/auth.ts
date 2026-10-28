@@ -80,8 +80,10 @@ export function createAuthApi(api: ApiCall) {
     setPassword: async (token: string, password: string): Promise<void> => {
       await api(`${V1}/auth/password/set`, { method: 'POST', body: { token, password } })
     },
-    /** Always accepted (202), whether or not the name or the address was free. */
-    /** `formToken` from `options()`, and the hidden field as the form had it (K-006). */
+    /**
+     * Always accepted (202), whether or not the name or the address was free. `formToken` from `options()`, and the hidden field as
+     * the form had it (K-006).
+     */
     register: async (username: string, email: string, formToken: string, website = '') =>
       AcceptedResponse.parse(
         await api(`${V1}/auth/register`, {

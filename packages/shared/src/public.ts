@@ -209,7 +209,7 @@ export const PublicSettings = z.object({
   /** Maintenance mode (M1.7, K-288): visitors get 503 and the maintenance page; an account with manage_options sees the site. */
   maintenance: z.object({ enabled: z.boolean(), message: z.string(), retryAfter: z.int() }),
   /** `/.well-known/security.txt` (M1.8, K-319): empty contact means none. */
-  securityTxt: z.object({ contact: z.string(), policy: z.string() }),
+  securityTxt: z.object({ contact: z.string(), policyUrl: z.string() }),
   cacheTags: CacheTags,
 })
 export type PublicSettings = z.infer<typeof PublicSettings>

@@ -72,9 +72,10 @@ describe('the own-account API layer', () => {
     locale: null,
     roles: ['editor'],
     capabilities: ['read'],
-    profile: { firstName: '', lastName: '', nickname: '', displayNameChoice: 'username', website: '', bio: '' },
+    profile: { firstName: '', lastName: '', nickname: '', displayNameChoice: 'username', website: '', bio: '', avatarId: null },
     preferences: PREFERENCES,
     pendingEmail: null,
+    avatarUrl: null,
   }
 
   it('reads the account with its preferences', async () => {

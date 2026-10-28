@@ -20,11 +20,16 @@ describe('the auth API layer', () => {
     const auth = createAuthApi(api)
 
     await auth.lostPassword('alice')
-    await auth.register('alice', 'alice@example.test')
+    await auth.register('alice', 'alice@example.test', 'form-token')
+    await auth.register('bot', 'bot@example.test', 'form-token', 'https://spam.example')
     expect(api).toHaveBeenNthCalledWith(1, '/v1/auth/password/lost', { method: 'POST', body: { login: 'alice' } })
     expect(api).toHaveBeenNthCalledWith(2, '/v1/auth/register', {
       method: 'POST',
-      body: { username: 'alice', email: 'alice@example.test' },
+      body: { username: 'alice', email: 'alice@example.test', formToken: 'form-token' },
+    })
+    expect(api).toHaveBeenNthCalledWith(3, '/v1/auth/register', {
+      method: 'POST',
+      body: { username: 'bot', email: 'bot@example.test', formToken: 'form-token', website: 'https://spam.example' },
     })
   })
 
