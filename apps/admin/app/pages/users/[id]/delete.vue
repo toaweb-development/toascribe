@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { USERS_SEARCH_MAX_LENGTH } from '@toascribe/shared'
 import type { UserListItem } from '@toascribe/shared'
 
 // «Slett bruker» (K-021; WordPress' users.php?action=delete): who is deleted, and when the account has content, what happens to
@@ -32,7 +33,7 @@ let pause: ReturnType<typeof setTimeout> | undefined
 watch(heirSearch, (text) => {
   clearTimeout(pause)
   pause = setTimeout(() => {
-    heirQuery.value = text.trim()
+    heirQuery.value = text.trim().slice(0, USERS_SEARCH_MAX_LENGTH)
   }, 300)
 })
 onBeforeUnmount(() => clearTimeout(pause))
@@ -50,19 +51,32 @@ const { data: others } = await useAsyncData(
     ).users.filter((other) => other.id !== id.value && other.status === 'active'),
   { enabled: mayDelete, watch: [heirQuery] },
 )
+// The chosen owner stays in the list after the search is cleared, so the button keeps their name, never an id.
+const chosenHeir = ref<{ value: string; label: string }>()
 const heirItems = computed(() => {
   const items = (others.value ?? []).map((other) => ({
     value: other.id,
     label: `${other.username} (${other.displayName})`,
   }))
   const self = me.value
-  return self === undefined || self.id === id.value || items.some((item) => item.value === self.id)
-    ? items
-    : [{ value: self.id, label: `${self.username} (${self.displayName})` }, ...items]
+  const extra: { value: string; label: string }[] = []
+  if (self !== undefined && self.id !== id.value) {
+    extra.push({ value: self.id, label: `${self.username} (${self.displayName})` })
+  }
+  if (chosenHeir.value !== undefined) extra.push(chosenHeir.value)
+  const missing = extra.filter(
+    (item, index) =>
+      !items.some((other) => other.value === item.value) && extra.findIndex((e) => e.value === item.value) === index,
+  )
+  return [...missing, ...items]
 })
 
 const choice = ref<'delete' | 'reassign'>('reassign')
 const heir = ref<string | undefined>(me.value?.id)
+watch(heir, (value) => {
+  const item = heirItems.value.find((candidate) => candidate.value === value)
+  if (item !== undefined) chosenHeir.value = item
+})
 const saving = ref(false)
 const failure = ref<string>()
 

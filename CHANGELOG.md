@@ -17,11 +17,11 @@ backups and restore, updates and site health, and an admin in bokmål or English
   eight database migrations (`0007` to `0014`); `migrate` makes a backup of its own first when the site has content.
 - **New in `.env` (all optional):** `TOASCRIBE_UPLOAD_MAX_SIZE_MB` (64), `TOASCRIBE_CONFIG_DIR` (a folder with `toascribe.toml`
   for daily, encrypted backups), `TOASCRIBE_UPDATE_CHECK=off`, `TOASCRIBE_DEBUG=1`, `OTEL_EXPORTER_OTLP_ENDPOINT`,
-  `TOASCRIBE_CACHE_VALKEY_URL` and `SITE_URL_INTERNAL`. New volumes: `uploads`, `backups` and `config`.
+  and `TOASCRIBE_CACHE_VALKEY_URL`. New volumes: `uploads`, `backups` and `config`.
 - **After you update:** run `toa secrets export` once and keep the file with the recovery key (docs/RESTORE.md), and look at
   «Kontrollpanel → Nettstedshelse» for anything that should be fixed.
-- **For API clients:** `POST /api/v1/auth/register` needs the `formToken` from `GET /api/v1/auth/options`, fetched from the same
-  address. Scripts use application passwords over HTTPS; they never write raw HTML.
+- **For API clients:** `POST /api/v1/auth/register` needs the `formToken` from `GET /api/v1/auth/options`, fetched from the same IP
+  address and sent between 2 seconds and 1 hour after it was fetched. Scripts use application passwords over HTTPS; they never write raw HTML.
 - The user documentation is in `docs/user/` (bokmål), and «Hjelp» in the admin opens the page for each screen.
 
 The details, milestone by milestone:

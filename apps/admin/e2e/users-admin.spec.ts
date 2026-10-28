@@ -61,6 +61,8 @@ test('Applikasjonspassord: made, shown once, refused over plain HTTP, revoked', 
 
 test('Slett bruker: the content goes to another account', async ({ page }) => {
   const author = await createUser('author', 'avtroppende')
+  // Last in the alphabet, so outside the first page of accounts the field shows before a search.
+  const heir = await createUser('editor', 'zzzarving')
   const title = `Arv ${uniqueName('innlegg')}`
   await compose(['exec', '-T', 'api', 'toa', 'post', 'create', '--title', title, '--user', author.username])
   const [id] = await queryRows(`select id from account where username = '${author.username}'`)
@@ -72,13 +74,16 @@ test('Slett bruker: the content goes to another account', async ({ page }) => {
   // The new owner is searched for in the api (a site may have thousands of users); the signed-in administrator is the default.
   await expect(page.getByRole('button', { name: 'Ny eier' })).toContainText(admin.username)
   await page.getByRole('button', { name: 'Ny eier' }).click()
-  await page.keyboard.type(admin.username)
-  await page.getByRole('option', { name: new RegExp(`^${admin.username} `) }).click()
+  await page.keyboard.type(heir.username)
+  await page.getByRole('option', { name: new RegExp(`^${heir.username} `) }).click()
   await expect(page.getByRole('listbox')).toHaveCount(0)
+  // The search is cleared when the menu closes; the field still names the chosen account, never its id.
+  await page.waitForTimeout(800)
+  await expect(page.getByRole('button', { name: 'Ny eier' })).toContainText(heir.username)
   await page.getByRole('button', { name: 'Bekreft sletting' }).click()
   await expect(page.getByText(`Brukeren ${author.username} er slettet.`)).toBeVisible()
   const owners = await queryRows(
     `select a.username from content c join content_author ca on ca.content_id = c.id join account a on a.id = ca.account_id where c.title = '${title}'`,
   )
-  expect(owners).toEqual([admin.username])
+  expect(owners).toEqual([heir.username])
 })

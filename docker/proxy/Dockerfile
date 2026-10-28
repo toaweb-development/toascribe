@@ -3,7 +3,7 @@
 # Build context: the repo root.   docker build -f docker/proxy/Dockerfile .
 
 # Caddy 2.11.7, rebuilt with a current Go toolchain and golang.org/x/net 0.60.0. The official 2.11.7 image is built with
-# Go 1.26.8 and x/net 0.59.0, and the image scan (Trivy, CRITICAL and HIGH with a known fix) fails on four findings
+# Go 1.26.8 and x/net 0.59.0, and the image scan (Trivy, CRITICAL and HIGH with a known fix) fails on the findings
 # in that binary (CVE-2026-78667, -78669, -97031); go-jose v4.1.5 in it fails on CVE-2026-116587 (fixed in 4.1.6). Same Caddy
 # source, no extra modules. Remove the replace flags and then this stage once the official image is rebuilt with fixed versions.
 FROM caddy:2.11.7-builder-alpine@sha256:ef9b65adf9a224770c6d5f6d1ae1bf99bc3caaa78d8c4bae3ea949ee6984f301 AS build
