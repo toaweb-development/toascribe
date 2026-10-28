@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { ADMIN_STYLE_ATTRIBUTES } from './csp-style-attributes.ts'
+
+// The version the image is built from (release.sh writes it into every package.json): «Hjelp» links to the docs at its tag.
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 const sha256 = (text: string) => `'sha256-${createHash('sha256').update(text).digest('base64')}'`
 
@@ -39,7 +43,7 @@ export default defineNuxtConfig({
         'lucide:circle-x',
         'lucide:triangle-alert',
         'lucide:info',
-        // The shell: the menu (the registry's icons), the user menu, the sidebar's buttons and the menu's own arrow.
+        // The shell: the menu (the registry's icons), the user menu, «Hjelp», the sidebar's buttons and the menu's own arrow.
         'lucide:gauge',
         'lucide:image',
         'lucide:settings',
@@ -47,6 +51,7 @@ export default defineNuxtConfig({
         'lucide:users',
         'lucide:user',
         'lucide:log-out',
+        'lucide:circle-help',
         'lucide:chevron-down',
         'lucide:menu',
         'lucide:x',
@@ -95,7 +100,7 @@ export default defineNuxtConfig({
   colorMode: { storage: 'cookie', disableTransition: false },
 
   // This app has the setup wizard; the site sends visitors here until the site is installed (nuxt-base: setup-redirect.global.ts).
-  runtimeConfig: { appName: 'admin', public: { hostsSetupWizard: true } },
+  runtimeConfig: { appName: 'admin', public: { hostsSetupWizard: true, version } },
 
   // The admin's part of the security headers (K-314); the rest is in nuxt-base. Nobody frames the admin, and its pages show
   // only its own images and inline `data:` ones (the QR code of the two-factor set-up). Images from other addresses are brought into

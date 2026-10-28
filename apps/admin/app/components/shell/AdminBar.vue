@@ -1,8 +1,12 @@
 <script setup lang="ts">
 // The bar across the top (WordPress' admin bar, in the admin): the site's name, which leads to the site, and «Hei, {name}» with the
-// account's own pages. «+ Ny» is not here: nothing it would offer works yet.
+// account's own pages, and «Hjelp», the documentation of the screen (M1.8, K-038). «+ Ny» is not here: nothing it would offer works yet.
 const { t } = useI18n()
 const siteName = useSiteName()
+const route = useRoute()
+const config = useRuntimeConfig()
+// «Hjelp» (K-038): the documentation page of the screen, at the running version's tag.
+const help = computed(() => helpUrl(route.path, config.public.version))
 const auth = useAuth()
 
 const name = computed(() =>
@@ -31,17 +35,32 @@ const items = computed(() => [
       <span class="truncate">{{ siteName }}</span>
     </NuxtLink>
 
-    <UDropdownMenu :items="items" :content="{ align: 'end' }" :ui="{ content: 'min-w-48' }">
+    <div class="flex shrink-0 items-center gap-1">
       <UButton
+        :to="help"
+        target="_blank"
+        rel="noopener noreferrer"
         color="neutral"
         variant="ghost"
         size="lg"
-        class="min-h-11 max-w-56 min-w-0"
-        trailing-icon="i-lucide-chevron-down"
-        :aria-label="$t('shell.bar.howdy', { name }) + '. ' + $t('shell.bar.userMenu')"
+        class="min-h-11"
+        icon="i-lucide-circle-help"
+        :aria-label="$t('shell.bar.helpLabel')"
       >
-        <span class="truncate">{{ $t('shell.bar.howdy', { name }) }}</span>
+        <span class="hidden sm:inline">{{ $t('shell.bar.help') }}</span>
       </UButton>
-    </UDropdownMenu>
+      <UDropdownMenu :items="items" :content="{ align: 'end' }" :ui="{ content: 'min-w-48' }">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="lg"
+          class="min-h-11 max-w-56 min-w-0"
+          trailing-icon="i-lucide-chevron-down"
+          :aria-label="$t('shell.bar.howdy', { name }) + '. ' + $t('shell.bar.userMenu')"
+        >
+          <span class="truncate">{{ $t('shell.bar.howdy', { name }) }}</span>
+        </UButton>
+      </UDropdownMenu>
+    </div>
   </header>
 </template>

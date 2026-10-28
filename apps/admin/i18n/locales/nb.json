@@ -362,7 +362,9 @@
       "visit": "Vis nettsted",
       "howdy": "Hei, {name}",
       "userMenu": "Brukermenyen din",
-      "profile": "Rediger profil"
+      "profile": "Rediger profil",
+      "help": "Hjelp",
+      "helpLabel": "Hjelp til denne siden (åpnes i en ny fane)"
     },
     "menu": {
       "label": "Hovedmeny",
@@ -477,13 +479,13 @@
       "title": "Tittel",
       "content": "Innhold",
       "placeholder": "Hva tenker du på?",
-      "save": "Lagre utkast",
+      "save": "Lagre kladd",
       "empty": "Skriv en tittel eller litt innhold først.",
-      "failed": "Utkastet ble ikke lagret.",
-      "saved": "Utkastet er lagret.",
-      "edit": "Rediger utkastet",
-      "yourDrafts": "Dine siste utkast",
-      "allDrafts": "Se alle utkast"
+      "failed": "Kladden ble ikke lagret.",
+      "saved": "Kladden er lagret.",
+      "edit": "Rediger kladden",
+      "yourDrafts": "Dine siste kladder",
+      "allDrafts": "Se alle kladder"
     },
     "health": {
       "heading": "Nettstedshelse",
