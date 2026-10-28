@@ -121,6 +121,17 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa backup against a database 
 
     const dry = await cli(['backup', 'restore', name, '--dry-run'])
     expect(dry.code, dry.stderr).toBe(0)
+    // Its origin is told; made here, so no warning (M1.8, Tor's decision).
+    expect(dry.stdout).toMatch(/Origin: made .* by toascribe \d+\.\d+\.\d+ on the host "/)
+    expect(dry.stdout).not.toContain('WARNING')
+    const saved = await query<{ value: unknown }>(database.url, `select value from setting where key = 'backup_log'`)
+    await query(database.url, `update setting set value = '[]'::jsonb where key = 'backup_log'`)
+    expect((await cli(['backup', 'restore', name, '--dry-run'])).stdout).toContain(
+      'WARNING: this backup is not in the list',
+    )
+    await query(database.url, `update setting set value = $1::jsonb where key = 'backup_log'`, [
+      JSON.stringify(saved[0]?.value),
+    ])
     expect(await blogname()).toBe('Endret')
     expect((await cli(['backup', 'restore', name])).code).toBe(2) // no terminal, no --yes
     expect((await cli(['backup', 'restore', name], {}, { answer: 'nei' })).code).toBe(1)

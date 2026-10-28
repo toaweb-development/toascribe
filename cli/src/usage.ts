@@ -119,7 +119,13 @@ export const SECRETS_USAGE = `  secrets list [--format table|json]
                          A new encryption key and the steps to put it in .env (the current key is not printed).
   secrets rotate [--yes]
                          Seal every stored secret again with the current key, after the steps above. Asks first (type
-                         «roter»), with a warning: keep the older keys until it has run. Needs TOASCRIBE_ENCRYPTION_KEY.`
+                         «roter»), with a warning: keep the older keys until it has run. Needs TOASCRIBE_ENCRYPTION_KEY.
+  secrets export [--out <file>] --recovery-key-stdin
+                         The keys sealed with the recovery key from the setup wizard, into a 0600 file (in the backups volume by
+                         default). Refused without this install's recovery key; no value is ever printed.
+  secrets import <file> --recovery-key-stdin >> docker/.env
+                         On a new server: opens the file with the recovery key and writes the keys as .env lines to standard
+                         output, which must not be a terminal. A wrong key or a changed file is refused. See docs/RESTORE.md.`
 
 export const SHELL_USAGE = `  shell
                          A Node REPL with db, schema, sql, the api's services and actAs(login), in the container only and at

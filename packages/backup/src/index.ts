@@ -10,6 +10,6 @@ export { APP_ROLE, checkBackup, restoreBackup, startsRestricted } from './restor
 export { sweepWorkFolders } from './sweep.ts'
 export type { CheckedBackup, RestoreOptions, RestoredBackup } from './restore.ts'
 export { ToolError } from './tools.ts'
-export { recordBackupStatus, statusReason } from './status.ts'
+export { recordBackupStatus, statusReason, readBackupLog, recordBackupMade } from './status.ts'
 export { takeBackup } from './take.ts'
 export type { TakeOptions } from './take.ts'

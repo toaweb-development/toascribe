@@ -14,6 +14,7 @@ import { z } from 'zod'
 import type { EnvSource } from '../config.ts'
 import { currentKeyVersion, highestKeyVersion, keyRingOf, loadKeyedDatabaseConfig, namesSet } from '../config.ts'
 import { createTerminalPrompter } from '../prompt.ts'
+import { secretsExport, secretsImport } from './secrets-file.ts'
 import {
   UsageError,
   invalidInput,
@@ -302,7 +303,9 @@ export async function secrets(args: readonly string[], options: CommandOptions =
       if (flags['new-key'] === true) return newKeySteps(currentKeyVersion(options.env), highestKeyVersion(options.env))
       return await rotate(options, flags['yes'] === true)
     }
-    throw new UsageError('Say list or rotate.')
+    if (action === 'export') return await secretsExport(rest, options)
+    if (action === 'import') return await secretsImport(rest, options)
+    throw new UsageError('Say list, rotate, export or import.')
   } catch (err) {
     if (err instanceof UsageError) return usageResult(err.message, SECRETS_USAGE)
     if (err instanceof z.ZodError) return usageResult('A flag has a value it cannot have (see below).', SECRETS_USAGE)

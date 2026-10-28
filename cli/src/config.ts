@@ -202,6 +202,16 @@ export function loadOwnerBackupConfig(env: EnvSource = process.env): OwnerBackup
   return parsed.data
 }
 
+const SecretsExportEnv = AppDatabaseEnv.extend({ BACKUPS_DIR: BackupPaths.BACKUPS_DIR })
+export type SecretsExportConfig = z.infer<typeof SecretsExportEnv>
+
+/** `toa secrets export` (M1.8): the app role (to check the recovery key) and where the file goes by default. */
+export function loadSecretsExportConfig(env: EnvSource = process.env): SecretsExportConfig {
+  const parsed = SecretsExportEnv.safeParse(env)
+  if (!parsed.success) throw new ConfigError(parsed.error.issues)
+  return parsed.data
+}
+
 /** The keys for --include-secrets, as set; the empty ones left out. */
 export function loadSecretValues(env: EnvSource = process.env): Record<string, string> {
   const parsed = z.object(SecretValues).parse(env)

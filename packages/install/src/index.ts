@@ -22,3 +22,4 @@ export type {
   InstallServiceDeps,
   ProxyReport,
 } from './service.ts'
+export { SealedSecrets, SecretsFile, SecretsFileError, openSecrets, sealSecrets } from './secrets-file.ts'

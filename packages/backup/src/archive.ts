@@ -6,6 +6,7 @@
 // in it (isArchivePath: no absolute path, no `..`, no link of any kind), once, with its size and sha256. A reader that extracts writes
 // only into a fresh folder of its own (in the backups volume), by a path it joins and checks itself, and removes it on any failure.
 import { createHash, randomBytes } from 'node:crypto'
+import { hostname } from 'node:os'
 import { createReadStream, createWriteStream } from 'node:fs'
 import { chmod, lstat, mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, resolve, sep } from 'node:path'
@@ -140,6 +141,7 @@ export async function createBackup(options: CreateOptions): Promise<CreatedBacku
       migration: { tag: options.migration.tag, when: options.migration.when },
       createdAt: options.now.toISOString(),
       secrets: options.secrets !== undefined,
+      origin: { host: hostname() },
       files: await Promise.all(
         parts.map(async (part) => ({
           path: part.name,

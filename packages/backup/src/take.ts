@@ -6,7 +6,7 @@ import { createBackup } from './archive.ts'
 import type { CreatedBackup } from './archive.ts'
 import { readBackupConfig } from './config.ts'
 import { readDatabaseMigration } from './files.ts'
-import { recordBackupStatus, statusReason } from './status.ts'
+import { recordBackupMade, recordBackupStatus, statusReason } from './status.ts'
 
 export interface TakeOptions {
   readonly databaseUrl: string
@@ -55,6 +55,10 @@ export async function takeBackup(options: TakeOptions): Promise<CreatedBackup> {
       error: null,
       scheduled: settings.schedule,
     })
+    await recordBackupMade(options.databaseUrl, {
+      file: made.file.split('/').pop() ?? made.file,
+      createdAt: made.manifest.createdAt,
+    }).catch(() => undefined)
     return made
   } catch (error) {
     await record({

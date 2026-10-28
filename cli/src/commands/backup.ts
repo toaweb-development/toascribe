@@ -17,6 +17,7 @@ import {
   readBackupConfig,
   restoreBackup,
   takeBackup,
+  readBackupLog,
 } from '@toascribe/backup'
 import {
   createDb,
@@ -298,10 +299,23 @@ async function backupRestore(args: readonly string[], options: CommandOptions): 
     const checked = await checkBackup(path, restoreOptions)
     const { manifest } = checked
     const summary = `toascribe ${manifest.toascribe}, migration ${manifest.migration.tag}, ${String(manifest.files.length)} files, made ${manifest.createdAt}`
+    // Where it comes from (M1.8, Tor's decision): the manifest's origin, and a warning when this install did not make it. The sha256s
+    // prove the file is whole, not who made it (AGENTS.md «Known deviations»).
+    const madeHere = await madeByThisInstall(
+      config.MIGRATION_DATABASE_URL,
+      path.split('/').pop() ?? '',
+      manifest.createdAt,
+    )
+    const origin =
+      `Origin: made ${manifest.createdAt} by toascribe ${manifest.toascribe}` +
+      `${manifest.origin === undefined ? ' (no host name: made before 0.7)' : ` on the host ${JSON.stringify(manifest.origin.host)}`}.\n` +
+      (madeHere
+        ? ''
+        : 'WARNING: this backup is not in the list of backups made by this install. Restore it only if you know where it comes from.\n')
     if (flags['dry-run'] === true) {
       return {
         code: 0,
-        stdout: `The backup checks out and can be restored: ${summary}. Nothing was changed.\n`,
+        stdout: `${origin}The backup checks out and can be restored: ${summary}. Nothing was changed.\n`,
         stderr: '',
       }
     }
@@ -310,6 +324,7 @@ async function backupRestore(args: readonly string[], options: CommandOptions): 
       if (!prompt.interactive) {
         return invalidInput('A restore replaces the whole site. Run it in a terminal to confirm, or add --yes.')
       }
+      prompt.say(origin)
       const answer = await prompt.ask(
         `This replaces the database and the uploads with the backup (${summary}). Type «gjenopprett» to go on: `,
       )
@@ -325,7 +340,7 @@ async function backupRestore(args: readonly string[], options: CommandOptions): 
       restored.secretsFile === undefined
         ? ''
         : `The backup held the keys: they are in ${restored.secretsFile} (mode 0600). Put them in .env, restart, and delete the file.\n`
-    return { code: 0, stdout: `Restored: ${summary}.\n${secrets}`, stderr: '' }
+    return { code: 0, stdout: `${flags['yes'] === true ? origin : ''}Restored: ${summary}.\n${secrets}`, stderr: '' }
   } catch (err) {
     return failed(err, logger, 'backup restore')
   }
@@ -428,5 +443,18 @@ export async function dbMigrate(
     return refusal(`${lines.join('\n')}${lines.length > 0 ? '\n' : ''}${command} failed; see the log above`)
   } finally {
     await setMode(false, wasOn)
+  }
+}
+
+/** Whether the backup is in `backup_log` of the database as it is now (false when it cannot be read: then the warning shows). */
+async function madeByThisInstall(ownerUrl: string, file: string, createdAt: string): Promise<boolean> {
+  const { db, pool } = createDb({ connectionString: ownerUrl, max: 1, applicationName: 'toascribe-cli' })
+  try {
+    const log = await readBackupLog(db)
+    return log.some((made) => made.file === file && made.createdAt === createdAt)
+  } catch {
+    return false
+  } finally {
+    await pool.end()
   }
 }

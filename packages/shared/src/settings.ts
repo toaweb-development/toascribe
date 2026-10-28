@@ -179,6 +179,11 @@ export const CoreSettings = z.object({
   /** The last backup made (M1.7): the CLI and the worker write it; Nettstedshelse shows it. */
   backup_status: LastBackupStatus.nullable(),
   /**
+   * The backups this install made (M1.8): the newest 200, by file name and time. A restore warns about a backup that is not in it
+   * (made by another install, or not by toascribe at all: a backup's sha256s prove it is whole, not who made it).
+   */
+  backup_log: z.array(z.object({ file: z.string().max(200), createdAt: z.iso.datetime() })).max(200),
+  /**
    * Look for a new release once a day (M1.7, K-290): a plain GET of the public image tags, nothing about the site sent. Also off when
    * the server sets TOASCRIBE_UPDATE_CHECK=off.
    */
@@ -366,6 +371,7 @@ export const CORE_SETTINGS: CoreSettings = {
 
   maintenance_mode: { enabled: false, message: '', retryAfter: 600, since: null },
   backup_status: null,
+  backup_log: [],
   update_check: true, // Tor (M1.7): on, and it can be turned off
   update_status: null,
 

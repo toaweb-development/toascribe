@@ -15,6 +15,8 @@ export const Manifest = z.strictObject({
   createdAt: z.iso.datetime(),
   /** True when `secrets.json` (the encryption and signing keys) is in it: then the whole archive is encrypted with age. */
   secrets: z.boolean(),
+  /** Where it was made (M1.8): the machine's host name (in a container, the container's). A backup from before M1.8 has none. */
+  origin: z.strictObject({ host: z.string().max(255) }).optional(),
   files: z
     .array(
       z.strictObject({ path: ArchivePath, size: z.int().nonnegative(), sha256: z.string().regex(/^[0-9a-f]{64}$/) }),
