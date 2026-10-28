@@ -23,6 +23,9 @@ const confirm = useConfirmDialog()
 const account = computed(() => (auth.session.value.status === 'authenticated' ? auth.session.value.account : undefined))
 const mayList = computed(() => account.value?.capabilities.includes('list_users') === true)
 const mayPromote = computed(() => account.value?.capabilities.includes('promote_users') === true)
+const mayCreate = computed(() => account.value?.capabilities.includes('create_users') === true)
+const mayDelete = computed(() => account.value?.capabilities.includes('delete_users') === true)
+const mayEdit = computed(() => account.value?.capabilities.includes('edit_users') === true)
 
 // The menu hides this page from an account that may not list users; a typed address still lands here, and it says so and why.
 if (import.meta.server && !mayList.value) {
@@ -142,6 +145,41 @@ async function applyRole() {
   }
 }
 
+// After «Legg til ny bruker» and «Slett»: the page those screens came back to says what was done (the name is in the address).
+const done = computed(() => {
+  const created = route.query['created']
+  const deleted = route.query['deleted']
+  if (typeof created === 'string') {
+    return route.query['invited'] === '1'
+      ? t('users.new.doneInvited', { user: created })
+      : t('users.new.done', { user: created })
+  }
+  return typeof deleted === 'string' ? t('users.delete.done', { user: deleted }) : undefined
+})
+
+// --- «Send tilbakestilling av passord» (K-022) -------------------------------------------------------------------------------------
+const resetting = ref(false)
+const resetReport = ref<string>()
+async function sendResets() {
+  const ids = [...selected.value]
+  if (ids.length === 0 || resetting.value) return
+  resetReport.value = undefined
+  failure.value = undefined
+  resetting.value = true
+  try {
+    const result = await usersApi.sendPasswordResets({ ids })
+    resetReport.value =
+      result.skipped.length === 0
+        ? t('users.reset.sent', result.sent)
+        : t('users.reset.partly', { sent: result.sent, skipped: result.skipped.length })
+    selected.value = []
+  } catch (caught) {
+    failure.value = describeApiError(caught, t)
+  } finally {
+    resetting.value = false
+  }
+}
+
 // --- Focus -----------------------------------------------------------------------------------------------------------------------
 // A link that was clicked can be gone when the new list is drawn (the last page has no «Neste»): focus then goes to the list's heading,
 // so the next Tab starts at the list and a screen reader is told where it is.
@@ -170,7 +208,13 @@ async function retry() {
 <template>
   <UDashboardPanel id="users">
     <template #header>
-      <UDashboardNavbar :title="$t('users.title')" />
+      <UDashboardNavbar :title="$t('users.title')">
+        <template #right>
+          <UButton v-if="mayCreate" to="/users/new" size="lg" class="min-h-11" icon="i-lucide-user-plus">
+            {{ $t('users.new.button') }}
+          </UButton>
+        </template>
+      </UDashboardNavbar>
     </template>
 
     <template #body>
@@ -222,7 +266,32 @@ async function retry() {
               :busy="saving"
               @submit="applyRole"
             />
+            <form v-if="mayEdit" class="flex flex-wrap items-end gap-2" @submit.prevent="sendResets">
+              <UButton
+                type="submit"
+                color="neutral"
+                variant="outline"
+                size="lg"
+                class="min-h-11"
+                :loading="resetting"
+                :aria-disabled="selected.length === 0"
+              >
+                {{ $t('users.reset.submit') }}
+              </UButton>
+            </form>
             <UsersSearch :search="view.search" @submit="search" />
+          </div>
+          <div role="status">
+            <UAlert v-if="done" color="success" variant="subtle" icon="i-lucide-circle-check" :title="done" />
+          </div>
+          <div role="status">
+            <UAlert
+              v-if="resetReport"
+              color="success"
+              variant="subtle"
+              icon="i-lucide-circle-check"
+              :title="resetReport"
+            />
           </div>
 
           <!-- The result of «Endre». A region that is always there, so the text put into it is announced; the error is its own alert. -->
@@ -305,8 +374,9 @@ async function retry() {
                 :view="view"
                 :to="locationFor"
                 :signed-in-id="account?.id"
-                :selectable="bulkAvailable"
+                :selectable="bulkAvailable || mayEdit"
                 :role-name="roleName"
+                :may-delete="mayDelete"
               />
             </div>
 

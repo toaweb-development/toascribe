@@ -37,7 +37,7 @@ describe('the core menu', () => {
         to: '/appearance/customize',
         children: ['appearance.customize', 'appearance.menus', 'appearance.global-sets'],
       },
-      { id: 'users', to: '/users', children: ['users.all', 'users.profile'] },
+      { id: 'users', to: '/users', children: ['users.all', 'users.new', 'users.profile'] },
       { id: 'tools', to: '/tools/site-health', children: ['tools.site-health'] },
       {
         id: 'settings',
@@ -137,6 +137,7 @@ describe('the core menu', () => {
       'pages.all',
       'pages.new',
       'users.all',
+      'users.new',
       'users.profile',
       'appearance.customize',
       'appearance.menus',
@@ -281,6 +282,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('GET /api/v1/admin/menu (needs 
       to: '/users',
       children: [
         { id: 'users.all', labelKey: 'menu.usersAll', to: '/users' },
+        { id: 'users.new', labelKey: 'menu.usersNew', to: '/users/new' },
         { id: 'users.profile', labelKey: 'menu.usersProfile', to: '/profile' },
       ],
     })

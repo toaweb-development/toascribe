@@ -1,4 +1,6 @@
 import {
+  AppPasswordListResponse,
+  CreateAppPasswordResponse,
   AcceptedResponse,
   MeResponse,
   MfaListResponse,
@@ -57,6 +59,13 @@ export function createMeApi(api: ApiCall) {
     },
     /** «Logg ut overalt ellers»: ends all sessions except this one, and says how many. */
     endOtherSessions: async () => RevokeSessionsResponse.parse(await api(`${V1}/me/sessions`, { method: 'DELETE' })),
+    /** Application passwords (K-016): the list, a new one (its password in this answer only), and a revocation. */
+    appPasswords: async () => AppPasswordListResponse.parse(await api(`${V1}/me/app-passwords`)),
+    createAppPassword: async (name: string) =>
+      CreateAppPasswordResponse.parse(await api(`${V1}/me/app-passwords`, { method: 'POST', body: { name } })),
+    revokeAppPassword: async (id: string) => {
+      await api(`${V1}/me/app-passwords/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    },
   }
 }
 

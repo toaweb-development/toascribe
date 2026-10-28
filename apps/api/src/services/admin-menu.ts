@@ -73,6 +73,8 @@ export const CORE_MENU_ITEMS: readonly AdminMenuItemInput[] = [
     to: '/users',
     children: [
       { id: 'users.all', labelKey: 'menu.usersAll', capability: 'list_users', to: '/users' },
+      // WordPress' «Legg til ny» (user-new.php, M1.8).
+      { id: 'users.new', labelKey: 'menu.usersNew', capability: 'create_users', to: '/users/new' },
       { id: 'users.profile', labelKey: 'menu.usersProfile', capability: 'read', to: '/profile' },
     ],
   },

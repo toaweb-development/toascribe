@@ -59,6 +59,7 @@ function saved(next: MeResponse) {
           <ProfilePassword />
           <ProfileTwoFactor />
           <ProfileSessions />
+          <ProfileAppPasswords />
         </section>
       </div>
     </template>

@@ -20,6 +20,8 @@ const props = defineProps<{
   selectable: boolean
   /** The stored name of a role, for a role the admin has no translation for. */
   roleName: (slug: string) => string | undefined
+  /** `delete_users`: a «Slett» link under every account but one's own (WordPress' row action). */
+  mayDelete?: boolean
 }>()
 
 const selected = defineModel<string[]>('selected', { required: true })
@@ -132,6 +134,15 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
                 {{ $t('users.you') }}
               </UBadge>
             </span>
+            <span v-if="mayDelete && user.id !== signedInId" class="block text-sm font-normal">
+              <NuxtLink
+                :to="`/users/${user.id}/delete`"
+                :class="[linkClass, 'inline-flex min-h-11 items-center lg:min-h-8']"
+                :aria-label="$t('users.delete.rowLabel', { user: user.username })"
+              >
+                {{ $t('users.delete.row') }}
+              </NuxtLink>
+            </span>
           </th>
           <td class="px-2 py-2 align-middle text-default wrap-anywhere">{{ user.displayName }}</td>
           <td class="px-2 py-2 align-middle wrap-anywhere">
@@ -209,6 +220,15 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
             </p>
             <p class="text-sm text-default">{{ rolesOf(user) }}</p>
             <p class="text-sm text-toned">{{ $t('users.table.postsCount', user.postCount) }}</p>
+            <p v-if="mayDelete && user.id !== signedInId" class="text-sm">
+              <NuxtLink
+                :to="`/users/${user.id}/delete`"
+                :class="[linkClass, 'inline-flex min-h-11 items-center lg:min-h-8']"
+                :aria-label="$t('users.delete.rowLabel', { user: user.username })"
+              >
+                {{ $t('users.delete.row') }}
+              </NuxtLink>
+            </p>
           </div>
         </li>
       </ul>

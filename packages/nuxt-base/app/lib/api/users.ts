@@ -1,5 +1,18 @@
-import { AssignRoleResponse, UserListResponse } from '@toascribe/shared'
-import type { AssignRoleRequest, UserListQuery } from '@toascribe/shared'
+import {
+  AssignRoleResponse,
+  CreateUserResponse,
+  DeleteUserResponse,
+  SendPasswordResetResponse,
+  UserDetail,
+  UserListResponse,
+} from '@toascribe/shared'
+import type {
+  AssignRoleRequest,
+  CreateUserRequest,
+  DeleteUserRequest,
+  SendPasswordResetRequest,
+  UserListQuery,
+} from '@toascribe/shared'
 
 import type { ApiCall } from './client.ts'
 
@@ -38,6 +51,17 @@ export function createUsersApi(api: ApiCall) {
     /** Replaces the roles of these accounts with that one role. Which were changed, which already had it, which were left alone. */
     assignRole: async (request: AssignRoleRequest) =>
       AssignRoleResponse.parse(await api(`${V1}/users/roles`, { method: 'PUT', body: request })),
+    /** «Legg til ny bruker» (K-020). */
+    create: async (request: CreateUserRequest) =>
+      CreateUserResponse.parse(await api(`${V1}/users`, { method: 'POST', body: request })),
+    /** One account, for the delete screen. */
+    get: async (id: string) => UserDetail.parse(await api(`${V1}/users/${encodeURIComponent(id)}`)),
+    /** «Slett bruker» (K-021): the content to another account, or deleted (`reassignTo: null`). */
+    remove: async (id: string, request: DeleteUserRequest) =>
+      DeleteUserResponse.parse(await api(`${V1}/users/${encodeURIComponent(id)}`, { method: 'DELETE', body: request })),
+    /** «Send tilbakestilling av passord» (K-022). */
+    sendPasswordResets: async (request: SendPasswordResetRequest) =>
+      SendPasswordResetResponse.parse(await api(`${V1}/users/password-reset`, { method: 'POST', body: request })),
   }
 }
 

@@ -405,7 +405,8 @@
     "appearance": "Utseende",
     "appearanceCustomize": "Tilpass",
     "appearanceMenus": "Menyer",
-    "appearanceGlobalSets": "Globale sett"
+    "appearanceGlobalSets": "Globale sett",
+    "usersNew": "Legg til ny"
   },
   "notices": {
     "emailNotVerified": "E-post fra nettstedet er ikke testet. Passordlenker og bekreftelser kommer kanskje ikke fram før en testmelding har gått gjennom. Innstillingene for e-post kommer i en senere versjon.",
@@ -616,6 +617,29 @@
         "title": "Øktene kunne ikke lastes.",
         "text": "Resten av profilen virker som før. Prøv igjen."
       }
+    },
+    "appPasswords": {
+      "title": "Applikasjonspassord",
+      "help": "Applikasjonspassord lar programmer og skript bruke API-et som deg, uten ditt vanlige passord. De virker bare over HTTPS med Basic-autentisering, og aldri for å logge inn her. Tilbakekall et passord når programmet ikke lenger skal ha tilgang.",
+      "name": "Navn på nytt applikasjonspassord",
+      "add": "Legg til nytt applikasjonspassord",
+      "nameTaken": "Du har allerede et applikasjonspassord med dette navnet.",
+      "madeTitle": "Ditt nye passord for {name}",
+      "madeOnce": "Lagre det et trygt sted. Det vises bare denne ene gangen.",
+      "copy": "Kopier",
+      "copied": "Passordet er kopiert.",
+      "copyFailed": "Kunne ikke kopiere. Merk passordet og kopier det selv.",
+      "loadFailed": "Applikasjonspassordene kunne ikke lastes.",
+      "none": "Du har ingen applikasjonspassord.",
+      "listLabel": "Dine applikasjonspassord",
+      "created": "Opprettet {when}",
+      "lastUsed": "Sist brukt {when}",
+      "neverUsed": "Ikke brukt ennå",
+      "revoke": "Tilbakekall",
+      "revokeLabel": "Tilbakekall {name}",
+      "revokeTitle": "Tilbakekalle {name}?",
+      "revokeText": "Programmer som bruker dette passordet, mister tilgangen med en gang.",
+      "revoked": "{name} er tilbakekalt."
     }
   },
   "roles": {
@@ -711,6 +735,53 @@
       "title": "Du har ikke tilgang til brukerne",
       "text": "Rollen din gir ikke rett til å se brukerlisten. Spør en administrator hvis du trenger tilgang.",
       "back": "Til kontrollpanelet"
+    },
+    "new": {
+      "button": "Legg til ny bruker",
+      "title": "Legg til ny bruker",
+      "intro": "Opprett en ny bruker og legg vedkommende til dette nettstedet.",
+      "denied": "Du har ikke tilgang til å opprette brukere. En administrator kan gi deg rettigheten.",
+      "username": "Brukernavn",
+      "usernameHelp": "Kan ikke endres senere. Bokstaver, tall og . _ - @.",
+      "email": "E-post",
+      "firstName": "Fornavn",
+      "lastName": "Etternavn",
+      "website": "Nettsted",
+      "role": "Rolle",
+      "sendInvite": "Send invitasjon på e-post",
+      "sendInviteHelp": "Brukeren får en lenke for å velge sitt eget passord. Lenken gjelder i 24 timer.",
+      "password": "Passord",
+      "passwordHelp": "Gi passordet til brukeren på en trygg måte. Brukeren kan bytte det på profilen sin.",
+      "submit": "Legg til ny bruker",
+      "failed": "Brukeren ble ikke opprettet",
+      "usernameTaken": "Brukernavnet er allerede i bruk. Velg et annet.",
+      "emailTaken": "E-postadressen er allerede i bruk av en annen bruker.",
+      "weakPassword": "Passordet kan ikke være det samme som brukernavnet eller e-postadressen.",
+      "done": "Brukeren {user} er opprettet.",
+      "doneInvited": "Brukeren {user} er opprettet og har fått en invitasjon på e-post."
+    },
+    "delete": {
+      "row": "Slett",
+      "rowLabel": "Slett {user}",
+      "title": "Slett bruker",
+      "denied": "Du har ikke tilgang til å slette brukere. En administrator kan gi deg rettigheten.",
+      "notFound": "Fant ikke brukeren. Den kan allerede være slettet.",
+      "intro": "Du har valgt denne brukeren for sletting:",
+      "contentQuestion": "Hva skal gjøres med innhold eid av denne brukeren? Brukeren har ett innhold. | Hva skal gjøres med innhold eid av denne brukeren? Brukeren har {n} innhold.",
+      "deleteAll": "Slett alt innhold",
+      "reassign": "Tilordne alt innhold til:",
+      "heir": "Ny eier",
+      "chooseHeir": "Velg hvem innholdet skal tilordnes.",
+      "submit": "Bekreft sletting",
+      "failed": "Brukeren ble ikke slettet",
+      "lastAdministrator": "Dette er den siste administratoren og kan ikke slettes.",
+      "self": "Du kan ikke slette din egen bruker.",
+      "done": "Brukeren {user} er slettet."
+    },
+    "reset": {
+      "submit": "Send tilbakestilling av passord",
+      "sent": "Én lenke for tilbakestilling av passord er sendt. | {n} lenker for tilbakestilling av passord er sendt.",
+      "partly": "{sent} lenker er sendt. {skipped} brukere ble hoppet over fordi de er deaktivert eller ikke finnes."
     }
   },
   "editorPrototype": {
