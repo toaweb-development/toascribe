@@ -75,7 +75,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('featured image and SEO (needs 
     ).json()) as {
       id: string
     }
-    type Listed = {
+    interface Listed {
       items: { id: string; featuredMedia?: { id: string } | null; authors: unknown[]; tags: unknown[] }[]
     }
     const plain = (await (await author.get('/api/v1/content?type=post&status=all')).json()) as Listed
