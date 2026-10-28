@@ -74,14 +74,13 @@ describe('MfaConfirmRequest', () => {
 })
 
 describe('AuthOptionsResponse', () => {
-  it('has the site name, which may be empty, and the privacy page or null (K-199)', () => {
+  it('has the site name, which may be empty, the privacy page or null (K-199) and the form token (K-006)', () => {
+    const base = { registrationOpen: false, siteName: '', formToken: '1700000000000.abc' }
+    expect(AuthOptionsResponse.safeParse({ ...base, privacyPolicyPath: null }).success).toBe(true)
+    expect(AuthOptionsResponse.safeParse({ ...base, privacyPolicyPath: '/personvern/' }).success).toBe(true)
     expect(
       AuthOptionsResponse.safeParse({ registrationOpen: false, siteName: '', privacyPolicyPath: null }).success,
-    ).toBe(true)
-    expect(
-      AuthOptionsResponse.safeParse({ registrationOpen: false, siteName: '', privacyPolicyPath: '/personvern/' })
-        .success,
-    ).toBe(true)
+    ).toBe(false)
     expect(AuthOptionsResponse.safeParse({ registrationOpen: false, siteName: '' }).success).toBe(false)
     expect(AuthOptionsResponse.safeParse({ registrationOpen: false }).success).toBe(false)
   })
@@ -104,12 +103,13 @@ describe('the other requests', () => {
     expect(ChoosePasswordRequest.safeParse({ token: TOKEN, password: 'long enough', login: 'x' }).success).toBe(false)
   })
 
-  it('RegisterRequest takes a username and an address and nothing else', () => {
-    expect(RegisterRequest.safeParse({ username: 'kari', email: 'kari@example.no' }).success).toBe(true)
-    expect(RegisterRequest.safeParse({ username: 'kari', email: 'kari' }).success).toBe(false)
-    expect(
-      RegisterRequest.safeParse({ username: 'kari', email: 'kari@example.no', role: 'administrator' }).success,
-    ).toBe(false)
+  it('RegisterRequest takes a username, an address, the form token and the hidden field, and nothing else', () => {
+    const form = { username: 'kari', email: 'kari@example.no', formToken: '1700000000000.abc' }
+    expect(RegisterRequest.safeParse(form).success).toBe(true)
+    expect(RegisterRequest.safeParse({ ...form, website: '' }).success).toBe(true)
+    expect(RegisterRequest.safeParse({ username: 'kari', email: 'kari@example.no' }).success).toBe(false)
+    expect(RegisterRequest.safeParse({ ...form, email: 'kari' }).success).toBe(false)
+    expect(RegisterRequest.safeParse({ ...form, role: 'administrator' }).success).toBe(false)
   })
 
   it('EmailChangeRequest and EmailChangeConfirmRequest', () => {
