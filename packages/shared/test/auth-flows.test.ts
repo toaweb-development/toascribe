@@ -75,7 +75,7 @@ describe('MfaConfirmRequest', () => {
 
 describe('AuthOptionsResponse', () => {
   it('has the site name, which may be empty, the privacy page or null (K-199) and the form token (K-006)', () => {
-    const base = { registrationOpen: false, siteName: '', formToken: '1700000000000.abc' }
+    const base = { registrationOpen: false, siteName: '', formToken: '1700000000000.abc', locale: 'nb' }
     expect(AuthOptionsResponse.safeParse({ ...base, privacyPolicyPath: null }).success).toBe(true)
     expect(AuthOptionsResponse.safeParse({ ...base, privacyPolicyPath: '/personvern/' }).success).toBe(true)
     expect(

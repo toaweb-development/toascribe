@@ -129,8 +129,11 @@ export function validateProfile(state: ProfileFormState, t: KeyTranslator): Fiel
   return errors
 }
 
-/** The body of `PATCH /me`: every profile field, trimmed (the biography keeps its line breaks), the display-name choice that works. */
-export function profileChanges(username: string, state: ProfileFormState): Required<Omit<UpdateMeRequest, 'avatarId'>> {
+/** The body of `PATCH /me` (the picture and the language are saved on their own): every profile field, trimmed (the biography keeps its line breaks), the display-name choice that works. */
+export function profileChanges(
+  username: string,
+  state: ProfileFormState,
+): Required<Omit<UpdateMeRequest, 'avatarId' | 'locale'>> {
   return {
     firstName: state.firstName.trim(),
     lastName: state.lastName.trim(),
