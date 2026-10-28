@@ -19,7 +19,8 @@ export interface MatrixCase {
   readonly path: string
   /** The body, or a function of the caller. */
   readonly json?: unknown
-  readonly body?: (actor: Actor, account: CreatedAccount | undefined) => unknown
+  /** A body made per caller; it may ask the api first (the registration form fetches its token). */
+  readonly body?: (actor: Actor, account: CreatedAccount | undefined, client: TestClient) => unknown
   /**
    * The route itself answers 401 or 403 for a reason of its own (login: wrong credentials), so the check that a public
    * route never refuses for lack of a session does not apply.
