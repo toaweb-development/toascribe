@@ -20,6 +20,9 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- The admin in English (K-330): «Profil → Personlige innstillinger → Språk» chooses bokmål, English or the site's language, and the
+  admin follows the profile first, then the site's language. Every admin text exists in both languages (a test fails when one is
+  missing). The public site stays in bokmål.
 - The dashboard (K-033): «Aktivitet» lists the posts that will be published soon and the latest published ones; «Hurtigutkast»
   saves a title and some text as a draft and lists your three newest drafts; «Nettstedshelse» sums up the checks (background
   jobs, database migrations, the last backup, a newer version, tested e-mail, the cache, debug mode, search engines) as good,
