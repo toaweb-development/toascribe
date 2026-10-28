@@ -31,13 +31,21 @@ async function freePort(): Promise<number> {
   const server = createServer()
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const port = (server.address() as AddressInfo).port
-  await new Promise<void>((resolve) => server.close(() => resolve()))
+  await new Promise<void>((resolve) => {
+    server.close(() => {
+      resolve()
+    })
+  })
   return port
 }
 
 async function run(env: Record<string, string>, port: number): Promise<void> {
   const child: ChildProcess = spawn(process.execPath, ['--conditions=source', ENTRY], { env, stdio: 'ignore' })
-  const exited = new Promise<void>((resolve) => child.once('close', () => resolve()))
+  const exited = new Promise<void>((resolve) => {
+    child.once('close', () => {
+      resolve()
+    })
+  })
   const deadline = Date.now() + 20_000
   for (;;) {
     try {
