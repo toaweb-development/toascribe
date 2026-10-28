@@ -37,7 +37,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('export and import (needs TEST_
     DATABASE_URL: database.url,
     BACKUPS_DIR: dir,
     TOASCRIBE_ENCRYPTION_KEY: KEY,
-    TOASCRIBE_ENCRYPTION_KEY_VERSION: '1',
+    TOASCRIBE_ENCRYPTION_KEY_VERSION: '2',
+    TOASCRIBE_ENCRYPTION_OLD_KEYS: `v1:${KEY}, `,
     TOASCRIBE_SIGNING_KEY: SIGNING,
   })
   const toa = (argv: string[], stdin: string, extra: { stdoutIsTerminal?: boolean } = {}) =>
@@ -91,7 +92,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('export and import (needs TEST_
     expect(lines.sort()).toEqual(
       [
         `TOASCRIBE_ENCRYPTION_KEY=${KEY}`,
-        'TOASCRIBE_ENCRYPTION_KEY_VERSION=1',
+        'TOASCRIBE_ENCRYPTION_KEY_VERSION=2',
+        `TOASCRIBE_ENCRYPTION_OLD_KEYS=v1:${KEY}`,
         `TOASCRIBE_SIGNING_KEY=${SIGNING}`,
       ].sort(),
     )

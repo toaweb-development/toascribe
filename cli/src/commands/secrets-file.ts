@@ -65,8 +65,17 @@ export async function secretsExport(args: readonly string[], options: CommandOpt
       if (!verifyRecoveryKey(key, stored.secretHash))
         return refusal("That is not this install's recovery key. Nothing was written.")
       const values = loadSecretValues(options.env)
+      // The older keys as the config reads them (`v1:abc, v2:def` is valid), written without spaces, as .env takes them.
+      const oldKeys = values['TOASCRIBE_ENCRYPTION_OLD_KEYS']
+      if (oldKeys !== undefined) {
+        values['TOASCRIBE_ENCRYPTION_OLD_KEYS'] = oldKeys
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter((entry) => entry !== '')
+          .join(',')
+      }
       const secrets = Object.fromEntries(
-        EXPORTED.flatMap((name) => (values[name] === undefined ? [] : [[name, values[name]]])),
+        EXPORTED.flatMap((name) => (values[name] === undefined || values[name] === '' ? [] : [[name, values[name]]])),
       )
       if (secrets['TOASCRIBE_ENCRYPTION_KEY'] === undefined)
         return invalidInput('TOASCRIBE_ENCRYPTION_KEY is not set here.')
@@ -76,6 +85,8 @@ export async function secretsExport(args: readonly string[], options: CommandOpt
           ? resolve(flags['out'])
           : join(config.BACKUPS_DIR, `toascribe-secrets-${now.toISOString().replace(/[-:.]/g, '').slice(0, 15)}Z.json`)
       if (!isAbsolute(target)) return invalidInput('--out must be a path.')
+      // Sealed before the file is made: a failure leaves no empty file behind.
+      const sealed = sealSecrets(secrets, key, now)
       await mkdir(dirname(target), { recursive: true, mode: 0o700 })
       // 0600, and never over a file that is there: an export does not replace another.
       const handle = await open(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600).catch(
@@ -86,7 +97,7 @@ export async function secretsExport(args: readonly string[], options: CommandOpt
       )
       if (handle === undefined) return refusal('A file with that name is already there. Nothing was written.')
       try {
-        await handle.writeFile(sealSecrets(secrets, key, now), 'utf8')
+        await handle.writeFile(sealed, 'utf8')
       } finally {
         await handle.close()
       }
