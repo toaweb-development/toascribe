@@ -55,12 +55,18 @@ test('the page has the sections of profile.php, in order, and no axe violations'
   const headings = page.getByRole('heading', { level: 2 })
   await expect(headings).toHaveText([
     'Personlige innstillinger',
+    'Profilbilde',
     'Navn',
     'Kontaktinfo',
     'Om deg',
     'Kontoadministrasjon',
   ])
-  await expect(page.getByRole('heading', { level: 3 })).toHaveText(['Nytt passord', 'Tofaktorautentisering', 'Økter'])
+  await expect(page.getByRole('heading', { level: 3 })).toHaveText([
+    'Nytt passord',
+    'Tofaktorautentisering',
+    'Økter',
+    'Applikasjonspassord',
+  ])
   await expect(page.getByText('Tofaktor er av.')).toBeVisible()
   await expect(page.getByText('Du er bare innlogget herfra.')).toBeVisible()
   await expectNoAxeViolations(page, 'the profile page')
