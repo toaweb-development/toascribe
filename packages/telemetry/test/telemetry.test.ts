@@ -3,7 +3,7 @@
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 
-import { trace } from '@opentelemetry/api'
+import { SpanStatusCode, trace } from '@opentelemetry/api'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { scrubAttribute, startTelemetry } from '../src/index.ts'
@@ -60,7 +60,7 @@ describe('the SDK, with a collector on this machine', () => {
     })
     span.addEvent('exception', { 'exception.message': 'feil for hemmelig@example.test med Bearer hemmelig-3' })
     // The instrumentations put an error's message in the status.
-    span.setStatus({ code: 2, message: 'invalid input for status@example.test' })
+    span.setStatus({ code: SpanStatusCode.ERROR, message: 'invalid input for status@example.test' })
     span.end()
     await telemetry.shutdown()
     const sent = bodies.filter((body) => body.startsWith('/v1/traces')).join('\n')

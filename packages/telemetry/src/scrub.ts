@@ -45,7 +45,7 @@ export function scrubSpan(span: Span): void {
     if (event.attributes !== undefined) scrubRecord(event.attributes)
   }
   for (const link of span.links) {
-    if (link.attributes !== undefined) scrubRecord(link.attributes as Record<string, unknown>)
+    if (link.attributes !== undefined) scrubRecord(link.attributes)
   }
   // The instrumentations put an error's own message in the status (a pg error can quote a value from the input).
   if (span.status.message !== undefined && span.status.message !== '') {
