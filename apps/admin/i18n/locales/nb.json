@@ -742,7 +742,7 @@
       "intro": "Opprett en ny bruker og legg vedkommende til dette nettstedet.",
       "denied": "Du har ikke tilgang til å opprette brukere. En administrator kan gi deg rettigheten.",
       "username": "Brukernavn",
-      "usernameHelp": "Kan ikke endres senere. Bokstaver, tall og . _ - @.",
+      "usernameHelp": "Kan ikke endres senere. Bruk bokstaver, tall og tegnene . _ - {'@'}",
       "email": "E-post",
       "firstName": "Fornavn",
       "lastName": "Etternavn",

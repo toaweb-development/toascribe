@@ -20,6 +20,12 @@ worker only), `file-type` and `image-size`.
 
 ### Added
 
+- Users (K-016, K-020 to K-022): «Brukere → Legg til ny» makes an account with a password set there, or sends an invitation by
+  e-mail so the person chooses their own. «Slett» on a user moves their content (and files) to another account, or deletes what
+  they wrote alone; one's own account and the last administrator cannot be deleted. The bulk action «Send tilbakestilling av
+  passord» mails a reset link to each ticked user. «Applikasjonspassord» on the profile: a password per program, shown once, with
+  when and from where it was last used and «Tilbakekall». They work against the API with `Authorization: Basic` over HTTPS only,
+  never for signing in to the admin, and a wrong one counts as a failed login.
 - More `toa` commands (K-261, K-263 to K-265, K-270 to K-272), as WP-CLI's: `toa post`, `toa term`, `toa menu` (list, get,
   create, update, delete) and `toa option` (list, get, update) act as the account named by `--user` and go through the same checks
   as the admin; `toa cache flush [--tag]`; `toa jobs list|retry|cancel`; `toa secrets list` (names and where they are, never a

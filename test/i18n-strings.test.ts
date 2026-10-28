@@ -76,6 +76,15 @@ describe('the message files', () => {
     }
   })
 
+  it.each(messageFiles)('%s holds messages vue-i18n compiles: `@` and braces only as it reads them', (file) => {
+    // vue-i18n reads `@` as a linked message and `{…}` as a placeholder or a literal; a stray one fails the page at render (500).
+    for (const [key, message] of messagesByFile.get(file) ?? []) {
+      const text = typeof message === 'string' ? message : ''
+      const outside = text.replace(/\{'[^']*'\}/g, '').replace(/\{[A-Za-z_][A-Za-z0-9_]*\}/g, '')
+      expect(outside, `${file}: ${key} (escape as {'@'}, {'{'})`).not.toMatch(/[@{}]/)
+    }
+  })
+
   it('share no key between files, because Nuxt merges them into one catalogue', () => {
     const seen = new Map<string, string>()
     for (const [file, messages] of messagesByFile) {
