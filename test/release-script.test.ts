@@ -47,6 +47,23 @@ describe('scripts/release.sh', () => {
     expect(script).toMatch(/CHANGELOG\.md mangler/)
   })
 
+  it('tells release:check which version it releases, and the check says that one when it passes (M2.1)', () => {
+    // The check runs before the new version is written into package.json: without this it named the old one.
+    expect(script).toMatch(/export RELEASE_VERSION="\$version"; eval "\$CHECK_CMD"/)
+    const check = readFileSync(join(ROOT, 'scripts/release-check.sh'), 'utf8')
+    expect(check).toMatch(/release_version="\$\{RELEASE_VERSION:-\$\{version\}\}"/)
+    expect(check).toMatch(/release:check passed for %s[^\n]*"\$\{release_version\}"/)
+    const out = execFileSync(
+      'bash',
+      [
+        '-c',
+        `version=0.6.0; RELEASE_VERSION=0.7.0; release_version="\${RELEASE_VERSION:-\${version}}"; echo "$release_version"`,
+      ],
+      { encoding: 'utf8' },
+    )
+    expect(out.trim()).toBe('0.7.0')
+  })
+
   it('writes the version into the source and every mirror the tests check', () => {
     const files = ['package.json', ...expand(variable('MIRROR_FILES'))]
     // Every workspace package.json, both compose files and .env.example.

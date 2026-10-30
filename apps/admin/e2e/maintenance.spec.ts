@@ -1,6 +1,6 @@
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
 import { signIn } from './helpers/screens.ts'
-import { baseUrl, compose, createUser, uniqueName } from './helpers/stack.ts'
+import { baseUrl, compose, createUser, setSetting, uniqueName } from './helpers/stack.ts'
 import type { TestUser } from './helpers/stack.ts'
 
 // Maintenance mode (M1.7, K-288), turned on and off with `toa maintenance` in the api container: a visitor gets 503 with Retry-After
@@ -56,6 +56,15 @@ test('visitors get the maintenance page with 503, the administrator the site', a
       const answer = await request.get(path)
       expect(answer.status(), path).toBe(503)
       expect(answer.headers()['retry-after'], path).toBe('120')
+    }
+    // security.txt answers in maintenance too (M2.1): it says where to report a problem, which may be found during maintenance.
+    await setSetting('security_contact', 'mailto:sikkerhet@example.test')
+    try {
+      const contact = await request.get('/.well-known/security.txt')
+      expect(contact.status()).toBe(200)
+      expect(await contact.text()).toContain('Contact: mailto:sikkerhet@example.test')
+    } finally {
+      await setSetting('security_contact', '')
     }
   } finally {
     await request.dispose()

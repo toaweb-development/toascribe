@@ -54,7 +54,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     }
     try {
       return await fetcher<ResolveResponse>('/_toascribe/data/preview', {
-        query: { token: address.token, page: address.page },
+        query: address.token === '' ? { page: address.page } : { token: address.token, page: address.page },
       })
     } catch (error) {
       if (typeof error === 'object' && error !== null && Reflect.get(error, 'statusCode') === 404) {

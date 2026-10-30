@@ -262,3 +262,19 @@ export const cacheInvalidation = pgTable(
     check('ck_cache_invalidation_tag', sql`${t.tag} ~ '^(\\*|[a-z_]+(:[A-Za-z0-9_-]+)?)$'`),
   ],
 )
+
+/**
+ * The registration form tokens that have been used (M2.1, K-006): each is good for one registration. The token is kept as its
+ * SHA-256 (hex), until it would have expired anyway; older rows are removed as new ones come.
+ */
+export const registerFormUse = pgTable(
+  'register_form_use',
+  {
+    tokenHash: text('token_hash').primaryKey(),
+    expiresAt: timestamptz('expires_at').notNull(),
+  },
+  (t): PgTableExtraConfigValue[] => [
+    index('idx_register_form_use_expires_at').on(t.expiresAt),
+    check('ck_register_form_use_token_hash', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  ],
+)

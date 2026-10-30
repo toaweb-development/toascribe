@@ -416,9 +416,13 @@ describe('docker/proxy/Caddyfile', () => {
     // Without it Caddy takes the leftmost entry, which a visitor writes when the front proxy appends to the header.
     expect(code).toMatch(/^\s*trusted_proxies_strict\s*$/m)
     expect(code).toMatch(/^\s*client_ip_headers X-Forwarded-For\s*$/m)
-    // Every reverse_proxy replaces X-Real-IP with Caddy's own client_ip (the apps read that header only).
+    // Every reverse_proxy replaces X-Real-IP with Caddy's own client_ip (the apps read that header only), and says whether the request
+    // came with forwarding headers (the api warns about a front proxy only then, M2.1).
     const proxies = code.match(/reverse_proxy /g) ?? []
-    const withHeader = code.match(/reverse_proxy \S+ \{\n\s*header_up X-Real-IP \{client_ip\}\n\s*\}/g) ?? []
+    const withHeader =
+      code.match(
+        /reverse_proxy \S+ \{\n\s*header_up X-Real-IP \{client_ip\}\n\s*header_up X-Toascribe-Forwarded "\{http\.request\.header\.X-Forwarded-For\}\{http\.request\.header\.Forwarded\}\{http\.request\.header\.X-Forwarded-Proto\}"\n\s*\}/g,
+      ) ?? []
     // The api (twice: the upload routes with their own body limit, and the rest), /uploads, the admin and the site (twice: its
     // password form with its own body limit, and the rest).
     expect(proxies).toHaveLength(6)
@@ -622,6 +626,12 @@ describe('the release workflow', () => {
     expect(withoutComments(releaseWorkflow)).not.toMatch(/gh release|\n {2}release:\n/)
     expect(publish).toContain('packages: write')
     expect(withoutComments(build)).not.toContain('write')
+  })
+
+  it('publishes only after an approval: publish deploys to the environment `release`, and build to none (M2.1)', () => {
+    expect(publish).toMatch(/^ {4}environment:\n {6}name: release\n/m)
+    expect(withoutComments(build)).not.toContain('environment:')
+    expect(withoutComments(releaseWorkflow).match(/environment:/g)).toHaveLength(1)
   })
 
   it('runs no third-party code where a token can write', () => {

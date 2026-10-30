@@ -181,7 +181,7 @@ export function buildApp(deps: AppDeps) {
   })
   // Looks at the address the proxy says the visitor has, to warn when the stack is not told who its visitors are.
   app.use(async (c, next) => {
-    services.proxy.observe(c.req.header('x-real-ip'))
+    services.proxy.observe(c.req.header('x-real-ip'), (c.req.header('x-toascribe-forwarded') ?? '').trim() !== '')
     await next()
   })
   const headerOptions = {

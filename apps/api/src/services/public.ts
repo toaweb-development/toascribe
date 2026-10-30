@@ -112,6 +112,7 @@ const SETTINGS = CoreSettings.pick({
   oembed_mastodon_instances: true,
   maintenance_mode: true,
   security_contact: true,
+  avatar_gravatar: true,
   security_policy: true,
   show_avatars: true,
 })
@@ -648,6 +649,7 @@ export function createPublicService(options: {
         origin: options.publicOrigin.replace(/\/+$/, ''),
         seo,
         securityTxt: { contact: settings.security_contact, policyUrl: settings.security_policy },
+        gravatar: settings.avatar_gravatar,
         maintenance: {
           enabled: settings.maintenance_mode.enabled,
           message: settings.maintenance_mode.message,

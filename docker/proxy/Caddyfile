@@ -75,6 +75,9 @@
 	# `reverse_proxy` keeps the Host header. Behind a trusted proxy it also passes X-Forwarded-Proto and -Host on,
 	# so the apps see https and the public host name.
 	#
+	# WHETHER ANOTHER PROXY STANDS IN FRONT (M2.1). `X-Toascribe-Forwarded` carries the forwarding headers the request came with
+	# (empty without them); it is only a sign for the api's proxy warning, never an address, and any value a client sent under that
+	# name is replaced. A browser that reaches this port directly sends none; a reverse proxy in front always sends one.
 	# THE CLIENT IP. Every `reverse_proxy` below sets `X-Real-IP {client_ip}`, and `header_up` replaces whatever the
 	# visitor sent under that name. The apps read the client IP from X-Real-IP only and never parse X-Forwarded-For
 	# (the audit log and the login rate limits depend on it: M0.3). Keep that header in every new `reverse_proxy`.
@@ -155,6 +158,7 @@
 		}
 		reverse_proxy site:3000 {
 			header_up X-Real-IP {client_ip}
+			header_up X-Toascribe-Forwarded "{http.request.header.X-Forwarded-For}{http.request.header.Forwarded}{http.request.header.X-Forwarded-Proto}"
 		}
 	}
 
@@ -164,6 +168,7 @@
 		}
 		reverse_proxy api:3001 {
 			header_up X-Real-IP {client_ip}
+			header_up X-Toascribe-Forwarded "{http.request.header.X-Forwarded-For}{http.request.header.Forwarded}{http.request.header.X-Forwarded-Proto}"
 		}
 	}
 
@@ -182,6 +187,7 @@
 	handle /api/* {
 		reverse_proxy api:3001 {
 			header_up X-Real-IP {client_ip}
+			header_up X-Toascribe-Forwarded "{http.request.header.X-Forwarded-For}{http.request.header.Forwarded}{http.request.header.X-Forwarded-Proto}"
 		}
 	}
 
@@ -190,6 +196,7 @@
 	handle /uploads/* {
 		reverse_proxy api:3001 {
 			header_up X-Real-IP {client_ip}
+			header_up X-Toascribe-Forwarded "{http.request.header.X-Forwarded-For}{http.request.header.Forwarded}{http.request.header.X-Forwarded-Proto}"
 		}
 	}
 
@@ -197,6 +204,7 @@
 	handle @admin {
 		reverse_proxy admin:3000 {
 			header_up X-Real-IP {client_ip}
+			header_up X-Toascribe-Forwarded "{http.request.header.X-Forwarded-For}{http.request.header.Forwarded}{http.request.header.X-Forwarded-Proto}"
 		}
 	}
 
@@ -204,6 +212,7 @@
 	handle {
 		reverse_proxy site:3000 {
 			header_up X-Real-IP {client_ip}
+			header_up X-Toascribe-Forwarded "{http.request.header.X-Forwarded-For}{http.request.header.Forwarded}{http.request.header.X-Forwarded-Proto}"
 		}
 	}
 }

@@ -8,12 +8,25 @@ that heading keep the format they were written in (Keep a Changelog).
 
 ## [Unreleased]
 
+### Changed
+
+- A preview link (`/?preview=…`) puts its token in a short-lived, HttpOnly cookie on the first visit and sends the browser on to
+  `/?preview`: the token is in no address the browser keeps or sends on, and the preview answers with `Referrer-Policy: no-referrer`.
+- A registration form's token is good for one registration (migration `0015_register_form_use` keeps the used ones for their hour).
+  The registration form fetches a fresh one each time it is shown.
+- Gravatar's host is in the admin's Content-Security-Policy only while «Personvern → Vis Gravatar» is on.
+- `/.well-known/security.txt` answers in maintenance mode too.
+- The publish job of the release workflow waits for an approval (the GitHub environment `release`).
+
 ### Fixed
 
 - The public site no longer follows the reader's dark mode: the theme's colours (theme.json and «Tilpass») are one light palette,
   and with a dark system the site's title, the post's title and the notice of an embed waiting for a click were light on light or
   dark on dark. The space before the author and the category in the line under a post («av …», «i …») is back, and a post's title
   is now clearly larger than the headings in its text.
+- The warning about `TOASCRIBE_TRUSTED_PROXY` no longer shows on a standard installation from the compose file: the stack's own
+  Caddy tells the api whether a request came through another proxy (forwarding headers), and only then does it warn.
+- `pnpm release:check` names the version being released, not the one in `package.json` before the release writes it.
 
 ## 0.7.0 — 2026-10-28
 

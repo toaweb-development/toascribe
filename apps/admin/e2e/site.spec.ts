@@ -256,7 +256,8 @@ test('«Forhåndsvis» in the list opens the signed link on the site', async ({ 
   const opened = context.waitForEvent('page')
   await page.getByRole('button', { name: `Forhåndsvis «Listekladd ${name}»` }).click()
   const tab = await opened
-  await expect(tab).toHaveURL(/\/\?preview=v1\./)
+  // The token went into a cookie on the way (M2.1): the tab's address holds none.
+  await expect(tab).toHaveURL(/\/\?preview$/)
   await expect(tab.getByRole('heading', { level: 1, name: `Listekladd ${name}` })).toBeVisible()
 })
 
@@ -276,10 +277,30 @@ test('a preview link shows a draft, and `/?p=` goes to the post', async ({ page,
   const path = await api.previewPath(draft.id)
   const published = await api.create({ type: 'post', status: 'publish', title: `Publisert ${name}` })
 
-  await page.goto(path)
+  // The first visit puts the token in a short HttpOnly cookie and sends the browser on to `/?preview` (M2.1): the token is in no
+  // address the browser keeps or sends as a referrer, and the page says no-referrer.
+  expect(path).toMatch(/^\/\?preview=v1\./)
+  const first = await page.request.get(path, { maxRedirects: 0 })
+  expect(first.status()).toBe(303)
+  expect(first.headers()['location']).toBe('/?preview')
+  expect(first.headers()['referrer-policy']).toBe('no-referrer')
+  const cookie = first.headers()['set-cookie'] ?? ''
+  expect(cookie).toMatch(/^__Host-toa_preview=v1\./)
+  expect(cookie).toMatch(/HttpOnly/i)
+  expect(cookie).toMatch(/Secure/i)
+  expect(cookie).toMatch(/SameSite=Lax/i)
+  expect(Number(/Max-Age=(\d+)/i.exec(cookie)?.[1] ?? '0')).toBeLessThanOrEqual(30 * 60)
+  const shown = await page.goto(path)
+  await expect(page).toHaveURL(/\/\?preview$/)
+  expect(shown?.headers()['referrer-policy']).toBe('no-referrer')
   await expect(page.getByRole('heading', { level: 1, name: `Kladd ${name}` })).toBeVisible()
   await expect(page.getByText('Forhåndsvisning')).toBeVisible()
   await expectNoAxeViolations(page, 'a preview')
+  // A reload reads the cookie again.
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1, name: `Kladd ${name}` })).toBeVisible()
+  // A made-up token clears the cookie: the site's 404.
+  expect((await page.goto('/?preview=v1.e30.AAAAAAAAAAAAAAAAAAAAAAAAAAAA'))?.status()).toBe(404)
   expect((await page.goto(`/${draft.slug}/`))?.status()).toBe(404)
 
   await page.goto(`/?p=${String(published.shortId)}`)

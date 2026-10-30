@@ -95,7 +95,8 @@ fi
 
 # c. check og audit
 echo "release: check ($CHECK_CMD)"
-( eval "$CHECK_CMD" ) || die "check feilet"
+# release:check skriver versjonen som slippes, ikke den som står i package.json ennå.
+( export RELEASE_VERSION="$version"; eval "$CHECK_CMD" ) || die "check feilet"
 if [ -n "$AUDIT_CMD" ]; then
   echo "release: audit ($AUDIT_CMD)"
   ( eval "$AUDIT_CMD" ) || die "audit feilet (high/critical med fiks stopper releasen; SECURITY_STANDARD §9)"

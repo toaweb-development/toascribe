@@ -78,7 +78,15 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 version="$(jq -er .version package.json)"
 [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || fail "package.json version '${version}' is not semver"
-echo "version ${version}, commit $(git rev-parse --short HEAD)"
+# The version being released: scripts/release.sh runs this check before it writes the new version into package.json, so it says
+# which one it releases (RELEASE_VERSION); run by hand, the check is of the version in package.json.
+release_version="${RELEASE_VERSION:-${version}}"
+[[ "${release_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || fail "RELEASE_VERSION '${release_version}' is not semver"
+if [ "${release_version}" = "${version}" ]; then
+  echo "version ${version}, commit $(git rev-parse --short HEAD)"
+else
+  echo "release ${release_version} (package.json has ${version} until the release writes it), commit $(git rev-parse --short HEAD)"
+fi
 
 state="$(mktemp -d "${TMPDIR:-/tmp}/${prefix}.XXXXXX")"
 chmod 700 "${state}"
@@ -108,7 +116,7 @@ cleanup() {
   done
   rm -rf "${state}"
   if [ "${status}" -eq 0 ]; then
-    printf '\n\033[32mrelease:check passed for %s (%s).\033[0m\n' "${version}" "$(git rev-parse --short HEAD)"
+    printf '\n\033[32mrelease:check passed for %s (%s).\033[0m\n' "${release_version}" "$(git rev-parse --short HEAD)"
   fi
   exit "${status}"
 }

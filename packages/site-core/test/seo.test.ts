@@ -37,6 +37,7 @@ const SETTINGS: PublicSettings = {
   embed: { clickToLoad: true, frameHosts: ['www.youtube-nocookie.com'] },
   maintenance: { enabled: false, message: '', retryAfter: 600 },
   securityTxt: { contact: '', policyUrl: '' },
+  gravatar: false,
   origin: ORIGIN,
   seo: { defaultImage: DEFAULT, publisher: { type: 'organization', name: 'Fjell AS', logo: LOGO } },
   cacheTags: [],

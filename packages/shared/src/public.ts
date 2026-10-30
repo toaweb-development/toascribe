@@ -210,6 +210,8 @@ export const PublicSettings = z.object({
   maintenance: z.object({ enabled: z.boolean(), message: z.string(), retryAfter: z.int() }),
   /** `/.well-known/security.txt` (M1.8, K-319): empty contact means none. */
   securityTxt: z.object({ contact: z.string(), policyUrl: z.string() }),
+  /** «Vis Gravatar» in «Personvern» (M1.8, K-236): the admin lets Gravatar's host into its img-src only while it is on (M2.1). */
+  gravatar: z.boolean(),
   cacheTags: CacheTags,
 })
 export type PublicSettings = z.infer<typeof PublicSettings>
@@ -244,6 +246,9 @@ export const PreviewLinkResponse = z.object({
 })
 export type PreviewLinkResponse = z.infer<typeof PreviewLinkResponse>
 
+/** The shape of a preview link's token: `v1.<payload>.<signature>`, base64url. */
+export const PREVIEW_TOKEN_PATTERN = /^v1\.[A-Za-z0-9_-]{1,400}\.[A-Za-z0-9_-]{20,100}$/
+
 /** GET /public/preview (K-071): the token of a preview link, and the page of an item split by page breaks. */
 export const PreviewQuery = z.object({
   token: z.string().min(1).max(600),
@@ -260,3 +265,8 @@ export const POST_PASSWORD_COOKIE_DAYS = 10
 /** The names of the cookies the site must never cache a page for (with the `__Host-` prefix the browser sends). */
 export const SESSION_COOKIE_NAME = '__Host-toa_session'
 export const POST_PASSWORD_COOKIE_NAME = '__Host-toa_postpass'
+/**
+ * The cookie a preview link's token is put in on the first visit (M2.1): the site sends the browser on to `/?preview`, so the token is
+ * in no address the browser keeps, shows or sends as a referrer.
+ */
+export const PREVIEW_COOKIE_NAME = '__Host-toa_preview'

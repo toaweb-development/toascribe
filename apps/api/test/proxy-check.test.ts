@@ -69,7 +69,7 @@ describe('the proxy check', () => {
     const { check, lines } = watch()
     for (let n = 0; n < PROXY_CHECK_REQUESTS; n += 1) {
       expect(check.status().state).toBe('watching')
-      check.observe('10.231.97.1')
+      check.observe('10.231.97.1', true)
     }
     expect(check.status()).toEqual({ state: 'warning', observed: PROXY_CHECK_REQUESTS, address: '10.231.97.1' })
     const found = warnings(lines)
@@ -131,11 +131,11 @@ describe('the proxy check', () => {
   it('decides on a quiet site too: ten requests and ten minutes', () => {
     const { check, lines, advance } = watch()
     for (let n = 0; n < PROXY_CHECK_MIN_REQUESTS; n += 1) {
-      check.observe('192.168.1.5')
+      check.observe('192.168.1.5', true)
     }
     expect(check.status().state).toBe('watching')
     advance(PROXY_CHECK_MINUTES * 60_000)
-    check.observe('192.168.1.5')
+    check.observe('192.168.1.5', true)
     expect(check.status().state).toBe('warning')
     expect(warnings(lines)).toHaveLength(1)
   })
@@ -143,19 +143,43 @@ describe('the proxy check', () => {
   it('treats the same address written two ways as one', () => {
     const { check } = watch()
     for (let n = 0; n < PROXY_CHECK_REQUESTS; n += 1) {
-      check.observe(n % 2 === 0 ? '10.1.2.3' : '::ffff:10.1.2.3')
+      check.observe(n % 2 === 0 ? '10.1.2.3' : '::ffff:10.1.2.3', true)
+    }
+    expect(check.status().state).toBe('warning')
+  })
+
+  it('says nothing for a standard install reached directly: one private address (the gateway), no forwarding headers', () => {
+    const { check, lines } = watch()
+    for (let n = 0; n < PROXY_CHECK_REQUESTS; n += 1) {
+      check.observe('10.231.97.1', false)
+    }
+    expect(check.status().state).toBe('ok')
+    expect(warnings(lines)).toHaveLength(0)
+  })
+
+  it('warns when one request of them came through a proxy in front', () => {
+    const { check } = watch()
+    for (let n = 0; n < PROXY_CHECK_REQUESTS; n += 1) {
+      check.observe('10.231.97.1', n === 7)
     }
     expect(check.status().state).toBe('warning')
   })
 })
 
 describe('the proxy check in the app', () => {
-  async function requests(trustedProxy: string | undefined, addresses: readonly (string | undefined)[]) {
+  async function requests(
+    trustedProxy: string | undefined,
+    addresses: readonly (string | undefined)[],
+    forwarded = '203.0.113.9',
+  ) {
     const made = makeApp(UNREACHABLE_DATABASE_URL, trustedProxy === undefined ? {} : { trustedProxy })
     try {
       for (const address of addresses) {
         const res = await made.app.request('/api/v1/openapi.json', {
-          headers: address === undefined ? {} : { 'x-real-ip': address },
+          headers: {
+            ...(address === undefined ? {} : { 'x-real-ip': address }),
+            ...(forwarded === '' ? {} : { 'x-toascribe-forwarded': forwarded }),
+          },
         })
         expect(res.status).toBe(200)
       }
@@ -186,5 +210,9 @@ describe('the proxy check in the app', () => {
     )
     expect(none.status.state).toBe('watching')
     expect(warnings(none.lines)).toHaveLength(0)
+    // The stack's own Caddy reached directly: no forwarding headers came with the requests.
+    const direct = await requests('', same, '')
+    expect(direct.status.state).toBe('ok')
+    expect(warnings(direct.lines)).toHaveLength(0)
   })
 })

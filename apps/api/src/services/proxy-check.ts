@@ -2,7 +2,8 @@
 // TOASCRIBE_TRUSTED_PROXY names it (README, «Behind a reverse proxy»). Left empty, `X-Real-IP` is the external proxy's own
 // address on every request: all visitors share one rate-limit bucket (20 wrong logins from anyone slow everyone down) and every
 // IP in the audit log and the session list is the gateway. Nothing is wrong with the stack itself, so it cannot refuse to start;
-// it looks at the first requests instead and says so once in the log.
+// it looks at the first requests instead and says so once in the log. Without forwarding headers on any of them nothing stands in
+// front (a standard install reached directly), and there is nothing to say (M2.1).
 //
 // The state is kept in memory, per process, and is read through `status()` (the setup wizard and Site Health, later). It is
 // worked out again after a restart, which is when the operator has changed the variable anyway.
@@ -38,8 +39,11 @@ export interface ProxyStatus {
 }
 
 export interface ProxyCheck {
-  /** Tells the check about a request: the value of its `X-Real-IP` header, or undefined when it had none. */
-  observe: (xRealIp: string | undefined) => void
+  /**
+   * Tells the check about a request: the value of its `X-Real-IP` header, or undefined when it had none, and whether it came to the
+   * stack's proxy with forwarding headers (`X-Toascribe-Forwarded`, set by the Caddyfile): only then is there a proxy in front.
+   */
+  observe: (xRealIp: string | undefined, forwarded?: boolean) => void
   status: () => ProxyStatus
 }
 
@@ -54,10 +58,13 @@ export function createProxyCheck(options: {
   let firstAt: number | null = null
   let state: ProxyState = trustedProxy.trim() === '' ? 'watching' : 'configured'
   let warnedAddress: string | null = null
+  // A browser that reaches the stack's port directly (a standard install: compose's own Caddy, nothing in front) comes from the
+  // Docker gateway, a private address, on every request; so does a forgotten front proxy. Only a front proxy sends forwarding headers.
+  let sawForwarded = false
 
   function decide(): void {
     const [only] = addresses
-    if (addresses.size === 1 && only !== undefined && isPrivateAddress(only)) {
+    if (addresses.size === 1 && only !== undefined && isPrivateAddress(only) && sawForwarded) {
       state = 'warning'
       warnedAddress = only
       logger.warn(
@@ -73,10 +80,11 @@ export function createProxyCheck(options: {
   }
 
   return {
-    observe(xRealIp) {
+    observe(xRealIp, forwarded = false) {
       if (state !== 'watching') {
         return
       }
+      if (forwarded) sawForwarded = true
       const address = xRealIp === undefined ? undefined : normalizeIp(xRealIp)
       if (address === undefined) {
         return

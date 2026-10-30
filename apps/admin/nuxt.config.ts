@@ -114,8 +114,8 @@ export default defineNuxtConfig({
   security: {
     headers: {
       contentSecurityPolicy: {
-        // Gravatar's host (M1.8, K-015): a profile picture from Gravatar when «Personvern» turns it on (off by default).
-        'img-src': ["'self'", 'data:', 'https://secure.gravatar.com'],
+        // Gravatar's host is added per response, only while «Personvern» has it on (server/plugins/gravatar-csp.ts, M2.1).
+        'img-src': ["'self'", 'data:'],
         'frame-src': ["'self'"],
         'frame-ancestors': ["'none'"],
         'style-src-attr': ["'unsafe-hashes'", ...ADMIN_STYLE_ATTRIBUTES.map(({ value }) => sha256(value))],

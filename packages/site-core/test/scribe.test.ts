@@ -26,6 +26,10 @@ describe('the catch-all helpers', () => {
       page: 2,
     })
     expect(addressOf({ path: '/', query: { preview: 'v1.a.b', page: 'x' } })).toMatchObject({ page: 1 })
+    // `/?preview`: the token is in the cookie the first visit set (M2.1).
+    expect(addressOf({ path: '/', query: { preview: '', page: '2' } })).toEqual({ kind: 'preview', token: '', page: 2 })
+    // As Vue Router reads `/?preview`: the parameter is there, with null.
+    expect(addressOf({ path: '/', query: { preview: null } })).toEqual({ kind: 'preview', token: '', page: 1 })
   })
 
   it('splits a post at its page breaks', () => {

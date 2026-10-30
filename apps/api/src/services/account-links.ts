@@ -43,6 +43,7 @@ import {
 import { inTransaction } from '../repositories/executor.ts'
 import type { Executor } from '../repositories/executor.ts'
 import { findPublishedById, pagePaths } from '../repositories/public.ts'
+import { claimFormToken } from '../repositories/form-tokens.ts'
 import { readSettings } from '../repositories/settings.ts'
 import { deleteAllSessions } from '../repositories/sessions.ts'
 import type { RateLimiter } from './rate-limit.ts'
@@ -180,8 +181,11 @@ export function createPublicFlows(options: {
       .digest('base64url')}`
   }
 
-  /** The spam checks of K-006: the hidden field is empty, and the token is ours, for this address, old enough and not too old. */
-  function assertHuman(input: { formToken: string; website?: string | undefined }, ip: string): void {
+  /**
+   * The spam checks of K-006: the hidden field is empty, and the token is ours, for this address, old enough, not too old and not
+   * used before.
+   */
+  async function assertHuman(input: { formToken: string; website?: string | undefined }, ip: string): Promise<void> {
     const issued = Number(input.formToken.split('.')[0])
     const now = clock().getTime()
     const ok =
@@ -191,6 +195,9 @@ export function createPublicFlows(options: {
       now - issued >= registerFormMinMs &&
       now - issued <= REGISTER_FORM_MAX_MS
     if (!ok) throw new FormRejectedError()
+    // Each token is good for one registration (M2.1): a second form sent with it, from the same address, is refused the same way.
+    const claimed = await claimFormToken(db, input.formToken, new Date(issued + REGISTER_FORM_MAX_MS), clock())
+    if (!claimed) throw new FormRejectedError()
   }
 
   const issueLink = (tx: Executor, accountId: string, purpose: AccountTokenPurpose) =>
@@ -379,7 +386,7 @@ export function createPublicFlows(options: {
         })
         assertNotDelayed(ticket.status, clock())
         // After the limit is counted: a bot that keeps sending is slowed down as anyone else.
-        assertHuman(input, ctx.ip)
+        await assertHuman(input, ctx.ip)
 
         // The owner of the address, if there is one, is told about the attempt by mail, whatever the visitor is answered (Tor,
         // M0.4): the visitor learns nothing from it. A disabled account is left alone; one that is still waiting for its first

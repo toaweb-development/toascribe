@@ -197,8 +197,7 @@ test('keyboard only: Enter makes a paragraph, Backspace in an empty one deletes 
 test('the editor lets images in from this site only, like every other admin page (M1.1)', async ({ page }) => {
   await signIn(page, editorUser)
   const csp = (await page.request.get('/admin/posts/new')).headers()['content-security-policy'] ?? ''
-  // Gravatar's host for profile pictures (M1.8, K-236; off by default, but the policy is the same for every response).
-  expect(csp).toMatch(/img-src 'self' data: https:\/\/secure\.gravatar\.com(;|$)/)
+  expect(csp).toMatch(/img-src 'self' data:(;|$)/)
   expect(csp).toContain("default-src 'none'")
   expect(csp).not.toContain('unsafe-inline')
   // The image block takes a file of the media library only: no field for an address on another host.

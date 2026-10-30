@@ -5,6 +5,7 @@ import { NEXTPAGE } from '@toascribe/blocks'
 
 /** What the catch-all route asks for an address: a preview link's item, or what the address is. */
 export type Address =
+  /** `token` is empty for `/?preview`: the site's server has the token in its cookie (server/middleware/preview.ts). */
   | { readonly kind: 'preview'; readonly token: string; readonly page: number }
   | { readonly kind: 'resolve'; readonly path: string }
 
@@ -19,8 +20,10 @@ export function addressOf(route: {
   readonly path: string
   readonly query: Readonly<Record<string, unknown>>
 }): Address {
-  const preview = firstOf(route.query['preview'])
-  if (preview !== undefined && preview !== '') {
+  // `/?preview=<token>` never reaches a page (the server puts the token in a cookie and sends the browser on); `/?preview` is the
+  // preview with the token in that cookie. Vue Router reads a parameter without a value as null.
+  if (Object.hasOwn(route.query, 'preview')) {
+    const preview = firstOf(route.query['preview']) ?? ''
     const page = Number(firstOf(route.query['page']) ?? '1')
     return { kind: 'preview', token: preview, page: Number.isInteger(page) && page >= 1 ? page : 1 }
   }

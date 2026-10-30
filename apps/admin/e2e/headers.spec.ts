@@ -1,7 +1,7 @@
 import { expect, test } from './helpers/fixtures.ts'
 import { PNG } from './helpers/images.ts'
 import { signIn } from './helpers/screens.ts'
-import { createUser } from './helpers/stack.ts'
+import { createUser, setSetting } from './helpers/stack.ts'
 import { EXPECTED_STYLE_SRC_ATTR, LISTED_STYLE_ATTRIBUTES, styleAttributesIn } from './helpers/styles.ts'
 
 // What the admin sends with its pages (K-314). The CSP is made per response by nuxt-security; the nonce in the header
@@ -62,10 +62,26 @@ test('the CSP is strict where it matters', async ({ request }) => {
   expect(directives.get('frame-ancestors')).toBe("'none'")
   expect(directives.get('form-action')).toBe("'self'")
   expect(directives.get('connect-src')).toBe("'self'")
-  expect(directives.get('img-src')).toBe("'self' data: https://secure.gravatar.com") // profile pictures (M1.8, K-236)
+  expect(directives.get('img-src')).toBe("'self' data:")
   expect(csp).not.toContain('unsafe-inline')
   expect(csp).not.toContain('unsafe-eval')
   expect(csp).not.toContain('upgrade-insecure-requests')
+})
+
+test("Gravatar's host is in img-src only while «Personvern» has it on (M2.1)", async ({ request }) => {
+  test.setTimeout(120_000)
+  const imgSrc = async () =>
+    /(?:^|;)\s*img-src ([^;]*)/.exec(
+      (await request.get('/admin/login')).headers()['content-security-policy'] ?? '',
+    )?.[1] ?? ''
+  try {
+    await setSetting('avatar_gravatar', true)
+    // The admin keeps the setting for up to 30 seconds.
+    await expect.poll(imgSrc, { timeout: 45_000, intervals: [2_000] }).toBe("'self' data: https://secure.gravatar.com")
+  } finally {
+    await setSetting('avatar_gravatar', false)
+  }
+  await expect.poll(imgSrc, { timeout: 45_000, intervals: [2_000] }).toBe("'self' data:")
 })
 
 test('the other security headers, and a page that is never cached', async ({ request }) => {

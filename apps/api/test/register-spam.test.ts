@@ -76,6 +76,28 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration spam checks (need
     expect(await made(username)).toBe(0)
   })
 
+  it('takes a token once: a second form with it, from the same address, is refused and makes nothing (M2.1)', async () => {
+    const address = ip()
+    const formToken = await tokenFor(address)
+    env.clock.advance(2500)
+    const send = (username: string) =>
+      env
+        .client({ ip: address })
+        .post('/api/v1/auth/register', { username, email: `${username}@example.test`, formToken })
+    expect((await send('forste-bruk')).status).toBe(202)
+    const again = await send('andre-bruk')
+    expect(again.status).toBe(400)
+    expect(await again.text()).toContain('form_rejected')
+    expect(await made('forste-bruk')).toBe(1)
+    expect(await made('andre-bruk')).toBe(0)
+    // Kept as its hash only, and for the token's own hour at most.
+    const [row] = await env.query<{ token_hash: string; left: number }>(
+      `select token_hash, extract(epoch from expires_at - now())::int as left from register_form_use order by expires_at desc limit 1`,
+    )
+    expect(row?.token_hash).toMatch(/^[0-9a-f]{64}$/)
+    expect(row?.token_hash).not.toContain(formToken)
+  })
+
   it('refuses a form without a token', async () => {
     const res = await env
       .client({ ip: ip() })
