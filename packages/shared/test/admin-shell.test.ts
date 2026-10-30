@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   ADMIN_COLOR_SCHEMES,
+  LEGACY_ADMIN_COLOR_SCHEMES,
   AdminMenuItem,
   AdminPath,
   DEFAULT_PREFERENCES,
@@ -73,12 +74,15 @@ describe('AdminMenuItem', () => {
 })
 
 describe('Preferences', () => {
-  it('lists the colour schemes', () => {
-    expect(ADMIN_COLOR_SCHEMES).toEqual(['default', 'light', 'midnight', 'ocean'])
+  it('lists the themes (M2.1): system, light and dark, and maps the schemes before them', () => {
+    expect(ADMIN_COLOR_SCHEMES).toEqual(['system', 'light', 'dark'])
+    expect(LEGACY_ADMIN_COLOR_SCHEMES).toEqual({ default: 'system', ocean: 'system', midnight: 'dark' })
     expect(Preferences.safeParse(DEFAULT_PREFERENCES).success).toBe(true)
   })
   it('accepts a partial update and refuses an empty, unknown or mistyped one', () => {
-    expect(UpdatePreferencesRequest.safeParse({ adminColorScheme: 'ocean' }).success).toBe(true)
+    expect(UpdatePreferencesRequest.safeParse({ adminColorScheme: 'dark' }).success).toBe(true)
+    // A scheme name from before M2.1 is no longer one to send.
+    expect(UpdatePreferencesRequest.safeParse({ adminColorScheme: 'ocean' }).success).toBe(false)
     expect(UpdatePreferencesRequest.safeParse({}).success).toBe(false)
     expect(UpdatePreferencesRequest.safeParse({ adminColorScheme: 'pink' }).success).toBe(false)
     expect(UpdatePreferencesRequest.safeParse({ showToolbarOnSite: 'yes' }).success).toBe(false)
