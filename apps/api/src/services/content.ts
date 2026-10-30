@@ -295,14 +295,14 @@ export function flattenTree(nodes: readonly TreeNode[]): { id: string; depth: nu
   return flat
 }
 
-function timeZoneOf(settings: { timezone_string: string; gmt_offset: number }): SiteTimeZone {
+export function timeZoneOf(settings: { timezone_string: string; gmt_offset: number }): SiteTimeZone {
   return settings.timezone_string === ''
     ? { offsetMinutes: Math.round(settings.gmt_offset * 60) }
     : { name: settings.timezone_string }
 }
 
 /** The zone as Intl takes it: the IANA name, or the offset as `+01:00`. */
-function intlTimeZone(zone: SiteTimeZone): string {
+export function intlTimeZone(zone: SiteTimeZone): string {
   if ('name' in zone) {
     return zone.name
   }

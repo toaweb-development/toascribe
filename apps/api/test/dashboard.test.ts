@@ -64,7 +64,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('dashboard (needs TEST_DATABASE
     env.query(
       `insert into admin_notice (key, level, message_key, capability, is_dismissible, data)
        values ($1, $2, 'notices.test', $3, $4, '{"count": 3}'::jsonb)
-       on conflict (key) do update set dismissed_at = null`,
+       on conflict (key) do update set dismissed_at = null, modified_at = now()`,
       [key, extra.level ?? 'info', extra.capability ?? 'manage_options', extra.dismissible ?? true],
     )
   const setVerified = (value: string | null) =>
@@ -81,12 +81,14 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('dashboard (needs TEST_DATABASE
       expect(res.headers.get('cache-control')).toBe('no-store')
       const body = GlanceResponse.parse(await res.json())
       // «Hei, verden!» is published, the sample page is published, the privacy page is a draft; the first comment is approved.
-      expect(body).toEqual({ posts: 1, pages: 1, comments: { approved: 1, pending: 0 }, version: '9.9.9' })
+      const { timeZone, ...counts } = body
+      expect(counts).toEqual({ posts: 1, pages: 1, comments: { approved: 1, pending: 0 }, version: '9.9.9' })
+      expect(timeZone).not.toBe('')
     })
 
     it('gives a subscriber the version and nothing else: the counts are left out, not 0', async () => {
       const res = await subscriber.get('/api/v1/dashboard/glance')
-      expect(await res.json()).toEqual({ version: '9.9.9' })
+      expect(Object.keys(GlanceResponse.parse(await res.json())).sort()).toEqual(['timeZone', 'version'])
     })
 
     it("follows WordPress' capabilities: an editor can edit posts, pages and moderate comments", async () => {
@@ -112,6 +114,23 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('dashboard (needs TEST_DATABASE
 
     it('answers 401 without a session', async () => {
       expect((await env.client().get('/api/v1/dashboard/glance')).status).toBe(401)
+    })
+
+    it("gives the site's time zone: the name, or the offset when no name is set", async () => {
+      const set = (key: string, value: unknown) =>
+        env.query(
+          `insert into setting (key, value) values ($1, $2::jsonb) on conflict (key) do update set value = excluded.value`,
+          [key, JSON.stringify(value)],
+        )
+      await set('timezone_string', 'Europe/Oslo')
+      expect(GlanceResponse.parse(await (await subscriber.get('/api/v1/dashboard/glance')).json()).timeZone).toBe(
+        'Europe/Oslo',
+      )
+      await set('timezone_string', '')
+      await set('gmt_offset', 5.5)
+      expect(GlanceResponse.parse(await (await subscriber.get('/api/v1/dashboard/glance')).json()).timeZone).toBe(
+        '+05:30',
+      )
     })
   })
 
@@ -181,17 +200,25 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('dashboard (needs TEST_DATABASE
     const dismiss = (client: TestClient, key: string, options?: Parameters<TestClient['post']>[2]) =>
       client.post(`/api/v1/notices/${key}/dismiss`, undefined, options)
 
-    it('dismisses for everyone, audit-logs it, and the notice is gone from every list', async () => {
+    it('dismisses for the account that asks only, keeps it in its preferences, and audit-logs it', async () => {
       await raise('test.dismiss_me', { capability: 'edit_posts' })
       expect(keys(await notices(editor))).toContain('test.dismiss_me')
       const res = await dismiss(editor, 'test.dismiss_me')
       expect(res.status).toBe(204)
       expect(keys(await notices(editor))).not.toContain('test.dismiss_me')
-      expect(keys(await notices(admin))).not.toContain('test.dismiss_me')
+      expect(keys(await notices(admin))).toContain('test.dismiss_me')
       const rows = await env.query<{ dismissed_at: Date | null }>(
         `select dismissed_at from admin_notice where key = 'test.dismiss_me'`,
       )
-      expect(rows[0]?.dismissed_at).toBeInstanceOf(Date)
+      expect(rows[0]?.dismissed_at).toBeNull()
+      const stored = await env.query<{ at: string | null }>(
+        `select preferences -> 'dismissedNotices' ->> 'test.dismiss_me' as at
+           from account where username = 'dash-editor'`,
+      )
+      expect(Date.parse(stored[0]?.at ?? '')).not.toBeNaN()
+      // The preferences the profile shows do not carry the dismissals.
+      const me = await editor.get('/api/v1/me')
+      expect(JSON.stringify(await me.json())).not.toContain('dismissedNotices')
       const audit = await env.query<{ actor: string; action: string; object_type: string; object_id: string }>(
         `select actor, action, object_type, object_id from audit_log where action = 'notice.dismissed'`,
       )
@@ -231,6 +258,31 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('dashboard (needs TEST_DATABASE
       expect((await dismiss(admin, 'test.twice')).status).toBe(404)
       await raise('test.twice')
       expect(keys(await notices(admin))).toContain('test.twice')
+      expect((await dismiss(admin, 'test.twice')).status).toBe(204)
+      expect(keys(await notices(admin))).not.toContain('test.twice')
+    })
+
+    it('keeps a notice hidden that was dismissed for everyone before per-account dismissal', async () => {
+      await raise('test.old_dismissal')
+      await env.query(`update admin_notice set dismissed_at = now() where key = 'test.old_dismissal'`)
+      expect(keys(await notices(admin))).not.toContain('test.old_dismissal')
+      expect((await dismiss(admin, 'test.old_dismissal')).status).toBe(404)
+    })
+
+    it('reads dismissals that are not times, or not an object, as none, and a dismissal replaces them', async () => {
+      await raise('test.garbled')
+      await env.query(
+        `update account set preferences = preferences || '{"dismissedNotices": {"test.garbled": "soon"}}'::jsonb
+          where username = 'dash-admin'`,
+      )
+      expect(keys(await notices(admin))).toContain('test.garbled')
+      await env.query(
+        `update account set preferences = preferences || '{"dismissedNotices": ["test.garbled"]}'::jsonb
+          where username = 'dash-admin'`,
+      )
+      expect(keys(await notices(admin))).toContain('test.garbled')
+      expect((await dismiss(admin, 'test.garbled')).status).toBe(204)
+      expect(keys(await notices(admin))).not.toContain('test.garbled')
     })
 
     it('answers 400 for a key that is not a notice key, 403 without the CSRF token, 401 without a session', async () => {
@@ -252,7 +304,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('dashboard (needs TEST_DATABASE
     async function withProxy(status: ProxyStatus) {
       const { db, pool } = createDb({ connectionString: env.database.appUrl, max: 2 })
       const proxy: ProxyCheck = { observe: () => undefined, status: () => status }
-      const service = createNoticeService({ db, clock: env.clock.now, proxy, audit: createAuditor(env.clock.now) })
+      const service = createNoticeService({ db, proxy, audit: createAuditor(env.clock.now) })
       const session = await env.services.sessions.authenticate(admin.sessionToken ?? '', memoryLogger().logger)
       const subscriberSession = await env.services.sessions.authenticate(
         subscriber.sessionToken ?? '',

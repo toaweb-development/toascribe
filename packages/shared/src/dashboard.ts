@@ -16,6 +16,8 @@ export const GlanceResponse = z.object({
   comments: z.object({ approved: z.int().min(0), pending: z.int().min(0) }).optional(),
   /** The version of the running api (the repo version). */
   version: z.string(),
+  /** The site's time zone, as `Intl.DateTimeFormat` takes it: the dashboard's greeting and date are in it. */
+  timeZone: z.string(),
 })
 export type GlanceResponse = z.infer<typeof GlanceResponse>
 

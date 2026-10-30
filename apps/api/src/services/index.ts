@@ -238,10 +238,14 @@ export function createServices(deps: ServiceDeps): Services {
     }),
     system: createSystemService({ db, clock, mail: deps.mail }),
     adminMenu,
-    dashboard: createDashboardService({ db, version: deps.version, content }),
+    dashboard: createDashboardService({
+      db,
+      version: deps.version,
+      content,
+      ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),
+    }),
     notices: createNoticeService({
       db,
-      clock,
       proxy,
       audit,
       ...(deps.onInvalidSetting === undefined ? {} : { onInvalidSetting: deps.onInvalidSetting }),

@@ -22,7 +22,12 @@ describe('the admin shell API layer', () => {
           },
         ],
       })
-      .mockResolvedValueOnce({ posts: 1, comments: { approved: 1, pending: 0 }, version: '0.5.0' })
+      .mockResolvedValueOnce({
+        posts: 1,
+        comments: { approved: 1, pending: 0 },
+        version: '0.5.0',
+        timeZone: 'Europe/Oslo',
+      })
       .mockResolvedValueOnce({
         notices: [
           {
@@ -37,7 +42,12 @@ describe('the admin shell API layer', () => {
     const admin = createAdminApi(api)
 
     expect((await admin.menu()).items[0]?.children).toHaveLength(1)
-    expect(await admin.glance()).toEqual({ posts: 1, comments: { approved: 1, pending: 0 }, version: '0.5.0' })
+    expect(await admin.glance()).toEqual({
+      posts: 1,
+      comments: { approved: 1, pending: 0 },
+      version: '0.5.0',
+      timeZone: 'Europe/Oslo',
+    })
     expect((await admin.notices()).notices[0]?.key).toBe('email.not_verified')
     expect(api).toHaveBeenNthCalledWith(1, '/v1/admin/menu')
     expect(api).toHaveBeenNthCalledWith(2, '/v1/dashboard/glance')
@@ -50,8 +60,8 @@ describe('the admin shell API layer', () => {
   })
 
   it('leaves a count out of the glance when the API does', async () => {
-    const admin = createAdminApi(vi.fn().mockResolvedValue({ version: '0.5.0' }))
-    expect(await admin.glance()).toEqual({ version: '0.5.0' })
+    const admin = createAdminApi(vi.fn().mockResolvedValue({ version: '0.5.0', timeZone: 'Europe/Oslo' }))
+    expect(await admin.glance()).toEqual({ version: '0.5.0', timeZone: 'Europe/Oslo' })
   })
 
   it('dismisses a notice with a POST and no body, the key encoded', async () => {

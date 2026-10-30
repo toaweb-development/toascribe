@@ -1,12 +1,16 @@
 // «I korte trekk» (WordPress' At a Glance, `wp_dashboard_right_now()`): what the site holds, as much of it as the account may see.
 // The rule is WordPress': the post count is for those who can `edit_posts`, the page count for `edit_pages`, the comment counts for
 // `moderate_comments`. A count the account may not see is left out, not shown as 0. The version is shown to everyone who can
-// see the dashboard (the api reports it on /api/health already). The active theme is left out: no setting holds it yet.
+// see the dashboard (the api reports it on /api/health already). The active theme is left out: no setting holds it yet. The site's
+// time zone comes along (M2.1) for the greeting and the date at the top of the dashboard.
 import type { Database } from '@toascribe/db'
+import { CoreSettings } from '@toascribe/shared'
 import type { GlanceResponse } from '@toascribe/shared'
 
 import type { SessionAuth } from '../lib/auth-context.ts'
 import { countComments } from '../repositories/dashboard.ts'
+import { readSettings } from '../repositories/settings.ts'
+import { intlTimeZone, timeZoneOf } from './content.ts'
 import type { ContentService } from './content.ts'
 
 export interface DashboardService {
@@ -18,22 +22,26 @@ export function createDashboardService(options: {
   readonly version: string
   /** The post and page counts are the content API's own (the «Publisert» view of each list). */
   readonly content: Pick<ContentService, 'counts'>
+  readonly onInvalidSetting?: (key: string) => void
 }): DashboardService {
-  const { db, version, content } = options
+  const { db, version, content, onInvalidSetting } = options
+  const zoneSettings = CoreSettings.pick({ timezone_string: true, gmt_offset: true })
   return {
     async glance(auth) {
       const can = (capability: string) => auth.capabilities.has(capability)
-      const [posts, pages, approved, pending] = await Promise.all([
+      const [posts, pages, approved, pending, zone] = await Promise.all([
         content.counts(auth, 'post').then((counts) => counts?.publish),
         content.counts(auth, 'page').then((counts) => counts?.publish),
         can('moderate_comments') ? countComments(db, 'approved') : undefined,
         can('moderate_comments') ? countComments(db, 'pending') : undefined,
+        readSettings(db, zoneSettings, onInvalidSetting),
       ])
       return {
         ...(posts === undefined ? {} : { posts }),
         ...(pages === undefined ? {} : { pages }),
         ...(approved === undefined || pending === undefined ? {} : { comments: { approved, pending } }),
         version,
+        timeZone: intlTimeZone(timeZoneOf(zone)),
       }
     },
   }
