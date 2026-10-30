@@ -9,9 +9,10 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
 
 const sha256 = (text: string) => `'sha256-${createHash('sha256').update(text).digest('base64')}'`
 
-// What the admin shares with the site (Nuxt UI, i18n, the API layer, runtime config, head basics) is in nuxt-base.
+// What the admin shares with the site (Nuxt UI, i18n, the API layer, runtime config, head basics) is in nuxt-base; its look,
+// «Blekk» (tokens, fonts and the theme of the shared components, M2.1), is the layer @toascribe/ui.
 export default defineNuxtConfig({
-  extends: ['@toascribe/nuxt-base'],
+  extends: ['@toascribe/ui', '@toascribe/nuxt-base'],
 
   // The app's own messages (i18n/locales/nb.json): a layer's messages are only read when the layer lists the file. The
   // first layer's `language` wins when the module merges the entries of one code, so it is repeated here.

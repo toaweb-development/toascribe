@@ -1,5 +1,10 @@
 {
-  // Typecheck and typed lint for everything in the package, including tests and tool configs.
-  "extends": "@toascribe/tsconfig/tsconfig.base.json",
-  "include": ["src", "test", "vitest.config.ts"]
+  // https://nuxt.com/docs/guide/concepts/typescript
+  "files": [],
+  "references": [
+    { "path": "./.nuxt/tsconfig.app.json" },
+    { "path": "./.nuxt/tsconfig.server.json" },
+    { "path": "./.nuxt/tsconfig.shared.json" },
+    { "path": "./.nuxt/tsconfig.node.json" }
+  ]
 }

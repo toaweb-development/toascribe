@@ -1,0 +1,19 @@
+/*
+ * «Blekk» (M2.1): form and size. Radius 10 px on fields and buttons, 12 px on cards, 8 px on menu items, full on badges. Fields and
+ * buttons 40 px in toolbars and 44 px for the main actions (no target under 40 px). The content at most 1180 px wide with 32 px
+ * around it. The spacing scale is Tailwind's 4 px one (8, 12, 16, 20, 24, 32).
+ */
+@theme {
+  --radius-field: 0.625rem;
+  --radius-card: 0.75rem;
+  --radius-menu: 0.5rem;
+  --spacing-control: 2.5rem;
+  --spacing-control-main: 2.75rem;
+  --container-content: 73.75rem;
+}
+
+:root {
+  /* Nuxt UI's own radius: its steps are multiples of it, and fields and buttons are `rounded-md` (1.5×), so this makes them 10 px.
+     Cards and menu items get Blekk's own radius in app.config.ts (rounded-card, rounded-menu). */
+  --ui-radius: calc(var(--radius-field) / 1.5);
+}

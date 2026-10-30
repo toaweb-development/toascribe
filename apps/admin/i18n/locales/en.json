@@ -569,8 +569,8 @@
     },
     "personal": {
       "title": "Personal Options",
-      "scheme": "Admin Color Scheme",
-      "schemeSaved": "The color scheme “{name}” has been saved.",
+      "scheme": "Admin theme",
+      "schemeSaved": "The theme “{name}” has been saved.",
       "toolbar": "Toolbar",
       "toolbarLabel": "Show Toolbar when viewing site",
       "toolbarOn": "The toolbar is shown when you view the site.",
@@ -586,14 +586,12 @@
       }
     },
     "scheme": {
-      "default": "Default",
-      "defaultHint": "Green, and light or dark as your system.",
+      "system": "System",
+      "systemHint": "Light or dark, as your system.",
       "light": "Light",
-      "lightHint": "Green, always light.",
-      "midnight": "Midnight",
-      "midnightHint": "Indigo, always dark.",
-      "ocean": "Ocean",
-      "oceanHint": "Blue, and light or dark as your system."
+      "lightHint": "Always light.",
+      "dark": "Dark",
+      "darkHint": "Always dark."
     },
     "name": {
       "title": "Name",

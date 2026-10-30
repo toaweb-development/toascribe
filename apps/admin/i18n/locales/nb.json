@@ -569,8 +569,8 @@
     },
     "personal": {
       "title": "Personlige innstillinger",
-      "scheme": "Fargeskjema for administrasjon",
-      "schemeSaved": "Fargeskjemaet «{name}» er lagret.",
+      "scheme": "Tema for administrasjonen",
+      "schemeSaved": "Temaet «{name}» er lagret.",
       "toolbar": "Verktøylinje",
       "toolbarLabel": "Vis verktøylinjen når du ser på nettstedet",
       "toolbarOn": "Verktøylinjen vises når du ser på nettstedet.",
@@ -586,14 +586,12 @@
       }
     },
     "scheme": {
-      "default": "Standard",
-      "defaultHint": "Grønn, og lys eller mørk som systemet ditt.",
-      "light": "Lys",
-      "lightHint": "Grønn, alltid lys.",
-      "midnight": "Mørk",
-      "midnightHint": "Indigo, alltid mørk.",
-      "ocean": "Hav",
-      "oceanHint": "Blå, og lys eller mørk som systemet ditt."
+      "system": "System",
+      "systemHint": "Lyst eller mørkt, som systemet ditt.",
+      "light": "Lyst",
+      "lightHint": "Alltid lyst.",
+      "dark": "Mørkt",
+      "darkHint": "Alltid mørkt."
     },
     "name": {
       "title": "Navn",

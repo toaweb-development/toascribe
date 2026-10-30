@@ -3,28 +3,39 @@
   "version": "0.7.0",
   "private": true,
   "type": "module",
-  "description": "Placeholder for the shared admin and extension components; they come in M0.5.",
+  "description": "The admin's design system «Blekk» (M2.1) as a Nuxt layer: the tokens (light and dark), the Geist fonts, Nuxt UI's theme for the shared components, and the contrast check of every colour pair.",
+  "main": "./nuxt.config.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+    ".": "./nuxt.config.ts",
+    "./blekk.css": "./app/assets/theme/blekk.css"
   },
   "files": [
-    "dist"
+    "app",
+    "nuxt.config.ts",
+    "src"
   ],
   "scripts": {
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "lint": "nuxt prepare && eslint .",
+    "typecheck": "nuxi typecheck",
     "test": "vitest run",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "echo \"ui is a Nuxt layer: the admin, which extends it, builds it, so it has no build of its own\"",
+    "contrast": "node --experimental-strip-types src/contrast-report.ts",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "catalog:",
+    "@fontsource-variable/geist-mono": "catalog:",
+    "@nuxt/ui": "catalog:",
+    "tailwindcss": "catalog:",
+    "vue": "catalog:"
   },
   "devDependencies": {
-    "@toascribe/tsconfig": "workspace:*",
+    "@nuxt/eslint": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "nuxt": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:"
   }
 }

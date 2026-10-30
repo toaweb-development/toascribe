@@ -161,20 +161,20 @@ test('leaving the page with unsaved edits asks first', async ({ page }) => {
   await expect(page.getByRole('button', { name: `Hei, ${user.username}` })).toHaveCount(0)
 })
 
-test('the colour scheme applies at once and survives a reload; the toolbar choice is kept', async ({ page }) => {
+test('the theme applies at once and survives a reload; the toolbar choice is kept', async ({ page }) => {
   const user = await onProfile(page)
   await expect(page.locator('html')).not.toHaveClass(/dark/)
 
-  await chooseScheme(page, 'Mørk')
-  await expect(page.getByText('Fargeskjemaet «Mørk» er lagret.')).toBeVisible()
+  await chooseScheme(page, 'Mørkt')
+  await expect(page.getByText('Temaet «Mørkt» er lagret.')).toBeVisible()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await page.reload()
   await expect(page.locator('html')).toHaveClass(/dark/)
-  await expect(page.getByRole('radio', { name: /Mørk/ })).toBeChecked()
-  await expectNoAxeViolations(page, 'the profile page in Mørk')
+  await expect(page.getByRole('radio', { name: /Mørkt/ })).toBeChecked()
+  await expectNoAxeViolations(page, 'the profile page, dark')
 
-  await chooseScheme(page, 'Lys')
-  await expect(page.getByText('Fargeskjemaet «Lys» er lagret.')).toBeVisible()
+  await chooseScheme(page, 'Lyst')
+  await expect(page.getByText('Temaet «Lyst» er lagret.')).toBeVisible()
   await expect(page.locator('html')).not.toHaveClass(/dark/)
 
   const toolbar = page.getByRole('checkbox', { name: 'Vis verktøylinjen når du ser på nettstedet' })
@@ -183,7 +183,7 @@ test('the colour scheme applies at once and survives a reload; the toolbar choic
   await expect(page.getByText('Verktøylinjen vises ikke når du ser på nettstedet.')).toBeVisible()
   await page.reload()
   await expect(page.getByRole('checkbox', { name: /Vis verktøylinjen/ })).not.toBeChecked()
-  await expect(page.getByRole('radio', { name: /Lys/ })).toBeChecked()
+  await expect(page.getByRole('radio', { name: /Lyst/ })).toBeChecked()
   await expectSignedIn(page, user)
 })
 

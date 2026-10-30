@@ -2,7 +2,7 @@
 import { ADMIN_COLOR_SCHEMES, ADMIN_LOCALES } from '@toascribe/shared'
 import type { AdminColorScheme, AdminLocale } from '@toascribe/shared'
 
-// «Personlige valg» (WordPress): the admin colour scheme, the toolbar on the site and the admin's language (M1.8, K-330). The choices
+// «Personlige valg» (WordPress): the admin's theme (system, light or dark, M2.1), the toolbar on the site and the admin's language (M1.8, K-330). The choices
 // are saved the moment they are made, not with «Oppdater profil»: WordPress previews a colour scheme at once, and the other choice is a single switch. The result is
 // said in place (a status line under the choices), because the person is looking at it.
 const { t } = useI18n()
@@ -124,7 +124,7 @@ async function retry() {
         size="lg"
         :disabled="saving === 'scheme'"
         :ui="{
-          fieldset: 'grid grid-cols-1 gap-3 sm:grid-cols-2',
+          fieldset: 'grid grid-cols-1 gap-3 sm:grid-cols-3',
           item: 'min-h-11 p-3 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary',
           wrapper: 'text-start items-start',
           description: 'text-toned',
@@ -135,14 +135,11 @@ async function retry() {
         <template v-slot:label="{ item }">
           <span class="flex flex-col gap-2">
             <span class="flex items-center gap-2">
-              <span class="flex shrink-0 overflow-hidden rounded-sm ring ring-accented" aria-hidden="true">
-                <span
-                  v-for="swatch in SCHEME_SWATCHES[item.value as AdminColorScheme]"
-                  :key="swatch"
-                  class="block h-5 w-5"
-                  :class="swatch"
-                />
-              </span>
+              <UIcon
+                :name="SCHEME_ICONS[item.value as AdminColorScheme]"
+                class="size-5 shrink-0 text-toned"
+                aria-hidden="true"
+              />
               <span class="font-medium text-default">{{ item.label }}</span>
               <UIcon
                 v-if="scheme === item.value"

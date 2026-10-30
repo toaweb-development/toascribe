@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
-@import './tokens/colors.css';
+/* «Blekk» (M2.1): the tokens, the fonts and Nuxt UI's roles pointed at them (packages/ui). */
+@import '@toascribe/ui/blekk.css';
 
 /*
  * The block editor prototype (M0.6): the few rules ProseMirror needs, which TipTap would otherwise inject as a <style> element

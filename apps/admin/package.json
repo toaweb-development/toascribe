@@ -32,6 +32,7 @@
     "@toascribe/blocks": "workspace:*",
     "@toascribe/nuxt-base": "workspace:*",
     "@toascribe/shared": "workspace:*",
+    "@toascribe/ui": "workspace:*",
     "nuxt": "catalog:",
     "tailwindcss": "catalog:",
     "vue": "catalog:"

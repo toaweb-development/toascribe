@@ -4,12 +4,19 @@ import { z } from 'zod'
 // they are kept. Reading fills in the default for a key that is missing or does not fit; writing merges the keys that were sent.
 
 /**
- * The admin colour schemes. The api only stores the key; the admin maps each to Nuxt UI colours and light or dark
- * (WordPress' «Fargeskjema for administrasjonen»).
+ * The admin's theme (M2.1, «Blekk»): the system's light or dark, or always light, or always dark (WordPress'
+ * «Fargeskjema for administrasjonen»). The api only stores the key.
  */
-export const ADMIN_COLOR_SCHEMES = ['default', 'light', 'midnight', 'ocean'] as const
+export const ADMIN_COLOR_SCHEMES = ['system', 'light', 'dark'] as const
 export const AdminColorScheme = z.enum(ADMIN_COLOR_SCHEMES)
 export type AdminColorScheme = z.infer<typeof AdminColorScheme>
+
+/** The schemes before «Blekk» (0.5 to 0.7), as the theme they looked like: an account keeps its light or dark. */
+export const LEGACY_ADMIN_COLOR_SCHEMES: Readonly<Record<string, AdminColorScheme>> = {
+  default: 'system',
+  ocean: 'system',
+  midnight: 'dark',
+}
 
 /** The columns of a content list that «Skjermalternativer» can hide (K-037). The title is always shown. */
 export const CONTENT_LIST_COLUMNS = ['author', 'categories', 'tags', 'date'] as const
@@ -42,7 +49,7 @@ export type Preferences = z.infer<typeof Preferences>
 
 /** What an account that never saved a preference has. */
 export const DEFAULT_PREFERENCES: Preferences = {
-  adminColorScheme: 'default',
+  adminColorScheme: 'system',
   showToolbarOnSite: true,
   dismissedWelcome: false,
   postsScreen: DEFAULT_LIST_SCREEN_OPTIONS,

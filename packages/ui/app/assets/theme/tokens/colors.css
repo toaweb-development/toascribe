@@ -1,0 +1,131 @@
+/*
+ * «Blekk» (M2.1): the admin's colours in three layers (TAILWIND_STANDARD §3).
+ * 1. Semantic tokens, light in :root and dark under .dark (Nuxt UI's colour mode). The values are Tor's table, with two changes the
+ *    contrast check asked for: the strong border of fields and buttons (#DCE0E6 / #2E3340 were 1.3:1 and 1.5:1; WCAG 1.4.11 asks
+ *    3:1 for the edge that shows a field) and the dark danger colour (Tor: «velg selv med AA-kontrast»).
+ * 2. Nuxt UI's roles (--ui-*) point at them, so every Nuxt UI component takes the look.
+ * 3. `@theme inline` makes utilities of the tokens Nuxt UI has no name for (bg-app, bg-surface, bg-sidebar, text-accent …).
+ * test/contrast.test.ts reads this file and checks every pair in both themes.
+ */
+:root {
+  --blekk-bg: #f5f6f8;
+  --blekk-surface: #ffffff;
+  --blekk-sunken: #f8f9fb;
+  --blekk-topbar: #ffffff;
+  --blekk-border: #e3e6eb;
+  --blekk-border-strong: #8b8e94;
+  --blekk-divider: #eef0f3;
+  --blekk-text: #12141a;
+  --blekk-heading: #12141a;
+  --blekk-secondary: #3a404c;
+  --blekk-muted: #5b6270;
+  --blekk-accent: #2b44cf;
+  --blekk-accent-text: #2b44cf;
+  --blekk-accent-hover: #1c2f9e;
+  --blekk-accent-weak: #eef1fd;
+  --blekk-on-accent: #ffffff;
+  --blekk-success-text: #17603c;
+  --blekk-success-bg: #e7f5ee;
+  --blekk-warning-text: #7a4300;
+  --blekk-warning-bg: #fff9ec;
+  --blekk-warning-border: #f0d9a8;
+  --blekk-warning-dot: #c77700;
+  --blekk-warning-badge: #fff1d6;
+  --blekk-danger: #b42318;
+  --blekk-sidebar: #12141a;
+  --blekk-sidebar-text: #c5cad4;
+  --blekk-sidebar-muted: #9aa1ae;
+  --blekk-sidebar-active: #252935;
+  --blekk-sidebar-border: #2a2e38;
+}
+
+.dark {
+  --blekk-bg: #0d0f14;
+  --blekk-surface: #161921;
+  --blekk-sunken: #0f1218;
+  --blekk-topbar: #12151c;
+  --blekk-border: #262a34;
+  --blekk-border-strong: #606570;
+  --blekk-divider: #20242d;
+  --blekk-text: #e9ebf0;
+  --blekk-heading: #ffffff;
+  --blekk-secondary: #c2c7d1;
+  --blekk-muted: #9aa1ae;
+  --blekk-accent: #4a63f0;
+  --blekk-accent-text: #8ea0ff;
+  --blekk-accent-hover: #b4c0ff;
+  --blekk-accent-weak: #1e2230;
+  --blekk-on-accent: #ffffff;
+  --blekk-success-text: #6fd39a;
+  --blekk-success-bg: #12301f;
+  --blekk-warning-text: #f2c46d;
+  --blekk-warning-bg: #1e1910;
+  --blekk-warning-border: #4a3a1c;
+  --blekk-warning-dot: #e0a030;
+  --blekk-warning-badge: #3a2c12;
+  --blekk-danger: #f97066;
+  --blekk-sidebar: #08090d;
+  --blekk-sidebar-text: #c2c7d1;
+  --blekk-sidebar-muted: #9aa1ae;
+  --blekk-sidebar-active: #1e2230;
+  --blekk-sidebar-border: #22262f;
+}
+
+/* 2. Nuxt UI's roles. The same in both themes: they point at the tokens, and the tokens change. `primary` is the accent as text and
+   ring (#8EA0FF on dark); a filled button takes the fill (app.config.ts), so white text on it keeps 4.5:1 in both themes. */
+:root,
+.dark {
+  --ui-bg: var(--blekk-surface);
+  --ui-bg-muted: var(--blekk-sunken);
+  --ui-bg-elevated: var(--blekk-divider);
+  --ui-bg-accented: var(--blekk-border);
+  --ui-bg-inverted: var(--blekk-text);
+  --ui-text: var(--blekk-text);
+  --ui-text-highlighted: var(--blekk-heading);
+  --ui-text-toned: var(--blekk-secondary);
+  --ui-text-muted: var(--blekk-muted);
+  /* Nuxt UI's placeholders and hints are «dimmed»: the muted step, so they read at 4.5:1 too. */
+  --ui-text-dimmed: var(--blekk-muted);
+  --ui-text-inverted: var(--blekk-surface);
+  --ui-border: var(--blekk-border);
+  --ui-border-muted: var(--blekk-divider);
+  --ui-border-accented: var(--blekk-border-strong);
+  --ui-border-inverted: var(--blekk-text);
+  --ui-primary: var(--blekk-accent-text);
+  --ui-info: var(--blekk-accent-text);
+  --ui-success: var(--blekk-success-text);
+  --ui-warning: var(--blekk-warning-text);
+  --ui-error: var(--blekk-danger);
+}
+
+/* 3. Utilities for what Nuxt UI has no role for. */
+@theme inline {
+  --color-app: var(--blekk-bg);
+  --color-surface: var(--blekk-surface);
+  --color-sunken: var(--blekk-sunken);
+  --color-topbar: var(--blekk-topbar);
+  --color-line: var(--blekk-border);
+  --color-line-strong: var(--blekk-border-strong);
+  --color-divider: var(--blekk-divider);
+  --color-heading: var(--blekk-heading);
+  --color-secondary: var(--blekk-secondary);
+  --color-quiet: var(--blekk-muted);
+  --color-accent: var(--blekk-accent);
+  --color-accent-text: var(--blekk-accent-text);
+  --color-accent-hover: var(--blekk-accent-hover);
+  --color-accent-weak: var(--blekk-accent-weak);
+  --color-on-accent: var(--blekk-on-accent);
+  --color-success-text: var(--blekk-success-text);
+  --color-success-soft: var(--blekk-success-bg);
+  --color-warning-text: var(--blekk-warning-text);
+  --color-warning-soft: var(--blekk-warning-bg);
+  --color-warning-line: var(--blekk-warning-border);
+  --color-warning-dot: var(--blekk-warning-dot);
+  --color-warning-badge: var(--blekk-warning-badge);
+  --color-danger: var(--blekk-danger);
+  --color-sidebar: var(--blekk-sidebar);
+  --color-sidebar-text: var(--blekk-sidebar-text);
+  --color-sidebar-muted: var(--blekk-sidebar-muted);
+  --color-sidebar-active: var(--blekk-sidebar-active);
+  --color-sidebar-line: var(--blekk-sidebar-border);
+}

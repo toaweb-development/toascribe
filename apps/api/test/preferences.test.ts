@@ -17,7 +17,7 @@ describe('readPreferences', () => {
     expect(readPreferences('ocean')).toEqual(DEFAULT_PREFERENCES)
     expect(readPreferences(['ocean'])).toEqual(DEFAULT_PREFERENCES)
     expect(DEFAULT_PREFERENCES).toEqual({
-      adminColorScheme: 'default',
+      adminColorScheme: 'system',
       showToolbarOnSite: true,
       dismissedWelcome: false,
       postsScreen: { hiddenColumns: [], perPage: 20 },
@@ -34,7 +34,14 @@ describe('readPreferences', () => {
         screenOptions: { x: 1 },
       }),
     ).toEqual({ ...DEFAULT_PREFERENCES, showToolbarOnSite: false })
-    expect(readPreferences({ adminColorScheme: 'midnight' }).adminColorScheme).toBe('midnight')
+    expect(readPreferences({ adminColorScheme: 'dark' }).adminColorScheme).toBe('dark')
+  })
+
+  it('reads a scheme saved before «Blekk» (M2.1) as the theme it looked like', () => {
+    expect(readPreferences({ adminColorScheme: 'default' }).adminColorScheme).toBe('system')
+    expect(readPreferences({ adminColorScheme: 'ocean' }).adminColorScheme).toBe('system')
+    expect(readPreferences({ adminColorScheme: 'midnight' }).adminColorScheme).toBe('dark')
+    expect(readPreferences({ adminColorScheme: 'light' }).adminColorScheme).toBe('light')
   })
 })
 
@@ -71,26 +78,26 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('preferences (needs TEST_DATABA
 
   it('changes what is sent, keeps the other keys, and returns all of them', async () => {
     const { account, client } = await signedIn()
-    const first = await client.patch('/api/v1/me/preferences', { adminColorScheme: 'ocean' })
+    const first = await client.patch('/api/v1/me/preferences', { adminColorScheme: 'dark' })
     expect(first.status).toBe(200)
-    expect(Preferences.parse(await first.json())).toEqual({ ...DEFAULT_PREFERENCES, adminColorScheme: 'ocean' })
+    expect(Preferences.parse(await first.json())).toEqual({ ...DEFAULT_PREFERENCES, adminColorScheme: 'dark' })
 
     const second = await client.patch('/api/v1/me/preferences', { dismissedWelcome: true, showToolbarOnSite: false })
     expect(Preferences.parse(await second.json())).toEqual({
       ...DEFAULT_PREFERENCES,
-      adminColorScheme: 'ocean',
+      adminColorScheme: 'dark',
       showToolbarOnSite: false,
       dismissedWelcome: true,
     })
     // Only the keys that were sent are stored.
     expect(await stored(account.id)).toEqual({
-      adminColorScheme: 'ocean',
+      adminColorScheme: 'dark',
       showToolbarOnSite: false,
       dismissedWelcome: true,
     })
     expect(MeResponse.parse(await (await client.get('/api/v1/me')).json()).preferences).toEqual({
       ...DEFAULT_PREFERENCES,
-      adminColorScheme: 'ocean',
+      adminColorScheme: 'dark',
       showToolbarOnSite: false,
       dismissedWelcome: true,
     })

@@ -1,7 +1,13 @@
 // The signed-in person's own account: `GET` and `PATCH /me` (K-011). E-mail and password do not change here: the e-mail
 // changes through the confirmation link (K-012) and the password through reset or its own route.
 import type { Database } from '@toascribe/db'
-import { DEFAULT_PREFERENCES, EMPTY_PROFILE, Preferences, ProfileFields } from '@toascribe/shared'
+import {
+  DEFAULT_PREFERENCES,
+  EMPTY_PROFILE,
+  LEGACY_ADMIN_COLOR_SCHEMES,
+  Preferences,
+  ProfileFields,
+} from '@toascribe/shared'
 import type { ListScreenOptions } from '@toascribe/shared'
 import type {
   DisplayNameChoice,
@@ -42,6 +48,13 @@ export function readProfile(stored: unknown): ProfileFields {
   return mergeProfile(EMPTY_PROFILE, parsed.success ? parsed.data : {})
 }
 
+/** A scheme saved before «Blekk» (M2.1) read as the theme it looked like; anything else as it is. */
+function legacyScheme(stored: unknown): unknown {
+  return typeof stored === 'string' && Object.hasOwn(LEGACY_ADMIN_COLOR_SCHEMES, stored)
+    ? LEGACY_ADMIN_COLOR_SCHEMES[stored]
+    : stored
+}
+
 /**
  * The preferences stored in `account.preferences`, with the default for every key that is missing or does not fit its schema.
  * Each key is read on its own, so one bad value does not reset the others, and keys this version does not know are left out.
@@ -52,7 +65,7 @@ export function readPreferences(stored: unknown): Preferences {
   return {
     adminColorScheme: field.adminColorScheme
       .catch(DEFAULT_PREFERENCES.adminColorScheme)
-      .parse(source['adminColorScheme']),
+      .parse(legacyScheme(source['adminColorScheme'])),
     showToolbarOnSite: field.showToolbarOnSite
       .catch(DEFAULT_PREFERENCES.showToolbarOnSite)
       .parse(source['showToolbarOnSite']),

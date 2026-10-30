@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitest/config'
 
+// Plain unit tests with no Nuxt runtime: the contrast of the tokens is read from the CSS file itself. The "source" condition as in
+// every package (a test that imports a workspace library reads its src/).
 export default defineConfig({
-  // Workspace libraries are read from src/ (the "source" export condition), so no dist/ is needed. Every project sets it
-  // itself: test.projects do not inherit it, and resolve.conditions alone does not reach Node tests.
   ssr: { resolve: { conditions: ['source'] } },
   test: { name: 'ui', include: ['test/**/*.test.ts'] },
 })

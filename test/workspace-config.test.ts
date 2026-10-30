@@ -116,12 +116,13 @@ describe('the Nuxt apps and layers', () => {
     return manifest['scripts']
   }
 
-  it('finds the site, the admin, the theme, the site core and the shared layer', () => {
+  it("finds the site, the admin, the theme, the site core, the shared layer and the admin's design system", () => {
     expect(nuxtDirs.sort()).toEqual([
       'apps/admin',
       'apps/site',
       'packages/nuxt-base',
       'packages/site-core',
+      'packages/ui',
       'themes/default',
     ])
   })

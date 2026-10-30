@@ -178,35 +178,35 @@ test.describe('the colour scheme', () => {
   // The system is light, so any dark page here comes from the account's scheme and not from the system.
   test.use({ colorScheme: 'light' })
 
-  test('follows the account: midnight is dark, light is light, ocean has another primary', async ({ page }) => {
+  test('follows the account: dark is dark, light is light, system follows the system (M2.1)', async ({ page }) => {
     const user = admin
     await signIn(page, user)
     const html = page.locator('html')
     await expect(html).not.toHaveClass(/dark/)
 
-    await savePreferences(page, { adminColorScheme: 'midnight' })
+    await savePreferences(page, { adminColorScheme: 'dark' })
     await page.reload()
     await expect(html).toHaveClass(/dark/)
     await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
-    expect(await page.locator('#nuxt-ui-colors').textContent()).toContain('indigo')
-    await expectNoAxeViolations(page, 'the dashboard, midnight')
+    await expectNoAxeViolations(page, 'the dashboard, dark')
 
-    await savePreferences(page, { adminColorScheme: 'ocean' })
+    await savePreferences(page, { adminColorScheme: 'light' })
+    await page.emulateMedia({ colorScheme: 'dark' })
     await page.reload()
     await expect(html).not.toHaveClass(/dark/)
-    expect(await page.locator('#nuxt-ui-colors').textContent()).toContain('sky')
-    await expectNoAxeViolations(page, 'the dashboard, ocean')
 
-    await savePreferences(page, { adminColorScheme: 'default' })
+    await savePreferences(page, { adminColorScheme: 'system' })
+    await page.reload()
+    await expect(html).toHaveClass(/dark/)
+    await page.emulateMedia({ colorScheme: 'light' })
     await page.reload()
     await expect(html).not.toHaveClass(/dark/)
-    expect(await page.locator('#nuxt-ui-colors').textContent()).not.toContain('sky')
   })
 
   test('is not dressed on the sign-in screens after the shell is left', async ({ page }) => {
     const user = admin
     await signIn(page, user)
-    await savePreferences(page, { adminColorScheme: 'midnight' })
+    await savePreferences(page, { adminColorScheme: 'dark' })
     await page.reload()
     await expect(page.locator('html')).toHaveClass(/dark/)
 
@@ -214,6 +214,6 @@ test.describe('the colour scheme', () => {
     await page.getByRole('menuitem', { name: 'Logg ut' }).click()
     await expect(page).toHaveURL(/\/admin\/logout$/)
     await expect(page.locator('html')).not.toHaveClass(/dark/)
-    await savePreferences(page, { adminColorScheme: 'default' })
+    await savePreferences(page, { adminColorScheme: 'system' })
   })
 })
