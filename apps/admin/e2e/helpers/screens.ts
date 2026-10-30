@@ -47,6 +47,17 @@ export async function expectSignedIn(page: Page, user: Pick<TestUser, 'username'
   await expect(page.getByRole('button', { name: `Hei, ${user.username}`, exact: false })).toBeVisible()
 }
 
+/**
+ * The dashboard's heading: the greeting by the hour in the site's zone (M2.1, «Blekk»), in bokmål or English. The breadcrumbs say
+ * «Kontrollpanel».
+ */
+export function dashboardHeading(page: Page) {
+  return page.getByRole('heading', {
+    level: 1,
+    name: /^(God (morgen|formiddag|ettermiddag|kveld)|Good (morning|afternoon|evening)), /,
+  })
+}
+
 /** No shell, so nobody is shown as signed in. */
 export async function expectNotSignedIn(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: /^Hei, / })).toHaveCount(0)

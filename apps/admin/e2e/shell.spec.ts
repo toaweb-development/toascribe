@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 import { createUser, raiseNotice, removeNotice, resetLimits, resetPreferences } from './helpers/stack.ts'
 import type { TestUser } from './helpers/stack.ts'
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
-import { expectSignedIn, signIn } from './helpers/screens.ts'
+import { dashboardHeading, expectSignedIn, signIn } from './helpers/screens.ts'
 
 // The admin shell (M0.5): the menu from the api, the bar across the top, the colour scheme and the dashboard. Each test runs at 375 px
 // and at 1280 px; the fixture fails a test on any console message or CSP violation.
@@ -47,7 +47,7 @@ async function savePreferences(page: Page, changes: Record<string, unknown>): Pr
 test('an administrator sees Kontrollpanel and Brukere with Alle brukere and Profil', async ({ page }) => {
   const user = admin
   await signIn(page, user)
-  await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
+  await expect(dashboardHeading(page)).toBeVisible()
   await expectSignedIn(page, user)
 
   const menu = await menuOf(page)
@@ -55,15 +55,20 @@ test('an administrator sees Kontrollpanel and Brukere with Alle brukere and Prof
   // The current section is open, with «Hjem»; the page is marked as the current one.
   await expect(menu.getByRole('link', { name: 'Hjem' })).toHaveAttribute('aria-current', 'page')
   await expect(menu.getByRole('link', { name: 'Brukere', exact: true })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Alle brukere' })).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Profil' })).toBeVisible()
+  // Only the current section shows its pages (M2.1); another opens its own as a small menu from its button.
+  await expect(menu.getByRole('link', { name: 'Alle brukere' })).toHaveCount(0)
   await expectNoAxeViolations(page, 'the dashboard with the menu open')
+  await menu.getByRole('button', { name: 'Vis undermenyen til Brukere' }).click()
+  const flyout = page.getByRole('list', { name: 'Brukere' })
+  await expect(flyout.getByRole('link', { name: 'Alle brukere' })).toBeVisible()
+  await expect(flyout.getByRole('link', { name: 'Profil' })).toBeVisible()
+  await expectNoAxeViolations(page, 'the dashboard with the Brukere flyout open')
 })
 
 test('a subscriber sees Kontrollpanel and Profil only', async ({ page }) => {
   const user = await createUser('subscriber', 'shellsub')
   await signIn(page, user)
-  await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
+  await expect(dashboardHeading(page)).toBeVisible()
 
   const menu = await menuOf(page)
   await expect(menu.getByRole('link', { name: 'Kontrollpanel' })).toBeVisible()
@@ -72,10 +77,12 @@ test('a subscriber sees Kontrollpanel and Profil only', async ({ page }) => {
 
   // Only what the account may see: no counts of posts, pages or comments (not zeros), no notices, and no link to the users.
   await page.keyboard.press('Escape')
-  await expect(page.getByText('toascribe 0.', { exact: false })).toBeVisible()
-  await expect(page.getByText(/innlegg|sider?\b|kommentar|venter på godkjenning/)).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Se alle brukere' })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Rediger profilen din' })).toBeVisible()
+  await expect(page.getByText(/^Du kjører \d+\.\d+\.\d+/)).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Oversikt' })).not.toContainText(/\d/)
+  await expect(page.getByText(/kommentar|venter på godkjenning/)).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Skriv et innlegg' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'se alle brukerne' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'profilen din' })).toBeVisible()
 })
 
 test('an anonymous visitor goes to the login screen and is brought back after signing in', async ({ page }) => {
@@ -89,14 +96,17 @@ test('an anonymous visitor goes to the login screen and is brought back after si
   await page.getByLabel('Passord', { exact: true }).fill(user.password)
   await page.getByRole('button', { name: 'Logg inn' }).click()
   await expect(page).toHaveURL(/\/admin\/?$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
+  await expect(dashboardHeading(page)).toBeVisible()
   await expectSignedIn(page, user)
 })
 
-test('the bar leads to the site and holds the account menu', async ({ page }) => {
+test('the dashboard leads to the site, and the account menu is there', async ({ page }) => {
   const user = await createUser('editor', 'shellbar')
   await signIn(page, user)
-  await expect(page.getByRole('link', { name: /Vis nettsted/ })).toHaveAttribute('href', '/')
+  await expect(page.getByRole('main').getByRole('link', { name: 'Vis nettstedet', exact: true })).toHaveAttribute(
+    'href',
+    '/',
+  )
 
   await page.getByRole('button', { name: `Hei, ${user.username}` }).click()
   await expect(page.getByRole('menuitem', { name: 'Rediger profil' })).toHaveAttribute('href', '/admin/profile')
@@ -113,29 +123,34 @@ test.describe('the dashboard', () => {
     await removeNotice(DISMISSIBLE_NOTICE)
   })
 
-  test('shows the counts, the e-mail notice and the welcome panel', async ({ page }) => {
+  test('shows the counts, the e-mail notice and the welcome', async ({ page }) => {
     const user = admin
     await signIn(page, user)
 
-    const glance = page.getByRole('region', { name: 'Oversikt' })
-    // Other specs publish posts and pages in the same database (M1.1), so the counts are read as numbers, and they link to the lists.
-    await expect(glance.getByRole('link', { name: /^\d+ innlegg$/ })).toHaveAttribute(
-      'href',
-      '/admin/posts?status=publish',
-    )
-    await expect(glance.getByRole('link', { name: /^\d+ sider?$/ })).toHaveAttribute(
-      'href',
-      '/admin/pages?status=publish',
-    )
-    await expect(glance.getByText('1 kommentar', { exact: true })).toBeVisible()
-    await expect(glance.getByText('0 venter på godkjenning')).toBeVisible()
-    await expect(glance.getByText(/^toascribe \d+\.\d+\.\d+/)).toBeVisible()
+    // Other specs publish posts and pages in the same database (M1.1), so the counts are read as numbers, and the cards lead to the
+    // lists.
+    const stats = page.getByRole('region', { name: 'Oversikt' })
+    const card = (name: string) => stats.getByRole('listitem').filter({ has: page.getByText(name, { exact: true }) })
+    await expect(card('Innlegg').getByRole('link', { name: 'Innlegg' })).toHaveAttribute('href', '/admin/posts')
+    await expect(card('Innlegg')).toContainText(/\d+ publisert/)
+    await expect(card('Sider').getByRole('link', { name: 'Sider' })).toHaveAttribute('href', '/admin/pages')
+    await expect(card('Kommentarer')).toContainText('0 venter på godkjenning')
+    await expect(card('Brukere')).toContainText(/\d+ administratorer?/)
+    await expect(page.getByRole('region', { name: 'Versjon' })).toContainText(/Du kjører \d+\.\d+\.\d+/)
 
-    // The site was installed with --skip-email: its e-mail has not been tested, and that notice cannot be dismissed.
+    // The site was installed with --skip-email: its e-mail has not been tested, and that notice cannot be dismissed; it says how
+    // to fix it instead.
     const notices = page.getByRole('region', { name: 'Varsler' })
     const email = notices.getByRole('listitem').filter({ hasText: 'E-post fra nettstedet er ikke testet' })
     await expect(email).toBeVisible()
     await expect(email.getByRole('button', { name: 'Avvis' })).toHaveCount(0)
+    await expect(email.getByRole('link', { name: 'Slik retter du det' })).toHaveAttribute(
+      'href',
+      /docs\/user\/installasjon\.md$/,
+    )
+    const welcome = notices.getByRole('listitem').filter({ hasText: 'Velkommen til toascribe!' })
+    await expect(welcome.getByRole('link', { name: 'profilen din' })).toHaveAttribute('href', '/admin/profile')
+    await expect(welcome.getByRole('link', { name: 'se alle brukerne' })).toHaveAttribute('href', '/admin/users')
     await expectNoAxeViolations(page, 'the dashboard with notices')
   })
 
@@ -150,27 +165,43 @@ test.describe('the dashboard', () => {
     await expect(mine).toHaveCount(0)
 
     await page.reload()
-    await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
+    await expect(dashboardHeading(page)).toBeVisible()
     await expect(
       notices.getByRole('listitem').filter({ hasText: 'E-post fra nettstedet er ikke testet' }),
     ).toBeVisible()
     await expect(page.getByText('Du hoppet over e-postoppsettet')).toHaveCount(0)
   })
 
-  test('keeps a dismissed welcome panel away after a reload', async ({ page }) => {
+  test('hides a dismissed notice for the account that dismissed it only (M2.1)', async ({ page, browser }) => {
+    const other = await createUser('administrator', 'shellother')
+    await signIn(page, admin)
+    const mine = page
+      .getByRole('region', { name: 'Varsler' })
+      .getByRole('listitem')
+      .filter({ hasText: 'Du hoppet over e-postoppsettet' })
+    await mine.getByRole('button', { name: 'Avvis' }).click()
+    await expect(mine).toHaveCount(0)
+
+    const context = await browser.newContext({ baseURL: new URL(page.url()).origin })
+    const second = await context.newPage()
+    await signIn(second, other)
+    await expect(second.getByText('Du hoppet over e-postoppsettet')).toBeVisible()
+    await context.close()
+  })
+
+  test('keeps a dismissed welcome away after a reload', async ({ page }) => {
     const user = admin
     await signIn(page, user)
 
-    const welcome = page.getByRole('region', { name: 'Velkommen til toascribe!' })
-    await expect(welcome.getByRole('link', { name: 'Rediger profilen din' })).toBeVisible()
-    await expect(welcome.getByRole('link', { name: 'Se alle brukere' })).toBeVisible()
-    await welcome.getByRole('button', { name: 'Lukk' }).click()
+    const welcome = page.getByRole('listitem').filter({ hasText: 'Velkommen til toascribe!' })
+    await expect(welcome.getByRole('link', { name: 'profilen din' })).toBeVisible()
+    await welcome.getByRole('button', { name: 'Avvis velkomsten' }).click()
     await expect(welcome).toHaveCount(0)
 
     await page.reload()
-    await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
+    await expect(dashboardHeading(page)).toBeVisible()
     await expect(page.getByRole('region', { name: 'Oversikt' })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Velkommen til toascribe!' })).toHaveCount(0)
+    await expect(page.getByText('Velkommen til toascribe!')).toHaveCount(0)
   })
 })
 
@@ -187,7 +218,7 @@ test.describe('the colour scheme', () => {
     await savePreferences(page, { adminColorScheme: 'dark' })
     await page.reload()
     await expect(html).toHaveClass(/dark/)
-    await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
+    await expect(dashboardHeading(page)).toBeVisible()
     await expectNoAxeViolations(page, 'the dashboard, dark')
 
     await savePreferences(page, { adminColorScheme: 'light' })

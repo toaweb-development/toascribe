@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 import { createUser, queryRows, resetLimits, runSql } from './helpers/stack.ts'
 import type { TestUser } from './helpers/stack.ts'
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
-import { signIn } from './helpers/screens.ts'
+import { dashboardHeading, signIn } from './helpers/screens.ts'
 
 // The users list (M0.5; WordPress' users.php): the views with their counts, the search, the sort, the pages, the address as the state
 // of the list, and the bulk change of role with its messages. Each test runs at 375 px (a list of accounts) and at 1280 px (a table).
@@ -460,7 +460,7 @@ test('does not show the users to an account that may not list them', async ({ pa
   await expect(page.getByRole('button', { name: 'Endre', exact: true })).toHaveCount(0)
   await expectNoAxeViolations(page, 'the users page without access')
   await page.getByRole('link', { name: 'Til kontrollpanelet' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
+  await expect(dashboardHeading(page)).toBeVisible()
 })
 
 test('sends an anonymous visitor to the login screen and back', async ({ page }) => {

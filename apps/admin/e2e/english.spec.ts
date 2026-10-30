@@ -1,5 +1,5 @@
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
-import { signIn } from './helpers/screens.ts'
+import { dashboardHeading, signIn } from './helpers/screens.ts'
 import { createUser, queryRows } from './helpers/stack.ts'
 import type { TestUser } from './helpers/stack.ts'
 
@@ -48,5 +48,5 @@ test('Språk → English switches the admin at once and on every page after; bac
 test("the language is the account's own: another account stays in bokmål", async ({ page }) => {
   await signIn(page, other)
   await page.goto('/admin/')
-  await expect(page.getByRole('heading', { level: 1, name: 'Kontrollpanel' })).toBeVisible()
+  await expect(dashboardHeading(page)).toBeVisible()
 })
