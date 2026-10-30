@@ -89,7 +89,7 @@ describe('the own-account API layer', () => {
   it('reads the account with its preferences', async () => {
     const api = vi.fn().mockResolvedValue(ME)
     const me = await createMeApi(api).get()
-    expect(me.preferences.adminColorScheme).toBe('default')
+    expect(me.preferences.adminColorScheme).toBe('system')
     expect(api).toHaveBeenCalledWith('/v1/me')
   })
 
