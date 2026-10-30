@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<title>Rediger innlegg – toascribe</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#2B44CF;text-decoration:none}a:hover{color:#1C2F9E;text-decoration:underline}
+</style>
+</helmet>
+<div style="display: flex; flex-direction: column; min-height: 1120px; font-family: Geist, system-ui, sans-serif; color: #12141A; background: #FFFFFF; font-size: 14px; line-height: 1.5">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #E3E6EB; background: #FFFFFF">
+    <a href="Posts.dc.html" aria-label="Tilbake til innlegg" style="width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: #12141A">
+      <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true"><path d="M8 18 L15 7 L18 9 L11 20 L8 20 Z" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linejoin="round"></path></svg>
+    </a>
+    <button type="button" aria-label="Sett inn blokk" style="width: 40px; height: 40px; border: 0; border-radius: 10px; background: #2B44CF; color: #FFFFFF; font-size: 22px; line-height: 1; cursor: pointer">+</button>
+    <button type="button" aria-label="Angre" style="width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: #3A404C; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 010 12h-3"></path></svg></button>
+    <button type="button" aria-label="Gjør om" style="width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: #9AA1AE; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 14l5-5-5-5"></path><path d="M20 9H10a6 6 0 000 12h3"></path></svg></button>
+    <div style="flex: 1 1 200px; display: flex; justify-content: center">
+      <span style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 99px; background: #F5F6F8; font-size: 13px; color: #3A404C">Test av nytt cms system <span style="color: #5B6270">· Innlegg</span> <span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #5B6270">Ctrl K</span></span>
+    </div>
+    <span style="font-size: 13px; color: #5B6270; padding: 0 6px">Lagret</span>
+    <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #DCE0E6; border-radius: 10px; background: #FFFFFF; font: inherit; font-weight: 500; cursor: pointer">Forhåndsvis</button>
+    <button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: #2B44CF; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Oppdater</button>
+    <button type="button" aria-label="Vis eller skjul sidepanelet" aria-pressed="true" style="width: 40px; height: 40px; border: 0; border-radius: 10px; background: #EEF1FD; color: #2B44CF; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M15 4v16"></path></svg></button>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; flex: 1">
+    <main style="flex: 999 1 560px; min-width: 0; background: #F5F6F8; padding: 48px 24px">
+      <article style="max-width: 720px; margin: 0 auto; background: #FFFFFF; border-radius: 12px; padding: 56px 64px; box-shadow: 0 1px 2px rgba(18,20,26,0.06)">
+        <h1 style="margin: 0 0 28px; font-size: 40px; line-height: 1.15; font-weight: 700; letter-spacing: -0.025em">Test av nytt cms system</h1>
+        <h2 style="margin: 0 0 12px; font-size: 24px; font-weight: 600; letter-spacing: -0.015em">Test av overskrift.</h2>
+        <div style="position: relative; margin: 0 -12px 20px; padding: 10px 12px; border-radius: 8px; outline: 2px solid #2B44CF">
+          <div role="toolbar" aria-label="Blokkverktøy" style="position: absolute; top: -52px; left: 0; display: flex; align-items: center; gap: 2px; padding: 4px; background: #12141A; border-radius: 10px">
+            <button type="button" style="height: 36px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Avsnitt</button>
+            <span style="width: 1px; height: 20px; background: #3A404C"></span>
+            <button type="button" aria-label="Fet" style="width: 36px; height: 36px; border: 0; border-radius: 7px; background: transparent; color: #FFFFFF; font: inherit; font-weight: 700; cursor: pointer">B</button>
+            <button type="button" aria-label="Kursiv" style="width: 36px; height: 36px; border: 0; border-radius: 7px; background: transparent; color: #FFFFFF; font: inherit; font-style: italic; cursor: pointer">I</button>
+            <button type="button" aria-label="Lenke" style="width: 36px; height: 36px; border: 0; border-radius: 7px; background: #2B44CF; color: #FFFFFF; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"></path></svg></button>
+            <button type="button" aria-label="Flere valg" style="width: 36px; height: 36px; border: 0; border-radius: 7px; background: transparent; color: #FFFFFF; cursor: pointer">⋯</button>
+          </div>
+          <p style="margin: 0; font-size: 18px; line-height: 1.7; color: #262A33">Tester ny struktur i toascribe. Håper dette virker bra. <a href="#" style="text-decoration: underline">toascribe</a></p>
+        </div>
+        <figure style="margin: 0 0 20px">
+          <div role="img" aria-label="Bilde" style="height: 300px; border-radius: 8px; background: #D9DCE2; display: flex; align-items: center; justify-content: center; color: #3A404C; font-size: 13px">Bilde</div>
+          <figcaption style="margin-top: 8px; font-size: 13px; color: #5B6270; text-align: center">Skriv bildetekst …</figcaption>
+        </figure>
+        <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 16px; border: 1px solid #E3E6EB; border-radius: 10px">
+          <div role="img" aria-label="Forhåndsbilde fra YouTube" style="width: 160px; height: 90px; border-radius: 6px; background: #D9DCE2"></div>
+          <div style="flex: 1 1 200px">
+            <div style="font-size: 12px; font-weight: 500; color: #5B6270; text-transform: uppercase; letter-spacing: 0.04em">Innbygging · YouTube</div>
+            <div style="font-weight: 600">[Videotittel]</div>
+          </div>
+        </div>
+        <p style="margin: 24px 0 0; font-size: 18px; color: #6B7280">Skriv / for å velge en blokk</p>
+      </article>
+    </main>
+
+    <aside aria-label="Innstillinger for innlegget" style="flex: 1 1 320px; max-width: 100%; border-left: 1px solid #E3E6EB; background: #FFFFFF; display: flex; flex-direction: column">
+      <div role="tablist" aria-label="Sidepanel" style="display: flex; border-bottom: 1px solid #E3E6EB; padding: 0 12px">
+        <button type="button" role="tab" aria-selected="true" style="padding: 14px 12px; border: 0; border-bottom: 2px solid #2B44CF; background: transparent; font: inherit; font-weight: 600; cursor: pointer">Innlegg</button>
+        <button type="button" role="tab" aria-selected="false" style="padding: 14px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; font: inherit; color: #5B6270; cursor: pointer">Blokk</button>
+      </div>
+
+      <section style="padding: 16px 20px; border-bottom: 1px solid #EEF0F3; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span style="color: #5B6270">Status</span>
+          <span style="font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 99px; background: #E7F5EE; color: #17603C">Publisert</span>
+        </div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6270">Synlighet</span><button type="button" style="border: 0; background: transparent; font: inherit; color: #2B44CF; font-weight: 500; cursor: pointer; padding: 0">Offentlig</button></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6270">Publisert</span><button type="button" style="border: 0; background: transparent; font: inherit; color: #2B44CF; font-weight: 500; cursor: pointer; padding: 0">28. okt. 2026, 17:32</button></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6270">Forfatter</span><button type="button" style="border: 0; background: transparent; font: inherit; color: #2B44CF; font-weight: 500; cursor: pointer; padding: 0">torove</button></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6270">Adresse</span><span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #3A404C">/test-av-nytt-cms-system/</span></div>
+        <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox"> Fest øverst på bloggen</label>
+      </section>
+
+      <section style="padding: 16px 20px; border-bottom: 1px solid #EEF0F3; display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 14px; font-weight: 600">Kategorier</h2>
+        <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> Ukategorisert</label>
+        <a href="#" style="font-size: 13px">+ Ny kategori</a>
+      </section>
+
+      <section style="padding: 16px 20px; border-bottom: 1px solid #EEF0F3; display: flex; flex-direction: column; gap: 8px">
+        <label for="tags" style="font-size: 14px; font-weight: 600">Stikkord</label>
+        <input id="tags" type="text" placeholder="Skill med komma" style="height: 40px; padding: 0 12px; border: 1px solid #DCE0E6; border-radius: 10px; font: inherit">
+      </section>
+
+      <section style="padding: 16px 20px; border-bottom: 1px solid #EEF0F3; display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 14px; font-weight: 600">Fremhevet bilde</h2>
+        <button type="button" style="height: 120px; border: 1px dashed #B9BFCA; border-radius: 10px; background: #F5F6F8; font: inherit; color: #3A404C; cursor: pointer">Velg fremhevet bilde</button>
+      </section>
+
+      <section style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 14px; font-weight: 600">Søk og deling</h2>
+        <div style="padding: 12px; border: 1px solid #E3E6EB; border-radius: 10px">
+          <div style="font-size: 12px; color: #3A404C">localhost:28080 › test-av-nytt-cms-system</div>
+          <div style="color: #1A0DAB; font-size: 16px">Test av nytt cms system – TestSite</div>
+          <div style="font-size: 13px; color: #3A404C">Tester ny struktur i toascribe. Håper dette virker bra.</div>
+        </div>
+        <a href="#" style="font-size: 13px; font-weight: 500">Rediger tittel og beskrivelse</a>
+      </section>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
