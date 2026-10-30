@@ -98,6 +98,24 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('registration spam checks (need
     expect(row?.token_hash).not.toContain(formToken)
   })
 
+  it('uses the token on a send that fails for another reason (a taken name); a new token then works (M2.1)', async () => {
+    const address = ip()
+    await env.createAccount({ username: 'opptatt-navn', role: 'subscriber' })
+    const first = await tokenFor(address)
+    env.clock.advance(2500)
+    const taken = await env
+      .client({ ip: address })
+      .post('/api/v1/auth/register', { username: 'opptatt-navn', email: 'ny@example.test', formToken: first })
+    expect(taken.status).toBe(409)
+    const second = await tokenFor(address)
+    env.clock.advance(2500)
+    const again = await env
+      .client({ ip: address })
+      .post('/api/v1/auth/register', { username: 'ledig-navn', email: 'ny@example.test', formToken: second })
+    expect(again.status).toBe(202)
+    expect(await made('ledig-navn')).toBe(1)
+  })
+
   it('refuses a form without a token', async () => {
     const res = await env
       .client({ ip: ip() })

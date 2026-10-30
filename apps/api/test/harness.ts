@@ -82,6 +82,8 @@ export interface ClientOptions {
   readonly ip?: string
   /** Sent as Origin. Default: the site's origin. `null` sends none. */
   readonly origin?: string | null
+  /** Headers sent with every request of this client (as the stack's proxy would add them). */
+  readonly headers?: Readonly<Record<string, string>>
 }
 
 export interface RequestOptions {
@@ -107,16 +109,18 @@ export class TestClient {
   lastSetCookie: string[] = []
   readonly #app: App
   readonly #ip: string
+  readonly #headers: Readonly<Record<string, string>>
   readonly #origin: string | null
 
   constructor(app: App, options: ClientOptions = {}) {
     this.#app = app
     this.#ip = options.ip ?? '203.0.113.7'
+    this.#headers = options.headers ?? {}
     this.#origin = options.origin === undefined ? TEST_ORIGIN : options.origin
   }
 
   async request(method: string, path: string, options: RequestOptions = {}): Promise<Response> {
-    const headers: Record<string, string> = { 'x-real-ip': this.#ip, ...options.headers }
+    const headers: Record<string, string> = { 'x-real-ip': this.#ip, ...this.#headers, ...options.headers }
     const origin = options.origin === undefined ? this.#origin : options.origin
     if (origin !== null) {
       headers['origin'] = origin

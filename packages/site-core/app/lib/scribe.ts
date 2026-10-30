@@ -21,8 +21,9 @@ export function addressOf(route: {
   readonly query: Readonly<Record<string, unknown>>
 }): Address {
   // `/?preview=<token>` never reaches a page (the server puts the token in a cookie and sends the browser on); `/?preview` is the
-  // preview with the token in that cookie. Vue Router reads a parameter without a value as null.
-  if (Object.hasOwn(route.query, 'preview')) {
+  // preview with the token in that cookie. Vue Router reads a parameter without a value as null. Only on `/`: the server exchanges
+  // the token there only, and `?preview` on another address is a tracking parameter like any other.
+  if (route.path === '/' && Object.hasOwn(route.query, 'preview')) {
     const preview = firstOf(route.query['preview']) ?? ''
     const page = Number(firstOf(route.query['page']) ?? '1')
     return { kind: 'preview', token: preview, page: Number.isInteger(page) && page >= 1 ? page : 1 }

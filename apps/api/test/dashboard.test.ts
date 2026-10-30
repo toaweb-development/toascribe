@@ -300,7 +300,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('dashboard (needs TEST_DATABASE
       // An app of its own over the same database, so the first requests it sees are the ones this test sends.
       const lone = env.variant({})
       const account = await env.createAccount({ username: 'lone-admin', role: 'administrator' })
-      const client = lone.client({ ip: '10.231.97.5' })
+      // Through a proxy in front: the stack's Caddy passes on that the requests came with forwarding headers (M2.1).
+      const client = lone.client({ ip: '10.231.97.5', headers: { 'x-toascribe-forwarded': '198.51.100.7' } })
       await client.login(account.username, TEST_PASSWORD)
       const read = async () => NoticeListResponse.parse(await (await client.get('/api/v1/notices')).json()).notices
       expect(keys(await read())).not.toContain('proxy.not_trusted')

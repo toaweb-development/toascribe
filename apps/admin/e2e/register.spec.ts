@@ -79,3 +79,24 @@ test('an address that already has an account gets the same confirmation', async 
   await expect(page).toHaveURL(/\/admin\/login\?checkemail=registered$/)
   await expect(page.getByRole('status')).toContainText('Registreringen er mottatt.')
 })
+
+test('a taken name: the form says so, and a new name goes through with a new form token (M2.1)', async ({
+  page,
+  allowFailedRequests,
+}) => {
+  // The 409 is the point; the browser logs it.
+  allowFailedRequests()
+  await setSetting('users_can_register', true)
+  const existing = await createUser('editor', 'opptatt')
+  await page.goto('/admin/register')
+  await page.getByLabel('Brukernavn').fill(existing.username)
+  await page.getByLabel('E-postadresse').fill(`${uniqueName('ny')}@example.test`)
+  await page.waitForTimeout(2100) // K-006, as above
+  await page.getByRole('button', { name: 'Registrer' }).click()
+  await expect(page.getByRole('alert')).toContainText('Brukernavnet er tatt.')
+  // The token was used by that send: the button waits for the new one, which must be two seconds old too.
+  await page.getByLabel('Brukernavn').fill(uniqueName('ledig'))
+  await page.waitForTimeout(2100)
+  await page.getByRole('button', { name: 'Registrer' }).click()
+  await expect(page).toHaveURL(/\/admin\/login\?checkemail=registered$/)
+})

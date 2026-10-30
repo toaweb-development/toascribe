@@ -30,6 +30,8 @@ describe('the catch-all helpers', () => {
     expect(addressOf({ path: '/', query: { preview: '', page: '2' } })).toEqual({ kind: 'preview', token: '', page: 2 })
     // As Vue Router reads `/?preview`: the parameter is there, with null.
     expect(addressOf({ path: '/', query: { preview: null } })).toEqual({ kind: 'preview', token: '', page: 1 })
+    // Only on `/`, where the server exchanges the token: elsewhere the parameter is ignored.
+    expect(addressOf({ path: '/om/', query: { preview: null } })).toEqual({ kind: 'resolve', path: '/om/' })
   })
 
   it('splits a post at its page breaks', () => {

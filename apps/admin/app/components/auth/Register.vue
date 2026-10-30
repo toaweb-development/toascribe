@@ -11,9 +11,11 @@ const authApi = useAuthApi()
 const state = reactive({ username: '', email: '' })
 // Spam protection (K-006): a form token, and a field a person never sees. The token is bound to the visitor's address, and the
 // page's options were fetched by the server (another address), so the browser asks for its own when the form is shown, and the
-// button waits for it. A token the server fetched would always be refused, so there is no fallback to it.
+// button waits for it. A token the server fetched would always be refused, so there is no fallback to it. A token is good for one
+// send (M2.1), so after a send that failed (a taken name, say) the form asks for a new one before the person can send again.
 const formToken = ref<string>()
-onMounted(() => {
+function loadToken(): void {
+  formToken.value = undefined
   authApi
     .options()
     .then((fresh) => {
@@ -23,7 +25,8 @@ onMounted(() => {
       error.value = describeApiError(caught, t)
       failures.value += 1
     })
-})
+}
+onMounted(loadToken)
 const trap = ref('')
 const { validateOn, failed } = useSubmitValidation()
 const submitting = ref(false)
@@ -48,6 +51,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
   } catch (caught) {
     error.value = describeApiError(caught, t)
     failures.value += 1
+    loadToken()
   } finally {
     submitting.value = false
   }
