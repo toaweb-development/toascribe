@@ -64,11 +64,18 @@ test('make a category and a tag, put them on a post in quick edit, and filter th
   await dialog.getByRole('button', { name: 'Oppdater' }).click()
   await expect(dialog).toBeHidden()
 
-  // The row shows the category and the tag as links to the list filtered by them.
-  const categoryLink = page.getByRole('link', { name: category, exact: true }).filter({ visible: true }).first()
-  await expect(categoryLink).toBeVisible()
-  await expect(page.getByRole('link', { name: label, exact: true }).filter({ visible: true }).first()).toBeVisible()
-  await categoryLink.click()
+  if ((page.viewportSize()?.width ?? 1280) >= 768) {
+    // From md the row shows the category and the tag as links to the list filtered by them.
+    const categoryLink = page.getByRole('link', { name: category, exact: true }).filter({ visible: true }).first()
+    await expect(categoryLink).toBeVisible()
+    await expect(page.getByRole('link', { name: label, exact: true }).filter({ visible: true }).first()).toBeVisible()
+    await categoryLink.click()
+  } else {
+    // Below md the rows stack and those columns are not shown (M2.1): the list is filtered by the category filter instead.
+    await page.getByRole('combobox', { name: 'Filtrer etter kategori' }).click()
+    await page.getByRole('option', { name: category, exact: true }).click()
+    await page.getByRole('button', { name: 'Filtrer', exact: true }).click()
+  }
   await expect(page).toHaveURL(/[?&]category=[0-9a-f-]{36}/)
   await expect(page.getByText(`${word} Innlegg`).filter({ visible: true }).first()).toBeVisible()
   await expect(page.getByText('1 element').filter({ visible: true }).first()).toBeVisible()
