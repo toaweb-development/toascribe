@@ -157,7 +157,8 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('toa backup against a database 
   })
 
   it('stops a migration when the backup before it fails, and runs it with --no-backup and a warning', async () => {
-    // The newest migration forgotten: it is pending again (it only grants, so it runs twice without harm).
+    // The newest migration undone (its downgrade, from its header: 0015 drops register_form_use) and forgotten: it is pending again.
+    await query(database.url, `drop table if exists register_form_use`)
     await query(
       database.url,
       `delete from drizzle.__drizzle_migrations where created_at = (select max(created_at) from drizzle.__drizzle_migrations)`,
