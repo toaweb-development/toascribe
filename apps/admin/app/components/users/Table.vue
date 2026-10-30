@@ -5,10 +5,10 @@ import type { UserListItem } from '@toascribe/shared'
 
 import type { UsersSortColumn, UsersView } from '~/utils/users-query'
 
-// The users, as WordPress' users.php: a table (checkbox, Brukernavn, Navn, E-post, Rolle, Innlegg) at every width, in «Blekk»'s table
-// box (M2.1): on a narrow screen it scrolls sideways inside the box, as Tor's M2.1 brief asks (it replaces the narrow list that
-// ui-system §8.2 asked for). The table is hand-built so the checkbox column is the one source of the selection (the checkboxes
-// themselves are Nuxt UI's `UCheckbox`).
+// The users, as WordPress' users.php: from `md` a table (checkbox, Brukernavn, Navn, E-post, Rolle, Innlegg); below `md` the rows
+// stack in the same table (BlekkTableFrame, workflows §29: no table that scrolls sideways): the checkbox and the username cell stay,
+// with the name and role (BlekkRowMeta) and «Slett» (BlekkRowActions) under it. The table is hand-built so the checkbox column is the
+// one source of the selection (the checkboxes themselves are Nuxt UI's `UCheckbox`).
 const props = defineProps<{
   users: readonly UserListItem[]
   view: UsersView
