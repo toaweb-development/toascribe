@@ -27,21 +27,21 @@ async function pick(): Promise<void> {
 
 <template>
   <div class="flex flex-col gap-2">
-    <p class="text-sm font-medium text-default">{{ props.label }}</p>
-    <p v-if="help" class="text-xs text-muted">{{ help }}</p>
+    <p class="text-help font-medium text-default">{{ props.label }}</p>
+    <p v-if="help" class="text-badge text-muted">{{ help }}</p>
     <template v-if="mediaId !== null">
       <!-- eslint-disable vue/html-self-closing -->
       <template v-if="props.preview">
         <img v-if="image" :src="image.url" :alt="image.alt" class="h-auto max-h-48 w-full rounded-md object-cover" />
         <!-- eslint-enable vue/html-self-closing -->
-        <p v-else class="text-sm text-warning">{{ t('editorPrototype.image.missing') }}</p>
+        <p v-else class="text-help text-warning">{{ t('editorPrototype.image.missing') }}</p>
       </template>
       <div class="flex flex-wrap gap-2">
         <UButton
           color="neutral"
           variant="outline"
           size="sm"
-          class="min-h-11"
+          class="min-h-control"
           :label="t('editor.featured.replace')"
           @click="pick"
         />
@@ -49,7 +49,7 @@ async function pick(): Promise<void> {
           color="error"
           variant="ghost"
           size="sm"
-          class="min-h-11"
+          class="min-h-control"
           :label="t('editor.featured.remove')"
           @click="mediaId = null"
         />
@@ -60,7 +60,7 @@ async function pick(): Promise<void> {
       icon="i-lucide-image"
       color="neutral"
       variant="outline"
-      class="min-h-11 self-start"
+      class="min-h-control self-start"
       :label="props.chooseLabel ?? t('editor.featured.choose')"
       @click="pick"
     />

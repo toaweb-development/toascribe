@@ -123,7 +123,7 @@ async function submit(): Promise<void> {
               />
             </template>
           </svg>
-          <p class="text-sm text-toned">{{ $t('media.edit.dragHelp') }}</p>
+          <p class="text-help text-secondary">{{ $t('media.edit.dragHelp') }}</p>
         </div>
 
         <div class="flex flex-col gap-5">
@@ -132,7 +132,7 @@ async function submit(): Promise<void> {
               icon="i-lucide-rotate-ccw"
               color="neutral"
               variant="outline"
-              class="min-h-11"
+              class="min-h-control"
               :label="$t('media.edit.rotateLeft')"
               @click="state = turned(state, -1)"
             />
@@ -140,7 +140,7 @@ async function submit(): Promise<void> {
               icon="i-lucide-rotate-cw"
               color="neutral"
               variant="outline"
-              class="min-h-11"
+              class="min-h-control"
               :label="$t('media.edit.rotateRight')"
               @click="state = turned(state, 1)"
             />
@@ -148,7 +148,7 @@ async function submit(): Promise<void> {
               icon="i-lucide-flip-vertical-2"
               color="neutral"
               variant="outline"
-              class="min-h-11"
+              class="min-h-control"
               :aria-pressed="state.flipVertical"
               :label="$t('media.edit.flipVertical')"
               @click="state = { ...state, flipVertical: !state.flipVertical }"
@@ -157,7 +157,7 @@ async function submit(): Promise<void> {
               icon="i-lucide-flip-horizontal-2"
               color="neutral"
               variant="outline"
-              class="min-h-11"
+              class="min-h-control"
               :aria-pressed="state.flipHorizontal"
               :label="$t('media.edit.flipHorizontal')"
               @click="state = { ...state, flipHorizontal: !state.flipHorizontal }"
@@ -165,7 +165,7 @@ async function submit(): Promise<void> {
           </div>
 
           <fieldset class="flex flex-col gap-3">
-            <legend class="mb-2 font-semibold text-highlighted">{{ $t('media.edit.crop') }}</legend>
+            <legend class="mb-2 font-semibold text-heading">{{ $t('media.edit.crop') }}</legend>
             <div class="grid grid-cols-2 gap-3">
               <UFormField :label="$t('media.edit.cropX')" :name="`${uid}-x`">
                 <UInput
@@ -213,7 +213,7 @@ async function submit(): Promise<void> {
                 v-if="state.crop"
                 color="neutral"
                 variant="ghost"
-                class="min-h-11"
+                class="min-h-control"
                 :label="$t('media.edit.cropClear')"
                 @click="state = { ...state, crop: null }"
               />
@@ -228,10 +228,10 @@ async function submit(): Promise<void> {
             <UInput v-model="scaleText" type="number" min="1" size="xl" class="w-full" />
           </UFormField>
 
-          <p class="text-sm text-default" role="status">
+          <p class="text-help text-default" role="status">
             {{ $t('media.edit.result', { width: result.width, height: result.height }) }}
           </p>
-          <p class="text-sm text-toned">{{ $t('media.edit.originalKept') }}</p>
+          <p class="text-help text-secondary">{{ $t('media.edit.originalKept') }}</p>
           <UAlert
             v-if="failure"
             color="error"
@@ -249,16 +249,16 @@ async function submit(): Promise<void> {
         color="neutral"
         variant="ghost"
         size="lg"
-        class="min-h-11"
+        class="min-h-control"
         :disabled="operations.length === 0"
         @click="state = NO_EDIT"
       >
         {{ $t('media.edit.reset') }}
       </UButton>
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="emit('close', false)">
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="emit('close', false)">
         {{ $t('content.quickEdit.cancel') }}
       </UButton>
-      <UButton size="lg" class="min-h-11" :loading="saving" :disabled="operations.length === 0" @click="submit">
+      <UButton size="lg" class="min-h-control" :loading="saving" :disabled="operations.length === 0" @click="submit">
         {{ $t('media.edit.save') }}
       </UButton>
     </template>

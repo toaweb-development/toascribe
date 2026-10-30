@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // «Hurtigutkast» (M1.8, K-033; WordPress' Quick Draft): a title and some text saved as a draft post, and the account's own three
-// newest drafts. The text becomes paragraphs as the editor reads pasted text (an empty line starts a new one). For accounts that can
+// newest drafts. «Lagre kladd» is a secondary button (M2.1): the dashboard's one filled button is «Skriv et innlegg». The text becomes paragraphs as the editor reads pasted text (an empty line starts a new one). For accounts that can
 // write posts (`edit_posts`); the api checks it again.
 import { textToParagraphs } from '@toascribe/blocks'
 
@@ -70,7 +70,7 @@ const format = computed(
 <template>
   <UCard as="section" aria-labelledby="quick-draft-heading">
     <template #header>
-      <h2 id="quick-draft-heading" class="text-lg font-semibold text-highlighted">
+      <h2 id="quick-draft-heading" class="text-card-title font-semibold text-heading">
         {{ $t('dashboard.quickDraft.heading') }}
       </h2>
     </template>
@@ -94,40 +94,40 @@ const format = computed(
           class="w-full"
         />
       </UFormField>
-      <div>
-        <UButton type="submit" size="lg" class="min-h-11" :loading="saving">
+      <div class="flex justify-end">
+        <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-control" :loading="saving">
           {{ $t('dashboard.quickDraft.save') }}
         </UButton>
       </div>
-      <p v-if="failure" role="alert" class="font-medium text-error">
+      <p v-if="failure" role="alert" class="font-medium text-danger">
         {{ $t('dashboard.quickDraft.failed') }} {{ failure }}
       </p>
-      <p v-if="saved" role="status" class="text-base text-default">
+      <p v-if="saved" role="status" class="text-body text-heading">
         {{ $t('dashboard.quickDraft.saved') }}
-        <ULink :to="`/posts/${saved.id}`" class="text-primary underline underline-offset-4 hover:no-underline">
+        <ULink :to="`/posts/${saved.id}`" class="text-accent-text underline underline-offset-4">
           {{ $t('dashboard.quickDraft.edit') }}
         </ULink>
       </p>
     </form>
 
     <section v-if="drafts && drafts.items.length > 0" aria-labelledby="quick-draft-list" class="mt-6">
-      <h3 id="quick-draft-list" class="text-base font-semibold text-highlighted">
+      <h3 id="quick-draft-list" class="text-body font-semibold text-heading">
         {{ $t('dashboard.quickDraft.yourDrafts') }}
       </h3>
       <ul class="mt-1 flex flex-col">
         <li v-for="item in drafts.items" :key="item.id" class="flex flex-wrap items-center gap-x-3">
           <ULink
             :to="`/posts/${item.id}`"
-            class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
+            class="inline-flex min-h-control items-center text-accent-text hover:underline"
           >
             {{ item.title === '' ? $t('dashboard.activity.untitled') : item.title }}
           </ULink>
-          <span class="text-sm text-toned">{{ format.format(new Date(item.modifiedAt)) }}</span>
+          <span class="font-mono text-help text-secondary">{{ format.format(new Date(item.modifiedAt)) }}</span>
         </li>
       </ul>
       <ULink
         :to="{ path: '/posts', query: { status: 'draft' } }"
-        class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
+        class="inline-flex min-h-control items-center font-medium text-accent-text hover:underline"
       >
         {{ $t('dashboard.quickDraft.allDrafts') }}
       </ULink>

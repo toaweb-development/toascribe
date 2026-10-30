@@ -79,28 +79,28 @@ async function revoke(item: AppPasswordItem): Promise<void> {
 <template>
   <ProfileSection id="app-passwords" :title="$t('profile.appPasswords.title')" :level="3">
     <div class="flex flex-col gap-4" :aria-busy="status === 'pending'">
-      <p class="max-w-prose text-base text-default">{{ $t('profile.appPasswords.help') }}</p>
+      <p class="max-w-prose text-body text-default">{{ $t('profile.appPasswords.help') }}</p>
 
       <form class="flex flex-wrap items-end gap-3" @submit.prevent="create">
         <UFormField :label="$t('profile.appPasswords.name')" name="app-password-name" class="min-w-0">
           <UInput v-model="name" size="xl" maxlength="100" class="w-full sm:w-72" />
         </UFormField>
-        <UButton type="submit" size="lg" class="min-h-11" :loading="making" :aria-disabled="name.trim() === ''">
+        <UButton type="submit" size="lg" class="min-h-control" :loading="making" :aria-disabled="name.trim() === ''">
           {{ $t('profile.appPasswords.add') }}
         </UButton>
       </form>
 
       <div v-if="made" class="flex flex-col gap-3 rounded-md border border-default p-4" data-testid="app-password-made">
-        <p class="font-medium text-highlighted">{{ $t('profile.appPasswords.madeTitle', { name: made.name }) }}</p>
-        <p class="text-base text-default">{{ $t('profile.appPasswords.madeOnce') }}</p>
-        <p class="rounded-md bg-muted p-3 font-mono text-lg tracking-wide break-words text-highlighted select-all">
+        <p class="font-medium text-heading">{{ $t('profile.appPasswords.madeTitle', { name: made.name }) }}</p>
+        <p class="text-body text-default">{{ $t('profile.appPasswords.madeOnce') }}</p>
+        <p class="rounded-md bg-muted p-3 font-mono text-card-title tracking-wide break-words text-heading select-all">
           {{ made.password }}
         </p>
         <div class="flex flex-wrap items-center gap-3">
-          <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="copy">
+          <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="copy">
             {{ $t('profile.appPasswords.copy') }}
           </UButton>
-          <p role="status" class="text-sm text-toned">
+          <p role="status" class="text-help text-secondary">
             <template v-if="copied === 'copied'">{{ $t('profile.appPasswords.copied') }}</template>
             <template v-else-if="copied === 'failed'">{{ $t('profile.appPasswords.copyFailed') }}</template>
           </p>
@@ -115,12 +115,14 @@ async function revoke(item: AppPasswordItem): Promise<void> {
         :title="$t('profile.appPasswords.loadFailed')"
       >
         <template #actions>
-          <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="() => refresh()">
+          <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="() => refresh()">
             {{ $t('profile.retry') }}
           </UButton>
         </template>
       </UAlert>
-      <p v-else-if="data && items.length === 0" class="text-sm text-toned">{{ $t('profile.appPasswords.none') }}</p>
+      <p v-else-if="data && items.length === 0" class="text-help text-secondary">
+        {{ $t('profile.appPasswords.none') }}
+      </p>
       <ul
         v-else-if="items.length > 0"
         class="flex flex-col divide-y divide-default rounded-md border border-default"
@@ -128,11 +130,11 @@ async function revoke(item: AppPasswordItem): Promise<void> {
       >
         <li v-for="item in items" :key="item.id" class="flex flex-wrap items-center justify-between gap-3 p-3">
           <div class="min-w-0">
-            <p class="font-medium break-words text-highlighted">{{ item.name }}</p>
-            <p class="text-sm text-toned">
+            <p class="font-medium break-words text-heading">{{ item.name }}</p>
+            <p class="text-help text-secondary">
               {{ $t('profile.appPasswords.created', { when: formatWhen(item.createdAt, locale) }) }}
             </p>
-            <p class="text-sm text-toned">
+            <p class="text-help text-secondary">
               {{
                 item.lastUsedAt
                   ? $t('profile.appPasswords.lastUsed', { when: formatWhen(item.lastUsedAt, locale) })
@@ -145,7 +147,7 @@ async function revoke(item: AppPasswordItem): Promise<void> {
             color="neutral"
             variant="outline"
             size="lg"
-            class="min-h-11"
+            class="min-h-control"
             :loading="working === item.id"
             :aria-label="$t('profile.appPasswords.revokeLabel', { name: item.name })"
             @click="revoke(item)"
@@ -155,7 +157,7 @@ async function revoke(item: AppPasswordItem): Promise<void> {
         </li>
       </ul>
 
-      <p role="status" class="text-sm text-default">{{ message }}</p>
+      <p role="status" class="text-help text-default">{{ message }}</p>
       <UAlert v-if="failure" color="error" variant="subtle" role="alert" :title="failure" />
     </div>
   </ProfileSection>

@@ -85,11 +85,11 @@ function onFocusIn(): void {
       v-if="mediaId === ''"
       class="flex flex-col items-start gap-3 rounded-md border border-dashed border-accented p-3"
     >
-      <p class="text-sm text-muted">{{ t('editorPrototype.image.empty') }}</p>
+      <p class="text-help text-muted">{{ t('editorPrototype.image.empty') }}</p>
       <UButton
         data-pick
         icon="i-lucide-image"
-        class="min-h-11"
+        class="min-h-control"
         :label="t('editorPrototype.image.library')"
         @click="pick"
       />
@@ -108,7 +108,7 @@ function onFocusIn(): void {
           class="h-auto max-h-96 max-w-full self-start rounded-md"
         />
         <!-- eslint-enable vue/html-self-closing -->
-        <p v-else class="text-sm text-warning">{{ t('editorPrototype.image.missing') }}</p>
+        <p v-else class="text-help text-warning">{{ t('editorPrototype.image.missing') }}</p>
       </figure>
       <UFormField
         :label="t('editorPrototype.image.alt')"

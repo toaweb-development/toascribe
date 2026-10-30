@@ -284,16 +284,18 @@ const facts = computed(() => {
           <!-- eslint-enable vue/html-self-closing -->
           <div v-else class="flex items-center gap-3 rounded-md border border-default p-6">
             <UIcon name="i-lucide-file" class="size-10 text-muted" />
-            <a :href="item.url" class="text-primary underline underline-offset-4 wrap-anywhere">{{ item.fileName }}</a>
+            <a :href="item.url" class="text-accent-text underline underline-offset-4 wrap-anywhere">{{
+              item.fileName
+            }}</a>
           </div>
-          <p v-if="processingLabel($t, item.processing)" class="text-sm text-warning" role="status">
+          <p v-if="processingLabel($t, item.processing)" class="text-help text-warning" role="status">
             {{ processingLabel($t, item.processing) }}
           </p>
           <template v-if="item.processing === 'failed'">
-            <p v-if="item.processingError" class="text-sm text-toned wrap-anywhere">
+            <p v-if="item.processingError" class="text-help text-secondary wrap-anywhere">
               {{ $t('media.processing.reason', { reason: failureText($t, item.processingError) }) }}
             </p>
-            <p v-if="isImage && mayManage" class="text-sm text-toned">{{ $t('media.processing.retry') }}</p>
+            <p v-if="isImage && mayManage" class="text-help text-secondary">{{ $t('media.processing.retry') }}</p>
           </template>
           <div class="flex flex-wrap gap-2">
             <UButton
@@ -301,7 +303,7 @@ const facts = computed(() => {
               icon="i-lucide-crop"
               color="neutral"
               variant="outline"
-              class="min-h-11"
+              class="min-h-control"
               :disabled="item.processing === 'pending'"
               :label="$t('media.details.editImage')"
               @click="openEditor"
@@ -311,7 +313,7 @@ const facts = computed(() => {
               icon="i-lucide-replace"
               color="neutral"
               variant="outline"
-              class="min-h-11"
+              class="min-h-control"
               :loading="replacing"
               :disabled="item.processing === 'pending'"
               :label="$t('media.details.replace')"
@@ -331,7 +333,7 @@ const facts = computed(() => {
               icon="i-lucide-refresh-cw"
               color="neutral"
               variant="outline"
-              class="min-h-11"
+              class="min-h-control"
               :loading="regenerating"
               :label="$t('media.details.regenerate')"
               @click="regenerate"
@@ -344,30 +346,30 @@ const facts = computed(() => {
             size="sm"
           />
 
-          <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+          <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-help">
             <template v-for="fact in facts" :key="fact.label">
-              <dt class="font-semibold text-highlighted">{{ fact.label }}</dt>
+              <dt class="font-semibold text-heading">{{ fact.label }}</dt>
               <dd class="text-default wrap-anywhere">{{ fact.value }}</dd>
             </template>
           </dl>
 
           <section :aria-labelledby="`${uid}-used`" class="flex flex-col gap-1">
-            <h3 :id="`${uid}-used`" class="font-semibold text-highlighted">{{ $t('media.details.usedBy') }}</h3>
-            <ul v-if="item.usedBy.length > 0" class="flex flex-col gap-1 text-sm">
+            <h3 :id="`${uid}-used`" class="font-semibold text-heading">{{ $t('media.details.usedBy') }}</h3>
+            <ul v-if="item.usedBy.length > 0" class="flex flex-col gap-1 text-help">
               <li v-for="use in item.usedBy" :key="use.id">
-                <NuxtLink :to="usageLink(use)" class="text-primary underline underline-offset-4">{{
+                <NuxtLink :to="usageLink(use)" class="text-accent-text underline underline-offset-4">{{
                   titleOf($t, use.title)
                 }}</NuxtLink>
-                <span class="text-toned"> · {{ usageStatus($t, use.status) }}</span>
+                <span class="text-secondary"> · {{ usageStatus($t, use.status) }}</span>
               </li>
-              <li v-if="item.usedByOthers > 0" class="text-toned">
+              <li v-if="item.usedByOthers > 0" class="text-secondary">
                 {{ $t('media.details.usedByOthers', { n: item.usedByOthers }, item.usedByOthers) }}
               </li>
             </ul>
-            <p v-else-if="item.usedByOthers > 0" class="text-sm text-toned">
+            <p v-else-if="item.usedByOthers > 0" class="text-help text-secondary">
               {{ $t('media.details.usedOnlyByOthers', { n: item.usedByOthers }, item.usedByOthers) }}
             </p>
-            <p v-else class="text-sm text-toned">{{ $t('media.details.unused') }}</p>
+            <p v-else class="text-help text-secondary">{{ $t('media.details.unused') }}</p>
           </section>
         </div>
 
@@ -426,7 +428,7 @@ const facts = computed(() => {
           <UFormField :label="$t('media.details.fileUrl')" :name="`${uid}-url`">
             <div class="flex flex-wrap gap-2">
               <UInput :model-value="absoluteUrl" readonly size="xl" class="min-w-0 flex-1" />
-              <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="copyUrl">
+              <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="copyUrl">
                 {{ copied ? $t('media.details.copied') : $t('media.details.copyUrl') }}
               </UButton>
             </div>
@@ -452,14 +454,14 @@ const facts = computed(() => {
         color="error"
         variant="ghost"
         size="lg"
-        class="me-auto min-h-11"
+        class="me-auto min-h-control"
         :label="$t('media.details.delete')"
         @click="remove"
       />
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="emit('close', changed)">
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="emit('close', changed)">
         {{ $t('media.details.close') }}
       </UButton>
-      <UButton v-if="mayEdit" type="submit" :form="`${uid}-form`" size="lg" class="min-h-11" :loading="saving">
+      <UButton v-if="mayEdit" type="submit" :form="`${uid}-form`" size="lg" class="min-h-control" :loading="saving">
         {{ $t('media.details.save') }}
       </UButton>
     </template>

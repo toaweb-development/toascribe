@@ -49,8 +49,8 @@ watch(avatarId, async (next, before) => {
           :help="$t('profile.avatar.help')"
           :preview="false"
         />
-        <p v-else class="text-sm text-muted">{{ $t('profile.avatar.noLibrary') }}</p>
-        <p role="status" class="text-sm text-default">{{ message }}</p>
+        <p v-else class="text-help text-muted">{{ $t('profile.avatar.noLibrary') }}</p>
+        <p role="status" class="text-help text-default">{{ message }}</p>
         <UAlert v-if="failure" color="error" variant="subtle" role="alert" :title="failure" />
       </div>
     </div>

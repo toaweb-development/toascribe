@@ -163,7 +163,7 @@ async function submit() {
           />
         </UFormField>
         <div class="flex flex-col justify-end gap-2">
-          <p class="text-sm text-toned">{{ $t('content.quickEdit.or') }}</p>
+          <p class="text-help text-secondary">{{ $t('content.quickEdit.or') }}</p>
           <UCheckbox v-if="can.publish" v-model="isPrivate" size="lg" :label="$t('content.quickEdit.private')" />
           <UCheckbox
             v-if="item.visibility === 'password' && !isPrivate"
@@ -219,10 +219,10 @@ async function submit() {
       </form>
     </template>
     <template #footer>
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="emit('close', false)">
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="emit('close', false)">
         {{ $t('content.quickEdit.cancel') }}
       </UButton>
-      <UButton type="submit" form="quick-edit" size="lg" class="min-h-11" :loading="saving">
+      <UButton type="submit" form="quick-edit" size="lg" class="min-h-control" :loading="saving">
         {{ $t('content.quickEdit.update') }}
       </UButton>
     </template>

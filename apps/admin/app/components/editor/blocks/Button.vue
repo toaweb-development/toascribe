@@ -29,7 +29,7 @@ const outline = computed(() => props.block.attrs['variant'] === 'outline')
       toolbar
       :text-class="
         outline
-          ? 'rounded-md border-2 border-primary px-4 font-semibold text-primary'
+          ? 'rounded-md border-2 border-primary px-4 font-semibold text-accent-text'
           : 'rounded-md bg-primary px-4 font-semibold text-inverted'
       "
     />

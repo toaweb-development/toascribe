@@ -122,7 +122,7 @@ function onPaste(event: ClipboardEvent): void {
     <p v-if="editor.multi.value.length > 0" class="sr-only" role="status">
       {{ t('editor.selection.count', { n: editor.multi.value.length }, editor.multi.value.length) }}
     </p>
-    <p v-if="editor.document.value.length === 0" class="pb-2 text-sm text-muted">{{ t('editorPrototype.empty') }}</p>
+    <p v-if="editor.document.value.length === 0" class="pb-2 text-help text-muted">{{ t('editorPrototype.empty') }}</p>
     <template v-if="mounted">
       <EditorBlockList :blocks="editor.document.value" :parent-id="null" :parent-type="null" />
       <Teleport v-for="entry in entries" :key="entry.block.id" :to="editor.dock(entry.block.id)">

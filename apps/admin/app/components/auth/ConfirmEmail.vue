@@ -46,17 +46,17 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="step === 'working'" role="status" class="text-base text-default">{{ $t('auth.confirm.working') }}</div>
+  <div v-if="step === 'working'" role="status" class="text-body text-default">{{ $t('auth.confirm.working') }}</div>
 
   <div v-else-if="step === 'done'" class="flex flex-col gap-6">
     <AuthMessage kind="success" focus>{{
       kind === 'admin' ? $t('auth.confirm.adminDone', { email }) : $t('auth.confirm.done', { email })
     }}</AuthMessage>
-    <UButton to="/" size="xl" block class="min-h-11">{{ $t('auth.confirm.continue') }}</UButton>
+    <UButton to="/" size="xl" block class="min-h-control">{{ $t('auth.confirm.continue') }}</UButton>
   </div>
 
   <div v-else class="flex flex-col gap-6">
     <AuthMessage kind="error" focus>{{ error }}</AuthMessage>
-    <UButton to="/" size="xl" block class="min-h-11">{{ $t('auth.confirm.continue') }}</UButton>
+    <UButton to="/" size="xl" block class="min-h-control">{{ $t('auth.confirm.continue') }}</UButton>
   </div>
 </template>

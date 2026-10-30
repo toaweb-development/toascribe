@@ -70,7 +70,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
 
 <template>
   <div class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ $t('setup.site.intro') }}</p>
+    <p class="text-body text-default">{{ $t('setup.site.intro') }}</p>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
     <UForm
       :state="state"
@@ -120,7 +120,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
       </UFormField>
 
       <fieldset class="flex flex-col gap-2">
-        <legend class="mb-2 text-sm font-medium text-default">{{ $t('setup.site.visibility.legend') }}</legend>
+        <legend class="mb-2 text-help font-medium text-default">{{ $t('setup.site.visibility.legend') }}</legend>
         <UCheckbox
           v-model="state.discourage"
           size="lg"
@@ -130,10 +130,10 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
       </fieldset>
 
       <div class="flex flex-wrap gap-2">
-        <UButton color="neutral" variant="outline" size="xl" class="min-h-11" @click="emit('back')">{{
+        <UButton color="neutral" variant="outline" size="xl" class="min-h-control" @click="emit('back')">{{
           $t('setup.nav.back')
         }}</UButton>
-        <UButton type="submit" size="xl" class="min-h-11" :loading="pending">{{ $t('setup.nav.next') }}</UButton>
+        <UButton type="submit" size="xl" class="min-h-control" :loading="pending">{{ $t('setup.nav.next') }}</UButton>
       </div>
     </UForm>
   </div>

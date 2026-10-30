@@ -19,8 +19,8 @@ if (import.meta.server && !mayUpload.value) {
 <template>
   <AdminPage id="media-library" :title="$t('media.library.title')">
     <section v-if="!mayUpload" aria-labelledby="media-denied-heading" class="flex max-w-prose flex-col gap-3">
-      <h2 id="media-denied-heading" class="text-xl font-semibold text-highlighted">{{ $t('media.denied') }}</h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <h2 id="media-denied-heading" class="text-card-title font-semibold text-heading">{{ $t('media.denied') }}</h2>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
     <MediaLibrary v-else />
   </AdminPage>

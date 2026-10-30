@@ -17,8 +17,8 @@ const emit = defineEmits<{ save: []; retry: [] }>()
 <template>
   <AdminPage :id="id" :title="title">
     <section v-if="!mayManage" :aria-labelledby="`${id}-denied`" class="flex max-w-prose flex-col gap-3">
-      <h2 :id="`${id}-denied`" class="text-xl font-semibold text-highlighted">{{ $t('settings.denied') }}</h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <h2 :id="`${id}-denied`" class="text-card-title font-semibold text-heading">{{ $t('settings.denied') }}</h2>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
     <UAlert
       v-else-if="failed"
@@ -43,7 +43,7 @@ const emit = defineEmits<{ save: []; retry: [] }>()
         :description="failure"
       />
       <div>
-        <UButton type="submit" size="lg" class="min-h-11" :loading="saving">{{ $t('settings.save') }}</UButton>
+        <UButton type="submit" size="lg" class="min-h-control" :loading="saving">{{ $t('settings.save') }}</UButton>
       </div>
     </form>
   </AdminPage>

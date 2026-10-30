@@ -21,13 +21,13 @@ const chosenId = computed(() => chosen.value?.id ?? props.current)
       <MediaLibrary picker group="image" :chosen="chosenId" @pick="chosen = $event" />
     </template>
     <template #footer>
-      <p v-if="chosen" class="me-auto min-w-0 truncate text-sm text-toned" role="status">
+      <p v-if="chosen" class="me-auto min-w-0 truncate text-help text-secondary" role="status">
         {{ $t('media.picker.chosen', { name: chosen.title || chosen.fileName }) }}
       </p>
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="emit('close', undefined)">
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="emit('close', undefined)">
         {{ $t('content.quickEdit.cancel') }}
       </UButton>
-      <UButton size="lg" class="min-h-11" :disabled="!chosen" @click="emit('close', chosen)">
+      <UButton size="lg" class="min-h-control" :disabled="!chosen" @click="emit('close', chosen)">
         {{ $t('media.picker.choose') }}
       </UButton>
     </template>

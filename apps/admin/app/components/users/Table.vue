@@ -65,23 +65,22 @@ function rolesOf(user: UserListItem): string {
   return rolesText(t, user.roles, props.roleName)
 }
 
-/** The 44 px area around a box (`mobile`), 32 px from `lg`: a press anywhere in it reaches the box. */
-const checkboxHitClass = 'flex size-11 shrink-0 cursor-pointer items-center justify-center lg:size-8'
-const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
+/** The 40 px area around a box: a press anywhere in it reaches the box. */
+const checkboxHitClass = 'flex size-control shrink-0 cursor-pointer items-center justify-center'
+const linkClass = 'text-accent-text hover:underline'
 </script>
 
 <template>
-  <div>
-    <!-- From md: the table. -->
-    <table class="hidden w-full table-auto text-start text-sm md:table">
+  <BlekkTableFrame :label="$t('users.table.caption')">
+    <table class="w-full min-w-176 table-auto text-start text-body">
       <caption class="sr-only">
         {{
           $t('users.table.caption')
         }}
       </caption>
       <thead>
-        <tr class="border-b border-default text-start">
-          <th v-if="selectable" scope="col" class="w-12 py-1 ps-1 pe-2 text-start">
+        <tr class="border-b border-line text-start">
+          <th v-if="selectable" scope="col" class="w-14 py-1 ps-2 pe-1 text-start">
             <label :class="checkboxHitClass">
               <UCheckbox
                 size="lg"
@@ -96,11 +95,11 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
             :key="entry.column"
             scope="col"
             :aria-sort="ariaSort(entry.column)"
-            class="px-2 py-2 text-start font-semibold text-highlighted"
+            class="px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase"
           >
             <NuxtLink
               :to="sortLocation(entry.column)"
-              class="inline-flex min-h-11 items-center gap-1 rounded-md underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary lg:min-h-8"
+              class="inline-flex min-h-control items-center gap-1 rounded-menu uppercase hover:text-heading hover:underline"
             >
               {{ entry.label() }}
               <UIcon
@@ -111,13 +110,22 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
               />
             </NuxtLink>
           </th>
-          <th scope="col" class="px-2 py-2 text-start font-semibold text-highlighted">{{ $t('users.table.roles') }}</th>
-          <th scope="col" class="px-2 py-2 text-end font-semibold text-highlighted">{{ $t('users.table.posts') }}</th>
+          <th scope="col" class="px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase">
+            {{ $t('users.table.roles') }}
+          </th>
+          <th scope="col" class="px-3 py-2 text-end text-badge font-semibold tracking-wide text-secondary uppercase">
+            {{ $t('users.table.posts') }}
+          </th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-default">
-        <tr v-for="user in users" :key="user.id" :class="selected.includes(user.id) ? 'bg-elevated/50' : ''">
-          <td v-if="selectable" class="py-1 ps-1 pe-2 align-middle">
+      <tbody class="divide-y divide-divider">
+        <tr
+          v-for="user in users"
+          :key="user.id"
+          class="group"
+          :class="selected.includes(user.id) ? 'bg-accent-weak' : 'hover:bg-sunken'"
+        >
+          <td v-if="selectable" class="py-1 ps-2 pe-1 align-middle">
             <label :class="checkboxHitClass">
               <UCheckbox
                 size="lg"
@@ -127,7 +135,7 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
               />
             </label>
           </td>
-          <th scope="row" class="px-2 py-2 text-start align-middle font-medium text-highlighted wrap-anywhere">
+          <th scope="row" class="px-3 py-3 text-start align-middle font-semibold text-heading wrap-anywhere">
             <span class="inline-flex flex-wrap items-center gap-2">
               <UAvatar
                 :src="user.avatarUrl ?? undefined"
@@ -140,104 +148,27 @@ const linkClass = 'text-primary underline underline-offset-4 hover:no-underline'
                 {{ $t('users.you') }}
               </UBadge>
             </span>
-            <span v-if="mayDelete && user.id !== signedInId" class="block text-sm font-normal">
+            <span
+              v-if="mayDelete && user.id !== signedInId"
+              class="block font-normal transition-opacity pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100"
+            >
               <NuxtLink
                 :to="`/users/${user.id}/delete`"
-                :class="[linkClass, 'inline-flex min-h-11 items-center lg:min-h-8']"
+                class="inline-flex min-h-control items-center rounded-menu text-help text-danger hover:underline"
                 :aria-label="$t('users.delete.rowLabel', { user: user.username })"
               >
                 {{ $t('users.delete.row') }}
               </NuxtLink>
             </span>
           </th>
-          <td class="px-2 py-2 align-middle text-default wrap-anywhere">{{ user.displayName }}</td>
-          <td class="px-2 py-2 align-middle wrap-anywhere">
+          <td class="px-3 py-3 align-middle text-heading wrap-anywhere">{{ user.displayName }}</td>
+          <td class="px-3 py-3 align-middle wrap-anywhere">
             <a :href="`mailto:${user.email}`" :class="linkClass">{{ user.email }}</a>
           </td>
-          <td class="px-2 py-2 align-middle text-default">{{ rolesOf(user) }}</td>
-          <td class="px-2 py-2 text-end align-middle text-default tabular-nums">{{ user.postCount }}</td>
+          <td class="px-3 py-3 align-middle text-heading">{{ rolesOf(user) }}</td>
+          <td class="px-3 py-3 text-end align-middle font-mono text-heading">{{ user.postCount }}</td>
         </tr>
       </tbody>
     </table>
-
-    <!-- Below md: the list. The same facts, the same checkbox; the sort is a row of links where the table has its headings. -->
-    <div class="flex flex-col gap-3 md:hidden">
-      <nav :aria-label="$t('users.sort.label')" class="flex flex-wrap items-center gap-x-1">
-        <span class="text-sm text-toned">{{ $t('users.sort.by') }}</span>
-        <NuxtLink
-          v-for="entry in COLUMNS"
-          :key="entry.column"
-          :to="sortLocation(entry.column)"
-          :aria-current="ariaSort(entry.column) === 'none' ? undefined : 'true'"
-          class="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-base underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
-          :class="ariaSort(entry.column) === 'none' ? 'text-primary' : 'font-semibold text-highlighted underline'"
-        >
-          {{ entry.label() }}
-          <template v-if="ariaSort(entry.column) !== 'none'">
-            <UIcon
-              :name="ariaSort(entry.column) === 'ascending' ? 'i-lucide-arrow-up' : 'i-lucide-arrow-down'"
-              class="size-4 shrink-0"
-              aria-hidden="true"
-            />
-            <span class="sr-only">
-              {{ ariaSort(entry.column) === 'ascending' ? $t('users.sort.ascending') : $t('users.sort.descending') }}
-            </span>
-          </template>
-        </NuxtLink>
-      </nav>
-
-      <label v-if="selectable" class="flex min-h-11 cursor-pointer items-center gap-3 text-base text-default">
-        <span :class="checkboxHitClass">
-          <UCheckbox size="lg" :model-value="allState" @update:model-value="toggleAll($event === true)" />
-        </span>
-        {{ $t('users.table.selectAll') }}
-      </label>
-
-      <ul
-        class="flex flex-col divide-y divide-default rounded-md border border-default"
-        :aria-label="$t('users.table.caption')"
-      >
-        <li
-          v-for="user in users"
-          :key="user.id"
-          class="flex items-start gap-1 p-2"
-          :class="selected.includes(user.id) ? 'bg-elevated/50' : ''"
-        >
-          <label v-if="selectable" :class="checkboxHitClass">
-            <UCheckbox
-              size="lg"
-              :model-value="selected.includes(user.id)"
-              :aria-label="$t('users.table.select', { user: user.username })"
-              @update:model-value="toggle(user.id, $event)"
-            />
-          </label>
-          <div class="flex min-w-0 flex-1 flex-col gap-0.5 py-2 pe-1" :class="selectable ? '' : 'ps-2'">
-            <p class="flex flex-wrap items-center gap-2 font-medium text-highlighted wrap-anywhere">
-              {{ user.username }}
-              <UBadge v-if="user.id === signedInId" color="neutral" variant="outline" size="md">
-                {{ $t('users.you') }}
-              </UBadge>
-            </p>
-            <p v-if="user.displayName !== user.username" class="text-sm text-default wrap-anywhere">
-              {{ user.displayName }}
-            </p>
-            <p class="text-sm wrap-anywhere">
-              <a :href="`mailto:${user.email}`" :class="linkClass">{{ user.email }}</a>
-            </p>
-            <p class="text-sm text-default">{{ rolesOf(user) }}</p>
-            <p class="text-sm text-toned">{{ $t('users.table.postsCount', user.postCount) }}</p>
-            <p v-if="mayDelete && user.id !== signedInId" class="text-sm">
-              <NuxtLink
-                :to="`/users/${user.id}/delete`"
-                :class="[linkClass, 'inline-flex min-h-11 items-center lg:min-h-8']"
-                :aria-label="$t('users.delete.rowLabel', { user: user.username })"
-              >
-                {{ $t('users.delete.row') }}
-              </NuxtLink>
-            </p>
-          </div>
-        </li>
-      </ul>
-    </div>
-  </div>
+  </BlekkTableFrame>
 </template>

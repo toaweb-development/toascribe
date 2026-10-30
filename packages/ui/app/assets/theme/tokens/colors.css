@@ -5,9 +5,11 @@
  *    3:1 for the edge that shows a field) and the dark danger colour (Tor: «velg selv med AA-kontrast»).
  * 2. Nuxt UI's roles (--ui-*) point at them, so every Nuxt UI component takes the look.
  * 3. `@theme inline` makes utilities of the tokens Nuxt UI has no name for (bg-app, bg-surface, bg-sidebar, text-accent …).
- * test/contrast.test.ts reads this file and checks every pair in both themes.
+ * test/contrast.test.ts reads this file and checks every pair in both themes. `.blekk-light` gives a part of a dark page the light
+ * tokens, as `.dark` gives a part of a light page the dark ones: the component overview (/admin/_ui) shows both side by side.
  */
-:root {
+:root,
+.blekk-light {
   --blekk-bg: #f5f6f8;
   --blekk-surface: #ffffff;
   --blekk-sunken: #f8f9fb;
@@ -77,6 +79,7 @@
 /* 2. Nuxt UI's roles. The same in both themes: they point at the tokens, and the tokens change. `primary` is the accent as text and
    ring (#8EA0FF on dark); a filled button takes the fill (app.config.ts), so white text on it keeps 4.5:1 in both themes. */
 :root,
+.blekk-light,
 .dark {
   --ui-bg: var(--blekk-surface);
   --ui-bg-muted: var(--blekk-sunken);

@@ -36,8 +36,8 @@ async function edit(item: MediaItem): Promise<void> {
 <template>
   <AdminPage id="media-new" :title="$t('media.new.title')">
     <section v-if="!mayUpload" aria-labelledby="media-denied-heading" class="flex max-w-prose flex-col gap-3">
-      <h2 id="media-denied-heading" class="text-xl font-semibold text-highlighted">{{ $t('media.denied') }}</h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <h2 id="media-denied-heading" class="text-card-title font-semibold text-heading">{{ $t('media.denied') }}</h2>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
     <div v-else class="flex max-w-3xl flex-col gap-6">
       <UAlert
@@ -50,15 +50,15 @@ async function edit(item: MediaItem): Promise<void> {
       />
       <MediaUploader v-if="data" :limits="data" @uploaded="uploaded.unshift($event)" />
       <section v-if="uploaded.length > 0" aria-labelledby="media-new-done" class="flex flex-col gap-2">
-        <h2 id="media-new-done" class="text-lg font-semibold text-highlighted">{{ $t('media.new.uploaded') }}</h2>
+        <h2 id="media-new-done" class="text-card-title font-semibold text-heading">{{ $t('media.new.uploaded') }}</h2>
         <ul class="flex flex-col divide-y divide-default rounded-md border border-default">
           <li v-for="item in uploaded" :key="item.id" class="flex items-center justify-between gap-3 p-2">
-            <span class="min-w-0 truncate text-sm text-highlighted">{{ item.title || item.fileName }}</span>
+            <span class="min-w-0 truncate text-help text-heading">{{ item.title || item.fileName }}</span>
             <UButton
               size="sm"
               color="neutral"
               variant="ghost"
-              class="min-h-11 lg:min-h-8"
+              class="min-h-control"
               :label="$t('content.actions.edit')"
               :aria-label="$t('media.new.editNamed', { name: item.title || item.fileName })"
               @click="edit(item)"

@@ -43,7 +43,7 @@ const slug = computed({
       <UFormField :label="t('editor.globalSet.choose')" :name="`${uid}-set`">
         <USelect v-model="slug" :items="sets" :placeholder="t('editor.globalSet.placeholder')" class="w-full sm:w-72" />
       </UFormField>
-      <p class="text-sm text-muted">{{ t('editor.globalSet.help') }}</p>
+      <p class="text-help text-muted">{{ t('editor.globalSet.help') }}</p>
     </div>
   </div>
 </template>

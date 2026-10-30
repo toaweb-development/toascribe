@@ -71,13 +71,14 @@ const flyoutLinkClass =
           <template #content>
             <ul
               class="flex min-w-48 flex-col gap-0.5 p-1.5"
+              :aria-label="label(entry.labelKey)"
               @mouseenter="hover(entry.id, 0)"
               @mouseleave="hover(undefined, 200)"
             >
               <li>
                 <NuxtLink
                   :to="entry.to"
-                  :class="[flyoutLinkClass, 'font-semibold text-highlighted']"
+                  :class="[flyoutLinkClass, 'font-semibold text-heading']"
                   :aria-current="route.path === entry.to ? 'page' : undefined"
                 >
                   {{ label(entry.labelKey) }}
@@ -122,6 +123,7 @@ const flyoutLinkClass =
               <template #content>
                 <ul
                   class="flex min-w-48 flex-col gap-0.5 p-1.5"
+                  :aria-label="label(entry.labelKey)"
                   @mouseenter="hover(entry.id, 0)"
                   @mouseleave="hover(undefined, 200)"
                 >
@@ -163,7 +165,8 @@ const flyoutLinkClass =
     />
   </div>
   <div v-else role="alert" class="flex flex-col gap-2 text-sidebar-text">
-    <p>{{ $t('shell.menu.failed.title') }}</p>
+    <p class="font-medium">{{ $t('shell.menu.failed.title') }}</p>
+    <p class="text-help text-sidebar-muted">{{ $t('shell.menu.failed.text') }}</p>
     <button
       type="button"
       class="inline-flex min-h-control items-center gap-2 rounded-menu px-3 text-sidebar-text ring ring-sidebar-line hover:bg-sidebar-active focus-visible:outline-sidebar-focus"

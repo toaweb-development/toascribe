@@ -77,11 +77,11 @@ function proceed() {
 <template>
   <div v-if="remaining !== undefined" class="flex flex-col gap-6">
     <AuthMessage kind="info" focus>{{ $t('auth.mfa.lowCodes', remaining) }}</AuthMessage>
-    <UButton size="xl" block class="min-h-11" @click="proceed">{{ $t('auth.mfa.continue') }}</UButton>
+    <UButton size="xl" block class="min-h-control" @click="proceed">{{ $t('auth.mfa.continue') }}</UButton>
   </div>
 
   <div v-else class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ useRecovery ? $t('auth.mfa.recoveryIntro') : $t('auth.mfa.intro') }}</p>
+    <p class="text-body text-default">{{ useRecovery ? $t('auth.mfa.recoveryIntro') : $t('auth.mfa.intro') }}</p>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
     <UForm
       :state="state"
@@ -110,11 +110,11 @@ function proceed() {
           class="w-full"
         />
       </UFormField>
-      <UButton type="submit" size="xl" block class="min-h-11" :loading="submitting">{{
+      <UButton type="submit" size="xl" block class="min-h-control" :loading="submitting">{{
         $t('auth.mfa.submit')
       }}</UButton>
     </UForm>
-    <UButton variant="link" color="neutral" size="lg" class="min-h-11 self-start px-0" @click="toggle">
+    <UButton variant="link" color="neutral" size="lg" class="min-h-control self-start px-0" @click="toggle">
       {{ useRecovery ? $t('auth.mfa.useApp') : $t('auth.mfa.useRecovery') }}
     </UButton>
   </div>

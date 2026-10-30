@@ -82,7 +82,7 @@ async function createPage(): Promise<void> {
     @retry="screen.refresh()"
   >
     <template v-if="data">
-      <p class="max-w-prose text-base text-default">{{ $t('settings.privacy.intro') }}</p>
+      <p class="max-w-prose text-body text-default">{{ $t('settings.privacy.intro') }}</p>
       <UFormField
         :label="$t('settings.privacy.page')"
         :help="$t('settings.privacy.pageHelp')"
@@ -95,7 +95,7 @@ async function createPage(): Promise<void> {
           color="neutral"
           variant="outline"
           size="lg"
-          class="min-h-11"
+          class="min-h-control"
           icon="i-lucide-file-plus"
           :loading="creating"
           :label="$t('settings.privacy.create')"
@@ -103,11 +103,11 @@ async function createPage(): Promise<void> {
         />
       </div>
       <fieldset class="flex flex-col gap-3">
-        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.privacy.embeds') }}</legend>
+        <legend class="mb-2 font-semibold text-heading">{{ $t('settings.privacy.embeds') }}</legend>
         <UCheckbox v-model="clickToLoad" :label="$t('settings.privacy.clickToLoad')" />
-        <p class="max-w-prose text-sm text-toned">{{ $t('settings.privacy.clickToLoadHelp') }}</p>
+        <p class="max-w-prose text-help text-secondary">{{ $t('settings.privacy.clickToLoadHelp') }}</p>
         <UCheckbox v-model="gravatar" :label="$t('settings.privacy.gravatar')" />
-        <p class="max-w-prose text-sm text-toned">{{ $t('settings.privacy.gravatarHelp') }}</p>
+        <p class="max-w-prose text-help text-secondary">{{ $t('settings.privacy.gravatarHelp') }}</p>
         <UFormField
           :label="$t('settings.privacy.mastodon')"
           :help="$t('settings.privacy.mastodonHelp')"
@@ -117,8 +117,8 @@ async function createPage(): Promise<void> {
         </UFormField>
       </fieldset>
       <fieldset class="flex flex-col gap-3">
-        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.privacy.security') }}</legend>
-        <p class="max-w-prose text-sm text-toned">{{ $t('settings.privacy.securityHelp') }}</p>
+        <legend class="mb-2 font-semibold text-heading">{{ $t('settings.privacy.security') }}</legend>
+        <p class="max-w-prose text-help text-secondary">{{ $t('settings.privacy.securityHelp') }}</p>
         <UFormField
           :label="$t('settings.privacy.securityContact')"
           :help="$t('settings.privacy.securityContactHelp')"

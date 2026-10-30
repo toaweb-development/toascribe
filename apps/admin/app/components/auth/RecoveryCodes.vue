@@ -30,27 +30,32 @@ function print() {
 
 <template>
   <section class="flex flex-col gap-4" aria-labelledby="recovery-codes-title">
-    <h2 id="recovery-codes-title" ref="title" tabindex="-1" class="text-lg font-semibold text-highlighted outline-none">
+    <h2
+      id="recovery-codes-title"
+      ref="title"
+      tabindex="-1"
+      class="text-card-title font-semibold text-heading outline-none"
+    >
       {{ $t('auth.recovery.title') }}
     </h2>
-    <p class="text-base text-default">{{ $t('auth.recovery.intro') }}</p>
+    <p class="text-body text-default">{{ $t('auth.recovery.intro') }}</p>
 
     <ul
-      class="grid grid-cols-1 gap-2 rounded-md bg-muted p-4 font-mono text-base text-highlighted"
+      class="grid grid-cols-1 gap-2 rounded-md bg-muted p-4 font-mono text-body text-heading"
       :aria-label="$t('auth.recovery.listLabel')"
     >
       <li v-for="code in codes" :key="code">{{ code }}</li>
     </ul>
 
     <div class="flex flex-wrap gap-2 print:hidden">
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="copy">{{
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="copy">{{
         $t('auth.recovery.copy')
       }}</UButton>
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="print">{{
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="print">{{
         $t('auth.recovery.print')
       }}</UButton>
     </div>
-    <p v-if="copyNotice" role="status" class="text-sm text-toned print:hidden">
+    <p v-if="copyNotice" role="status" class="text-help text-secondary print:hidden">
       {{ copyNotice === 'copied' ? $t('auth.recovery.copied') : $t('auth.recovery.copyFailed') }}
     </p>
 

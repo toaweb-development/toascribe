@@ -48,15 +48,10 @@ onMounted(() => {
           <NuxtLink
             to="/"
             class="inline-flex min-h-control items-center gap-2.5 rounded-menu px-1 font-semibold text-sidebar-text focus-visible:outline-sidebar-focus"
-            :aria-label="$t('shell.home')"
           >
-            <span
-              class="inline-flex size-7 items-center justify-center rounded-menu bg-accent text-on-accent"
-              aria-hidden="true"
-            >
-              <UIcon name="i-lucide-pen-line" class="size-4" />
-            </span>
+            <BlekkLogoMark />
             <span v-if="!collapsed" class="text-card-title">{{ $t('brand.name') }}</span>
+            <span class="sr-only">{{ $t('shell.home') }}</span>
           </NuxtLink>
         </template>
 

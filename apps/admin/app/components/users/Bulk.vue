@@ -49,22 +49,22 @@ function submit() {
         :items="items"
         :placeholder="$t('users.bulk.choose')"
         size="xl"
-        class="min-h-11 w-full sm:w-56"
+        class="min-h-control w-full sm:w-56"
       />
     </UFormField>
     <UButton
       type="submit"
       size="lg"
-      class="min-h-11"
+      class="min-h-control"
       :loading="busy"
       :aria-disabled="!ready"
       :aria-describedby="hint === '' ? undefined : 'users-bulk-hint'"
     >
       {{ $t('users.bulk.submit') }}
     </UButton>
-    <p v-if="hint !== ''" id="users-bulk-hint" class="basis-full text-sm text-toned">{{ hint }}</p>
+    <p v-if="hint !== ''" id="users-bulk-hint" class="basis-full text-help text-secondary">{{ hint }}</p>
     <!-- Always in the page, so a change of its text is announced (accessibility §8). -->
-    <p role="status" class="basis-full text-sm text-default">
+    <p role="status" class="basis-full text-help text-default">
       {{ selectedCount > 0 ? $t('users.bulk.selected', selectedCount) : '' }}
     </p>
   </form>

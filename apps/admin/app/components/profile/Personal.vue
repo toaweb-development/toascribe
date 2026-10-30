@@ -125,9 +125,9 @@ async function retry() {
         :disabled="saving === 'scheme'"
         :ui="{
           fieldset: 'grid grid-cols-1 gap-3 sm:grid-cols-3',
-          item: 'min-h-11 p-3 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary',
+          item: 'min-h-control p-3 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary',
           wrapper: 'text-start items-start',
-          description: 'text-toned',
+          description: 'text-secondary',
         }"
       >
         <!-- `v-slot:label`, not `#label`: the root i18n test reads `#label="…"` as a hard-coded text attribute. -->
@@ -137,14 +137,14 @@ async function retry() {
             <span class="flex items-center gap-2">
               <UIcon
                 :name="SCHEME_ICONS[item.value as AdminColorScheme]"
-                class="size-5 shrink-0 text-toned"
+                class="size-5 shrink-0 text-secondary"
                 aria-hidden="true"
               />
               <span class="font-medium text-default">{{ item.label }}</span>
               <UIcon
                 v-if="scheme === item.value"
                 name="i-lucide-check"
-                class="size-4 shrink-0 text-primary"
+                class="size-4 shrink-0 text-accent-text"
                 aria-hidden="true"
               />
             </span>
@@ -153,7 +153,7 @@ async function retry() {
       </URadioGroup>
 
       <fieldset class="flex flex-col gap-1">
-        <legend class="mb-1 block text-sm font-medium text-default">{{ $t('profile.personal.toolbar') }}</legend>
+        <legend class="mb-1 block text-help font-medium text-default">{{ $t('profile.personal.toolbar') }}</legend>
         <UCheckbox
           v-model="toolbar"
           size="lg"
@@ -178,7 +178,7 @@ async function retry() {
       </UFormField>
 
       <!-- The region stays in the page, empty, so the text put into it is announced. -->
-      <div role="status" class="min-h-6 text-sm text-default">
+      <div role="status" class="min-h-6 text-help text-default">
         <span v-if="message" class="inline-flex items-center gap-1.5">
           <UIcon name="i-lucide-check" class="size-4 shrink-0 text-success" aria-hidden="true" />
           {{ message }}
@@ -198,7 +198,7 @@ async function retry() {
       :description="$t('profile.personal.loadFailed.text')"
     >
       <template #actions>
-        <UButton color="neutral" variant="outline" size="lg" class="min-h-11" :loading="retrying" @click="retry">
+        <UButton color="neutral" variant="outline" size="lg" class="min-h-control" :loading="retrying" @click="retry">
           {{ $t('profile.retry') }}
         </UButton>
       </template>

@@ -75,8 +75,8 @@ const topPlace = computed(() => {
 <template>
   <AdminPage id="appearance-global-set" :title="$t('appearance.sets.editTitle', { name: data?.name ?? '' })">
     <section v-if="!mayEdit" aria-labelledby="set-denied" class="flex max-w-prose flex-col gap-3">
-      <h2 id="set-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <h2 id="set-denied" class="text-card-title font-semibold text-heading">{{ $t('appearance.denied') }}</h2>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
     <UAlert
       v-else-if="error"
@@ -90,7 +90,7 @@ const topPlace = computed(() => {
         <UFormField :label="$t('appearance.sets.name')" name="set-name">
           <UInput v-model="name" maxlength="200" size="xl" class="w-full sm:w-80" />
         </UFormField>
-        <p class="text-sm text-muted">
+        <p class="text-help text-muted">
           {{ $t('appearance.sets.slugHelp') }} <code>{{ data.slug }}</code>
         </p>
       </div>
@@ -112,7 +112,7 @@ const topPlace = computed(() => {
           :disabled="!editor.canRedo.value"
           @click="editor.redo()"
         />
-        <UButton class="ms-auto min-h-11" size="lg" :loading="saving" @click="save">{{
+        <UButton class="ms-auto min-h-control" size="lg" :loading="saving" @click="save">{{
           $t('appearance.sets.save')
         }}</UButton>
       </div>

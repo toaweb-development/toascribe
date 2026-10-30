@@ -74,7 +74,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
 <template>
   <ProfileSection id="password" :title="$t('profile.password.title')" :level="3">
     <div class="flex flex-col gap-4">
-      <p class="text-base text-default">{{ $t('profile.password.intro') }}</p>
+      <p class="text-body text-default">{{ $t('profile.password.intro') }}</p>
 
       <UButton
         v-if="!open"
@@ -82,7 +82,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
         color="neutral"
         variant="outline"
         size="lg"
-        class="min-h-11 self-start"
+        class="min-h-control self-start"
         @click="begin"
       >
         {{ $t('profile.password.set') }}
@@ -107,8 +107,8 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
           :label="$t('profile.password.new')"
         />
         <div class="flex flex-wrap gap-2">
-          <UButton type="submit" size="lg" class="min-h-11">{{ $t('profile.password.save') }}</UButton>
-          <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="close">
+          <UButton type="submit" size="lg" class="min-h-control">{{ $t('profile.password.save') }}</UButton>
+          <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="close">
             {{ $t('profile.password.cancel') }}
           </UButton>
         </div>
@@ -116,7 +116,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
 
       <p v-if="failure" role="alert" class="font-medium text-error">{{ failure }}</p>
       <!-- The region stays in the page, empty, so the text put into it is announced. -->
-      <div role="status" class="min-h-6 text-sm text-default">
+      <div role="status" class="min-h-6 text-help text-default">
         <span v-if="done" class="inline-flex items-start gap-1.5">
           <UIcon name="i-lucide-check" class="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
           <span>{{ done }}</span>

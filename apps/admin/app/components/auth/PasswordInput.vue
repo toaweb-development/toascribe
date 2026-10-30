@@ -33,7 +33,7 @@ const inputId = computed(() => input.value?.inputRef?.id)
         :aria-label="visible ? $t('auth.password.hide') : $t('auth.password.show')"
         :aria-pressed="visible"
         :aria-controls="inputId"
-        class="min-h-11 min-w-11 justify-center"
+        class="min-h-control min-w-control justify-center"
         @click="visible = !visible"
       />
     </template>

@@ -44,11 +44,11 @@ const groups = computed(() => [
     <template #body>
       <div class="flex flex-col gap-4">
         <section v-for="group in groups" :key="group.title" class="flex flex-col gap-1">
-          <h3 class="font-semibold text-highlighted">{{ group.title }}</h3>
-          <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <h3 class="font-semibold text-heading">{{ group.title }}</h3>
+          <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-help">
             <template v-for="entry in group.keys" :key="entry.keys">
               <dt>
-                <kbd class="rounded border border-default bg-elevated px-1.5 py-0.5 font-mono text-xs">{{
+                <kbd class="rounded border border-default bg-elevated px-1.5 py-0.5 font-mono text-badge">{{
                   entry.keys
                 }}</kbd>
               </dt>

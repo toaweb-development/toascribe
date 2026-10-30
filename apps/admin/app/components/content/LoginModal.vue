@@ -42,12 +42,12 @@ function onSubmitted(answer: LoginResponse): void {
           "
         />
         <template v-else>
-          <p class="text-sm text-default">{{ t('editor.login.enrol') }}</p>
+          <p class="text-help text-default">{{ t('editor.login.enrol') }}</p>
           <UButton
             :to="loginUrl"
             target="_blank"
             external
-            class="min-h-11 self-start"
+            class="min-h-control self-start"
             :label="t('editor.login.openLogin')"
           />
         </template>
@@ -57,7 +57,7 @@ function onSubmitted(answer: LoginResponse): void {
       <UButton
         color="neutral"
         variant="ghost"
-        class="min-h-11"
+        class="min-h-control"
         :label="t('editor.login.later')"
         @click="emit('close', false)"
       />

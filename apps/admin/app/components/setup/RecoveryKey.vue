@@ -53,28 +53,33 @@ function download() {
 
 <template>
   <section class="flex flex-col gap-4" aria-labelledby="recovery-key-title">
-    <h3 id="recovery-key-title" ref="title" tabindex="-1" class="text-lg font-semibold text-highlighted outline-none">
+    <h3
+      id="recovery-key-title"
+      ref="title"
+      tabindex="-1"
+      class="text-card-title font-semibold text-heading outline-none"
+    >
       {{ $t('setup.key.title') }}
     </h3>
-    <p class="text-base text-default">{{ $t('setup.key.intro') }}</p>
-    <p class="text-base font-semibold text-default">{{ $t('setup.key.once') }}</p>
+    <p class="text-body text-default">{{ $t('setup.key.intro') }}</p>
+    <p class="text-body font-semibold text-default">{{ $t('setup.key.once') }}</p>
 
     <p
-      class="rounded-md bg-muted p-4 font-mono text-lg tracking-wide break-words text-highlighted select-all"
+      class="rounded-md bg-muted p-4 font-mono text-card-title tracking-wide break-words text-heading select-all"
       data-testid="recovery-key"
     >
       {{ recoveryKey }}
     </p>
 
     <div class="flex flex-wrap gap-2 print:hidden">
-      <UButton color="neutral" variant="outline" size="xl" class="min-h-11" @click="copy">{{
+      <UButton color="neutral" variant="outline" size="xl" class="min-h-control" @click="copy">{{
         $t('setup.key.copy')
       }}</UButton>
-      <UButton color="neutral" variant="outline" size="xl" class="min-h-11" @click="download">{{
+      <UButton color="neutral" variant="outline" size="xl" class="min-h-control" @click="download">{{
         $t('setup.key.download')
       }}</UButton>
     </div>
-    <p role="status" class="text-sm text-toned print:hidden">
+    <p role="status" class="text-help text-secondary print:hidden">
       <template v-if="notice === 'copied'">{{ $t('setup.key.copied') }}</template>
       <template v-else-if="notice === 'failed'">{{ $t('setup.key.copyFailed') }}</template>
       <template v-else-if="notice === 'downloaded'">{{ $t('setup.key.downloaded') }}</template>

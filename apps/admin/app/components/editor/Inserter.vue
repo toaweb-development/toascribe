@@ -130,14 +130,14 @@ function choose(entry: Entry | undefined): void {
           @keydown.enter.prevent="choose(firstEntry)"
         />
         <section v-for="group in groups" :key="group.category" :aria-labelledby="`${uid}-${group.category}`">
-          <h3 :id="`${uid}-${group.category}`" class="px-1 pb-1 text-xs font-semibold text-muted uppercase">
+          <h3 :id="`${uid}-${group.category}`" class="px-1 pb-1 text-badge font-semibold text-muted uppercase">
             {{ group.label }}
           </h3>
           <ul class="grid grid-cols-3 gap-1">
             <li v-for="entry in group.entries" :key="entry.key">
               <button
                 type="button"
-                class="flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-md p-1 text-center text-xs text-default hover:bg-elevated focus-visible:outline-2 focus-visible:outline-primary"
+                class="flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-md p-1 text-center text-badge text-default hover:bg-elevated focus-visible:outline-2 focus-visible:outline-primary"
                 @click="choose(entry)"
               >
                 <UIcon :name="entry.icon" class="size-5" aria-hidden="true" />
@@ -146,7 +146,7 @@ function choose(entry: Entry | undefined): void {
             </li>
           </ul>
         </section>
-        <p v-if="groups.length === 0" class="px-1 text-sm text-muted" role="status">
+        <p v-if="groups.length === 0" class="px-1 text-help text-muted" role="status">
           {{ t('editorPrototype.paragraph.slashNone') }}
         </p>
       </div>

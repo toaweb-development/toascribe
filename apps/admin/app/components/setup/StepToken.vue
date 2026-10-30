@@ -54,17 +54,17 @@ const shownError = computed(() => error.value ?? props.notice)
   <div v-if="accepted" class="flex flex-col gap-6">
     <AuthMessage kind="success">{{ $t('setup.token.accepted') }}</AuthMessage>
     <div class="flex flex-wrap gap-2">
-      <UButton size="xl" class="min-h-11" @click="emit('next')">{{ $t('setup.nav.next') }}</UButton>
+      <UButton size="xl" class="min-h-control" @click="emit('next')">{{ $t('setup.nav.next') }}</UButton>
     </div>
   </div>
 
   <div v-else class="flex flex-col gap-6">
-    <i18n-t keypath="setup.token.hint" tag="p" class="text-base text-default">
+    <i18n-t keypath="setup.token.hint" tag="p" class="text-body text-default">
       <template #logs>
-        <code class="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-sm text-highlighted">{{ LOG_COMMAND }}</code>
+        <code class="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-help text-heading">{{ LOG_COMMAND }}</code>
       </template>
       <template #renew>
-        <code class="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-sm text-highlighted">{{ RENEW_COMMAND }}</code>
+        <code class="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-help text-heading">{{ RENEW_COMMAND }}</code>
       </template>
     </i18n-t>
     <AuthMessage v-if="shownError" :key="failures" kind="error" :focus="error !== undefined">{{
@@ -92,7 +92,9 @@ const shownError = computed(() => error.value ?? props.notice)
         />
       </UFormField>
       <div class="flex flex-wrap gap-2">
-        <UButton type="submit" size="xl" class="min-h-11" :loading="pending">{{ $t('setup.token.submit') }}</UButton>
+        <UButton type="submit" size="xl" class="min-h-control" :loading="pending">{{
+          $t('setup.token.submit')
+        }}</UButton>
       </div>
     </UForm>
   </div>

@@ -32,7 +32,7 @@ async function onSent() {
       <li v-if="options?.privacyPolicyPath">
         <a
           :href="options.privacyPolicyPath"
-          class="inline-flex min-h-11 items-center text-sm text-toned underline underline-offset-4 hover:text-highlighted"
+          class="inline-flex min-h-control items-center text-help text-secondary underline underline-offset-4 hover:text-highlighted"
           >{{ $t('auth.links.privacy') }}</a
         >
       </li>

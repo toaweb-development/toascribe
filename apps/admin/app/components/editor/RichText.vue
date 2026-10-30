@@ -475,8 +475,8 @@ const formatButtons = computed(() => [
           role="option"
           :aria-selected="index === slashActive"
           :class="[
-            'flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm',
-            index === slashActive ? 'bg-elevated text-highlighted' : 'text-default',
+            'flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-help',
+            index === slashActive ? 'bg-elevated text-heading' : 'text-default',
           ]"
           @mousedown.prevent="chooseSlash(index)"
         >
@@ -484,7 +484,7 @@ const formatButtons = computed(() => [
           {{ title(definition.name) }}
         </li>
       </ul>
-      <p v-else class="px-2 py-1 text-sm text-muted">{{ t('editorPrototype.paragraph.slashNone') }}</p>
+      <p v-else class="px-2 py-1 text-help text-muted">{{ t('editorPrototype.paragraph.slashNone') }}</p>
     </div>
   </div>
 </template>

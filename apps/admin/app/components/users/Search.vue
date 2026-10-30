@@ -33,7 +33,7 @@ watch(
         icon="i-lucide-search"
       />
     </div>
-    <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
+    <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-control">
       {{ $t('users.search.button') }}
     </UButton>
   </form>

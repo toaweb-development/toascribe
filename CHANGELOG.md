@@ -17,6 +17,16 @@ that heading keep the format they were written in (Keep a Changelog).
 - The admin has a new frame: a dark side menu where only the open section shows its pages and the others open as a small menu
   on hover or focus, which folds to icons and slides in on a phone; a top bar with the path to the screen, «Hjelp», «+ Ny» and
   the user menu; and every screen under one page heading, at most 1180 px wide. The black bar across the top is gone.
+- The dashboard greets you by the time of day with the date, and has «Vis nettstedet» and «Skriv et innlegg» at the top; the notices
+  are one box with one row and one action each (the welcome is one of them); the counts of posts, pages, comments and users are
+  cards; «Hurtigutkast» and «Aktivitet» are on the left, «Nettstedshelse» and a new «Versjon» card on the right.
+- «Avvis» on a notice hides it for you only, not for every administrator; a notice that comes back is shown again.
+- The lists (posts, pages, categories, tags, the media library's list view and users) share one look: views with their counts
+  as tabs, the filters on one line, and a table with each row's actions under the pointer or the keyboard. On a narrow screen the
+  table scrolls sideways in its own box.
+- The editor has the whole window: a narrow top bar with the way back, the text as a sheet, a dark toolbar on the chosen block,
+  and the settings in groups on the right.
+- The sign-in screens and the setup wizard have a page of their own with the logo.
 - A preview link (`/?preview=…`) puts its token in a short-lived, HttpOnly cookie on the first visit and sends the browser on to
   `/?preview`: the token is in no address the browser keeps or sends on, and the preview answers with `Referrer-Policy: no-referrer`.
 - A registration form's token is good for one registration (migration `0015_register_form_use` keeps the used ones for their hour).

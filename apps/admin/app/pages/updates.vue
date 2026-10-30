@@ -46,8 +46,8 @@ async function save(value: boolean): Promise<void> {
 <template>
   <AdminPage id="updates" :title="$t('updates.title')">
     <section v-if="!mayUpdate" aria-labelledby="updates-denied" class="flex max-w-prose flex-col gap-3">
-      <h2 id="updates-denied" class="text-xl font-semibold text-highlighted">{{ $t('settings.denied') }}</h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <h2 id="updates-denied" class="text-card-title font-semibold text-heading">{{ $t('settings.denied') }}</h2>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
     <UAlert
       v-else-if="error"
@@ -59,10 +59,10 @@ async function save(value: boolean): Promise<void> {
     />
     <div v-else-if="data" class="flex max-w-3xl flex-col gap-8">
       <section aria-labelledby="updates-version" class="flex flex-col gap-3">
-        <h2 id="updates-version" class="text-lg font-semibold text-highlighted">
+        <h2 id="updates-version" class="text-card-title font-semibold text-heading">
           {{ $t('updates.current', { version: data.current }) }}
         </h2>
-        <p v-if="data.status" class="text-sm text-toned">
+        <p v-if="data.status" class="text-help text-secondary">
           {{ $t('updates.checkedAt', { time: when(data.status.checkedAt) }) }}
         </p>
         <UAlert
@@ -88,24 +88,24 @@ async function save(value: boolean): Promise<void> {
         />
         <UAlert v-else color="success" variant="subtle" icon="i-lucide-circle-check" :title="$t('updates.newest')" />
         <p v-if="data.changelogUrl">
-          <ULink :to="data.changelogUrl" target="_blank" rel="noopener noreferrer" class="underline text-primary">
+          <ULink :to="data.changelogUrl" target="_blank" rel="noopener noreferrer" class="underline text-accent-text">
             {{ $t('updates.changelog', { version: data.status?.latest ?? '' }) }}
           </ULink>
         </p>
       </section>
 
       <section aria-labelledby="updates-how" class="flex flex-col gap-3">
-        <h2 id="updates-how" class="text-lg font-semibold text-highlighted">{{ $t('updates.howTitle') }}</h2>
-        <p class="max-w-prose text-base text-default">{{ $t('updates.how') }}</p>
+        <h2 id="updates-how" class="text-card-title font-semibold text-heading">{{ $t('updates.howTitle') }}</h2>
+        <p class="max-w-prose text-body text-default">{{ $t('updates.how') }}</p>
         <pre
-          class="overflow-x-auto rounded-md bg-muted p-4 font-mono text-sm text-highlighted"
+          class="overflow-x-auto rounded-md bg-muted p-4 font-mono text-help text-heading"
           data-testid="update-command"
         ><code>{{ $t('updates.command') }}</code></pre>
-        <p class="max-w-prose text-sm text-toned">{{ $t('updates.backupNote') }}</p>
+        <p class="max-w-prose text-help text-secondary">{{ $t('updates.backupNote') }}</p>
       </section>
 
       <section aria-labelledby="updates-check" class="flex flex-col gap-3">
-        <h2 id="updates-check" class="text-lg font-semibold text-highlighted">{{ $t('updates.checkTitle') }}</h2>
+        <h2 id="updates-check" class="text-card-title font-semibold text-heading">{{ $t('updates.checkTitle') }}</h2>
         <USwitch
           v-model="enabled"
           :disabled="saving || data.disabledByServer"

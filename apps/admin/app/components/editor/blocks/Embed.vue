@@ -74,14 +74,14 @@ const caption = computed({
         <UFormField :label="t('editor.embed.address')" :name="`${uid}-url`" class="min-w-0 flex-1">
           <UInput v-model="draft" type="url" inputmode="url" :placeholder="placeholder" class="w-full" />
         </UFormField>
-        <UButton type="submit" class="min-h-11" :loading="status === 'reading'" :label="t('editor.embed.embed')" />
+        <UButton type="submit" class="min-h-control" :loading="status === 'reading'" :label="t('editor.embed.embed')" />
       </form>
-      <p v-if="status === 'found' && provider" class="text-sm text-default" role="status">
+      <p v-if="status === 'found' && provider" class="text-help text-default" role="status">
         {{ t('editor.embed.found', { service: EMBED_PROVIDER_NAMES[provider], title: attr('title') || attr('url') }) }}
       </p>
-      <p v-else-if="status === 'none'" class="text-sm text-warning" role="status">{{ t('editor.embed.notFound') }}</p>
-      <p v-else-if="status === 'reading'" class="text-sm text-muted" role="status">{{ t('editor.embed.reading') }}</p>
-      <p class="text-xs text-muted">{{ t('editor.embed.help') }}</p>
+      <p v-else-if="status === 'none'" class="text-help text-warning" role="status">{{ t('editor.embed.notFound') }}</p>
+      <p v-else-if="status === 'reading'" class="text-help text-muted" role="status">{{ t('editor.embed.reading') }}</p>
+      <p class="text-badge text-muted">{{ t('editor.embed.help') }}</p>
       <UFormField :label="t('editor.embed.caption')" :name="`${uid}-caption`">
         <UInput v-model="caption" maxlength="2000" class="w-full" />
       </UFormField>

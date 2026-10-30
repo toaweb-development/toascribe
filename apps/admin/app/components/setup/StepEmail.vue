@@ -149,7 +149,7 @@ const announcement = computed(() =>
 
 <template>
   <div class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ $t('setup.email.intro') }}</p>
+    <p class="text-body text-default">{{ $t('setup.email.intro') }}</p>
     <AuthMessage v-if="skipped" kind="info">{{ $t('setup.email.skippedBefore') }}</AuthMessage>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
     <AuthMessage v-else-if="testFailure" :key="failures" kind="error" focus>{{ testFailure }}</AuthMessage>
@@ -243,7 +243,7 @@ const announcement = computed(() =>
       </UFormField>
 
       <fieldset class="flex flex-col gap-4 rounded-md border border-default p-4">
-        <legend class="px-1 text-base font-semibold text-highlighted">{{ $t('setup.email.test.legend') }}</legend>
+        <legend class="px-1 text-body font-semibold text-heading">{{ $t('setup.email.test.legend') }}</legend>
         <UFormField eager-validation name="to" :label="$t('setup.email.test.to')" :help="$t('setup.email.test.toHelp')">
           <UInput
             v-model="state.to"
@@ -258,22 +258,22 @@ const announcement = computed(() =>
           />
         </UFormField>
         <div class="flex flex-col items-start gap-2">
-          <UButton type="submit" color="neutral" variant="outline" size="xl" class="min-h-11" :loading="pending">{{
+          <UButton type="submit" color="neutral" variant="outline" size="xl" class="min-h-control" :loading="pending">{{
             $t('setup.email.test.submit')
           }}</UButton>
-          <p role="status" class="text-base text-default">{{ announcement }}</p>
+          <p role="status" class="text-body text-default">{{ announcement }}</p>
         </div>
       </fieldset>
 
-      <p v-if="!tested" id="email-blocked" class="text-base text-default">{{ $t('setup.email.mustTest') }}</p>
+      <p v-if="!tested" id="email-blocked" class="text-body text-default">{{ $t('setup.email.mustTest') }}</p>
 
       <div class="flex flex-wrap gap-2">
-        <UButton color="neutral" variant="outline" size="xl" class="min-h-11" @click="emit('back')">{{
+        <UButton color="neutral" variant="outline" size="xl" class="min-h-control" @click="emit('back')">{{
           $t('setup.nav.back')
         }}</UButton>
         <UButton
           size="xl"
-          class="min-h-11"
+          class="min-h-control"
           :aria-disabled="!tested"
           :aria-describedby="tested ? undefined : 'email-blocked'"
           @click="next"
@@ -283,12 +283,12 @@ const announcement = computed(() =>
     </UForm>
 
     <section class="flex flex-col gap-3 border-t border-default pt-6" aria-labelledby="email-skip-title">
-      <h3 id="email-skip-title" class="text-base font-semibold text-highlighted">
+      <h3 id="email-skip-title" class="text-body font-semibold text-heading">
         {{ $t('setup.email.skip.heading') }}
       </h3>
       <AuthMessage kind="info">{{ $t('setup.email.skip.warning') }}</AuthMessage>
       <div>
-        <UButton color="neutral" variant="outline" size="xl" class="min-h-11" :loading="pending" @click="skip">{{
+        <UButton color="neutral" variant="outline" size="xl" class="min-h-control" :loading="pending" @click="skip">{{
           $t('setup.email.skip.button')
         }}</UButton>
       </div>

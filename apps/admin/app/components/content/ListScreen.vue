@@ -373,45 +373,28 @@ watch(status, async (now, before) => {
   }
 })
 
-const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
+const PAGE_BUTTON = 'min-h-control min-w-control'
 const newPath = computed(() => `/${props.type === 'page' ? 'pages' : 'posts'}/new`)
 </script>
 
 <template>
   <AdminPage :id="`content-${type}`" :title="words.title">
-    <template #actions>
-      <UButton
-        v-if="mayEdit"
-        color="neutral"
-        variant="outline"
-        size="lg"
-        class="min-h-11"
-        icon="i-lucide-columns-3"
-        @click="openScreenOptions"
-      >
-        {{ $t('content.screenOptions.open') }}
-      </UButton>
+    <template v-if="!denied" #actions>
+      <UButton :to="newPath" size="xl" icon="i-lucide-plus">{{ words.add }}</UButton>
     </template>
 
     <div class="flex w-full flex-col gap-4 sm:gap-5">
       <section v-if="denied" aria-labelledby="content-denied-heading" class="flex max-w-prose flex-col gap-3">
-        <h2 id="content-denied-heading" class="text-xl font-semibold text-highlighted">{{ words.denied }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+        <h2 id="content-denied-heading" class="text-card-title font-semibold text-heading">{{ words.denied }}</h2>
+        <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
         <div>
-          <NuxtLink
-            to="/"
-            class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
-          >
+          <NuxtLink to="/" class="inline-flex min-h-control items-center text-accent-text hover:underline">
             {{ $t('content.denied.back') }}
           </NuxtLink>
         </div>
       </section>
 
       <template v-else>
-        <div>
-          <UButton :to="newPath" size="lg" class="min-h-11" icon="i-lucide-plus">{{ words.add }}</UButton>
-        </div>
-
         <UAlert
           v-if="error"
           color="error"
@@ -424,37 +407,23 @@ const newPath = computed(() => `/${props.type === 'page' ? 'pages' : 'posts'}/ne
             <p>{{ data ? $t('content.failed.stale') : $t('content.failed.text') }}</p>
           </template>
           <template #actions>
-            <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="() => refresh()">
+            <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="() => refresh()">
               {{ $t('content.failed.retry') }}
             </UButton>
           </template>
         </UAlert>
 
-        <nav v-if="data" :aria-label="words.views">
-          <ul class="flex flex-wrap gap-x-1">
-            <li v-for="link in viewLinks" :key="link.key">
-              <NuxtLink
-                :to="link.to"
-                :aria-current="link.current ? 'page' : undefined"
-                class="inline-flex min-h-11 items-center rounded-md px-2.5 text-base underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary lg:min-h-8"
-                :class="link.current ? 'font-semibold text-highlighted underline' : 'text-primary'"
-              >
-                {{ $t('content.views.item', { name: link.label, n: link.count }) }}
-              </NuxtLink>
-            </li>
-          </ul>
-        </nav>
+        <BlekkViewTabs v-if="data" :items="viewLinks" :label="words.views" />
 
-        <div v-if="data" class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-          <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
-            <form v-if="selectable" class="flex flex-wrap items-end gap-2" @submit.prevent="applyBulk">
-              <UFormField :label="$t('content.bulk.label')" name="action">
+        <div v-if="data" class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
+            <form v-if="selectable" class="flex flex-wrap items-start gap-2" @submit.prevent="applyBulk">
+              <UFormField :label="$t('content.bulk.label')" name="action" :ui="{ label: 'sr-only' }">
                 <USelect
                   id="content-bulk-action"
                   v-model="chosenAction"
                   :items="bulkItems"
                   :placeholder="$t('content.bulk.choose')"
-                  size="xl"
                   class="w-full sm:w-56"
                 />
               </UFormField>
@@ -463,32 +432,31 @@ const newPath = computed(() => `/${props.type === 'page' ? 'pages' : 'posts'}/ne
                 color="neutral"
                 variant="outline"
                 size="lg"
-                class="min-h-11"
+                class="min-h-control"
                 :loading="busy"
                 :aria-disabled="bulkHint !== ''"
                 :aria-describedby="bulkHint === '' ? undefined : 'content-bulk-hint'"
               >
                 {{ $t('content.bulk.apply') }}
               </UButton>
-              <p v-if="bulkHint !== ''" id="content-bulk-hint" class="basis-full text-sm text-toned">
+              <p v-if="bulkHint !== ''" id="content-bulk-hint" class="basis-full text-help text-secondary">
                 {{ bulkHint }}
               </p>
             </form>
 
-            <form class="flex flex-wrap items-end gap-2" @submit.prevent="applyFilter">
-              <UFormField :label="$t('content.filter.month')" name="month">
-                <USelect id="content-month" v-model="month" :items="monthItems" size="xl" class="w-full sm:w-48" />
+            <form class="flex flex-wrap items-start gap-2" @submit.prevent="applyFilter">
+              <UFormField :label="$t('content.filter.month')" name="month" :ui="{ label: 'sr-only' }">
+                <USelect id="content-month" v-model="month" :items="monthItems" class="w-full sm:w-44" />
               </UFormField>
-              <UFormField v-if="type === 'post'" :label="$t('content.filter.category')" name="category">
-                <USelect
-                  id="content-category"
-                  v-model="category"
-                  :items="categoryItems"
-                  size="xl"
-                  class="w-full sm:w-56"
-                />
+              <UFormField
+                v-if="type === 'post'"
+                :label="$t('content.filter.category')"
+                name="category"
+                :ui="{ label: 'sr-only' }"
+              >
+                <USelect id="content-category" v-model="category" :items="categoryItems" class="w-full sm:w-52" />
               </UFormField>
-              <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
+              <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-control">
                 {{ $t('content.filter.apply') }}
               </UButton>
             </form>
@@ -498,7 +466,7 @@ const newPath = computed(() => `/${props.type === 'page' ? 'pages' : 'posts'}/ne
               color="error"
               variant="outline"
               size="lg"
-              class="min-h-11"
+              class="min-h-control"
               :loading="busy"
               @click="emptyTrash"
             >
@@ -506,28 +474,36 @@ const newPath = computed(() => `/${props.type === 'page' ? 'pages' : 'posts'}/ne
             </UButton>
           </div>
 
-          <form role="search" class="flex flex-wrap items-end gap-2" @submit.prevent="search">
-            <div class="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-xs">
-              <label for="content-search" class="font-medium text-default">{{ words.search }}</label>
+          <form role="search" class="flex flex-wrap items-start gap-2" @submit.prevent="search">
+            <div class="flex min-w-0 flex-1 flex-col sm:w-64 sm:flex-none">
+              <label for="content-search" class="sr-only">{{ words.search }}</label>
               <UInput
                 id="content-search"
                 v-model="searchText"
                 type="search"
                 name="search"
-                size="xl"
                 fixed
                 class="w-full"
                 autocomplete="off"
                 icon="i-lucide-search"
+                :placeholder="words.search"
               />
             </div>
-            <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
+            <UButton type="submit" color="neutral" variant="outline">
               {{ words.search }}
             </UButton>
+            <UButton
+              v-if="mayEdit"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-columns-3"
+              :aria-label="$t('content.screenOptions.open')"
+              @click="openScreenOptions"
+            />
           </form>
         </div>
 
-        <p v-if="selectable && selected.length > 0" role="status" class="text-sm text-default">
+        <p v-if="selectable && selected.length > 0" role="status" class="text-help text-default">
           {{ $t('content.bulk.selected', { n: selected.length }, selected.length) }}
         </p>
 
@@ -560,12 +536,14 @@ const newPath = computed(() => `/${props.type === 'page' ? 'pages' : 'posts'}/ne
           <h2 ref="results" tabindex="-1" class="sr-only outline-none">{{ words.caption }}</h2>
 
           <div v-if="data" class="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <p role="status" class="text-sm text-toned">{{ $t('content.count', { n: data.total }, data.total) }}</p>
-            <p v-if="view.search !== ''" class="flex flex-wrap items-center gap-x-3 text-sm text-default">
+            <p role="status" class="text-help text-secondary">
+              {{ $t('content.count', { n: data.total }, data.total) }}
+            </p>
+            <p v-if="view.search !== ''" class="flex flex-wrap items-center gap-x-3 text-help text-default">
               <span>{{ $t('content.searchSummary', { query: view.search }) }}</span>
               <NuxtLink
                 :to="locationFor({ search: '' })"
-                class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
+                class="inline-flex min-h-control items-center text-accent-text underline underline-offset-4"
               >
                 {{ $t('content.searchClear') }}
               </NuxtLink>
@@ -583,17 +561,11 @@ const newPath = computed(() => `/${props.type === 'page' ? 'pages' : 'posts'}/ne
             />
           </div>
 
-          <div v-else-if="items.length === 0" class="flex max-w-prose flex-col gap-2 py-6">
-            <p class="text-lg font-semibold text-highlighted">{{ inTrash ? words.emptyTrash : words.empty }}</p>
-            <p v-if="filtered" class="text-base text-default">
-              <NuxtLink
-                :to="{ path: route.path }"
-                class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
-              >
-                {{ $t('content.showAll') }}
-              </NuxtLink>
-            </p>
-          </div>
+          <BlekkEmptyState v-else-if="items.length === 0" :title="inTrash ? words.emptyTrash : words.empty">
+            <UButton v-if="filtered" :to="{ path: route.path }" color="neutral" variant="outline">
+              {{ $t('content.showAll') }}
+            </UButton>
+          </BlekkEmptyState>
 
           <div v-else :class="status === 'pending' ? 'opacity-60' : ''">
             <ContentTable

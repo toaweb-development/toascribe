@@ -15,10 +15,10 @@ const emit = defineEmits<{ close: [confirmed: boolean] }>()
 <template>
   <UModal :title="title" :description="description" :dismissible="false" :close="false" :ui="{ footer: 'justify-end' }">
     <template #footer>
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="emit('close', false)">
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="emit('close', false)">
         {{ cancelLabel }}
       </UButton>
-      <UButton size="lg" class="min-h-11" :color="color ?? 'primary'" @click="emit('close', true)">
+      <UButton size="lg" class="min-h-control" :color="color ?? 'primary'" @click="emit('close', true)">
         {{ confirmLabel }}
       </UButton>
     </template>

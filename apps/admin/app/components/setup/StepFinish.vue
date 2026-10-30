@@ -72,39 +72,47 @@ async function install() {
 
 <template>
   <div class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ $t('setup.finish.intro') }}</p>
+    <p class="text-body text-default">{{ $t('setup.finish.intro') }}</p>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
 
     <dl class="grid grid-cols-1 gap-x-6 gap-y-3 rounded-md border border-default p-4 sm:grid-cols-3">
-      <dt class="text-sm font-semibold text-toned">{{ $t('setup.finish.siteTitle') }}</dt>
-      <dd class="text-base break-words text-default sm:col-span-2">{{ site.title }}</dd>
-      <dt class="text-sm font-semibold text-toned">{{ $t('setup.finish.language') }}</dt>
-      <dd class="text-base text-default sm:col-span-2">{{ language }}</dd>
-      <dt class="text-sm font-semibold text-toned">{{ $t('setup.finish.timezone') }}</dt>
-      <dd class="text-base text-default sm:col-span-2">{{ site.timezone }}</dd>
-      <dt class="text-sm font-semibold text-toned">{{ $t('setup.finish.search') }}</dt>
-      <dd class="text-base text-default sm:col-span-2">
+      <dt class="text-help font-semibold text-secondary">{{ $t('setup.finish.siteTitle') }}</dt>
+      <dd class="text-body break-words text-default sm:col-span-2">{{ site.title }}</dd>
+      <dt class="text-help font-semibold text-secondary">{{ $t('setup.finish.language') }}</dt>
+      <dd class="text-body text-default sm:col-span-2">{{ language }}</dd>
+      <dt class="text-help font-semibold text-secondary">{{ $t('setup.finish.timezone') }}</dt>
+      <dd class="text-body text-default sm:col-span-2">{{ site.timezone }}</dd>
+      <dt class="text-help font-semibold text-secondary">{{ $t('setup.finish.search') }}</dt>
+      <dd class="text-body text-default sm:col-span-2">
         {{ site.blogPublic ? $t('setup.finish.searchAllowed') : $t('setup.finish.searchDiscouraged') }}
       </dd>
-      <dt class="text-sm font-semibold text-toned">{{ $t('setup.finish.email') }}</dt>
-      <dd class="text-base text-default sm:col-span-2">
+      <dt class="text-help font-semibold text-secondary">{{ $t('setup.finish.email') }}</dt>
+      <dd class="text-body text-default sm:col-span-2">
         {{ email === 'tested' ? $t('setup.finish.emailTested') : $t('setup.finish.emailSkipped') }}
       </dd>
-      <dt class="text-sm font-semibold text-toned">{{ $t('setup.finish.admin') }}</dt>
-      <dd class="text-base break-words text-default sm:col-span-2">
+      <dt class="text-help font-semibold text-secondary">{{ $t('setup.finish.admin') }}</dt>
+      <dd class="text-body break-words text-default sm:col-span-2">
         {{ $t('setup.finish.adminValue', { username: admin.username, email: admin.email }) }}
       </dd>
-      <dt class="text-sm font-semibold text-toned">{{ $t('setup.finish.key') }}</dt>
-      <dd class="text-base text-default sm:col-span-2">{{ $t('setup.finish.keyValue') }}</dd>
+      <dt class="text-help font-semibold text-secondary">{{ $t('setup.finish.key') }}</dt>
+      <dd class="text-body text-default sm:col-span-2">{{ $t('setup.finish.keyValue') }}</dd>
     </dl>
 
-    <p role="status" class="text-sm text-toned">{{ pending ? $t('setup.finish.working') : '' }}</p>
+    <p role="status" class="text-help text-secondary">{{ pending ? $t('setup.finish.working') : '' }}</p>
 
     <div class="flex flex-wrap gap-2">
-      <UButton color="neutral" variant="outline" size="xl" class="min-h-11" :disabled="pending" @click="emit('back')">{{
-        $t('setup.nav.back')
+      <UButton
+        color="neutral"
+        variant="outline"
+        size="xl"
+        class="min-h-control"
+        :disabled="pending"
+        @click="emit('back')"
+        >{{ $t('setup.nav.back') }}</UButton
+      >
+      <UButton size="xl" class="min-h-control" :loading="pending" @click="install">{{
+        $t('setup.finish.submit')
       }}</UButton>
-      <UButton size="xl" class="min-h-11" :loading="pending" @click="install">{{ $t('setup.finish.submit') }}</UButton>
     </div>
   </div>
 </template>

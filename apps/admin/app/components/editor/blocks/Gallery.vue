@@ -63,7 +63,7 @@ onBeforeUnmount(() => editor.unregisterFocus(props.block.id, handler))
           :class="['w-full rounded-md', block.attrs['crop'] === true ? 'aspect-square object-cover' : 'h-auto']"
         />
         <!-- eslint-enable vue/html-self-closing -->
-        <p v-else class="text-sm text-warning">{{ t('editorPrototype.image.missing') }}</p>
+        <p v-else class="text-help text-warning">{{ t('editorPrototype.image.missing') }}</p>
         <UInput
           :model-value="text(image, 'alt')"
           size="sm"
@@ -83,11 +83,11 @@ onBeforeUnmount(() => editor.unregisterFocus(props.block.id, handler))
         />
       </li>
     </ul>
-    <p v-else class="text-sm text-muted">{{ t('editor.gallery.empty') }}</p>
+    <p v-else class="text-help text-muted">{{ t('editor.gallery.empty') }}</p>
     <UButton
       data-add-image
       icon="i-lucide-image-plus"
-      class="min-h-11 self-start"
+      class="min-h-control self-start"
       :label="t('editor.gallery.add')"
       @click="add"
     />

@@ -164,10 +164,10 @@ const sizeLabel = (key: (typeof SIZES)[number]['key']) =>
 <template>
   <AdminPage id="settings-media" :title="$t('media.settings.title')">
     <section v-if="!mayManage" aria-labelledby="settings-denied-heading" class="flex max-w-prose flex-col gap-3">
-      <h2 id="settings-denied-heading" class="text-xl font-semibold text-highlighted">
+      <h2 id="settings-denied-heading" class="text-card-title font-semibold text-heading">
         {{ $t('media.settings.denied') }}
       </h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
     <UAlert
       v-else-if="error"
@@ -179,10 +179,10 @@ const sizeLabel = (key: (typeof SIZES)[number]['key']) =>
     />
     <form v-else-if="data" class="flex max-w-3xl flex-col gap-8" @submit.prevent="save">
       <section aria-labelledby="settings-sizes" class="flex flex-col gap-4">
-        <h2 id="settings-sizes" class="text-lg font-semibold text-highlighted">{{ $t('media.settings.sizes') }}</h2>
-        <p class="text-sm text-toned">{{ $t('media.settings.sizesHelp') }}</p>
+        <h2 id="settings-sizes" class="text-card-title font-semibold text-heading">{{ $t('media.settings.sizes') }}</h2>
+        <p class="text-help text-secondary">{{ $t('media.settings.sizesHelp') }}</p>
         <fieldset v-for="size in SIZES" :key="size.key" class="flex flex-col gap-3">
-          <legend class="mb-2 font-semibold text-highlighted">{{ sizeLabel(size.key) }}</legend>
+          <legend class="mb-2 font-semibold text-heading">{{ sizeLabel(size.key) }}</legend>
           <div class="grid grid-cols-2 gap-3 sm:max-w-md">
             <UFormField :label="$t('media.settings.width')" :name="size.w">
               <UInput v-model.number="form[size.w]" type="number" min="0" max="10000" size="xl" class="w-full" />
@@ -202,20 +202,20 @@ const sizeLabel = (key: (typeof SIZES)[number]['key']) =>
             color="neutral"
             variant="outline"
             size="lg"
-            class="min-h-11"
+            class="min-h-control"
             icon="i-lucide-refresh-cw"
             :loading="regenerating"
             :label="$t('media.settings.regenerate')"
             @click="regenerateAll"
           />
-          <p v-if="sizesChanged" class="text-sm text-warning" role="status">
+          <p v-if="sizesChanged" class="text-help text-warning" role="status">
             {{ $t('media.settings.sizesChanged') }}
           </p>
         </div>
       </section>
 
       <section aria-labelledby="settings-uploads" class="flex flex-col gap-4">
-        <h2 id="settings-uploads" class="text-lg font-semibold text-highlighted">
+        <h2 id="settings-uploads" class="text-card-title font-semibold text-heading">
           {{ $t('media.settings.uploads') }}
         </h2>
         <UCheckbox v-model="form.uploads_use_yearmonth_folders" :label="$t('media.settings.yearMonth')" />
@@ -243,10 +243,10 @@ const sizeLabel = (key: (typeof SIZES)[number]['key']) =>
       </section>
 
       <section aria-labelledby="settings-types" class="flex flex-col gap-4">
-        <h2 id="settings-types" class="text-lg font-semibold text-highlighted">{{ $t('media.settings.types') }}</h2>
-        <p class="text-sm text-toned">{{ $t('media.settings.typesHelp') }}</p>
+        <h2 id="settings-types" class="text-card-title font-semibold text-heading">{{ $t('media.settings.types') }}</h2>
+        <p class="text-help text-secondary">{{ $t('media.settings.typesHelp') }}</p>
         <fieldset v-for="role in UPLOAD_ROLES" :key="role" class="flex flex-col gap-2">
-          <legend class="mb-2 font-semibold text-highlighted">{{ roleLabel($t, role, undefined) }}</legend>
+          <legend class="mb-2 font-semibold text-heading">{{ roleLabel($t, role, undefined) }}</legend>
           <div class="flex flex-wrap gap-x-5 gap-y-2">
             <UCheckbox
               v-for="group in MEDIA_GROUPS"
@@ -272,7 +272,9 @@ const sizeLabel = (key: (typeof SIZES)[number]['key']) =>
         :description="failure"
       />
       <div>
-        <UButton type="submit" size="lg" class="min-h-11" :loading="saving">{{ $t('media.settings.save') }}</UButton>
+        <UButton type="submit" size="lg" class="min-h-control" :loading="saving">{{
+          $t('media.settings.save')
+        }}</UButton>
       </div>
     </form>
   </AdminPage>

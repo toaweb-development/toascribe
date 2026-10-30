@@ -93,9 +93,9 @@ function addTag(tag: string): void {
     @retry="screen.refresh()"
   >
     <template v-if="data">
-      <p class="max-w-prose text-base text-default">{{ $t('settings.permalinks.intro') }}</p>
+      <p class="max-w-prose text-body text-default">{{ $t('settings.permalinks.intro') }}</p>
       <fieldset class="flex flex-col gap-3">
-        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.permalinks.common') }}</legend>
+        <legend class="mb-2 font-semibold text-heading">{{ $t('settings.permalinks.common') }}</legend>
         <URadioGroup v-model="choice" :items="items" />
         <UFormField
           :label="$t('settings.permalinks.structure')"
@@ -111,7 +111,7 @@ function addTag(tag: string): void {
             color="neutral"
             variant="outline"
             size="sm"
-            class="min-h-11 font-mono"
+            class="min-h-control font-mono"
             :label="tag"
             :aria-pressed="form.permalink_structure.includes(tag)"
             @click="addTag(tag)"
@@ -119,8 +119,8 @@ function addTag(tag: string): void {
         </div>
       </fieldset>
       <fieldset class="flex flex-col gap-3">
-        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.permalinks.optional') }}</legend>
-        <p class="text-sm text-toned">{{ $t('settings.permalinks.optionalHelp') }}</p>
+        <legend class="mb-2 font-semibold text-heading">{{ $t('settings.permalinks.optional') }}</legend>
+        <p class="text-help text-secondary">{{ $t('settings.permalinks.optionalHelp') }}</p>
         <UFormField :label="$t('settings.permalinks.categoryBase')" name="category_base">
           <UInput
             v-model="form.category_base"

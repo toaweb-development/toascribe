@@ -32,13 +32,13 @@ async function logout() {
 
 <template>
   <div class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ $t('auth.logout.question', { site: siteName }) }}</p>
+    <p class="text-body text-default">{{ $t('auth.logout.question', { site: siteName }) }}</p>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
     <div class="flex flex-col gap-2">
-      <UButton size="xl" block class="min-h-11" :loading="submitting" @click="logout">{{
+      <UButton size="xl" block class="min-h-control" :loading="submitting" @click="logout">{{
         $t('auth.logout.submit')
       }}</UButton>
-      <UButton to="/" color="neutral" variant="outline" size="xl" block class="min-h-11">{{
+      <UButton to="/" color="neutral" variant="outline" size="xl" block class="min-h-control">{{
         $t('auth.logout.cancel')
       }}</UButton>
     </div>

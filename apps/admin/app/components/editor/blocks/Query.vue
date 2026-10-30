@@ -38,10 +38,10 @@ watch(
       class="flex flex-col gap-2 rounded border border-dashed border-accented p-3 outline-none focus-visible:ring-2 focus-visible:ring-primary"
       @focus="focusable.onFocus"
     >
-      <p class="text-sm font-semibold text-highlighted">{{ queryLoopSummary(t, block.attrs) }}</p>
-      <p v-if="failed" class="text-sm text-muted">{{ t('editor.query.failed') }}</p>
-      <p v-else-if="items.length === 0" class="text-sm text-muted">{{ t('editor.query.empty') }}</p>
-      <ul v-else class="list-disc ps-5 text-sm">
+      <p class="text-help font-semibold text-heading">{{ queryLoopSummary(t, block.attrs) }}</p>
+      <p v-if="failed" class="text-help text-muted">{{ t('editor.query.failed') }}</p>
+      <p v-else-if="items.length === 0" class="text-help text-muted">{{ t('editor.query.empty') }}</p>
+      <ul v-else class="list-disc ps-5 text-help">
         <li v-for="item in items" :key="item.id">{{ item.title || t('editor.query.untitled') }}</li>
       </ul>
     </div>

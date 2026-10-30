@@ -180,7 +180,7 @@ defineExpose({ form })
             <li v-for="error in summary" :key="error.name">
               <a
                 :href="`#${error.name}`"
-                class="inline-flex min-h-11 items-center underline underline-offset-4 hover:no-underline"
+                class="inline-flex min-h-control items-center underline underline-offset-4 hover:no-underline"
                 @click.prevent="goTo(error.name)"
               >
                 {{ labels[error.name] ?? error.name }}: {{ error.message }}
@@ -215,7 +215,7 @@ defineExpose({ form })
             :items="options"
             value-key="value"
             size="xl"
-            class="min-h-11 w-full"
+            class="min-h-control w-full"
           />
         </UFormField>
       </div>
@@ -279,16 +279,16 @@ defineExpose({ form })
           ref="submitButton"
           type="submit"
           size="xl"
-          class="min-h-11 min-w-44 justify-center"
+          class="min-h-control min-w-44 justify-center"
           :loading="submitting"
         >
           {{ $t('profile.save') }}
         </UButton>
       </div>
       <!-- The region stays in the page, empty, so the text put into it is announced. -->
-      <div role="status" class="flex min-h-6 flex-col gap-1 text-sm text-default">
+      <div role="status" class="flex min-h-6 flex-col gap-1 text-help text-default">
         <span v-for="message in messages" :key="message.text" class="inline-flex items-start gap-1.5">
-          <UIcon :name="message.icon" class="mt-0.5 size-4 shrink-0 text-toned" aria-hidden="true" />
+          <UIcon :name="message.icon" class="mt-0.5 size-4 shrink-0 text-secondary" aria-hidden="true" />
           <span>{{ message.text }}</span>
         </span>
       </div>

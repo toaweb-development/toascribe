@@ -225,24 +225,23 @@ const postsLink = (term: TermItem) => ({
   query: isCategory ? { category: term.id } : { tag: term.id },
 })
 const label = (term: TermItem) => `${'— '.repeat(term.depth)}${term.name}`
-const checkboxHitClass = 'flex size-11 shrink-0 cursor-pointer items-center justify-center lg:size-8'
-const actionClass =
-  'inline-flex min-h-11 items-center rounded-sm text-sm text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary lg:min-h-6'
-const dangerClass =
-  'inline-flex min-h-11 items-center rounded-sm text-sm text-error underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary lg:min-h-6'
-const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
+const checkboxHitClass = 'flex size-control shrink-0 cursor-pointer items-center justify-center'
+const actionClass = 'inline-flex min-h-control items-center rounded-menu text-help text-accent-text hover:underline'
+const dangerClass = 'inline-flex min-h-control items-center rounded-menu text-help text-danger hover:underline'
+const headClass = 'px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase'
+const PAGE_BUTTON = 'min-h-control min-w-control'
 </script>
 
 <template>
   <AdminPage :id="`terms-${taxonomy}`" :title="words.title">
     <section v-if="!mayManage" aria-labelledby="terms-denied-heading" class="flex max-w-prose flex-col gap-3">
-      <h2 id="terms-denied-heading" class="text-xl font-semibold text-highlighted">{{ words.denied }}</h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <h2 id="terms-denied-heading" class="text-card-title font-semibold text-heading">{{ words.denied }}</h2>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
 
     <div v-else class="grid w-full grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
       <section aria-labelledby="terms-add-heading" class="flex flex-col gap-4">
-        <h2 id="terms-add-heading" class="text-lg font-semibold text-highlighted">{{ words.add }}</h2>
+        <h2 id="terms-add-heading" class="text-card-title font-semibold text-heading">{{ words.add }}</h2>
         <form class="flex flex-col gap-4" @submit.prevent="add">
           <UFormField :label="$t('terms.name')" name="name" :help="$t('terms.help.name')" :error="addError">
             <UInput v-model="form.name" size="xl" class="w-full" autocomplete="off" :maxlength="TERM_NAME_MAX_LENGTH" />
@@ -257,45 +256,44 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
             <UTextarea v-model="form.about" :rows="4" class="w-full" />
           </UFormField>
           <div>
-            <UButton type="submit" size="lg" class="min-h-11" :loading="adding">{{ words.add }}</UButton>
+            <UButton type="submit" size="lg" class="min-h-control" :loading="adding">{{ words.add }}</UButton>
           </div>
         </form>
       </section>
 
       <section aria-labelledby="terms-list-heading" class="flex min-w-0 flex-col gap-4">
         <h2 id="terms-list-heading" class="sr-only">{{ words.caption }}</h2>
-        <div class="flex flex-wrap items-end justify-between gap-4">
-          <form class="flex flex-wrap items-end gap-2" @submit.prevent="applyBulk">
-            <UFormField :label="$t('content.bulk.label')" name="action">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <form class="flex flex-wrap items-start gap-2" @submit.prevent="applyBulk">
+            <UFormField :label="$t('content.bulk.label')" name="action" :ui="{ label: 'sr-only' }">
               <USelect
                 v-model="bulkAction"
                 :items="bulkItems"
                 :placeholder="$t('content.bulk.choose')"
-                size="xl"
                 class="w-full sm:w-48"
               />
             </UFormField>
-            <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11" :loading="busy">
+            <UButton type="submit" color="neutral" variant="outline" :loading="busy">
               {{ $t('content.bulk.apply') }}
             </UButton>
           </form>
           <form
             role="search"
-            class="flex flex-wrap items-end gap-2"
+            class="flex flex-wrap items-start gap-2"
             @submit.prevent="router.push(locationFor({ search: searchText.trim() }))"
           >
-            <div class="flex min-w-0 flex-col gap-1.5">
-              <label :for="`terms-search-${taxonomy}`" class="font-medium text-default">{{ words.search }}</label>
+            <div class="flex min-w-0 flex-col">
+              <label :for="`terms-search-${taxonomy}`" class="sr-only">{{ words.search }}</label>
               <UInput
                 :id="`terms-search-${taxonomy}`"
                 v-model="searchText"
                 type="search"
-                size="xl"
                 autocomplete="off"
                 icon="i-lucide-search"
+                :placeholder="words.search"
               />
             </div>
-            <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
+            <UButton type="submit" color="neutral" variant="outline">
               {{ words.search }}
             </UButton>
           </form>
@@ -314,78 +312,110 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
           :description="failure"
         />
 
-        <p v-if="data" role="status" class="text-sm text-toned">
+        <p v-if="data" role="status" class="text-help text-secondary">
           {{ $t('content.count', { n: data.total }, data.total) }}
         </p>
-        <p v-if="data && items.length === 0" class="py-6 text-lg font-semibold text-highlighted">{{ words.empty }}</p>
+        <BlekkEmptyState v-if="data && items.length === 0" :title="words.empty" />
 
         <div v-else-if="data" :class="status === 'pending' ? 'opacity-60' : ''">
-          <label class="flex min-h-11 cursor-pointer items-center gap-3 text-base text-default">
-            <span :class="checkboxHitClass">
-              <UCheckbox size="lg" :model-value="allState" @update:model-value="toggleAll($event === true)" />
-            </span>
-            {{ $t('content.table.selectAll') }}
-          </label>
-          <ul
-            class="flex flex-col divide-y divide-default rounded-md border border-default"
-            :aria-label="words.caption"
-          >
-            <li v-for="term in items" :key="term.id" class="flex items-start gap-1 p-2">
-              <label v-if="!term.isDefault" :class="checkboxHitClass">
-                <UCheckbox
-                  size="lg"
-                  :model-value="selected.includes(term.id)"
-                  :aria-label="$t('content.table.select', { title: term.name })"
-                  @update:model-value="toggle(term.id, $event)"
-                />
-              </label>
-              <span v-else :class="checkboxHitClass" />
-              <div class="flex min-w-0 flex-1 flex-col gap-0.5 py-2 pe-1">
-                <p class="font-semibold text-highlighted wrap-anywhere">{{ label(term) }}</p>
-                <p v-if="term.description !== ''" class="text-sm text-default wrap-anywhere">
-                  {{ term.description }}
-                </p>
-                <p class="text-sm text-toned wrap-anywhere">
-                  {{ $t('terms.slug') }}: {{ term.slug }} ·
-                  <NuxtLink :to="postsLink(term)" class="text-primary underline underline-offset-4">
-                    {{ $t('terms.countLabel', { n: term.count }, term.count) }}
-                  </NuxtLink>
-                </p>
-                <ul class="flex flex-wrap gap-x-3" :aria-label="$t('content.actions.label', { title: term.name })">
-                  <li>
-                    <button
-                      type="button"
-                      :class="actionClass"
-                      :aria-label="$t('terms.editNamed', { name: term.name })"
-                      @click="openEdit(term, false)"
+          <BlekkTableFrame :label="words.caption">
+            <table class="w-full min-w-160 table-auto text-start text-body">
+              <caption class="sr-only">
+                {{
+                  words.caption
+                }}
+              </caption>
+              <thead>
+                <tr class="border-b border-line">
+                  <th scope="col" class="w-14 py-1 ps-2 pe-1 text-start">
+                    <label :class="checkboxHitClass">
+                      <UCheckbox
+                        size="lg"
+                        :model-value="allState"
+                        :aria-label="$t('content.table.selectAll')"
+                        @update:model-value="toggleAll($event === true)"
+                      />
+                    </label>
+                  </th>
+                  <th scope="col" :class="headClass">{{ $t('terms.columns.name') }}</th>
+                  <th scope="col" :class="headClass">{{ $t('terms.slug') }}</th>
+                  <th scope="col" :class="[headClass, 'text-end']">{{ $t('terms.columns.count') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-divider">
+                <tr
+                  v-for="term in items"
+                  :key="term.id"
+                  class="group"
+                  :class="selected.includes(term.id) ? 'bg-accent-weak' : 'hover:bg-sunken'"
+                >
+                  <td class="py-1 ps-2 pe-1 align-top">
+                    <label v-if="!term.isDefault" :class="checkboxHitClass">
+                      <UCheckbox
+                        size="lg"
+                        :model-value="selected.includes(term.id)"
+                        :aria-label="$t('content.table.select', { title: term.name })"
+                        @update:model-value="toggle(term.id, $event)"
+                      />
+                    </label>
+                  </td>
+                  <th scope="row" class="px-3 py-3 text-start align-top font-normal">
+                    <span class="flex flex-col gap-0.5">
+                      <span class="font-semibold text-heading wrap-anywhere">{{ label(term) }}</span>
+                      <span v-if="term.description !== ''" class="text-help text-secondary wrap-anywhere">
+                        {{ term.description }}
+                      </span>
+                      <ul
+                        class="flex flex-wrap gap-x-3 transition-opacity pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100"
+                        :aria-label="$t('content.actions.label', { title: term.name })"
+                      >
+                        <li>
+                          <button
+                            type="button"
+                            :class="actionClass"
+                            :aria-label="$t('terms.editNamed', { name: term.name })"
+                            @click="openEdit(term, false)"
+                          >
+                            {{ $t('content.actions.edit') }}
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            type="button"
+                            :class="actionClass"
+                            :aria-label="$t('content.actions.quickEditNamed', { title: term.name })"
+                            @click="openEdit(term, true)"
+                          >
+                            {{ $t('content.actions.quickEdit') }}
+                          </button>
+                        </li>
+                        <li v-if="!term.isDefault">
+                          <button
+                            type="button"
+                            :class="dangerClass"
+                            :aria-label="$t('terms.deleteNamed', { name: term.name })"
+                            @click="removeOne(term)"
+                          >
+                            {{ $t('terms.delete') }}
+                          </button>
+                        </li>
+                      </ul>
+                    </span>
+                  </th>
+                  <td class="px-3 py-3 align-top font-mono text-help text-secondary wrap-anywhere">{{ term.slug }}</td>
+                  <td class="px-3 py-3 text-end align-top">
+                    <NuxtLink
+                      :to="postsLink(term)"
+                      class="font-mono text-accent-text hover:underline"
+                      :aria-label="$t('terms.countLabel', { n: term.count }, term.count)"
                     >
-                      {{ $t('content.actions.edit') }}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      :class="actionClass"
-                      :aria-label="$t('content.actions.quickEditNamed', { title: term.name })"
-                      @click="openEdit(term, true)"
-                    >
-                      {{ $t('content.actions.quickEdit') }}
-                    </button>
-                  </li>
-                  <li v-if="!term.isDefault">
-                    <button
-                      type="button"
-                      :class="dangerClass"
-                      :aria-label="$t('terms.deleteNamed', { name: term.name })"
-                      @click="removeOne(term)"
-                    >
-                      {{ $t('terms.delete') }}
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </li>
-          </ul>
+                      {{ term.count }}
+                    </NuxtLink>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </BlekkTableFrame>
         </div>
 
         <UPagination

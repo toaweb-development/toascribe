@@ -6,6 +6,7 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 // The toolbar of the block that has the cursor: move up and down, insert after, delete, and what the block adds in the slot
 // (formatting for a paragraph, the columns' count). A toolbar in the WAI-ARIA sense: one tab stop is enough for a person who knows
 // it, but the buttons are plain buttons in the tab order, which is easier to find and what Gutenberg does too.
+// «Blekk» (M2.1): dark in both themes, as the sketch has it: the `dark` class gives it and everything in it the dark tokens.
 const props = defineProps<{ block: Block }>()
 
 const editor = useBlockEditorContext()
@@ -49,9 +50,9 @@ function move(direction: 'up' | 'down') {
   <div
     role="toolbar"
     :aria-label="t('editorPrototype.blockTools', { name })"
-    class="flex flex-wrap items-center gap-1 rounded-md border border-default bg-default p-1"
+    class="dark flex flex-wrap items-center gap-1 rounded-card bg-surface p-1 text-default shadow-lg ring ring-line"
   >
-    <span class="px-1 text-xs font-medium text-muted">{{ name }}</span>
+    <span class="px-2 text-help font-medium text-heading">{{ name }}</span>
     <UButton
       icon="i-lucide-arrow-up"
       color="neutral"

@@ -50,17 +50,17 @@ const SEARCH_DESCRIPTION = 155
     <USwitch v-model="seo.noindex" :label="t('editor.seo.noindex')" />
 
     <section :aria-labelledby="`${uid}-search`" class="flex flex-col gap-1">
-      <h4 :id="`${uid}-search`" class="text-xs font-semibold text-muted uppercase">
+      <h4 :id="`${uid}-search`" class="text-badge font-semibold text-muted uppercase">
         {{ t('editor.seo.searchPreview') }}
       </h4>
       <div class="rounded-md border border-default p-3">
-        <p class="truncate text-xs text-toned">{{ host }}{{ path }}</p>
-        <p class="line-clamp-1 text-base text-primary">{{ shownTitle }}</p>
-        <p class="line-clamp-2 text-sm text-toned">{{ shownDescription || t('editor.seo.noDescription') }}</p>
+        <p class="truncate text-badge text-secondary">{{ host }}{{ path }}</p>
+        <p class="line-clamp-1 text-body text-accent-text">{{ shownTitle }}</p>
+        <p class="line-clamp-2 text-help text-secondary">{{ shownDescription || t('editor.seo.noDescription') }}</p>
       </div>
     </section>
     <section :aria-labelledby="`${uid}-share`" class="flex flex-col gap-1">
-      <h4 :id="`${uid}-share`" class="text-xs font-semibold text-muted uppercase">
+      <h4 :id="`${uid}-share`" class="text-badge font-semibold text-muted uppercase">
         {{ t('editor.seo.sharePreview') }}
       </h4>
       <div class="overflow-hidden rounded-md border border-default">
@@ -68,9 +68,9 @@ const SEARCH_DESCRIPTION = 155
         <img v-if="shownImage" :src="shownImage.url" alt="" class="aspect-[1.91/1] w-full object-cover" />
         <!-- eslint-enable vue/html-self-closing -->
         <div class="flex flex-col gap-0.5 bg-elevated p-3">
-          <p class="truncate text-xs text-toned uppercase">{{ host }}</p>
-          <p class="line-clamp-2 font-semibold text-highlighted">{{ shownTitle }}</p>
-          <p class="line-clamp-2 text-sm text-toned">{{ shownDescription }}</p>
+          <p class="truncate text-badge text-secondary uppercase">{{ host }}</p>
+          <p class="line-clamp-2 font-semibold text-heading">{{ shownTitle }}</p>
+          <p class="line-clamp-2 text-help text-secondary">{{ shownDescription }}</p>
         </div>
       </div>
     </section>

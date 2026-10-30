@@ -195,7 +195,7 @@ watch(status, async (now, before) => {
 })
 
 /** 44 px around every page link below `lg` (`mobile`), Nuxt UI's size from there; the row wraps on a phone (`list`). */
-const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
+const PAGE_BUTTON = 'min-h-control min-w-control'
 
 const retrying = ref(false)
 async function retry() {
@@ -208,7 +208,7 @@ async function retry() {
 <template>
   <AdminPage id="users" :title="$t('users.title')">
     <template #actions>
-      <UButton v-if="mayCreate" to="/users/new" size="lg" class="min-h-11" icon="i-lucide-user-plus">
+      <UButton v-if="mayCreate" to="/users/new" size="lg" class="min-h-control" icon="i-lucide-user-plus">
         {{ $t('users.new.button') }}
       </UButton>
     </template>
@@ -216,15 +216,12 @@ async function retry() {
     <div class="flex w-full flex-col gap-4 sm:gap-5">
       <!-- Permission denied (workflows §19, §24): say what is missing and who can give it; no list is asked for. -->
       <section v-if="denied" aria-labelledby="users-denied-heading" class="flex max-w-prose flex-col gap-3">
-        <h2 id="users-denied-heading" class="text-xl font-semibold text-highlighted">
+        <h2 id="users-denied-heading" class="text-card-title font-semibold text-heading">
           {{ $t('users.denied.title') }}
         </h2>
-        <p class="text-base text-default">{{ $t('users.denied.text') }}</p>
+        <p class="text-body text-default">{{ $t('users.denied.text') }}</p>
         <div>
-          <NuxtLink
-            to="/"
-            class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
-          >
+          <NuxtLink to="/" class="inline-flex min-h-control items-center text-accent-text hover:underline">
             {{ $t('users.denied.back') }}
           </NuxtLink>
         </div>
@@ -244,7 +241,14 @@ async function retry() {
             <p>{{ data ? $t('users.failed.stale') : $t('users.failed.text') }}</p>
           </template>
           <template #actions>
-            <UButton color="neutral" variant="outline" size="lg" class="min-h-11" :loading="retrying" @click="retry">
+            <UButton
+              color="neutral"
+              variant="outline"
+              size="lg"
+              class="min-h-control"
+              :loading="retrying"
+              @click="retry"
+            >
               {{ $t('users.failed.retry') }}
             </UButton>
           </template>
@@ -267,7 +271,7 @@ async function retry() {
               color="neutral"
               variant="outline"
               size="lg"
-              class="min-h-11"
+              class="min-h-control"
               :loading="resetting"
               :aria-disabled="selected.length === 0"
             >
@@ -325,12 +329,12 @@ async function retry() {
           <h2 ref="results" tabindex="-1" class="sr-only outline-none">{{ $t('users.table.caption') }}</h2>
 
           <div v-if="data" class="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <p role="status" class="text-sm text-toned">{{ $t('users.count', data.total) }}</p>
-            <p v-if="view.search !== ''" class="flex flex-wrap items-center gap-x-3 text-sm text-default">
+            <p role="status" class="text-help text-secondary">{{ $t('users.count', data.total) }}</p>
+            <p v-if="view.search !== ''" class="flex flex-wrap items-center gap-x-3 text-help text-default">
               <span>{{ $t('users.search.summary', { query: view.search }) }}</span>
               <NuxtLink
                 :to="locationFor({ search: '' })"
-                class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
+                class="inline-flex min-h-control items-center text-accent-text hover:underline"
               >
                 {{ $t('users.search.clear') }}
               </NuxtLink>
@@ -351,11 +355,11 @@ async function retry() {
 
           <!-- No results (workflows §24): the filters matched nothing, and the way back is one link. -->
           <div v-else-if="users.length === 0" class="flex max-w-prose flex-col gap-2 py-6">
-            <p class="text-lg font-semibold text-highlighted">{{ $t('users.empty.title') }}</p>
-            <p v-if="filtered" class="text-base text-default">
+            <p class="text-card-title font-semibold text-heading">{{ $t('users.empty.title') }}</p>
+            <p v-if="filtered" class="text-body text-default">
               <NuxtLink
                 :to="locationFor({ role: undefined, search: '' })"
-                class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
+                class="inline-flex min-h-control items-center text-accent-text hover:underline"
               >
                 {{ $t('users.empty.showAll') }}
               </NuxtLink>

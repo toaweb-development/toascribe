@@ -76,11 +76,11 @@ const days = computed(() =>
       >
         <UInput v-model="newAdminEmail" type="email" autocomplete="email" size="xl" class="w-full" />
       </UFormField>
-      <p v-if="data.pendingAdminEmail" class="text-sm text-warning" role="status">
+      <p v-if="data.pendingAdminEmail" class="text-help text-warning" role="status">
         {{ $t('settings.general.adminEmailPending', { email: data.pendingAdminEmail }) }}
       </p>
       <fieldset class="flex flex-col gap-2">
-        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.general.membership') }}</legend>
+        <legend class="mb-2 font-semibold text-heading">{{ $t('settings.general.membership') }}</legend>
         <UCheckbox v-model="form.users_can_register" :label="$t('settings.general.anyoneCanRegister')" />
       </fieldset>
       <UFormField :label="$t('settings.general.defaultRole')" name="default_role">

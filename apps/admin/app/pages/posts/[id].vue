@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // «Rediger»: one post in the editor (WordPress' post.php?action=edit).
-definePageMeta({ layout: 'dashboard', middleware: 'signed-in' })
+definePageMeta({ layout: 'editor', middleware: 'signed-in' })
 
 const { t } = useI18n()
 const route = useRoute()

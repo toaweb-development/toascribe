@@ -83,11 +83,11 @@ async function submit(): Promise<void> {
 <template>
   <AdminPage id="users-new" :title="$t('users.new.title')">
     <section v-if="!mayCreate" aria-labelledby="users-new-denied" class="flex max-w-prose flex-col gap-3">
-      <h2 id="users-new-denied" class="text-xl font-semibold text-highlighted">{{ $t('users.denied.title') }}</h2>
-      <p class="text-base text-default">{{ $t('users.new.denied') }}</p>
+      <h2 id="users-new-denied" class="text-card-title font-semibold text-heading">{{ $t('users.denied.title') }}</h2>
+      <p class="text-body text-default">{{ $t('users.new.denied') }}</p>
     </section>
     <form v-else class="flex max-w-2xl flex-col gap-6" @submit.prevent="submit">
-      <p class="max-w-prose text-base text-default">{{ $t('users.new.intro') }}</p>
+      <p class="max-w-prose text-body text-default">{{ $t('users.new.intro') }}</p>
       <UFormField :label="$t('users.new.username')" :help="$t('users.new.usernameHelp')" name="username" required>
         <UInput
           v-model="form.username"
@@ -136,7 +136,7 @@ async function submit(): Promise<void> {
         :description="failure"
       />
       <div>
-        <UButton type="submit" size="lg" class="min-h-11" :loading="saving">{{ $t('users.new.submit') }}</UButton>
+        <UButton type="submit" size="lg" class="min-h-control" :loading="saving">{{ $t('users.new.submit') }}</UButton>
       </div>
     </form>
   </AdminPage>

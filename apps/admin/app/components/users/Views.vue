@@ -5,9 +5,9 @@ import type { UserRoleCounts, UserRoleOption } from '@toascribe/shared'
 
 import type { UsersView } from '~/utils/users-query'
 
-// The views above the table, as WordPress' users.php has them: «Alle (n) | Administrator (n) | Redaktør (n) | …», and «Ingen rolle (n)» when
-// someone holds no role. The counts ignore the search and the page. They are links (a view is an address, workflows §7); the current
-// one is marked with `aria-current` and with weight, not with colour alone.
+// The views above the table, as WordPress' users.php has them: «Alle n», «Administrator n», «Redaktør n», …, and «Ingen rolle n» when
+// someone holds no role, drawn as «Blekk»'s view tabs (M2.1). The counts ignore the search and the page. They are links (a view is an
+// address, workflows §7); the current one is marked with `aria-current`, its line and its weight, not with colour alone.
 const props = defineProps<{
   counts: UserRoleCounts
   roles: readonly UserRoleOption[]
@@ -38,21 +38,17 @@ const links = computed<ViewLink[]>(() => [
     ? [{ key: 'none', role: 'none', label: t('users.views.none'), count: props.counts.none }]
     : []),
 ])
+const tabs = computed(() =>
+  links.value.map((link) => ({
+    key: link.key,
+    label: link.label,
+    count: link.count,
+    to: props.to({ role: link.role }),
+    current: props.view.role === link.role,
+  })),
+)
 </script>
 
 <template>
-  <nav :aria-label="$t('users.views.label')">
-    <ul class="flex flex-wrap gap-x-1">
-      <li v-for="link in links" :key="link.key">
-        <NuxtLink
-          :to="to({ role: link.role })"
-          :aria-current="view.role === link.role ? 'page' : undefined"
-          class="inline-flex min-h-11 items-center rounded-md px-2.5 text-base underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary lg:min-h-8"
-          :class="view.role === link.role ? 'font-semibold text-highlighted underline' : 'text-primary'"
-        >
-          {{ $t('users.views.item', { name: link.label, n: link.count }) }}
-        </NuxtLink>
-      </li>
-    </ul>
-  </nav>
+  <BlekkViewTabs :items="tabs" :label="$t('users.views.label')" />
 </template>

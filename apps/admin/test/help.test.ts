@@ -30,7 +30,8 @@ describe('help links', () => {
   })
 
   it('gives every signed-in screen a page, and the overview to the dashboard', () => {
-    const outside = new Set(['/login', '/logout', '/register', '/setup', '/'])
+    // /_ui is the component overview of development builds (M2.1): no user documentation.
+    const outside = new Set(['/login', '/logout', '/register', '/setup', '/', '/_ui'])
     for (const screen of screens(pagesDir).filter((path) => !outside.has(path))) {
       expect(helpPage(screen.replace(/\[[^\]]+\]/g, 'x')), screen).not.toBe('README')
     }

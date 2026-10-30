@@ -42,7 +42,7 @@ const newItems = computed(() =>
           </li>
           <li class="flex min-w-0 items-center gap-1.5">
             <span class="hidden text-muted sm:inline" aria-hidden="true">/</span>
-            <span class="truncate font-medium text-highlighted" aria-current="page">{{ props.title }}</span>
+            <span class="truncate font-medium text-heading" aria-current="page">{{ props.title }}</span>
           </li>
         </ol>
       </nav>

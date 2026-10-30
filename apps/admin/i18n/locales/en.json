@@ -363,7 +363,8 @@
       "userMenu": "Your user menu",
       "profile": "Edit profile",
       "help": "Help",
-      "helpLabel": "Help with this page (opens in a new tab)"
+      "helpLabel": "Help with this page (opens in a new tab)",
+      "howdyPrefix": "Howdy,"
     },
     "menu": {
       "label": "Main menu",
@@ -375,11 +376,11 @@
       },
       "open": "Show the submenu of {name}"
     },
-    "home": "To the dashboard",
+    "home": ", to the dashboard",
     "breadcrumbs": "Breadcrumbs",
     "new": {
       "button": "New",
-      "label": "Add new",
+      "label": "New: add new",
       "post": "Post",
       "page": "Page",
       "media": "Media file",
@@ -448,44 +449,32 @@
         "title": "The notices could not be loaded.",
         "text": "There may be notices you cannot see now. Try again.",
         "retry": "Try again"
-      }
+      },
+      "fix": "How to fix it"
     },
     "welcome": {
-      "heading": "Welcome to toascribe!",
-      "intro": "Here are some links to get you started.",
-      "profile": "Edit your profile",
-      "users": "See all users",
+      "profile": "your profile",
+      "users": "see all users",
       "dismiss": "Dismiss",
       "dismissFailed": "The welcome panel was not dismissed, and it is still shown.",
-      "failed": {
-        "title": "The welcome panel could not be loaded.",
-        "text": "The rest of the dashboard works. Try again.",
-        "retry": "Try again"
-      }
-    },
-    "glance": {
-      "heading": "At a Glance",
-      "posts": "{n} post | {n} posts",
-      "pages": "{n} page | {n} pages",
-      "comments": "{n} comment | {n} comments",
-      "pending": "{n} awaiting moderation",
-      "version": "toascribe {version}",
-      "failed": {
-        "title": "The counts could not be loaded.",
-        "text": "The rest of the dashboard works. Try again.",
-        "retry": "Try again"
-      }
+      "text": "Welcome to toascribe! Start with {profile}.",
+      "withUsers": "Welcome to toascribe! Start with {profile}, or {users}.",
+      "dismissLabel": "Dismiss the welcome"
     },
     "activity": {
       "heading": "Activity",
-      "soon": "Publishing soon",
-      "recent": "Recently published",
+      "soon": "is scheduled",
+      "recent": "was published",
       "empty": "No posts have been published or scheduled yet.",
       "untitled": "(no title)",
       "failed": {
         "title": "The activity could not be loaded.",
         "text": "The rest of the dashboard works. Try again.",
         "retry": "Try again"
+      },
+      "badge": {
+        "soon": "Scheduled",
+        "recent": "Published"
       }
     },
     "quickDraft": {
@@ -507,11 +496,6 @@
         "good": "Good",
         "recommended": "Should be improved",
         "critical": "Should be fixed"
-      },
-      "summary": {
-        "good": "No problems found.",
-        "recommended": "{n} item should be improved. | {n} items should be improved.",
-        "critical": "{n} item needs attention soon. | {n} items need attention, at least one of them soon."
       },
       "tests": {
         "worker": {
@@ -552,7 +536,41 @@
         "title": "Site health could not be loaded.",
         "text": "The rest of the dashboard works. Try again.",
         "retry": "Try again"
+      },
+      "toCheck": "Nothing to look at | {n} to look at | {n} to look at"
+    },
+    "greeting": {
+      "morning": "Good morning, {name}",
+      "forenoon": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}"
+    },
+    "actions": {
+      "visit": "View site",
+      "write": "Write a post"
+    },
+    "stats": {
+      "heading": "At a glance",
+      "posts": "Posts",
+      "pages": "Pages",
+      "comments": "Comments",
+      "users": "Users",
+      "published": "{n} published",
+      "pending": "{n} awaiting approval",
+      "administrators": "{n} administrator | {n} administrators",
+      "failed": {
+        "title": "The counts could not be loaded.",
+        "text": "The rest of the dashboard works. Try again.",
+        "retry": "Try again"
       }
+    },
+    "version": {
+      "heading": "Version",
+      "running": "You are running {version}.",
+      "newest": "You are running {version}, the newest.",
+      "behind": "You are running {version}. Version {latest} is out.",
+      "update": "See updates",
+      "changelog": "See the changelog"
     }
   },
   "profile": {
@@ -768,8 +786,7 @@
     "views": {
       "label": "Users by role",
       "all": "All",
-      "none": "No role",
-      "item": "{name} ({n})"
+      "none": "No role"
     },
     "search": {
       "label": "Search Users",
@@ -815,14 +832,7 @@
       "name": "Name",
       "email": "Email",
       "roles": "Role",
-      "posts": "Posts",
-      "postsCount": "{n} posts"
-    },
-    "sort": {
-      "label": "Sort the users",
-      "by": "Sort by:",
-      "ascending": "sorted ascending",
-      "descending": "sorted descending"
+      "posts": "Posts"
     },
     "pagination": {
       "label": "Pagination"
@@ -1023,8 +1033,7 @@
       "pending": "Pending Review",
       "future": "Scheduled",
       "private": "Private",
-      "trash": "Trash",
-      "item": "{name} ({n})"
+      "trash": "Trash"
     },
     "status": {
       "draft": "Draft",
@@ -1072,11 +1081,7 @@
     },
     "table": {
       "selectAll": "Select all on the page",
-      "select": "Select “{title}”",
-      "sortLabel": "Sort the list",
-      "sortBy": "Sort by:",
-      "ascending": "sorted ascending",
-      "descending": "sorted descending"
+      "select": "Select “{title}”"
     },
     "actions": {
       "label": "Actions for “{title}”",
@@ -1187,7 +1192,9 @@
       "readOnly": "You can see this, but not change it.",
       "legacy": "The content is in WordPress' block format and cannot be edited here yet. The title can be changed.",
       "status": "Status: {status}",
-      "shortLink": "Shortlink:"
+      "shortLink": "Shortlink:",
+      "back": "Back to {list}",
+      "savedState": "Saved"
     },
     "preview": {
       "title": "Preview: {title}",
@@ -1264,6 +1271,10 @@
       "invalidParent": "The parent category cannot be used: choose another category, not this one or one below it.",
       "defaultTerm": "The default category can be renamed, but not deleted.",
       "notFound": "The term no longer exists."
+    },
+    "columns": {
+      "name": "Name",
+      "count": "Count"
     }
   },
   "media": {
@@ -1459,6 +1470,11 @@
       "save": "Save Changes",
       "saved": "The settings have been saved.",
       "saveFailed": "The settings could not be saved."
+    },
+    "columns": {
+      "file": "File",
+      "author": "Uploaded by",
+      "size": "Size"
     }
   },
   "editor": {
@@ -1996,5 +2012,50 @@
       "unavailable": "Could not be read"
     },
     "debugOn": "Debug mode is on (TOASCRIBE_DEBUG=1). The logs get more detail. Turn it off when the troubleshooting is done."
+  },
+  "uiShowcase": {
+    "title": "Components",
+    "light": "Light theme",
+    "dark": "Dark theme",
+    "buttons": "Buttons",
+    "primary": "Main action",
+    "secondary": "Secondary",
+    "text": "Text button",
+    "danger": "Delete",
+    "icon": "Icon button",
+    "disabled": "Disabled",
+    "loading": "Saving",
+    "fields": "Fields",
+    "field": "Field",
+    "help": "Help text under the field.",
+    "placeholder": "Type here",
+    "fieldError": "Field with an error",
+    "error": "The field is required.",
+    "select": "Select",
+    "option": "Option {n}",
+    "checkbox": "Checkbox",
+    "switch": "Switch",
+    "badges": "Badges",
+    "tabs": "Tabs",
+    "views": "Views",
+    "tabFirst": "First",
+    "tabSecond": "Second",
+    "cardAndTable": "Card and table",
+    "card": "Card",
+    "running": "Text with a",
+    "link": "link in running text",
+    "table": "Table",
+    "column": "Column {n}",
+    "row": "Row {n}",
+    "alerts": "Alerts",
+    "alert": "An alert: {color}",
+    "states": "Empty state, skeleton and modal",
+    "empty": "Nothing here yet",
+    "emptyText": "Once something is added, it shows here.",
+    "modal": "Modal",
+    "modalText": "A dialog with one main action.",
+    "openModal": "Open modal",
+    "mono": "0.7.0 · 17:32 · Ctrl+S",
+    "date": "28.10.2026"
   }
 }

@@ -134,7 +134,8 @@ async function manageFolders(): Promise<void> {
   if (changed === true) await Promise.all([refresh(), refreshFolders()])
 }
 
-const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
+const PAGE_BUTTON = 'min-h-control min-w-control'
+const headClass = 'px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase'
 </script>
 
 <template>
@@ -143,7 +144,7 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
       <UButton
         icon="i-lucide-upload"
         size="lg"
-        class="min-h-11"
+        class="min-h-control"
         :aria-expanded="showUploader"
         :aria-controls="`${uid}-uploader`"
         :label="$t('media.library.addNew')"
@@ -155,7 +156,7 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
         color="neutral"
         variant="outline"
         size="lg"
-        class="min-h-11"
+        class="min-h-control"
         :label="$t('media.folders.manage')"
         @click="manageFolders"
       />
@@ -170,13 +171,13 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
       />
     </div>
 
-    <div class="flex flex-wrap items-end gap-2" role="group" :aria-label="$t('media.filters.label')">
+    <div class="flex flex-wrap items-start gap-2" role="group" :aria-label="$t('media.filters.label')">
       <div class="flex gap-1" role="group" :aria-label="$t('media.library.view')">
         <UButton
           icon="i-lucide-layout-grid"
           :color="view === 'grid' ? 'primary' : 'neutral'"
           :variant="view === 'grid' ? 'soft' : 'ghost'"
-          class="min-h-11 min-w-11"
+          class="min-h-control min-w-control"
           :aria-pressed="view === 'grid'"
           :aria-label="$t('media.library.grid')"
           @click="view = 'grid'"
@@ -185,30 +186,41 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
           icon="i-lucide-list"
           :color="view === 'list' ? 'primary' : 'neutral'"
           :variant="view === 'list' ? 'soft' : 'ghost'"
-          class="min-h-11 min-w-11"
+          class="min-h-control min-w-control"
           :aria-pressed="view === 'list'"
           :aria-label="$t('media.library.list')"
           @click="view = 'list'"
         />
       </div>
-      <UFormField v-if="group === undefined" :label="$t('media.filters.type')" :name="`${uid}-group`">
-        <USelect v-model="filters.group" :items="groupItems" size="xl" class="w-full sm:w-44" />
+      <UFormField
+        v-if="group === undefined"
+        :label="$t('media.filters.type')"
+        :name="`${uid}-group`"
+        :ui="{ label: 'sr-only' }"
+      >
+        <USelect v-model="filters.group" :items="groupItems" class="w-full sm:w-44" />
       </UFormField>
-      <UFormField :label="$t('media.filters.date')" :name="`${uid}-month`">
-        <USelect v-model="filters.month" :items="monthItems" size="xl" class="w-full sm:w-44" />
+      <UFormField :label="$t('media.filters.date')" :name="`${uid}-month`" :ui="{ label: 'sr-only' }">
+        <USelect v-model="filters.month" :items="monthItems" class="w-full sm:w-44" />
       </UFormField>
-      <UFormField :label="$t('media.folders.folder')" :name="`${uid}-folder`">
-        <USelect v-model="filters.folder" :items="folderItems" size="xl" class="w-full sm:w-44" />
+      <UFormField :label="$t('media.folders.folder')" :name="`${uid}-folder`" :ui="{ label: 'sr-only' }">
+        <USelect v-model="filters.folder" :items="folderItems" class="w-full sm:w-44" />
       </UFormField>
       <form
         role="search"
-        class="flex flex-wrap items-end gap-2 sm:ms-auto"
+        class="flex flex-wrap items-start gap-2 sm:ms-auto"
         @submit.prevent="filters.search = searchText.trim()"
       >
-        <UFormField :label="$t('media.library.search')" :name="`${uid}-search`">
-          <UInput v-model="searchText" type="search" size="xl" autocomplete="off" icon="i-lucide-search" />
+        <UFormField :label="$t('media.library.search')" :name="`${uid}-search`" :ui="{ label: 'sr-only' }">
+          <UInput
+            v-model="searchText"
+            type="search"
+            autocomplete="off"
+            icon="i-lucide-search"
+            :placeholder="$t('media.library.search')"
+          />
         </UFormField>
-        <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
+        <UButton type="submit" color="neutral" variant="outline">
           {{ $t('media.library.search') }}
         </UButton>
       </form>
@@ -222,12 +234,10 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
       :title="$t('media.library.loadFailed')"
       :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
     />
-    <p v-if="data" role="status" class="text-sm text-toned">
+    <p v-if="data" role="status" class="text-help text-secondary">
       {{ $t('media.library.count', { n: data.total }, data.total) }}
     </p>
-    <p v-if="data && items.length === 0" class="py-6 text-lg font-semibold text-highlighted">
-      {{ $t('media.library.empty') }}
-    </p>
+    <BlekkEmptyState v-if="data && items.length === 0" icon="i-lucide-image" :title="$t('media.library.empty')" />
 
     <ul
       v-else-if="data && view === 'grid'"
@@ -239,8 +249,8 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
         <button
           type="button"
           data-testid="media-item"
-          class="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          :class="chosen === item.id ? 'border-primary ring-2 ring-primary' : 'border-default'"
+          class="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-menu border bg-sunken"
+          :class="chosen === item.id ? 'border-accent ring-2 ring-accent' : 'border-line'"
           :aria-pressed="picker ? chosen === item.id : undefined"
           @click="open(item)"
         >
@@ -259,72 +269,98 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
           <!-- eslint-enable vue/html-self-closing -->
           <span v-else class="flex flex-col items-center gap-1 p-2 text-center">
             <UIcon name="i-lucide-file" class="size-8 text-muted" />
-            <span class="line-clamp-2 text-xs text-default wrap-anywhere">{{ item.fileName }}</span>
+            <span class="line-clamp-2 text-badge text-default wrap-anywhere">{{ item.fileName }}</span>
           </span>
           <span
             v-if="item.processing === 'pending'"
-            class="absolute inset-x-0 bottom-0 bg-default/80 px-1 py-0.5 text-xs text-toned"
+            class="absolute inset-x-0 bottom-0 bg-default/80 px-1 py-0.5 text-badge text-secondary"
           >
             {{ $t('media.processing.pending') }}
           </span>
           <span
             v-else-if="item.processing === 'failed'"
-            class="absolute inset-x-0 bottom-0 bg-default/80 px-1 py-0.5 text-xs text-error"
+            class="absolute inset-x-0 bottom-0 bg-default/80 px-1 py-0.5 text-badge text-error"
           >
             {{ $t('media.processing.failedShort') }}
           </span>
           <UIcon
             v-if="item.visibility === 'private'"
             name="i-lucide-lock"
-            class="absolute end-1 top-1 size-4 text-highlighted"
+            class="absolute end-1 top-1 size-4 text-heading"
             :aria-label="$t('media.details.private')"
           />
         </button>
       </li>
     </ul>
 
-    <ul
-      v-else-if="data"
-      class="flex flex-col divide-y divide-default rounded-md border border-default"
-      :class="status === 'pending' ? 'opacity-60' : ''"
-      :aria-label="$t('media.library.items')"
-    >
-      <li v-for="item in items" :key="item.id" class="flex items-center gap-3 p-2">
-        <span class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-elevated">
-          <!-- eslint-disable vue/html-self-closing -->
-          <img
-            v-if="item.group === 'image' && item.processing !== 'failed'"
-            :src="thumbOf(item)"
-            alt=""
-            class="size-full object-cover"
-            loading="lazy"
-          />
-          <!-- eslint-enable vue/html-self-closing -->
-          <UIcon v-else name="i-lucide-file" class="size-6 text-muted" />
-        </span>
-        <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-          <button
-            type="button"
-            class="self-start text-start font-semibold text-primary underline-offset-4 hover:underline wrap-anywhere"
-            :aria-pressed="picker ? chosen === item.id : undefined"
-            @click="open(item)"
-          >
-            {{ labelOf(item) }}
-          </button>
-          <p class="text-sm text-toned wrap-anywhere">
-            {{ item.fileName }} · {{ formatBytes(item.size, locale) }}
-            <template v-if="item.uploadedBy"> · {{ item.uploadedBy.displayName }}</template>
-            <template v-if="item.visibility === 'private'"> · {{ $t('media.details.private') }}</template>
-            <template v-if="processingLabel($t, item.processing)">
-              · {{ processingLabel($t, item.processing) }}</template
-            >
-            <template v-if="item.processing === 'failed' && item.processingError">
-              {{ $t('media.processing.reason', { reason: failureText($t, item.processingError) }) }}</template
-            >
-          </p>
-        </div>
-      </li>
-    </ul>
+    <div v-else-if="data" :class="status === 'pending' ? 'opacity-60' : ''">
+      <BlekkTableFrame :label="$t('media.library.items')">
+        <table class="w-full min-w-160 table-auto text-start text-body">
+          <caption class="sr-only">
+            {{
+              $t('media.library.items')
+            }}
+          </caption>
+          <thead>
+            <tr class="border-b border-line">
+              <th scope="col" :class="headClass">{{ $t('media.columns.file') }}</th>
+              <th scope="col" :class="headClass">{{ $t('media.columns.author') }}</th>
+              <th scope="col" :class="[headClass, 'text-end']">{{ $t('media.columns.size') }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-divider">
+            <tr v-for="item in items" :key="item.id" class="hover:bg-sunken">
+              <th scope="row" class="px-3 py-2 text-start align-middle font-normal">
+                <span class="flex items-center gap-3">
+                  <span
+                    class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-menu bg-sunken"
+                  >
+                    <!-- eslint-disable vue/html-self-closing -->
+                    <img
+                      v-if="item.group === 'image' && item.processing !== 'failed'"
+                      :src="thumbOf(item)"
+                      alt=""
+                      class="size-full object-cover"
+                      loading="lazy"
+                    />
+                    <!-- eslint-enable vue/html-self-closing -->
+                    <UIcon v-else name="i-lucide-file" class="size-6 text-secondary" />
+                  </span>
+                  <span class="flex min-w-0 flex-col">
+                    <button
+                      type="button"
+                      class="inline-flex min-h-control items-center self-start text-start font-semibold text-heading hover:underline wrap-anywhere"
+                      :aria-pressed="picker ? chosen === item.id : undefined"
+                      @click="open(item)"
+                    >
+                      {{ labelOf(item) }}
+                    </button>
+                    <span class="font-mono text-help text-secondary wrap-anywhere">{{ item.fileName }}</span>
+                    <span
+                      v-if="item.visibility === 'private' || processingLabel($t, item.processing)"
+                      class="text-help text-secondary"
+                    >
+                      <template v-if="item.visibility === 'private'">{{ $t('media.details.private') }}</template>
+                      <template v-if="processingLabel($t, item.processing)">
+                        {{ item.visibility === 'private' ? ' · ' : ''
+                        }}{{ processingLabel($t, item.processing) }}</template
+                      >
+                      <template v-if="item.processing === 'failed' && item.processingError">
+                        {{ $t('media.processing.reason', { reason: failureText($t, item.processingError) }) }}</template
+                      >
+                    </span>
+                  </span>
+                </span>
+              </th>
+              <td class="px-3 py-2 align-middle text-heading">{{ item.uploadedBy?.displayName ?? '—' }}</td>
+              <td class="px-3 py-2 text-end align-middle font-mono text-help text-heading whitespace-nowrap">
+                {{ formatBytes(item.size, locale) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </BlekkTableFrame>
+    </div>
 
     <UPagination
       v-if="data && data.totalPages > 1"

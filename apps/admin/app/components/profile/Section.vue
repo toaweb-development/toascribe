@@ -20,7 +20,7 @@ const headingId = computed(() => `${props.id}-heading`)
         :is="`h${level}`"
         :id="headingId"
         tabindex="-1"
-        class="text-lg font-semibold text-highlighted outline-none"
+        class="text-card-title font-semibold text-heading outline-none"
       >
         {{ title }}
       </component>

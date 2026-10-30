@@ -239,13 +239,15 @@ async function onDone(login: LoginResponse | null) {
 
 <template>
   <div class="flex flex-col gap-6">
-    <p v-if="phase === 'starting'" role="status" class="text-base text-default">{{ $t('setup.starting') }}</p>
+    <p v-if="phase === 'starting'" role="status" class="text-body text-default">{{ $t('setup.starting') }}</p>
 
     <AuthMessage v-else-if="phase === 'signin'" kind="info" focus>
       {{ $t('setup.finish.signin') }}
-      <NuxtLink to="/login" class="ml-1 inline-flex min-h-11 items-center text-primary underline underline-offset-4">{{
-        $t('auth.links.login')
-      }}</NuxtLink>
+      <NuxtLink
+        to="/login"
+        class="ml-1 inline-flex min-h-control items-center text-accent-text underline underline-offset-4"
+        >{{ $t('auth.links.login') }}</NuxtLink
+      >
     </AuthMessage>
 
     <template v-else>
@@ -258,7 +260,7 @@ async function onDone(login: LoginResponse | null) {
         :items="items"
         size="sm"
         class="hidden lg:flex"
-        :ui="{ title: 'text-sm', description: 'sr-only' }"
+        :ui="{ title: 'text-help', description: 'sr-only' }"
         @update:model-value="goTo"
       >
         <template #indicator="{ item }">
@@ -268,7 +270,7 @@ async function onDone(login: LoginResponse | null) {
       </UStepper>
 
       <UCard>
-        <h2 ref="headingElement" tabindex="-1" class="mb-6 text-xl font-semibold text-highlighted outline-none">
+        <h2 ref="headingElement" tabindex="-1" class="mb-6 text-card-title font-semibold text-heading outline-none">
           {{ heading }}
         </h2>
 

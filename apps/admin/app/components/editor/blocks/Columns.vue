@@ -31,7 +31,7 @@ onBeforeUnmount(() => editor.unregisterFocus(props.block.id, handler))
 <template>
   <div ref="root" class="flex flex-col gap-2">
     <EditorToolbar v-if="holdsCursor" :block="block">
-      <span class="px-1 text-xs text-muted">{{ t('editorPrototype.columns.count', { n: count }) }}</span>
+      <span class="px-1 text-badge text-muted">{{ t('editorPrototype.columns.count', { n: count }) }}</span>
       <UButton
         icon="i-lucide-columns-3"
         color="neutral"

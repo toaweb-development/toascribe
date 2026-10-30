@@ -32,16 +32,16 @@ onBeforeUnmount(() => editor.unregisterFocus(props.block.id, handler))
       :aria-label="t('blocks.html')"
       :placeholder="t('editor.html.placeholder')"
       class="w-full"
-      :ui="{ base: 'font-mono text-sm' }"
+      :ui="{ base: 'font-mono text-help' }"
       maxlength="100000"
     />
     <template v-else>
       <pre
         tabindex="0"
         :aria-label="t('blocks.html')"
-        class="overflow-x-auto rounded-md border border-default bg-elevated p-2 font-mono text-sm whitespace-pre-wrap"
+        class="overflow-x-auto rounded-md border border-default bg-elevated p-2 font-mono text-help whitespace-pre-wrap"
         >{{ content }}</pre>
-      <p class="text-xs text-muted">{{ t('editor.html.readOnly') }}</p>
+      <p class="text-badge text-muted">{{ t('editor.html.readOnly') }}</p>
     </template>
   </div>
 </template>

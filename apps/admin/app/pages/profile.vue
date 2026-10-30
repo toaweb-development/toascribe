@@ -42,7 +42,7 @@ function saved(next: MeResponse) {
         :description="error ? $t('profile.loadFailed.text') : undefined"
       >
         <template #actions>
-          <UButton color="neutral" variant="outline" size="lg" class="min-h-11" :loading="retrying" @click="retry">
+          <UButton color="neutral" variant="outline" size="lg" class="min-h-control" :loading="retrying" @click="retry">
             {{ $t('profile.retry') }}
           </UButton>
         </template>
@@ -53,7 +53,9 @@ function saved(next: MeResponse) {
       </template>
 
       <section aria-labelledby="account-heading" class="flex flex-col gap-4 sm:gap-6">
-        <h2 id="account-heading" class="text-xl font-semibold text-highlighted">{{ $t('profile.account.title') }}</h2>
+        <h2 id="account-heading" class="text-card-title font-semibold text-heading">
+          {{ $t('profile.account.title') }}
+        </h2>
         <ProfilePassword />
         <ProfileTwoFactor />
         <ProfileSessions />

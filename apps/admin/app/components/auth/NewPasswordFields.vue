@@ -41,10 +41,10 @@ defineExpose({ generate })
 
     <div class="flex flex-col gap-2">
       <AuthStrengthMeter :password="password" />
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11 self-start" @click="generate">
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control self-start" @click="generate">
         {{ $t('auth.choose.generate') }}
       </UButton>
-      <p v-if="generated" role="status" class="text-sm text-toned">{{ $t('auth.choose.generated') }}</p>
+      <p v-if="generated" role="status" class="text-help text-secondary">{{ $t('auth.choose.generated') }}</p>
     </div>
   </div>
 </template>

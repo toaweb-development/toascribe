@@ -100,7 +100,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
         color="neutral"
         variant="outline"
         size="lg"
-        class="min-h-11"
+        class="min-h-control"
         :disabled="submitting"
         @click="emit('close', { status: 'cancelled' })"
       >
@@ -110,7 +110,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
         type="submit"
         form="reauth-form"
         size="lg"
-        class="min-h-11"
+        class="min-h-control"
         :color="color ?? 'primary'"
         :loading="submitting"
       >

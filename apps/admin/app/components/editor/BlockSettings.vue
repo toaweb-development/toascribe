@@ -81,19 +81,19 @@ const sizes = computed(() =>
 
 <template>
   <div class="flex flex-col gap-4">
-    <p v-if="editor.multi.value.length > 0" class="text-sm text-toned">
+    <p v-if="editor.multi.value.length > 0" class="text-help text-secondary">
       {{ t('editor.selection.count', { n: editor.multi.value.length }, editor.multi.value.length) }}
     </p>
-    <p v-else-if="!block" class="text-sm text-muted">{{ t('editor.settings.none') }}</p>
+    <p v-else-if="!block" class="text-help text-muted">{{ t('editor.settings.none') }}</p>
     <template v-else>
-      <h3 class="font-semibold text-highlighted">{{ title(block.type) }}</h3>
+      <h3 class="font-semibold text-heading">{{ title(block.type) }}</h3>
 
       <template v-if="block.type === PARAGRAPH">
         <UButton
           icon="i-lucide-heading"
           color="neutral"
           variant="outline"
-          class="min-h-11 self-start"
+          class="min-h-control self-start"
           :label="t('editor.settings.toHeading')"
           @click="editor.transform(block.id, HEADING, { level: 2 })"
         />
@@ -112,7 +112,7 @@ const sizes = computed(() =>
           icon="i-lucide-pilcrow"
           color="neutral"
           variant="outline"
-          class="min-h-11 self-start"
+          class="min-h-control self-start"
           :label="t('editor.settings.toParagraph')"
           @click="editor.transform(block.id, PARAGRAPH)"
         />
@@ -258,7 +258,7 @@ const sizes = computed(() =>
         />
       </template>
 
-      <p v-else class="text-sm text-muted">{{ t('editor.settings.nothing') }}</p>
+      <p v-else class="text-help text-muted">{{ t('editor.settings.nothing') }}</p>
     </template>
   </div>
 </template>

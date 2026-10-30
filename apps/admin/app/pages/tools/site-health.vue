@@ -65,8 +65,8 @@ async function copy(): Promise<void> {
 <template>
   <AdminPage id="site-health" :title="$t('siteHealth.title')">
     <section v-if="!mayManage" aria-labelledby="site-health-denied" class="flex max-w-prose flex-col gap-3">
-      <h2 id="site-health-denied" class="text-xl font-semibold text-highlighted">{{ $t('settings.denied') }}</h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <h2 id="site-health-denied" class="text-card-title font-semibold text-heading">{{ $t('settings.denied') }}</h2>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
     <UAlert
       v-else-if="error"
@@ -84,19 +84,19 @@ async function copy(): Promise<void> {
         icon="i-lucide-triangle-alert"
         :title="$t('siteHealth.debugOn')"
       />
-      <h2 class="text-xl font-semibold text-highlighted">{{ $t('siteHealth.info') }}</h2>
-      <p class="max-w-prose text-base text-default">{{ $t('siteHealth.intro') }}</p>
+      <h2 class="text-card-title font-semibold text-heading">{{ $t('siteHealth.info') }}</h2>
+      <p class="max-w-prose text-body text-default">{{ $t('siteHealth.intro') }}</p>
       <div class="flex flex-wrap items-center gap-3">
         <UButton
           color="neutral"
           variant="outline"
           size="lg"
-          class="min-h-11"
+          class="min-h-control"
           icon="i-lucide-clipboard-copy"
           :label="$t('siteHealth.copy')"
           @click="copy"
         />
-        <p role="status" class="text-sm text-toned">
+        <p role="status" class="text-help text-secondary">
           <template v-if="notice === 'copied'">{{ $t('siteHealth.copied') }}</template>
           <template v-else-if="notice === 'failed'">{{ $t('siteHealth.copyFailed') }}</template>
         </p>
@@ -107,7 +107,7 @@ async function copy(): Promise<void> {
         :aria-labelledby="`site-health-${group.key}`"
         class="flex flex-col gap-2"
       >
-        <h3 :id="`site-health-${group.key}`" class="text-lg font-semibold text-highlighted">
+        <h3 :id="`site-health-${group.key}`" class="text-card-title font-semibold text-heading">
           {{ siteHealthGroup(translator, group.key) }}
         </h3>
         <dl class="divide-y divide-default rounded-md border border-default">
@@ -116,8 +116,8 @@ async function copy(): Promise<void> {
             :key="field.key"
             class="grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4"
           >
-            <dt class="text-sm font-medium text-toned">{{ label(group.key, field.key) }}</dt>
-            <dd class="text-base break-words text-default">{{ shown(field) }}</dd>
+            <dt class="text-help font-medium text-secondary">{{ label(group.key, field.key) }}</dt>
+            <dd class="text-body break-words text-default">{{ shown(field) }}</dd>
           </div>
         </dl>
       </section>

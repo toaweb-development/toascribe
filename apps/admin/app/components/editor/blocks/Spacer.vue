@@ -19,7 +19,7 @@ const label = computed(() => spacerSizeLabel(t, size.value))
       role="group"
       :aria-label="t('editor.spacer.label', { size: label })"
       :class="[
-        'flex items-center justify-center rounded border border-dashed border-default text-xs text-muted outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        'flex items-center justify-center rounded border border-dashed border-default text-badge text-muted outline-none focus-visible:ring-2 focus-visible:ring-primary',
         HEIGHT[size] ?? 'h-12',
       ]"
       @focus="focusable.onFocus"

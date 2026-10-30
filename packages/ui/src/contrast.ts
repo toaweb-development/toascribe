@@ -9,7 +9,8 @@ export type Tokens = Readonly<Record<string, string>>
 /** The `--blekk-*` tokens of a CSS block (`:root { … }` or `.dark { … }`), without the prefix. */
 export function tokensOf(css: string, selector: ':root' | '.dark'): Tokens {
   const escaped = selector.replace('.', '\\.')
-  const block = new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? ''
+  // The selector may head a list (`:root,\n.blekk-light {`).
+  const block = new RegExp(`(?:^|\\n)${escaped}(?:,[^{]*)?\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? ''
   const tokens: Record<string, string> = {}
   for (const match of block.matchAll(/--blekk-([a-z-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)) {
     const [, name, value] = match

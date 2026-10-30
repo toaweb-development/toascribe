@@ -17,7 +17,7 @@ const empty = computed(() => props.terms.length === 0)
 <template>
   <fieldset class="flex flex-col gap-1">
     <legend class="mb-1 font-medium text-default">{{ legend }}</legend>
-    <p v-if="empty" class="text-sm text-toned">{{ $t('terms.categories.empty') }}</p>
+    <p v-if="empty" class="text-help text-secondary">{{ $t('terms.categories.empty') }}</p>
     <ul v-else class="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-md border border-default p-2">
       <li v-for="term in terms" :key="term.id" :class="indent(term.depth)">
         <UCheckbox

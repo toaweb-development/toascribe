@@ -153,9 +153,9 @@ async function fromAddress(): Promise<void> {
       @dragleave.prevent="dragging = false"
       @drop.prevent="onDrop"
     >
-      <p class="text-lg font-semibold text-highlighted">{{ $t('media.upload.drop') }}</p>
-      <p class="text-sm text-toned">{{ $t('media.upload.or') }}</p>
-      <UButton size="lg" class="min-h-11" icon="i-lucide-upload" @click="choose">{{
+      <p class="text-card-title font-semibold text-heading">{{ $t('media.upload.drop') }}</p>
+      <p class="text-help text-secondary">{{ $t('media.upload.or') }}</p>
+      <UButton size="lg" class="min-h-control" icon="i-lucide-upload" @click="choose">{{
         $t('media.upload.choose')
       }}</UButton>
       <UInput
@@ -169,8 +169,8 @@ async function fromAddress(): Promise<void> {
         :accept="accept"
         @change="onPicked"
       />
-      <p class="text-sm text-toned">{{ $t('media.upload.maxSize', { size: maxSize }) }}</p>
-      <p class="max-w-prose text-xs text-muted wrap-anywhere">
+      <p class="text-help text-secondary">{{ $t('media.upload.maxSize', { size: maxSize }) }}</p>
+      <p class="max-w-prose text-badge text-muted wrap-anywhere">
         {{ $t('media.upload.types', { types: extensions.join(', ') }) }}
       </p>
     </div>
@@ -178,7 +178,7 @@ async function fromAddress(): Promise<void> {
     <ul v-if="entries.length > 0" class="flex flex-col gap-2" :aria-label="$t('media.upload.queue')">
       <li v-for="entry in entries" :key="entry.key" class="flex flex-col gap-1 rounded-md border border-default p-3">
         <div class="flex items-center justify-between gap-2">
-          <span class="min-w-0 truncate text-sm font-medium text-highlighted">{{ entry.name }}</span>
+          <span class="min-w-0 truncate text-help font-medium text-heading">{{ entry.name }}</span>
           <UButton
             v-if="entry.state === 'sending' && entry.abort"
             size="xs"
@@ -187,7 +187,7 @@ async function fromAddress(): Promise<void> {
             :label="$t('media.upload.cancel')"
             @click="entry.abort?.()"
           />
-          <span v-else-if="entry.state === 'done'" class="text-sm text-success">{{ $t('media.upload.done') }}</span>
+          <span v-else-if="entry.state === 'done'" class="text-help text-success">{{ $t('media.upload.done') }}</span>
         </div>
         <UProgress
           v-if="entry.state === 'sending'"
@@ -195,7 +195,7 @@ async function fromAddress(): Promise<void> {
           :aria-label="$t('media.upload.progress', { name: entry.name })"
           size="sm"
         />
-        <p v-if="entry.state === 'failed'" role="alert" class="text-sm text-error">{{ entry.error }}</p>
+        <p v-if="entry.state === 'failed'" role="alert" class="text-help text-error">{{ entry.error }}</p>
       </li>
     </ul>
 
@@ -208,7 +208,7 @@ async function fromAddress(): Promise<void> {
       >
         <div class="flex flex-wrap gap-2">
           <UInput v-model="address" type="url" inputmode="url" size="xl" class="min-w-0 flex-1" autocomplete="off" />
-          <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11" :loading="fetching">
+          <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-control" :loading="fetching">
             {{ $t('media.upload.fetch') }}
           </UButton>
         </div>

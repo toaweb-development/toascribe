@@ -98,14 +98,14 @@ async function endOthers() {
         :description="$t('profile.sessions.loadFailed.text')"
       >
         <template #actions>
-          <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="() => refresh()">
+          <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="() => refresh()">
             {{ $t('profile.retry') }}
           </UButton>
         </template>
       </UAlert>
 
       <template v-else>
-        <p class="text-base text-default">
+        <p class="text-body text-default">
           {{ others.length ? $t('profile.sessions.help') : $t('profile.sessions.onlyThis') }}
         </p>
 
@@ -119,17 +119,17 @@ async function endOthers() {
             class="flex flex-wrap items-center justify-between gap-3 p-3"
           >
             <div class="min-w-0">
-              <p class="flex flex-wrap items-center gap-2 font-medium text-highlighted">
+              <p class="flex flex-wrap items-center gap-2 font-medium text-heading">
                 <span class="break-words">{{ deviceOf(session) }}</span>
                 <UBadge v-if="session.isCurrent" color="primary" variant="subtle" size="md">
                   {{ $t('profile.sessions.current') }}
                 </UBadge>
               </p>
-              <p class="text-sm text-toned">
+              <p class="text-help text-secondary">
                 <span v-if="session.ip">{{ $t('profile.sessions.ip', { ip: session.ip }) }} · </span>
                 {{ $t('profile.sessions.lastSeen', { when: formatWhen(session.lastSeenAt, locale) }) }}
               </p>
-              <p class="text-sm text-toned">
+              <p class="text-help text-secondary">
                 {{ $t('profile.sessions.signedIn', { when: formatWhen(session.createdAt, locale) }) }}
               </p>
             </div>
@@ -138,7 +138,7 @@ async function endOthers() {
               color="neutral"
               variant="outline"
               size="lg"
-              class="min-h-11"
+              class="min-h-control"
               :loading="working === session.id"
               :aria-label="$t('profile.sessions.endLabel', { device: deviceOf(session) })"
               @click="endOne(session)"
@@ -155,7 +155,7 @@ async function endOthers() {
             color="neutral"
             variant="outline"
             size="lg"
-            class="min-h-11"
+            class="min-h-control"
             :loading="working === 'others'"
             @click="endOthers"
           >
@@ -165,7 +165,7 @@ async function endOthers() {
       </template>
 
       <!-- The region stays in the page, empty, so the text put into it is announced. -->
-      <div role="status" class="min-h-6 text-sm text-default">
+      <div role="status" class="min-h-6 text-help text-default">
         <span v-if="message" class="inline-flex items-start gap-1.5">
           <UIcon name="i-lucide-check" class="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
           <span>{{ message }}</span>

@@ -113,7 +113,7 @@ async function remove(factor: { id: string; name: string | null }) {
         :description="$t('profile.mfa.loadFailed.text')"
       >
         <template #actions>
-          <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="() => refresh()">
+          <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="() => refresh()">
             {{ $t('profile.retry') }}
           </UButton>
         </template>
@@ -128,7 +128,7 @@ async function remove(factor: { id: string; name: string | null }) {
         <div>
           <UButton
             size="lg"
-            class="min-h-11"
+            class="min-h-control"
             :class="{ 'opacity-60': !codesSaved }"
             :aria-disabled="!codesSaved"
             :aria-describedby="codesSaved ? undefined : 'codes-hint'"
@@ -137,23 +137,23 @@ async function remove(factor: { id: string; name: string | null }) {
             {{ $t('profile.mfa.codesDone') }}
           </UButton>
         </div>
-        <p v-if="!codesSaved" id="codes-hint" class="text-sm text-toned">{{ $t('auth.enrol.finishHint') }}</p>
+        <p v-if="!codesSaved" id="codes-hint" class="text-help text-secondary">{{ $t('auth.enrol.finishHint') }}</p>
       </template>
 
       <template v-else>
-        <p class="text-base text-default">
-          <strong class="font-semibold text-highlighted">
+        <p class="text-body text-default">
+          <strong class="font-semibold text-heading">
             {{ factors.length > 0 ? $t('profile.mfa.on', factors.length) : $t('profile.mfa.off') }}
           </strong>
           {{ ' ' }}{{ $t('profile.mfa.intro') }}
         </p>
-        <p v-if="required" class="text-base text-default">{{ $t('profile.mfa.required') }}</p>
+        <p v-if="required" class="text-body text-default">{{ $t('profile.mfa.required') }}</p>
 
         <ul v-if="factors.length" class="flex flex-col divide-y divide-default rounded-md border border-default">
           <li v-for="factor in factors" :key="factor.id" class="flex flex-wrap items-center justify-between gap-3 p-3">
             <div class="min-w-0">
-              <p class="font-medium break-words text-highlighted">{{ nameOf(factor) }}</p>
-              <p class="text-sm text-toned">
+              <p class="font-medium break-words text-heading">{{ nameOf(factor) }}</p>
+              <p class="text-help text-secondary">
                 {{ $t('profile.mfa.createdAt', { when: formatWhen(factor.createdAt, locale) }) }}
                 ·
                 {{
@@ -168,7 +168,7 @@ async function remove(factor: { id: string; name: string | null }) {
               color="error"
               variant="outline"
               size="lg"
-              class="min-h-11"
+              class="min-h-control"
               :aria-label="$t('profile.mfa.removeLabel', { name: nameOf(factor) })"
               @click="remove(factor)"
             >
@@ -176,7 +176,7 @@ async function remove(factor: { id: string; name: string | null }) {
             </UButton>
           </li>
         </ul>
-        <p v-if="factors.length" class="text-sm text-toned">
+        <p v-if="factors.length" class="text-help text-secondary">
           {{ $t('profile.mfa.codesLeft', data.recoveryCodesRemaining) }}
         </p>
 
@@ -188,19 +188,26 @@ async function remove(factor: { id: string; name: string | null }) {
             color="neutral"
             variant="outline"
             size="lg"
-            class="min-h-11"
+            class="min-h-control"
             @click="beginEnrol"
           >
             {{ $t('profile.mfa.setUp') }}
           </UButton>
-          <UButton v-if="factors.length" color="neutral" variant="outline" size="lg" class="min-h-11" @click="newCodes">
+          <UButton
+            v-if="factors.length"
+            color="neutral"
+            variant="outline"
+            size="lg"
+            class="min-h-control"
+            @click="newCodes"
+          >
             {{ $t('profile.mfa.newCodes') }}
           </UButton>
         </div>
       </template>
 
       <!-- The region stays in the page, empty, so the text put into it is announced. -->
-      <div role="status" class="min-h-6 text-sm text-default">
+      <div role="status" class="min-h-6 text-help text-default">
         <span v-if="message" class="inline-flex items-start gap-1.5">
           <UIcon name="i-lucide-check" class="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
           <span>{{ message }}</span>

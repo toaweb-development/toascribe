@@ -363,7 +363,8 @@
       "userMenu": "Brukermenyen din",
       "profile": "Rediger profil",
       "help": "Hjelp",
-      "helpLabel": "Hjelp til denne siden (åpnes i en ny fane)"
+      "helpLabel": "Hjelp til denne siden (åpnes i en ny fane)",
+      "howdyPrefix": "Hei,"
     },
     "menu": {
       "label": "Hovedmeny",
@@ -375,11 +376,11 @@
       },
       "open": "Vis undermenyen til {name}"
     },
-    "home": "Til kontrollpanelet",
+    "home": ", til kontrollpanelet",
     "breadcrumbs": "Brødsmulesti",
     "new": {
       "button": "Ny",
-      "label": "Legg til nytt",
+      "label": "Ny: legg til nytt",
       "post": "Innlegg",
       "page": "Side",
       "media": "Mediefil",
@@ -448,44 +449,32 @@
         "title": "Varslene kunne ikke lastes.",
         "text": "Det kan finnes varsler du ikke ser nå. Prøv igjen.",
         "retry": "Prøv igjen"
-      }
+      },
+      "fix": "Slik retter du det"
     },
     "welcome": {
-      "heading": "Velkommen til toascribe!",
-      "intro": "Her er noen lenker som hjelper deg i gang.",
-      "profile": "Rediger profilen din",
-      "users": "Se alle brukere",
-      "dismiss": "Lukk",
+      "profile": "profilen din",
+      "users": "se alle brukerne",
+      "dismiss": "Avvis",
       "dismissFailed": "Velkomstpanelet ble ikke avvist, og det vises fortsatt.",
-      "failed": {
-        "title": "Velkomstpanelet kunne ikke lastes.",
-        "text": "Resten av kontrollpanelet virker. Prøv igjen.",
-        "retry": "Prøv igjen"
-      }
-    },
-    "glance": {
-      "heading": "Oversikt",
-      "posts": "{n} innlegg | {n} innlegg",
-      "pages": "{n} side | {n} sider",
-      "comments": "{n} kommentar | {n} kommentarer",
-      "pending": "{n} venter på godkjenning",
-      "version": "toascribe {version}",
-      "failed": {
-        "title": "Tallene kunne ikke lastes.",
-        "text": "Resten av kontrollpanelet virker. Prøv igjen.",
-        "retry": "Prøv igjen"
-      }
+      "text": "Velkommen til toascribe! Begynn med {profile}.",
+      "withUsers": "Velkommen til toascribe! Begynn med {profile}, eller {users}.",
+      "dismissLabel": "Avvis velkomsten"
     },
     "activity": {
       "heading": "Aktivitet",
-      "soon": "Publiseres snart",
-      "recent": "Nylig publisert",
+      "soon": "er planlagt",
+      "recent": "ble publisert",
       "empty": "Ingen innlegg er publisert eller planlagt ennå.",
       "untitled": "(uten tittel)",
       "failed": {
         "title": "Aktiviteten kunne ikke lastes.",
         "text": "Resten av kontrollpanelet virker. Prøv igjen.",
         "retry": "Prøv igjen"
+      },
+      "badge": {
+        "soon": "Planlagt",
+        "recent": "Publisert"
       }
     },
     "quickDraft": {
@@ -507,11 +496,6 @@
         "good": "Bra",
         "recommended": "Bør forbedres",
         "critical": "Bør fikses"
-      },
-      "summary": {
-        "good": "Ingen problemer funnet.",
-        "recommended": "{n} ting bør forbedres. | {n} ting bør forbedres.",
-        "critical": "{n} ting trenger oppmerksomhet, minst én av dem snart. | {n} ting trenger oppmerksomhet, minst én av dem snart."
       },
       "tests": {
         "worker": {
@@ -552,7 +536,41 @@
         "title": "Nettstedshelsen kunne ikke lastes.",
         "text": "Resten av kontrollpanelet virker. Prøv igjen.",
         "retry": "Prøv igjen"
+      },
+      "toCheck": "Ingenting å se på | {n} å se på | {n} å se på"
+    },
+    "greeting": {
+      "morning": "God morgen, {name}",
+      "forenoon": "God formiddag, {name}",
+      "afternoon": "God ettermiddag, {name}",
+      "evening": "God kveld, {name}"
+    },
+    "actions": {
+      "visit": "Vis nettstedet",
+      "write": "Skriv et innlegg"
+    },
+    "stats": {
+      "heading": "Oversikt",
+      "posts": "Innlegg",
+      "pages": "Sider",
+      "comments": "Kommentarer",
+      "users": "Brukere",
+      "published": "{n} publisert",
+      "pending": "{n} venter på godkjenning",
+      "administrators": "{n} administrator | {n} administratorer",
+      "failed": {
+        "title": "Tallene kunne ikke lastes.",
+        "text": "Resten av kontrollpanelet virker. Prøv igjen.",
+        "retry": "Prøv igjen"
       }
+    },
+    "version": {
+      "heading": "Versjon",
+      "running": "Du kjører {version}.",
+      "newest": "Du kjører {version}, som er den nyeste.",
+      "behind": "Du kjører {version}. Versjon {latest} er ute.",
+      "update": "Se oppdateringer",
+      "changelog": "Se endringsloggen"
     }
   },
   "profile": {
@@ -768,8 +786,7 @@
     "views": {
       "label": "Brukere etter rolle",
       "all": "Alle",
-      "none": "Ingen rolle",
-      "item": "{name} ({n})"
+      "none": "Ingen rolle"
     },
     "search": {
       "label": "Søk i brukere",
@@ -815,14 +832,7 @@
       "name": "Navn",
       "email": "E-post",
       "roles": "Rolle",
-      "posts": "Innlegg",
-      "postsCount": "{n} innlegg"
-    },
-    "sort": {
-      "label": "Sorter brukerne",
-      "by": "Sorter etter:",
-      "ascending": "sortert stigende",
-      "descending": "sortert synkende"
+      "posts": "Innlegg"
     },
     "pagination": {
       "label": "Sideinndeling"
@@ -1023,8 +1033,7 @@
       "pending": "Venter på gjennomgang",
       "future": "Planlagt",
       "private": "Privat",
-      "trash": "Papirkurv",
-      "item": "{name} ({n})"
+      "trash": "Papirkurv"
     },
     "status": {
       "draft": "Kladd",
@@ -1072,11 +1081,7 @@
     },
     "table": {
       "selectAll": "Velg alle på siden",
-      "select": "Velg «{title}»",
-      "sortLabel": "Sorter listen",
-      "sortBy": "Sorter etter:",
-      "ascending": "sortert stigende",
-      "descending": "sortert synkende"
+      "select": "Velg «{title}»"
     },
     "actions": {
       "label": "Handlinger for «{title}»",
@@ -1187,7 +1192,9 @@
       "readOnly": "Du kan se dette, men ikke endre det.",
       "legacy": "Innholdet er i WordPress' blokkformat og kan ikke redigeres her ennå. Tittelen kan endres.",
       "status": "Status: {status}",
-      "shortLink": "Kortlenke:"
+      "shortLink": "Kortlenke:",
+      "back": "Tilbake til {list}",
+      "savedState": "Lagret"
     },
     "preview": {
       "title": "Forhåndsvisning: {title}",
@@ -1264,6 +1271,10 @@
       "invalidParent": "Den overordnede kategorien kan ikke brukes: velg en annen kategori, ikke denne eller en under den.",
       "defaultTerm": "Standardkategorien kan gis nytt navn, men ikke slettes.",
       "notFound": "Termen finnes ikke lenger."
+    },
+    "columns": {
+      "name": "Navn",
+      "count": "Antall"
     }
   },
   "media": {
@@ -1459,6 +1470,11 @@
       "save": "Lagre endringer",
       "saved": "Innstillingene er lagret.",
       "saveFailed": "Innstillingene kunne ikke lagres."
+    },
+    "columns": {
+      "file": "Fil",
+      "author": "Lastet opp av",
+      "size": "Størrelse"
     }
   },
   "editor": {
@@ -1996,5 +2012,50 @@
       "unavailable": "Kunne ikke leses"
     },
     "debugOn": "Feilsøkingsmodus er på (TOASCRIBE_DEBUG=1). Loggene får mer detalj. Slå den av når feilsøkingen er ferdig."
+  },
+  "uiShowcase": {
+    "title": "Komponenter",
+    "light": "Lyst tema",
+    "dark": "Mørkt tema",
+    "buttons": "Knapper",
+    "primary": "Hovedhandling",
+    "secondary": "Sekundær",
+    "text": "Tekstknapp",
+    "danger": "Slett",
+    "icon": "Ikonknapp",
+    "disabled": "Deaktivert",
+    "loading": "Lagrer",
+    "fields": "Felt",
+    "field": "Felt",
+    "help": "Hjelpetekst under feltet.",
+    "placeholder": "Skriv her",
+    "fieldError": "Felt med feil",
+    "error": "Feltet må fylles ut.",
+    "select": "Nedtrekksliste",
+    "option": "Valg {n}",
+    "checkbox": "Avkrysningsboks",
+    "switch": "Bryter",
+    "badges": "Merker",
+    "tabs": "Faner",
+    "views": "Visninger",
+    "tabFirst": "Første",
+    "tabSecond": "Andre",
+    "cardAndTable": "Kort og tabell",
+    "card": "Kort",
+    "running": "Tekst med en",
+    "link": "lenke i løpende tekst",
+    "table": "Tabell",
+    "column": "Kolonne {n}",
+    "row": "Rad {n}",
+    "alerts": "Varsler",
+    "alert": "Et varsel: {color}",
+    "states": "Tom tilstand, skjelett og modal",
+    "empty": "Ingenting her ennå",
+    "emptyText": "Når noe er lagt til, vises det her.",
+    "modal": "Modal",
+    "modalText": "En dialog med én hovedhandling.",
+    "openModal": "Åpne modal",
+    "mono": "0.7.0 · 17:32 · Ctrl+S",
+    "date": "28.10.2026"
   }
 }

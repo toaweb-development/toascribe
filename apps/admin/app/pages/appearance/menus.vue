@@ -320,8 +320,8 @@ async function saveLocations(): Promise<void> {
 <template>
   <AdminPage id="appearance-menus" :title="$t('appearance.menus.title')">
     <section v-if="!mayEdit" aria-labelledby="menus-denied" class="flex max-w-prose flex-col gap-3">
-      <h2 id="menus-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <h2 id="menus-denied" class="text-card-title font-semibold text-heading">{{ $t('appearance.denied') }}</h2>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
     <div v-else class="flex flex-col gap-6">
       <UTabs v-model="tab" :items="tabs" :content="false" color="neutral" variant="link" class="w-full" />
@@ -347,7 +347,7 @@ async function saveLocations(): Promise<void> {
             <UFormField :label="$t('appearance.menus.newName')" name="menu-new">
               <UInput v-model="newName" maxlength="200" size="xl" class="w-full sm:w-64" />
             </UFormField>
-            <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">{{
+            <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-control">{{
               $t('appearance.menus.create')
             }}</UButton>
           </form>
@@ -355,10 +355,10 @@ async function saveLocations(): Promise<void> {
 
         <div v-if="menu" class="grid gap-6 lg:grid-cols-[18rem_1fr]">
           <section aria-labelledby="menu-add" class="flex flex-col gap-4">
-            <h2 id="menu-add" class="text-lg font-semibold text-highlighted">{{ $t('appearance.menus.add') }}</h2>
+            <h2 id="menu-add" class="text-card-title font-semibold text-heading">{{ $t('appearance.menus.add') }}</h2>
             <fieldset v-for="kind in SOURCES" :key="kind" class="flex flex-col gap-2 rounded border border-default p-3">
-              <legend class="px-1 font-semibold text-highlighted">{{ sourceLabel(kind) }}</legend>
-              <p v-if="(sources?.[kind] ?? []).length === 0" class="text-sm text-muted">
+              <legend class="px-1 font-semibold text-heading">{{ sourceLabel(kind) }}</legend>
+              <p v-if="(sources?.[kind] ?? []).length === 0" class="text-help text-muted">
                 {{ $t('appearance.menus.none') }}
               </p>
               <div v-else class="flex max-h-48 flex-col gap-1 overflow-y-auto">
@@ -374,35 +374,40 @@ async function saveLocations(): Promise<void> {
                 color="neutral"
                 variant="outline"
                 size="sm"
-                class="min-h-11 self-start"
+                class="min-h-control self-start"
                 :disabled="(chosen[kind] ?? []).length === 0"
                 @click="addChosen(kind)"
                 >{{ $t('appearance.menus.addTo', { what: sourceLabel(kind) }) }}</UButton
               >
             </fieldset>
             <fieldset class="flex flex-col gap-2 rounded border border-default p-3">
-              <legend class="px-1 font-semibold text-highlighted">{{ $t('appearance.menus.custom') }}</legend>
+              <legend class="px-1 font-semibold text-heading">{{ $t('appearance.menus.custom') }}</legend>
               <UFormField :label="$t('appearance.menus.url')" name="custom-url">
                 <UInput v-model="customUrl" type="url" maxlength="2000" class="w-full" />
               </UFormField>
               <UFormField :label="$t('appearance.menus.linkText')" name="custom-label">
                 <UInput v-model="customLabel" maxlength="200" class="w-full" />
               </UFormField>
-              <UButton color="neutral" variant="outline" size="sm" class="min-h-11 self-start" @click="addCustom">{{
-                $t('appearance.menus.addTo', { what: $t('appearance.menus.custom') })
-              }}</UButton>
+              <UButton
+                color="neutral"
+                variant="outline"
+                size="sm"
+                class="min-h-control self-start"
+                @click="addCustom"
+                >{{ $t('appearance.menus.addTo', { what: $t('appearance.menus.custom') }) }}</UButton
+              >
             </fieldset>
           </section>
 
           <section aria-labelledby="menu-structure" class="flex flex-col gap-4">
-            <h2 id="menu-structure" class="text-lg font-semibold text-highlighted">
+            <h2 id="menu-structure" class="text-card-title font-semibold text-heading">
               {{ $t('appearance.menus.structure') }}
             </h2>
             <UFormField :label="$t('appearance.menus.name')" name="menu-name">
               <UInput v-model="name" maxlength="200" size="xl" class="w-full sm:w-80" />
             </UFormField>
-            <p class="text-sm text-toned">{{ $t('appearance.menus.structureHelp') }}</p>
-            <p v-if="rows.length === 0" class="text-sm text-muted">{{ $t('appearance.menus.empty') }}</p>
+            <p class="text-help text-secondary">{{ $t('appearance.menus.structureHelp') }}</p>
+            <p v-if="rows.length === 0" class="text-help text-muted">{{ $t('appearance.menus.empty') }}</p>
             <ol v-else class="flex flex-col gap-2" :aria-label="$t('appearance.menus.items')">
               <li
                 v-for="row in rows"
@@ -435,8 +440,8 @@ async function saveLocations(): Promise<void> {
                       @dragend="onDragEnd"
                       >⠿</span
                     >
-                    <span class="font-semibold text-highlighted">{{ shownLabel(row.item) }}</span>
-                    <span class="text-sm text-muted">{{ kindLabel(row.item.kind) }}</span>
+                    <span class="font-semibold text-heading">{{ shownLabel(row.item) }}</span>
+                    <span class="text-help text-muted">{{ kindLabel(row.item.kind) }}</span>
                     <UBadge v-if="hidden(row.item)" color="warning" variant="subtle">{{
                       $t('appearance.menus.notShown')
                     }}</UBadge>
@@ -445,7 +450,7 @@ async function saveLocations(): Promise<void> {
                         color="neutral"
                         variant="ghost"
                         size="sm"
-                        class="min-h-11"
+                        class="min-h-control"
                         icon="i-lucide-arrow-up"
                         :disabled="row.first"
                         :aria-label="$t('appearance.menus.up', { label: shownLabel(row.item) })"
@@ -455,7 +460,7 @@ async function saveLocations(): Promise<void> {
                         color="neutral"
                         variant="ghost"
                         size="sm"
-                        class="min-h-11"
+                        class="min-h-control"
                         icon="i-lucide-arrow-down"
                         :disabled="row.last"
                         :aria-label="$t('appearance.menus.down', { label: shownLabel(row.item) })"
@@ -465,7 +470,7 @@ async function saveLocations(): Promise<void> {
                         color="neutral"
                         variant="ghost"
                         size="sm"
-                        class="min-h-11"
+                        class="min-h-control"
                         icon="i-lucide-arrow-right"
                         :disabled="row.first"
                         :aria-label="$t('appearance.menus.in', { label: shownLabel(row.item) })"
@@ -475,7 +480,7 @@ async function saveLocations(): Promise<void> {
                         color="neutral"
                         variant="ghost"
                         size="sm"
-                        class="min-h-11"
+                        class="min-h-control"
                         icon="i-lucide-arrow-left"
                         :disabled="row.depth === 0"
                         :aria-label="$t('appearance.menus.out', { label: shownLabel(row.item) })"
@@ -485,7 +490,7 @@ async function saveLocations(): Promise<void> {
                         color="neutral"
                         variant="ghost"
                         size="sm"
-                        class="min-h-11"
+                        class="min-h-control"
                         icon="i-lucide-pencil"
                         :aria-expanded="expanded === row.item.id ? 'true' : 'false'"
                         :aria-label="$t('appearance.menus.editItem', { label: shownLabel(row.item) })"
@@ -548,7 +553,7 @@ async function saveLocations(): Promise<void> {
                       color="error"
                       variant="outline"
                       size="sm"
-                      class="min-h-11 self-start"
+                      class="min-h-control self-start"
                       @click="act(row.item.id, 'remove')"
                       >{{ $t('appearance.menus.remove') }}</UButton
                     >
@@ -558,27 +563,27 @@ async function saveLocations(): Promise<void> {
             </ol>
             <p class="sr-only" aria-live="polite">{{ announce }}</p>
             <div class="flex flex-wrap gap-3">
-              <UButton size="lg" class="min-h-11" :loading="saving" @click="save">{{
+              <UButton size="lg" class="min-h-control" :loading="saving" @click="save">{{
                 $t('appearance.menus.save')
               }}</UButton>
-              <UButton color="error" variant="outline" size="lg" class="min-h-11" @click="remove">{{
+              <UButton color="error" variant="outline" size="lg" class="min-h-control" @click="remove">{{
                 $t('appearance.menus.delete')
               }}</UButton>
             </div>
           </section>
         </div>
-        <p v-else class="text-base text-default">{{ $t('appearance.menus.first') }}</p>
+        <p v-else class="text-body text-default">{{ $t('appearance.menus.first') }}</p>
       </template>
 
       <form v-else class="flex max-w-2xl flex-col gap-4" @submit.prevent="saveLocations">
-        <p class="text-base text-default">{{ $t('appearance.menus.locationsHelp') }}</p>
-        <p v-if="locationRows.length === 0" class="text-sm text-muted">{{ $t('appearance.menus.noLocations') }}</p>
+        <p class="text-body text-default">{{ $t('appearance.menus.locationsHelp') }}</p>
+        <p v-if="locationRows.length === 0" class="text-help text-muted">{{ $t('appearance.menus.noLocations') }}</p>
         <UFormField v-for="row in locationRows" :key="row.slug" :label="row.label" :name="`location-${row.slug}`">
           <USelect v-model="locationForm[row.slug]" :items="locationChoices" size="xl" class="w-full sm:w-72" />
         </UFormField>
         <!-- Without the theme's locations (not read yet, or the site did not answer) a save would empty every placement. -->
         <div v-if="locationRows.length > 0">
-          <UButton type="submit" size="lg" class="min-h-11">{{ $t('appearance.menus.saveLocations') }}</UButton>
+          <UButton type="submit" size="lg" class="min-h-control">{{ $t('appearance.menus.saveLocations') }}</UButton>
         </div>
       </form>
     </div>

@@ -14,6 +14,18 @@ const sha256 = (text: string) => `'sha256-${createHash('sha256').update(text).di
 export default defineNuxtConfig({
   extends: ['@toascribe/ui', '@toascribe/nuxt-base'],
 
+  // The component overview, /admin/_ui (M2.1): in development only. A production build has no route to it, so it answers 404 there
+  // (e2e/blekk.spec.ts checks it on the built image).
+  modules: [
+    (_options, nuxt) => {
+      nuxt.hook('pages:extend', (pages) => {
+        if (nuxt.options.dev) return
+        const index = pages.findIndex((page) => page.path === '/_ui')
+        if (index !== -1) pages.splice(index, 1)
+      })
+    },
+  ],
+
   // The app's own messages (i18n/locales/nb.json): a layer's messages are only read when the layer lists the file. The
   // first layer's `language` wins when the module merges the entries of one code, so it is repeated here.
   i18n: {

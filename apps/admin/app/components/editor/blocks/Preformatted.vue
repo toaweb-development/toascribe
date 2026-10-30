@@ -14,6 +14,6 @@ const { t } = useI18n()
     :placeholder="t('editor.preformatted.placeholder')"
     :selected="selected"
     toolbar
-    text-class="font-mono text-sm rounded-md border border-default bg-elevated"
+    text-class="font-mono text-help rounded-md border border-default bg-elevated"
   />
 </template>

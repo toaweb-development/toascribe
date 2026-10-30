@@ -34,7 +34,7 @@ const props = withDefaults(
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div class="flex min-w-0 flex-col gap-1">
             <p v-if="props.eyebrow" class="text-help text-muted">{{ props.eyebrow }}</p>
-            <h1 class="text-page-title font-semibold text-highlighted">{{ props.heading ?? props.title }}</h1>
+            <h1 class="text-page-title font-semibold text-heading">{{ props.heading ?? props.title }}</h1>
           </div>
           <div v-if="$slots.actions" class="flex flex-wrap items-center gap-3">
             <slot name="actions" />

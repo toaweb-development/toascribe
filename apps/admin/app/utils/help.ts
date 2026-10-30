@@ -28,5 +28,10 @@ export function helpPage(path: string): string {
 
 /** The address of the page on GitHub, at the version's tag. */
 export function helpUrl(path: string, version: string): string {
-  return `https://github.com/${RELEASE_REPOSITORY}/blob/v${version}/docs/user/${helpPage(path)}.md`
+  return docsUrl(helpPage(path), version)
+}
+
+/** A page of the user documentation by name (`installasjon`), at the version's tag. */
+export function docsUrl(page: string, version: string): string {
+  return `https://github.com/${RELEASE_REPOSITORY}/blob/v${version}/docs/user/${page}.md`
 }

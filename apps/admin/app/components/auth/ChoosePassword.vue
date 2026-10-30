@@ -62,13 +62,13 @@ async function onSubmit(event: FormSubmitEvent<{ password: string }>) {
 <template>
   <div v-if="checked && token === undefined" class="flex flex-col gap-6">
     <AuthMessage kind="error" focus>{{ error ?? $t('error.invalidToken') }}</AuthMessage>
-    <UButton :to="{ path: '/login', query: { action: 'lostpassword' } }" size="xl" block class="min-h-11">
+    <UButton :to="{ path: '/login', query: { action: 'lostpassword' } }" size="xl" block class="min-h-control">
       {{ $t('auth.choose.newLink') }}
     </UButton>
   </div>
 
   <div v-else class="flex flex-col gap-6">
-    <p class="text-base text-default">
+    <p class="text-body text-default">
       {{ mode === 'reset' ? $t('auth.choose.introReset') : $t('auth.choose.introSet') }}
     </p>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
@@ -84,7 +84,7 @@ async function onSubmit(event: FormSubmitEvent<{ password: string }>) {
     >
       <AuthNewPasswordFields v-model="state.password" v-model:visible="visible" />
 
-      <UButton type="submit" size="xl" block class="min-h-11" :loading="submitting">
+      <UButton type="submit" size="xl" block class="min-h-control" :loading="submitting">
         {{ $t('auth.choose.submit') }}
       </UButton>
     </UForm>

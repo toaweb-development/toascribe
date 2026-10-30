@@ -15,7 +15,7 @@ const focusable = useFocusableBlock(() => props.block.id)
       tabindex="0"
       role="group"
       :aria-label="t('blocks.nextpage')"
-      class="flex items-center gap-3 rounded py-2 text-xs font-semibold text-muted uppercase outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      class="flex items-center gap-3 rounded py-2 text-badge font-semibold text-muted uppercase outline-none focus-visible:ring-2 focus-visible:ring-primary"
       @focus="focusable.onFocus"
     >
       <span class="flex-1 border-t-2 border-dashed border-accented" aria-hidden="true" />

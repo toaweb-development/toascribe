@@ -78,7 +78,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
         <AuthPasswordInput v-model="state.password" v-model:visible="visible" autocomplete="current-password" />
       </UFormField>
       <UCheckbox v-model="state.remember" size="lg" :label="$t('auth.login.remember')" />
-      <UButton type="submit" size="xl" block class="min-h-11" :loading="submitting">{{
+      <UButton type="submit" size="xl" block class="min-h-control" :loading="submitting">{{
         $t('auth.login.submit')
       }}</UButton>
     </UForm>

@@ -115,8 +115,10 @@ async function confirmDelete(): Promise<void> {
 <template>
   <AdminPage id="users-delete" :title="$t('users.delete.title')">
     <section v-if="!mayDelete" aria-labelledby="users-delete-denied" class="flex max-w-prose flex-col gap-3">
-      <h2 id="users-delete-denied" class="text-xl font-semibold text-highlighted">{{ $t('users.denied.title') }}</h2>
-      <p class="text-base text-default">{{ $t('users.delete.denied') }}</p>
+      <h2 id="users-delete-denied" class="text-card-title font-semibold text-heading">
+        {{ $t('users.denied.title') }}
+      </h2>
+      <p class="text-body text-default">{{ $t('users.delete.denied') }}</p>
     </section>
     <UAlert
       v-else-if="error || !user"
@@ -127,10 +129,10 @@ async function confirmDelete(): Promise<void> {
       :title="$t('users.delete.notFound')"
     />
     <form v-else class="flex max-w-2xl flex-col gap-6" @submit.prevent="confirmDelete">
-      <p class="text-base text-default">{{ $t('users.delete.intro') }}</p>
-      <p class="font-medium text-highlighted">{{ user.username }} ({{ user.email }})</p>
+      <p class="text-body text-default">{{ $t('users.delete.intro') }}</p>
+      <p class="font-medium text-heading">{{ user.username }} ({{ user.email }})</p>
       <fieldset v-if="user.contentCount > 0" class="flex flex-col gap-3">
-        <legend class="mb-2 font-semibold text-highlighted">
+        <legend class="mb-2 font-semibold text-heading">
           {{ $t('users.delete.contentQuestion', user.contentCount) }}
         </legend>
         <URadioGroup v-model="choice" :items="choiceItems" />
@@ -156,10 +158,10 @@ async function confirmDelete(): Promise<void> {
         :description="failure"
       />
       <div class="flex flex-wrap gap-3">
-        <UButton type="submit" color="error" size="lg" class="min-h-11" :loading="saving">
+        <UButton type="submit" color="error" size="lg" class="min-h-control" :loading="saving">
           {{ $t('users.delete.submit') }}
         </UButton>
-        <UButton to="/users" color="neutral" variant="outline" size="lg" class="min-h-11">
+        <UButton to="/users" color="neutral" variant="outline" size="lg" class="min-h-control">
           {{ $t('profile.cancel') }}
         </UButton>
       </div>

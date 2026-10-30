@@ -189,7 +189,7 @@ async function publish(): Promise<void> {
       <UButton
         v-if="mayEdit && loaded"
         size="lg"
-        class="min-h-11"
+        class="min-h-control"
         :loading="saving"
         :label="$t('appearance.customize.publish')"
         @click="publish"
@@ -197,8 +197,8 @@ async function publish(): Promise<void> {
     </template>
 
     <section v-if="!mayEdit" aria-labelledby="customize-denied" class="flex max-w-prose flex-col gap-3">
-      <h2 id="customize-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
-      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+      <h2 id="customize-denied" class="text-card-title font-semibold text-heading">{{ $t('appearance.denied') }}</h2>
+      <p class="text-body text-default">{{ $t('content.denied.text') }}</p>
     </section>
     <div v-else class="flex flex-col gap-6 lg:flex-row lg:items-start">
       <div class="flex w-full flex-col gap-6 lg:w-96 lg:shrink-0">
@@ -213,10 +213,10 @@ async function publish(): Promise<void> {
           :title="$t('appearance.customize.failed')"
           :description="failure"
         />
-        <p v-if="!loaded && !loadFailed" class="text-sm text-muted">{{ $t('appearance.customize.loading') }}</p>
+        <p v-if="!loaded && !loadFailed" class="text-help text-muted">{{ $t('appearance.customize.loading') }}</p>
         <template v-if="loaded">
           <fieldset class="flex flex-col gap-4">
-            <legend class="mb-2 text-lg font-semibold text-highlighted">
+            <legend class="mb-2 text-card-title font-semibold text-heading">
               {{ $t('appearance.customize.identity') }}
             </legend>
             <template v-if="loaded.mayEditIdentity">
@@ -242,7 +242,7 @@ async function publish(): Promise<void> {
           </fieldset>
 
           <fieldset v-if="Object.keys(colors).length > 0" class="flex flex-col gap-4">
-            <legend class="mb-2 text-lg font-semibold text-highlighted">
+            <legend class="mb-2 text-card-title font-semibold text-heading">
               {{ $t('appearance.customize.colors') }}
             </legend>
             <div
@@ -253,12 +253,12 @@ async function publish(): Promise<void> {
               <UFormField :label="spec.name" :name="`color-${slug}`">
                 <UInput v-model="colors[slug]" type="color" size="xl" class="w-24" />
               </UFormField>
-              <code class="pb-3 text-sm text-muted">{{ colors[slug] }}</code>
+              <code class="pb-3 text-help text-muted">{{ colors[slug] }}</code>
               <UButton
                 color="neutral"
                 variant="ghost"
                 size="sm"
-                class="min-h-11"
+                class="min-h-control"
                 :aria-label="$t('appearance.customize.resetNamed', { name: spec.name })"
                 :label="$t('appearance.customize.reset')"
                 @click="resetColor(String(slug))"
@@ -267,7 +267,7 @@ async function publish(): Promise<void> {
           </fieldset>
 
           <fieldset v-if="Object.keys(fonts).length > 0" class="flex flex-col gap-4">
-            <legend class="mb-2 text-lg font-semibold text-highlighted">
+            <legend class="mb-2 text-card-title font-semibold text-heading">
               {{ $t('appearance.customize.fonts') }}
             </legend>
             <UFormField
@@ -281,7 +281,7 @@ async function publish(): Promise<void> {
           </fieldset>
 
           <fieldset v-if="reading" class="flex flex-col gap-3">
-            <legend class="mb-2 text-lg font-semibold text-highlighted">
+            <legend class="mb-2 text-card-title font-semibold text-heading">
               {{ $t('settings.reading.frontShows') }}
             </legend>
             <URadioGroup v-model="reading.show_on_front" :items="shows" />
@@ -293,11 +293,13 @@ async function publish(): Promise<void> {
                 <USelect v-model="postsPage" :items="withNone" size="xl" class="w-full" />
               </UFormField>
             </div>
-            <p class="text-sm text-toned">{{ $t('appearance.customize.frontHelp') }}</p>
+            <p class="text-help text-secondary">{{ $t('appearance.customize.frontHelp') }}</p>
           </fieldset>
 
           <fieldset v-if="loaded.mayEditCss" class="flex flex-col gap-2">
-            <legend class="mb-2 text-lg font-semibold text-highlighted">{{ $t('appearance.customize.css') }}</legend>
+            <legend class="mb-2 text-card-title font-semibold text-heading">
+              {{ $t('appearance.customize.css') }}
+            </legend>
             <UFormField :help="$t('appearance.customize.cssHelp')" name="custom-css">
               <UTextarea
                 v-model="customCss"
@@ -312,7 +314,7 @@ async function publish(): Promise<void> {
         </template>
       </div>
       <section aria-labelledby="customize-preview" class="flex min-w-0 flex-1 flex-col gap-2">
-        <h2 id="customize-preview" class="text-lg font-semibold text-highlighted">
+        <h2 id="customize-preview" class="text-card-title font-semibold text-heading">
           {{ $t('appearance.customize.preview') }}
         </h2>
         <iframe

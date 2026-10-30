@@ -29,7 +29,7 @@ onBeforeUnmount(() => editor.unregisterFocus(props.block.id, handler))
       :aria-label="t('editor.code.label')"
       :placeholder="t('editor.code.placeholder')"
       class="w-full"
-      :ui="{ base: 'font-mono text-sm' }"
+      :ui="{ base: 'font-mono text-help' }"
       maxlength="100000"
     />
   </div>

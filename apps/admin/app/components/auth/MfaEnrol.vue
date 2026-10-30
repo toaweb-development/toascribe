@@ -117,25 +117,25 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
 </script>
 
 <template>
-  <div v-if="step === 'starting'" role="status" class="text-base text-default">{{ $t('auth.enrol.starting') }}</div>
+  <div v-if="step === 'starting'" role="status" class="text-body text-default">{{ $t('auth.enrol.starting') }}</div>
 
   <div v-else-if="step === 'failed'" class="flex flex-col gap-6">
     <AuthMessage kind="error" focus>{{ error }}</AuthMessage>
-    <UButton size="xl" block class="min-h-11" @click="start">{{ $t('auth.enrol.retry') }}</UButton>
+    <UButton size="xl" block class="min-h-control" @click="start">{{ $t('auth.enrol.retry') }}</UButton>
     <UButton
       v-if="profile"
       color="neutral"
       variant="outline"
       size="xl"
       block
-      class="min-h-11"
+      class="min-h-control"
       @click="emit('cancel')"
       >{{ $t('auth.enrol.cancel') }}</UButton
     >
   </div>
 
   <div v-else-if="step === 'scan'" class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ profile ? $t('auth.enrol.introProfile') : $t('auth.enrol.intro') }}</p>
+    <p class="text-body text-default">{{ profile ? $t('auth.enrol.introProfile') : $t('auth.enrol.intro') }}</p>
     <!-- Prettier writes a void element with a slash, which this rule forbids: the two disagree, so the rule is off for this tag. -->
     <!-- eslint-disable vue/html-self-closing -->
     <img
@@ -148,8 +148,8 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
     />
     <!-- eslint-enable vue/html-self-closing -->
     <div>
-      <p class="text-sm text-toned">{{ $t('auth.enrol.keyLabel') }}</p>
-      <p class="font-mono text-base break-all text-highlighted select-all">{{ groupedSecret }}</p>
+      <p class="text-help text-secondary">{{ $t('auth.enrol.keyLabel') }}</p>
+      <p class="font-mono text-body break-all text-heading select-all">{{ groupedSecret }}</p>
     </div>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
     <UForm
@@ -182,7 +182,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
       >
         <AuthPasswordInput v-model="state.password" v-model:visible="passwordVisible" autocomplete="current-password" />
       </UFormField>
-      <UButton type="submit" size="xl" block class="min-h-11" :loading="submitting">{{
+      <UButton type="submit" size="xl" block class="min-h-control" :loading="submitting">{{
         profile ? $t('auth.enrol.submitProfile') : $t('auth.enrol.submit')
       }}</UButton>
       <UButton
@@ -191,7 +191,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
         variant="outline"
         size="xl"
         block
-        class="min-h-11"
+        class="min-h-control"
         @click="emit('cancel')"
         >{{ $t('auth.enrol.cancel') }}</UButton
       >
@@ -203,7 +203,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
     <UButton
       size="xl"
       block
-      class="min-h-11 print:hidden"
+      class="min-h-control print:hidden"
       :class="{ 'opacity-60': !saved }"
       :aria-disabled="!saved"
       :aria-describedby="saved ? undefined : 'finish-hint'"
@@ -211,6 +211,8 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
     >
       {{ $t('auth.enrol.finish') }}
     </UButton>
-    <p v-if="!saved" id="finish-hint" class="text-sm text-toned print:hidden">{{ $t('auth.enrol.finishHint') }}</p>
+    <p v-if="!saved" id="finish-hint" class="text-help text-secondary print:hidden">
+      {{ $t('auth.enrol.finishHint') }}
+    </p>
   </div>
 </template>

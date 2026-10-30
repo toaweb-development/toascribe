@@ -153,9 +153,9 @@ function next() {
 
 <template>
   <div class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ $t('setup.check.intro') }}</p>
+    <p class="text-body text-default">{{ $t('setup.check.intro') }}</p>
 
-    <p role="status" class="text-sm text-toned">{{ announcement }}</p>
+    <p role="status" class="text-help text-secondary">{{ announcement }}</p>
 
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
 
@@ -168,32 +168,32 @@ function next() {
           aria-hidden="true"
         />
         <div class="min-w-0 flex-1">
-          <p class="text-base font-semibold text-highlighted">
+          <p class="text-body font-semibold text-heading">
             {{ row.title }}
-            <span class="ml-1 text-sm font-normal text-toned">
+            <span class="ml-1 text-help font-normal text-secondary">
               <template v-if="row.level === 'ok'">{{ $t('setup.check.level.ok') }}</template>
               <template v-else-if="row.level === 'problem'">{{ $t('setup.check.level.problem') }}</template>
               <template v-else-if="row.level === 'warning'">{{ $t('setup.check.level.warning') }}</template>
               <template v-else>{{ $t('setup.check.level.info') }}</template>
             </span>
           </p>
-          <p class="mt-1 text-base break-words text-default">{{ row.text }}</p>
+          <p class="mt-1 text-body break-words text-default">{{ row.text }}</p>
         </div>
       </li>
     </ul>
 
-    <p v-if="check && !passed" id="check-blocked" class="text-base text-default">{{ $t('setup.check.blocked') }}</p>
+    <p v-if="check && !passed" id="check-blocked" class="text-body text-default">{{ $t('setup.check.blocked') }}</p>
 
     <div class="flex flex-wrap gap-2">
-      <UButton color="neutral" variant="outline" size="xl" class="min-h-11" @click="emit('back')">{{
+      <UButton color="neutral" variant="outline" size="xl" class="min-h-control" @click="emit('back')">{{
         $t('setup.nav.back')
       }}</UButton>
-      <UButton color="neutral" variant="outline" size="xl" class="min-h-11" :loading="pending" @click="load">{{
+      <UButton color="neutral" variant="outline" size="xl" class="min-h-control" :loading="pending" @click="load">{{
         $t('setup.check.again')
       }}</UButton>
       <UButton
         size="xl"
-        class="min-h-11"
+        class="min-h-control"
         :aria-disabled="!passed"
         :aria-describedby="check && !passed ? 'check-blocked' : undefined"
         @click="next"

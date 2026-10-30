@@ -81,7 +81,7 @@ const discourage = computed({
   >
     <template v-if="data">
       <fieldset class="flex flex-col gap-3">
-        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.reading.frontShows') }}</legend>
+        <legend class="mb-2 font-semibold text-heading">{{ $t('settings.reading.frontShows') }}</legend>
         <URadioGroup v-model="form.show_on_front" :items="shows" />
         <div v-if="form.show_on_front === 'page'" class="flex flex-col gap-3 ps-6">
           <UFormField :label="$t('settings.reading.frontPage')" name="page_on_front">
@@ -99,12 +99,12 @@ const discourage = computed({
         <UInput v-model.number="form.posts_per_rss" type="number" min="1" max="100" size="xl" class="w-full sm:w-40" />
       </UFormField>
       <fieldset class="flex flex-col gap-2">
-        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.reading.feedShows') }}</legend>
+        <legend class="mb-2 font-semibold text-heading">{{ $t('settings.reading.feedShows') }}</legend>
         <URadioGroup v-model="form.rss_use_excerpt" :items="feedKinds" />
       </fieldset>
       <fieldset class="flex flex-col gap-4">
-        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.reading.sharing') }}</legend>
-        <p class="text-sm text-toned">{{ $t('settings.reading.sharingHelp') }}</p>
+        <legend class="mb-2 font-semibold text-heading">{{ $t('settings.reading.sharing') }}</legend>
+        <p class="text-help text-secondary">{{ $t('settings.reading.sharingHelp') }}</p>
         <ContentFeaturedImage
           v-model="form.seo_default_image"
           :label="$t('settings.reading.defaultImage')"
@@ -137,13 +137,13 @@ const discourage = computed({
           >
             <USelect v-model="person" :items="personChoices" size="xl" class="w-full sm:w-80" />
           </UFormField>
-          <p v-if="people.length === 0" class="text-sm text-muted">{{ $t('settings.reading.noPeople') }}</p>
+          <p v-if="people.length === 0" class="text-help text-muted">{{ $t('settings.reading.noPeople') }}</p>
         </div>
       </fieldset>
       <fieldset class="flex flex-col gap-2">
-        <legend class="mb-2 font-semibold text-highlighted">{{ $t('settings.reading.visibility') }}</legend>
+        <legend class="mb-2 font-semibold text-heading">{{ $t('settings.reading.visibility') }}</legend>
         <UCheckbox v-model="discourage" :label="$t('settings.reading.discourage')" />
-        <p class="text-sm text-toned">{{ $t('settings.reading.discourageHelp') }}</p>
+        <p class="text-help text-secondary">{{ $t('settings.reading.discourageHelp') }}</p>
       </fieldset>
     </template>
   </SettingsScreen>

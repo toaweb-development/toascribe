@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// «Aktivitet» (M1.8, K-033; WordPress' Activity widget): the posts that will be published soon and the ones published last, five of
-// each, through the content list, so the account sees only what the list would show it. Comments come with phase 3; there are none
-// to show before then. For accounts that can write posts (`edit_posts`), as WordPress' list needs.
+// «Aktivitet» (M1.8, K-033; WordPress' Activity widget), as «Blekk» draws it (M2.1): the posts that will be published soon and the
+// ones published last, five of each, in one list with the time in mono and a badge for the state. Through the content list, so the
+// account sees only what the list would show it. Comments come with phase 3; there are none to show before then. For accounts that
+// can write posts (`edit_posts`), as WordPress' list needs.
 import type { ContentListItem } from '@toascribe/shared'
 
 const contentApi = useContentApi()
@@ -15,52 +16,59 @@ const { data, status, error, refresh } = await useAsyncData('dashboard:activity'
   return { soon: soon.items, recent: recent.items, timeZone: recent.timeZone }
 })
 
+const rows = computed(() => [
+  ...(data.value?.soon ?? []).map((item) => ({ item, part: 'soon' as const })),
+  ...(data.value?.recent ?? []).map((item) => ({ item, part: 'recent' as const })),
+])
+
 const format = computed(
   () =>
     new Intl.DateTimeFormat(locale.value, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
       timeZone: data.value?.timeZone ?? 'UTC',
     }),
 )
 const when = (item: ContentListItem): string =>
   item.publishedAt === null ? '' : format.value.format(new Date(item.publishedAt))
+const title = (item: ContentListItem) => (item.title === '' ? t('dashboard.activity.untitled') : item.title)
 </script>
 
 <template>
   <UCard as="section" aria-labelledby="activity-heading" :aria-busy="status === 'pending'">
     <template #header>
-      <h2 id="activity-heading" class="text-lg font-semibold text-highlighted">
+      <h2 id="activity-heading" class="text-card-title font-semibold text-heading">
         {{ $t('dashboard.activity.heading') }}
       </h2>
     </template>
 
-    <div v-if="data" class="flex flex-col gap-4">
-      <p v-if="data.soon.length === 0 && data.recent.length === 0" class="text-base text-default">
+    <div v-if="data">
+      <p v-if="rows.length === 0" class="text-body text-secondary">
         {{ $t('dashboard.activity.empty') }}
       </p>
-      <template v-for="part in ['soon', 'recent'] as const" :key="part">
-        <section v-if="data[part].length > 0" :aria-labelledby="`activity-${part}`">
-          <h3 :id="`activity-${part}`" class="text-base font-semibold text-highlighted">
-            {{ ACTIVITY_PARTS[part](t) }}
-          </h3>
-          <ul class="mt-1 flex flex-col">
-            <li v-for="item in data[part]" :key="item.id" class="flex flex-col gap-x-3 sm:flex-row sm:items-center">
-              <span class="text-sm text-toned sm:w-44 sm:shrink-0">{{ when(item) }}</span>
-              <ULink
-                v-if="item.can.edit"
-                :to="`/posts/${item.id}`"
-                class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
-              >
-                {{ item.title === '' ? $t('dashboard.activity.untitled') : item.title }}
-              </ULink>
-              <span v-else class="inline-flex min-h-11 items-center lg:min-h-8">
-                {{ item.title === '' ? $t('dashboard.activity.untitled') : item.title }}
-              </span>
-            </li>
-          </ul>
-        </section>
-      </template>
+      <ul v-else class="-my-2 flex flex-col divide-y divide-divider">
+        <li
+          v-for="{ item, part } in rows"
+          :key="`${part}:${item.id}`"
+          class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2"
+        >
+          <time :datetime="item.publishedAt ?? undefined" class="w-32 shrink-0 font-mono text-help text-secondary">
+            {{ when(item) }}
+          </time>
+          <span class="min-w-0 flex-1 text-body text-heading">
+            <ULink v-if="item.can.edit" :to="`/posts/${item.id}`" class="text-accent-text hover:underline">
+              {{ title(item) }}
+            </ULink>
+            <template v-else>{{ title(item) }}</template>
+            {{ ' ' }}{{ ACTIVITY_PARTS[part](t) }}
+          </span>
+          <UBadge :color="part === 'soon' ? 'info' : 'success'" variant="subtle" class="rounded-full">
+            {{ ACTIVITY_BADGES[part](t) }}
+          </UBadge>
+        </li>
+      </ul>
     </div>
 
     <div v-else-if="status === 'pending'" class="flex flex-col gap-2" aria-hidden="true">
@@ -79,7 +87,7 @@ const when = (item: ContentListItem): string =>
         <p>{{ $t('dashboard.activity.failed.text') }}</p>
       </template>
       <template #actions>
-        <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="() => refresh()">
+        <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="() => refresh()">
           {{ $t('dashboard.activity.failed.retry') }}
         </UButton>
       </template>

@@ -100,10 +100,10 @@ async function submit() {
       </form>
     </template>
     <template #footer>
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="emit('close', false)">
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="emit('close', false)">
         {{ $t('content.quickEdit.cancel') }}
       </UButton>
-      <UButton type="submit" form="screen-options" size="lg" class="min-h-11" :loading="saving">
+      <UButton type="submit" form="screen-options" size="lg" class="min-h-control" :loading="saving">
         {{ $t('content.screenOptions.apply') }}
       </UButton>
     </template>

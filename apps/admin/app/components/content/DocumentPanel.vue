@@ -71,10 +71,10 @@ const template = computed({
 </script>
 
 <template>
-  <fieldset :disabled="readOnly" class="flex flex-col gap-5">
-    <section :aria-labelledby="`${uid}-summary`" class="flex flex-col gap-3">
-      <h3 :id="`${uid}-summary`" class="font-semibold text-highlighted">{{ t('editor.document.summary') }}</h3>
-      <p class="text-sm text-toned">{{ t('content.editor.status', { status: statusText }) }}</p>
+  <fieldset :disabled="readOnly" class="flex flex-col divide-y divide-divider">
+    <section :aria-labelledby="`${uid}-summary`" class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
+      <h3 :id="`${uid}-summary`" class="text-body font-semibold text-heading">{{ t('editor.document.summary') }}</h3>
+      <p class="text-help text-secondary">{{ t('content.editor.status', { status: statusText }) }}</p>
       <URadioGroup v-model="form.visibility" :legend="t('editor.document.visibility')" :items="visibilityItems" />
       <UFormField
         v-if="form.visibility === 'password'"
@@ -86,7 +86,7 @@ const template = computed({
       </UFormField>
 
       <USwitch v-if="rights.publish" v-model="scheduled" :label="t('editor.document.chooseTime')" />
-      <p v-if="rights.publish && !scheduled" class="text-sm text-toned">{{ t('editor.document.immediately') }}</p>
+      <p v-if="rights.publish && !scheduled" class="text-help text-secondary">{{ t('editor.document.immediately') }}</p>
       <UFormField v-if="rights.publish && scheduled" :label="t('editor.document.publishAt')" :name="`${uid}-publish`">
         <UInput v-model="form.publishAt" type="datetime-local" class="w-full" />
       </UFormField>
@@ -119,21 +119,21 @@ const template = computed({
       <USwitch v-model="form.commentsOpen" :label="t('editor.document.comments')" />
     </section>
 
-    <section v-if="isPost" :aria-labelledby="`${uid}-terms`" class="flex flex-col gap-3">
-      <h3 :id="`${uid}-terms`" class="font-semibold text-highlighted">{{ t('editor.document.terms') }}</h3>
+    <section v-if="isPost" :aria-labelledby="`${uid}-terms`" class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
+      <h3 :id="`${uid}-terms`" class="text-body font-semibold text-heading">{{ t('editor.document.terms') }}</h3>
       <ContentCategoryTree v-model="form.categories" :terms="categories" :legend="t('editor.document.categories')" />
       <UFormField :label="t('editor.document.tags')" :help="t('editor.document.tagsHelp')" :name="`${uid}-tags`">
         <UInput v-model="form.tags" class="w-full" />
       </UFormField>
     </section>
 
-    <section :aria-labelledby="`${uid}-featured`" class="flex flex-col gap-3">
-      <h3 :id="`${uid}-featured`" class="font-semibold text-highlighted">{{ t('editor.featured.title') }}</h3>
+    <section :aria-labelledby="`${uid}-featured`" class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
+      <h3 :id="`${uid}-featured`" class="text-body font-semibold text-heading">{{ t('editor.featured.title') }}</h3>
       <ContentFeaturedImage v-model="form.featuredMediaId" :label="t('editor.featured.title')" />
     </section>
 
-    <section :aria-labelledby="`${uid}-excerpt`" class="flex flex-col gap-2">
-      <h3 :id="`${uid}-excerpt`" class="font-semibold text-highlighted">{{ t('editor.document.excerpt') }}</h3>
+    <section :aria-labelledby="`${uid}-excerpt`" class="flex flex-col gap-2 py-4 first:pt-0 last:pb-0">
+      <h3 :id="`${uid}-excerpt`" class="text-body font-semibold text-heading">{{ t('editor.document.excerpt') }}</h3>
       <UFormField
         :label="t('editor.document.excerpt')"
         :help="t('editor.document.excerptHelp')"
@@ -143,8 +143,10 @@ const template = computed({
       </UFormField>
     </section>
 
-    <section v-if="!isPost" :aria-labelledby="`${uid}-page`" class="flex flex-col gap-3">
-      <h3 :id="`${uid}-page`" class="font-semibold text-highlighted">{{ t('editor.document.pageAttributes') }}</h3>
+    <section v-if="!isPost" :aria-labelledby="`${uid}-page`" class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
+      <h3 :id="`${uid}-page`" class="text-body font-semibold text-heading">
+        {{ t('editor.document.pageAttributes') }}
+      </h3>
       <UFormField :label="t('content.quickEdit.parent')" :name="`${uid}-parent`">
         <USelect v-model="parent" :items="parentItems" class="w-full" />
       </UFormField>
@@ -156,8 +158,8 @@ const template = computed({
       </UFormField>
     </section>
 
-    <section :aria-labelledby="`${uid}-seo`" class="flex flex-col gap-3">
-      <h3 :id="`${uid}-seo`" class="font-semibold text-highlighted">{{ t('editor.seo.heading') }}</h3>
+    <section :aria-labelledby="`${uid}-seo`" class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
+      <h3 :id="`${uid}-seo`" class="text-body font-semibold text-heading">{{ t('editor.seo.heading') }}</h3>
       <ContentSeoPanel
         v-model="form.seo"
         :title="form.title"
@@ -172,7 +174,7 @@ const template = computed({
       icon="i-lucide-trash-2"
       color="error"
       variant="outline"
-      class="min-h-11 self-start"
+      class="min-h-control self-start"
       :label="t('editor.document.trash')"
       @click="emit('trash')"
     />

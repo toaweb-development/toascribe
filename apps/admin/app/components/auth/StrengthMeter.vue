@@ -23,7 +23,7 @@ const filled = computed(() => (props.password === '' ? 0 : Math.max(1, strength.
         :class="index <= filled ? SEGMENT_COLOURS[strength] : 'bg-accented'"
       />
     </div>
-    <p class="text-sm text-toned" aria-live="polite">
+    <p class="text-help text-secondary" aria-live="polite">
       <span v-if="strength === 0">{{ $t('auth.strength.tooShort') }}</span>
       <span v-else-if="strength === 1">{{ $t('auth.strength.weak') }}</span>
       <span v-else-if="strength === 2">{{ $t('auth.strength.fair') }}</span>

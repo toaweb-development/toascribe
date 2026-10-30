@@ -124,7 +124,9 @@ async function remove(folder: MediaFolderItem): Promise<void> {
             <USelect v-model="parent" :items="parentItems()" size="xl" class="w-full" />
           </UFormField>
           <div>
-            <UButton type="submit" size="lg" class="min-h-11" :loading="adding">{{ $t('media.folders.add') }}</UButton>
+            <UButton type="submit" size="lg" class="min-h-control" :loading="adding">{{
+              $t('media.folders.add')
+            }}</UButton>
           </div>
         </form>
 
@@ -138,7 +140,7 @@ async function remove(folder: MediaFolderItem): Promise<void> {
           :description="failure"
         />
 
-        <p v-if="list.length === 0" class="text-sm text-toned">{{ $t('media.folders.empty') }}</p>
+        <p v-if="list.length === 0" class="text-help text-secondary">{{ $t('media.folders.empty') }}</p>
         <ul v-else class="flex flex-col divide-y divide-default rounded-md border border-default">
           <li v-for="folder in list" :key="folder.id" class="flex flex-col gap-2 p-3">
             <form v-if="editing === folder.id" class="flex flex-col gap-2" @submit.prevent="saveEdit(folder)">
@@ -149,23 +151,23 @@ async function remove(folder: MediaFolderItem): Promise<void> {
                 <USelect v-model="editParent" :items="parentItems(folder.id)" size="xl" class="w-full" />
               </UFormField>
               <div class="flex gap-2">
-                <UButton type="submit" size="lg" class="min-h-11">{{ $t('content.quickEdit.update') }}</UButton>
-                <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="editing = undefined">
+                <UButton type="submit" size="lg" class="min-h-control">{{ $t('content.quickEdit.update') }}</UButton>
+                <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="editing = undefined">
                   {{ $t('content.quickEdit.cancel') }}
                 </UButton>
               </div>
             </form>
             <div v-else class="flex flex-wrap items-center justify-between gap-2">
-              <span class="min-w-0 font-medium text-highlighted wrap-anywhere">
+              <span class="min-w-0 font-medium text-heading wrap-anywhere">
                 {{ '— '.repeat(folder.depth) }}{{ folder.name }}
-                <span class="text-sm font-normal text-toned">({{ folder.count }})</span>
+                <span class="text-help font-normal text-secondary">({{ folder.count }})</span>
               </span>
               <span v-if="props.mayOrganize" class="flex gap-1">
                 <UButton
                   size="sm"
                   color="neutral"
                   variant="ghost"
-                  class="min-h-11 lg:min-h-8"
+                  class="min-h-control"
                   :label="$t('content.actions.edit')"
                   :aria-label="$t('media.folders.editNamed', { name: folder.name })"
                   @click="startEdit(folder)"
@@ -174,7 +176,7 @@ async function remove(folder: MediaFolderItem): Promise<void> {
                   size="sm"
                   color="error"
                   variant="ghost"
-                  class="min-h-11 lg:min-h-8"
+                  class="min-h-control"
                   :label="$t('media.folders.delete')"
                   :aria-label="$t('media.folders.deleteNamed', { name: folder.name })"
                   @click="remove(folder)"
@@ -186,7 +188,7 @@ async function remove(folder: MediaFolderItem): Promise<void> {
       </div>
     </template>
     <template #footer>
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="emit('close', changed)">
+      <UButton color="neutral" variant="outline" size="lg" class="min-h-control" @click="emit('close', changed)">
         {{ $t('media.details.close') }}
       </UButton>
     </template>

@@ -99,7 +99,7 @@ function backToForm() {
 
 <template>
   <div v-if="stage === 'account'" class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ $t('setup.admin.intro') }}</p>
+    <p class="text-body text-default">{{ $t('setup.admin.intro') }}</p>
     <AuthMessage v-if="problem" kind="error" focus>{{ problem }}</AuthMessage>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
     <UForm
@@ -146,31 +146,38 @@ function backToForm() {
 
       <div class="flex flex-col gap-2">
         <AuthStrengthMeter :password="state.password" />
-        <UButton color="neutral" variant="outline" size="lg" class="min-h-11 self-start" @click="generate">
+        <UButton color="neutral" variant="outline" size="lg" class="min-h-control self-start" @click="generate">
           {{ $t('auth.choose.generate') }}
         </UButton>
-        <p v-if="generated" role="status" class="text-sm text-toned">{{ $t('auth.choose.generated') }}</p>
+        <p v-if="generated" role="status" class="text-help text-secondary">{{ $t('auth.choose.generated') }}</p>
       </div>
 
       <div class="flex flex-wrap gap-2">
-        <UButton color="neutral" variant="outline" size="xl" class="min-h-11" @click="emit('back')">{{
+        <UButton color="neutral" variant="outline" size="xl" class="min-h-control" @click="emit('back')">{{
           $t('setup.nav.back')
         }}</UButton>
-        <UButton type="submit" size="xl" class="min-h-11" :loading="pending">{{ $t('setup.admin.toKey') }}</UButton>
+        <UButton type="submit" size="xl" class="min-h-control" :loading="pending">{{
+          $t('setup.admin.toKey')
+        }}</UButton>
       </div>
     </UForm>
   </div>
 
   <div v-else class="flex flex-col gap-6">
     <SetupRecoveryKey v-model:saved="keySaved" :recovery-key="recoveryKey" :site-title="siteTitle" />
-    <p v-if="!keySaved" id="key-blocked" class="text-base text-default">{{ $t('setup.key.mustConfirm') }}</p>
+    <p v-if="!keySaved" id="key-blocked" class="text-body text-default">{{ $t('setup.key.mustConfirm') }}</p>
     <div class="flex flex-wrap gap-2">
-      <UButton color="neutral" variant="outline" size="xl" class="min-h-11" @click="backToForm">{{
+      <UButton color="neutral" variant="outline" size="xl" class="min-h-control" @click="backToForm">{{
         $t('setup.nav.back')
       }}</UButton>
-      <UButton size="xl" class="min-h-11" :aria-disabled="!keySaved" :aria-describedby="continueHint" @click="finish">{{
-        $t('setup.nav.next')
-      }}</UButton>
+      <UButton
+        size="xl"
+        class="min-h-control"
+        :aria-disabled="!keySaved"
+        :aria-describedby="continueHint"
+        @click="finish"
+        >{{ $t('setup.nav.next') }}</UButton
+      >
     </div>
   </div>
 </template>

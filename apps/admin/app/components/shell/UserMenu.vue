@@ -37,11 +37,18 @@ const label = computed(() => `${t('shell.bar.howdy', { name: name.value })}. ${t
       v-else
       type="button"
       class="flex min-h-control w-full items-center gap-3 rounded-menu px-2 py-2 text-start text-sidebar-text hover:bg-sidebar-active focus-visible:outline-sidebar-focus"
-      :aria-label="label"
+      :aria-label="props.collapsed ? label : undefined"
     >
-      <UAvatar :alt="name" size="md" class="shrink-0" :ui="{ root: 'bg-accent-weak', fallback: 'text-accent-text' }" />
+      <!-- The name is the visible text with «Hei, » before it (WCAG 2.5.3: what is seen is part of the name); the picture is not read. -->
+      <UAvatar
+        :alt="name"
+        size="md"
+        class="shrink-0"
+        aria-hidden="true"
+        :ui="{ root: 'bg-accent-weak', fallback: 'text-accent-text' }"
+      />
       <span v-if="!props.collapsed" class="flex min-w-0 flex-col">
-        <span class="truncate font-medium">{{ name }}</span>
+        <span class="truncate font-medium"><span class="sr-only">{{ $t('shell.bar.howdyPrefix') }} </span>{{ name }}</span>
         <span class="truncate text-help text-sidebar-muted">{{ role }}</span>
       </span>
     </button>

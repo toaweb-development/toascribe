@@ -17,7 +17,7 @@ const { t } = useI18n()
       enter="none"
       :label="t('editor.quote.citation')"
       :placeholder="t('editor.quote.citation')"
-      text-class="text-sm text-muted"
+      text-class="text-help text-muted"
     />
   </div>
 </template>

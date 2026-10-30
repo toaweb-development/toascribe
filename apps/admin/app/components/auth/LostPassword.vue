@@ -40,7 +40,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
 
 <template>
   <div class="flex flex-col gap-6">
-    <p class="text-base text-default">{{ $t('auth.lost.intro') }}</p>
+    <p class="text-body text-default">{{ $t('auth.lost.intro') }}</p>
     <AuthMessage v-if="error" :key="failures" kind="error" focus>{{ error }}</AuthMessage>
     <UForm
       :state="state"
@@ -62,7 +62,7 @@ async function onSubmit(event: FormSubmitEvent<typeof state>) {
           class="w-full"
         />
       </UFormField>
-      <UButton type="submit" size="xl" block class="min-h-11" :loading="submitting">{{
+      <UButton type="submit" size="xl" block class="min-h-control" :loading="submitting">{{
         $t('auth.lost.submit')
       }}</UButton>
     </UForm>
