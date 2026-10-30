@@ -1,5 +1,3 @@
-import { fileURLToPath } from 'node:url'
-
 import type { Locator, Page } from '@playwright/test'
 
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
@@ -217,7 +215,7 @@ test('a list stacks its rows on a phone: title, status and date, the actions, an
   await expect(table.getByRole('columnheader', { name: 'Dato' })).toBeHidden()
   const row = table.getByRole('row').nth(1)
   await expect(row.getByRole('checkbox')).toBeVisible()
-  await expect(row.getByText(/^(Publisert|Sist endret|Planlagt)$/)).toBeVisible()
+  await expect(row.getByText(/^(Publisert|Sist endret|Planlagt)$/).filter({ visible: true })).toBeVisible()
   await expect(row.getByRole('list', { name: /^Handlinger for / })).toHaveCSS('opacity', '1')
   // Nothing scrolls sideways: the table fits its box.
   const frame = page.getByRole('region', { name: 'Innleggsliste' })
@@ -268,12 +266,38 @@ function dynamicParts(page: Page): Locator[] {
   ]
 }
 
+/**
+ * What changes from run to run on the dashboard, and with it the height of a card, is taken out of the picture before it is taken:
+ * text that only changes is made invisible (the layout stays), lists whose length changes are removed. Through the CSSOM, which the
+ * admin's CSP allows (an injected stylesheet, Playwright's `stylePath`, is refused, as it should be).
+ */
+async function steadyDashboard(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const hide = [
+      'main h1',
+      'main p:has(+ h1)',
+      "[aria-labelledby='stats-heading'] li > span",
+      "[aria-labelledby='health-heading'] [aria-hidden='true']",
+      "[aria-labelledby='health-heading'] p",
+      "[aria-labelledby='health-heading'] .rounded-full",
+      "[aria-labelledby='version-heading'] p",
+      "[aria-labelledby='notices-heading'] li",
+    ]
+    const remove = [
+      "[aria-labelledby='health-heading'] ul",
+      "[aria-labelledby='activity-heading'] ul",
+      "[aria-labelledby='quick-draft-list']",
+    ]
+    for (const element of document.querySelectorAll<HTMLElement>(hide.join(','))) element.style.visibility = 'hidden'
+    for (const element of document.querySelectorAll<HTMLElement>(remove.join(','))) element.style.display = 'none'
+  })
+}
+
 const SNAPSHOT = {
   fullPage: true,
   animations: 'disabled',
   caret: 'hide',
   maxDiffPixelRatio: 0.002,
-  stylePath: fileURLToPath(new URL('./blekk-snapshot.css', import.meta.url)),
 } as const
 
 for (const scheme of ['light', 'dark'] as const) {
@@ -284,9 +308,11 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.reload()
       await expect(dashboardHeading(page)).toBeVisible()
       await expect(page.getByRole('region', { name: 'Hurtigutkast' })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Nettstedshelse' }).getByRole('link')).toBeVisible()
+      await steadyDashboard(page)
       await expect(page).toHaveScreenshot(`dashboard-${scheme}.png`, {
         ...SNAPSHOT,
-        // The greeting, the counts, the checks and the lists change from run to run: blekk-snapshot.css takes them out.
+        // The greeting, the counts, the checks and the lists change from run to run: steadyDashboard took them out.
         mask: dynamicParts(page),
       })
     })
