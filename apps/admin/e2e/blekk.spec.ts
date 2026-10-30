@@ -248,7 +248,8 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(page.getByLabel('Tittel', { exact: true })).toBeVisible()
       await expect(page).toHaveScreenshot(`editor-${scheme}.png`, {
         ...SNAPSHOT,
-        mask: [page.getByRole('complementary', { name: 'Innstillinger' }).getByRole('combobox')],
+        // The author is this run's account.
+        mask: [page.locator('#editor-sidebar').getByText(admin.username)],
       })
     })
 
@@ -259,7 +260,12 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(page.getByRole('heading', { level: 1, name: 'Generelle innstillinger' })).toBeVisible()
       await expect(page).toHaveScreenshot(`settings-${scheme}.png`, {
         ...SNAPSHOT,
-        mask: [...dynamicParts(page), page.locator('main input, main [role="combobox"], main textarea')],
+        // Other specs change these settings, and the administrator's address is a new one each run.
+        mask: [
+          ...dynamicParts(page),
+          page.locator('main input, main [role="combobox"], main textarea, main [role="checkbox"]'),
+          page.getByText(/^Adressen nå er /),
+        ],
       })
     })
   })
