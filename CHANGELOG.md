@@ -22,8 +22,8 @@ that heading keep the format they were written in (Keep a Changelog).
   cards; «Hurtigutkast» and «Aktivitet» are on the left, «Nettstedshelse» and a new «Versjon» card on the right.
 - «Avvis» on a notice hides it for you only, not for every administrator; a notice that comes back is shown again.
 - The lists (posts, pages, categories, tags, the media library's list view and users) share one look: views with their counts
-  as tabs, the filters on one line, and a table with each row's actions under the pointer or the keyboard. On a narrow screen the
-  table scrolls sideways in its own box.
+  as tabs, the filters on one line, and a table with each row's actions under the pointer or the keyboard. On a phone the rows
+  stack, as in WordPress: the title, then the status and the date, and the actions always shown under them, with the checkbox kept.
 - The editor has the whole window: a narrow top bar with the way back, the text as a sheet, a dark toolbar on the chosen block,
   and the settings in groups on the right.
 - The sign-in screens and the setup wizard have a page of their own with the logo.
