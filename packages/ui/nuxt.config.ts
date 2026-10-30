@@ -7,4 +7,11 @@ export default defineNuxtConfig({
   // The fonts are self-hosted from @fontsource-variable (blekk.css). @nuxt/fonts, which Nuxt UI turns on, resolves font names
   // through remote providers (Google and others) by default: off, so no build or page ever asks another host for a font.
   ui: { fonts: false },
+
+  // The contrast check, its report and the tests are TypeScript too: typecheck them with the layer (nuxi typecheck reads only what
+  // Nuxt's generated configs include).
+  typescript: {
+    tsConfig: { include: ['../src/**/*.ts', '../test/**/*.ts'] },
+    nodeTsConfig: { include: ['../vitest.config.ts'] },
+  },
 })

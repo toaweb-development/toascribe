@@ -569,7 +569,7 @@
     },
     "personal": {
       "title": "Personal Options",
-      "scheme": "Admin theme",
+      "scheme": "Admin Theme",
       "schemeSaved": "The theme “{name}” has been saved.",
       "toolbar": "Toolbar",
       "toolbarLabel": "Show Toolbar when viewing site",
@@ -587,7 +587,7 @@
     },
     "scheme": {
       "system": "System",
-      "systemHint": "Light or dark, as your system.",
+      "systemHint": "Light or dark, following your system.",
       "light": "Light",
       "lightHint": "Always light.",
       "dark": "Dark",

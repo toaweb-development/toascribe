@@ -74,6 +74,8 @@ catalog:
   # The admin's fonts, Geist and Geist Mono (M2.1, «Blekk»), self-hosted woff2 in the build: OFL-1.1 (checked 2026-10-30).
   '@fontsource-variable/geist': ^5.3.0
   '@fontsource-variable/geist-mono': ^5.3.0
+  # The class merge Nuxt UI runs (its own dependency, the same range): packages/ui tests that Blekk's names survive it.
+  tailwind-merge: ^3.7.0
   vue: ^3.5.44
   vue-tsc: ^3.3.13
   '@nuxtjs/i18n': ^10.6.0 # screen text goes through i18n from the start (bokmål only for now); 10.x supports Nuxt 4

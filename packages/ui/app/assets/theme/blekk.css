@@ -4,5 +4,3 @@
 @import './tokens/typography.css';
 @import './tokens/effects.css';
 @import './styles/components.css';
-
-@source '../../components';

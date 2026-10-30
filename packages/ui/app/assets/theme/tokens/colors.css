@@ -37,6 +37,8 @@
   --blekk-sidebar-muted: #9aa1ae;
   --blekk-sidebar-active: #252935;
   --blekk-sidebar-border: #2a2e38;
+  /* The focus ring on the dark side menu: the accent would be 2.5:1 there in the light theme. */
+  --blekk-sidebar-focus: #8ea0ff;
 }
 
 .dark {
@@ -69,6 +71,7 @@
   --blekk-sidebar-muted: #9aa1ae;
   --blekk-sidebar-active: #1e2230;
   --blekk-sidebar-border: #22262f;
+  --blekk-sidebar-focus: #8ea0ff;
 }
 
 /* 2. Nuxt UI's roles. The same in both themes: they point at the tokens, and the tokens change. `primary` is the accent as text and
@@ -128,4 +131,5 @@
   --color-sidebar-muted: var(--blekk-sidebar-muted);
   --color-sidebar-active: var(--blekk-sidebar-active);
   --color-sidebar-line: var(--blekk-sidebar-border);
+  --color-sidebar-focus: var(--blekk-sidebar-focus);
 }

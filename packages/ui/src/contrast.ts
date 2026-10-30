@@ -40,7 +40,32 @@ export interface Pair {
   readonly bg: string
   readonly min: 3 | 4.5
   readonly use: string
+  /** The background is `bg` at this opacity over `under` (Nuxt UI's `bg-error/75` on hover, `bg-primary/10` behind a soft badge). */
+  readonly alpha?: number
+  readonly under?: string
 }
+
+/** `#rrggbb` at `alpha` over `#rrggbb`, as the browser blends it. */
+export function over(top: string, bottom: string, alpha: number): string {
+  const channelOf = (hex: string, at: number) => Number.parseInt(hex.slice(at, at + 2), 16)
+  return `#${[1, 3, 5]
+    .map((at) => Math.round(channelOf(top, at) * alpha + channelOf(bottom, at) * (1 - alpha)))
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('')}`
+}
+
+/**
+ * Nuxt UI's roles as Blekk fills them (tokens/colors.css): the colour of `bg-<role>` and `text-<role>`. `--ui-text-inverted` is the
+ * surface. A filled primary button takes the accent fill (app.config.ts), not the primary role.
+ */
+const ROLES = {
+  primary: 'accent-text',
+  success: 'success-text',
+  warning: 'warning-text',
+  error: 'danger',
+  info: 'accent-text',
+} as const
+const INVERTED = 'surface'
 
 const TEXT_ON_SURFACES = ['bg', 'surface', 'sunken', 'topbar'] as const
 const TEXTS = ['text', 'heading', 'secondary', 'muted', 'accent-text', 'danger'] as const
@@ -69,6 +94,28 @@ export const PAIRS: readonly Pair[] = [
   { fg: 'accent', bg: 'bg', min: 3, use: 'the focus ring on the page' },
   { fg: 'warning-dot', bg: 'warning-bg', min: 3, use: 'the dot of a warning' },
   { fg: 'warning-dot', bg: 'surface', min: 3, use: 'the dot of a warning on a card' },
+  { fg: 'muted', bg: 'divider', min: 4.5, use: 'quiet text on an elevated row (--ui-bg-elevated)' },
+  { fg: 'accent-hover', bg: 'accent-weak', min: 4.5, use: 'a selected link under the pointer' },
+  { fg: 'on-accent', bg: 'accent', alpha: 0.9, under: 'surface', min: 4.5, use: 'a filled button under the pointer' },
+  { fg: 'sidebar-focus', bg: 'sidebar', min: 3, use: 'the focus ring in the side menu' },
+  { fg: 'sidebar-focus', bg: 'sidebar-active', min: 3, use: 'the focus ring on the active menu item' },
+  { fg: 'accent-text', bg: 'surface', min: 3, use: 'the focus ring on a card' },
+  { fg: 'accent-text', bg: 'bg', min: 3, use: 'the focus ring on the page' },
+  // What Nuxt UI draws from the roles: a filled button of a role (text-inverted on bg-<role>, /90 under the pointer, app.config.ts),
+  // and a soft badge or alert (text-<role> on bg-<role>/10) on a card and on the page.
+  ...Object.entries(ROLES).flatMap(([role, token]) => [
+    { fg: INVERTED, bg: token, min: 4.5 as const, use: `a filled ${role} button` },
+    {
+      fg: INVERTED,
+      bg: token,
+      alpha: 0.9,
+      under: 'surface',
+      min: 4.5 as const,
+      use: `a filled ${role} button under the pointer`,
+    },
+    { fg: token, bg: token, alpha: 0.1, under: 'surface', min: 4.5 as const, use: `a soft ${role} badge on a card` },
+    { fg: token, bg: token, alpha: 0.1, under: 'bg', min: 4.5 as const, use: `a soft ${role} badge on the page` },
+  ]),
 ]
 
 export interface Measured extends Pair {
@@ -83,7 +130,9 @@ export function measure(css: string): Measured[] {
   return (['light', 'dark'] as const).flatMap((theme) =>
     PAIRS.map((pair) => {
       const fg = themes[theme][pair.fg] ?? '#000000'
-      const bg = themes[theme][pair.bg] ?? '#000000'
+      const plain = themes[theme][pair.bg] ?? '#000000'
+      const bg =
+        pair.alpha === undefined ? plain : over(plain, themes[theme][pair.under ?? 'surface'] ?? '#000000', pair.alpha)
       const ratio = contrast(fg, bg)
       return { ...pair, theme, ratio, ok: ratio >= pair.min }
     }),

@@ -1,10 +1,17 @@
 /*
- * «Blekk» (M2.1): the one ring of focus, on everything that takes it: 2 px in the accent, 2 px out, and never removed (WCAG 2.4.7,
- * 2.4.11). Nuxt UI's own focus classes draw a ring too; the outline is there for what they do not cover (a plain link, a summary).
+ * «Blekk» (M2.1): the one ring of focus, on everything that takes it: 2 px in the accent as text (the stronger of the two accents,
+ * and Nuxt UI's own rings use it too), 2 px out, never removed (WCAG 2.4.7, 2.4.11). The side menu sets its own (--blekk-sidebar-focus):
+ * the accent is too dark on it in the light theme. And the body's type (base 14 px, 1.5).
  */
 @layer base {
   :focus-visible {
-    outline: 2px solid var(--blekk-accent);
+    outline: 2px solid var(--blekk-accent-text);
     outline-offset: 2px;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
   }
 }

@@ -3,13 +3,15 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, it } from 'vitest'
 
-import { PAIRS, contrast, measure, tokensOf } from '../src/contrast.ts'
+import { PAIRS, contrast, measure, over, tokensOf } from '../src/contrast.ts'
 
 const css = readFileSync(new URL('../app/assets/theme/tokens/colors.css', import.meta.url), 'utf8')
 
 describe('the colour tokens', () => {
   it('are all there in both themes', () => {
-    const names = new Set(PAIRS.flatMap((pair) => [pair.fg, pair.bg]))
+    const names = new Set(
+      PAIRS.flatMap((pair) => [pair.fg, pair.bg, ...(pair.under === undefined ? [] : [pair.under])]),
+    )
     for (const theme of [':root', '.dark'] as const) {
       const tokens = tokensOf(css, theme)
       for (const name of names) expect(tokens[name], `${theme} --blekk-${name}`).toMatch(/^#[0-9a-f]{6}$/)
@@ -29,5 +31,6 @@ describe('the colour tokens', () => {
   it('measures as WCAG does', () => {
     expect(contrast('#000000', '#ffffff')).toBeCloseTo(21, 5)
     expect(contrast('#777777', '#ffffff')).toBeCloseTo(4.48, 2)
+    expect(over('#000000', '#ffffff', 0.5)).toBe('#808080')
   })
 })
