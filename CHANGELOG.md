@@ -6,6 +6,15 @@ All notable changes to this project are documented here, newest first. Versionin
 `scripts/release.sh` refuses to release without it. The notes collect under `## [Unreleased]` until then. The sections below
 that heading keep the format they were written in (Keep a Changelog).
 
+## [Unreleased]
+
+### Fixed
+
+- The public site no longer follows the reader's dark mode: the theme's colours (theme.json and «Tilpass») are one light palette,
+  and with a dark system the site's title, the post's title and the notice of an embed waiting for a click were light on light or
+  dark on dark. The space before the author and the category in the line under a post («av …», «i …») is back, and a post's title
+  is now clearly larger than the headings in its text.
+
 ## 0.7.0 — 2026-10-28
 
 **Phase 1 is complete.** toascribe now does the everyday work of a WordPress

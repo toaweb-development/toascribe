@@ -17,7 +17,7 @@ const { content, blocks, preview } = useContent()
       <ScribePageLinks :content="content" />
     </template>
     <p v-if="content.tags.length > 0" class="theme-tags">
-      <span>{{ t('theme.tags') }} </span>
+      <span>{{ `${t('theme.tags')} ` }}</span>
       <template v-for="(term, index) in content.tags" :key="term.id">
         <span v-if="index > 0">, </span><a :href="term.path">{{ term.name }}</a>
       </template>

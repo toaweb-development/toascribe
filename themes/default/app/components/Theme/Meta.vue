@@ -24,14 +24,14 @@ const date = computed(() => {
     <time :datetime="item.publishedAt">{{ date }}</time>
     <template v-if="item.authors.length > 0">
       <span aria-hidden="true"> · </span>
-      <span>{{ t('theme.by') }} </span>
+      <span>{{ `${t('theme.by')} ` }}</span>
       <template v-for="(author, index) in item.authors" :key="author.id">
         <span v-if="index > 0">, </span><a :href="author.path">{{ author.displayName }}</a>
       </template>
     </template>
     <template v-if="item.categories.length > 0">
       <span aria-hidden="true"> · </span>
-      <span>{{ t('theme.in') }} </span>
+      <span>{{ `${t('theme.in')} ` }}</span>
       <template v-for="(term, index) in item.categories" :key="term.id">
         <span v-if="index > 0">, </span><a :href="term.path">{{ term.name }}</a>
       </template>

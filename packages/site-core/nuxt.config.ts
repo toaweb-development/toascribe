@@ -14,6 +14,11 @@ export default defineNuxtConfig({
     cacheValkeyUrl: '',
   },
 
+  // No light/dark switch on the public site (M2.1): a theme's colours come from theme.json and «Tilpass» (one palette, light by
+  // default), and with the system's dark mode Nuxt UI's tokens would turn the text light on the theme's own light background (titles
+  // white on white, muted text dark on the dark card). A theme that wants a dark look sets its colours; the admin keeps its switch.
+  ui: { colorMode: false },
+
   // The layer's own messages: a layer's message file is only read when the layer lists it.
   i18n: { locales: [{ code: 'nb', language: 'nb', file: 'nb.json' }] },
 })

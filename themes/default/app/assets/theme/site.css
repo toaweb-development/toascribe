@@ -107,7 +107,8 @@
   gap: 2.5rem;
 }
 .theme-entry-title {
-  font-size: clamp(1.75rem, 1.2rem + 2.5vw, 2.5rem);
+  /* At least 1.5 times the content's h2 (1.5rem), so the title stands above every heading in the post (M2.1). */
+  font-size: clamp(2.25rem, 1.75rem + 2vw, 3rem);
   font-weight: 700;
   line-height: 1.2;
   color: var(--ui-text-highlighted);
