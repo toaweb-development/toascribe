@@ -222,6 +222,10 @@ jobs:
     name: Publish the images
     needs: build
     runs-on: ubuntu-latest
+    # Waits for Tor's approval (M2.1): the environment `release` on GitHub has him as required reviewer and lets only `v*` tags
+    # deploy to it. Nothing is published until he approves the run; `build` (build, scan, artifact) runs without waiting.
+    environment:
+      name: release
     timeout-minutes: 20
     permissions:
       contents: read
