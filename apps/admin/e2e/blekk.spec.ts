@@ -182,6 +182,29 @@ test.describe('the keyboard', () => {
   })
 })
 
+test('the editor title shows the focus ring', async ({ page }) => {
+  await signIn(page, admin)
+  await page.goto('/admin/posts/new')
+  const title = page.getByLabel('Tittel', { exact: true })
+  await title.focus()
+  await expect(title).toHaveCSS('outline-style', 'solid')
+  await expect(title).toHaveCSS('outline-width', '2px')
+})
+
+test('a flyout the pointer opens leaves the keyboard focus where it was', async ({ page }) => {
+  test.skip(isPhone(), 'below lg the menu is a slide-over')
+  await signIn(page, admin)
+  await page.goto('/admin/settings/general')
+  const field = page.getByLabel('Nettstedstittel')
+  await field.focus()
+  await page.getByRole('navigation', { name: 'Hovedmeny' }).getByRole('link', { name: 'Innlegg', exact: true }).hover()
+  await expect(page.getByRole('list', { name: 'Innlegg' })).toBeVisible()
+  await expect(field).toBeFocused()
+  await page.mouse.move(900, 600)
+  await expect(page.getByRole('list', { name: 'Innlegg' })).toHaveCount(0)
+  await expect(field).toBeFocused()
+})
+
 test('the component overview is not in a production build', async ({ page }) => {
   await signIn(page, admin)
   const answer = await page.request.get('/admin/_ui')

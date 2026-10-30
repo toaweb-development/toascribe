@@ -5,10 +5,11 @@ import type { ContentListColumn, ContentListItem, ContentTypeKey } from '@toascr
 
 import type { ContentSortColumn, ContentView } from '~/utils/content-query'
 
-// The items, as WordPress' edit.php: a table from `md` (checkbox, Tittel with its states and the row actions, Forfatter, Dato) and,
-// below `md`, one entry per item in a list with the same facts, actions and checkbox (workflows §29: no table that scrolls sideways).
-// Both are drawn from the same rows and one selection; the one that does not fit is `display: none`. The row actions are always
-// shown, not only on hover as in WordPress, so they can be reached by touch and are read by a screen reader with their item.
+// The items, as WordPress' edit.php: a table (checkbox, Tittel with its states and the row actions, Forfatter, Dato) at every width, in
+// «Blekk»'s table box (M2.1): on a narrow screen it scrolls sideways inside the box, as Tor's M2.1 brief asks (it replaces the narrow
+// list that workflows §29 asked for). The row actions show under a fine pointer on hover or when one of them has the focus, as the
+// sketch and WordPress have it; on a touch screen they are always shown, and a screen reader reads them with their item either way
+// (they are only transparent, never hidden).
 const props = defineProps<{
   type: ContentTypeKey
   items: readonly ContentListItem[]

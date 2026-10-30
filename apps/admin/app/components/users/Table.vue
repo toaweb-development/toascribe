@@ -5,11 +5,10 @@ import type { UserListItem } from '@toascribe/shared'
 
 import type { UsersSortColumn, UsersView } from '~/utils/users-query'
 
-// The users, as WordPress' users.php: a table from `md` (checkbox, Brukernavn, Navn, E-post, Rolle, Innlegg) and, below `md`, one entry
-// in a list for each account with the same facts and the same checkbox (workflows §29, ui-system §8.2: no table that scrolls sideways).
-// Both are drawn from the same rows and one selection; the one that does not fit is `display: none`, so a screen reader meets each
-// account once. The table is hand-built because `UTable` has no second, narrow form of the same rows and its checkbox column would
-// be a second source for the selection (the checkboxes themselves are Nuxt UI's `UCheckbox`).
+// The users, as WordPress' users.php: a table (checkbox, Brukernavn, Navn, E-post, Rolle, Innlegg) at every width, in «Blekk»'s table
+// box (M2.1): on a narrow screen it scrolls sideways inside the box, as Tor's M2.1 brief asks (it replaces the narrow list that
+// ui-system §8.2 asked for). The table is hand-built so the checkbox column is the one source of the selection (the checkboxes
+// themselves are Nuxt UI's `UCheckbox`).
 const props = defineProps<{
   users: readonly UserListItem[]
   view: UsersView
@@ -163,7 +162,9 @@ const linkClass = 'text-accent-text hover:underline'
           </th>
           <td class="px-3 py-3 align-middle text-heading wrap-anywhere">{{ user.displayName }}</td>
           <td class="px-3 py-3 align-middle wrap-anywhere">
-            <a :href="`mailto:${user.email}`" :class="linkClass">{{ user.email }}</a>
+            <a :href="`mailto:${user.email}`" :class="[linkClass, 'inline-flex min-h-control items-center']">{{
+              user.email
+            }}</a>
           </td>
           <td class="px-3 py-3 align-middle text-heading">{{ rolesOf(user) }}</td>
           <td class="px-3 py-3 text-end align-middle font-mono text-heading">{{ user.postCount }}</td>

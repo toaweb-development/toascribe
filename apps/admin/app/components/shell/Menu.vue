@@ -21,15 +21,23 @@ const childId = (entry: AdminMenuEntry) => activeChildId(entry, route.path)
 // One floating menu at a time; the pointer opens it after a moment and closes it after leaving both the row and the menu.
 const open = ref<string>()
 let timer: ReturnType<typeof setTimeout> | undefined
+// A menu the pointer opened leaves the keyboard's focus where it was (someone typing in a field who moves the mouse over the menu
+// keeps typing there); one opened by a click or the keyboard takes the focus to its first link and gives it back on Escape.
+const byPointer = ref(false)
 function hover(id: string | undefined, delay: number): void {
   clearTimeout(timer)
   timer = setTimeout(() => {
+    if (id !== undefined && open.value !== id) byPointer.value = true
     open.value = id
   }, delay)
 }
 function setOpen(id: string, value: boolean): void {
   clearTimeout(timer)
+  if (value) byPointer.value = false
   open.value = value ? id : open.value === id ? undefined : open.value
+}
+function keepFocus(event: Event): void {
+  if (byPointer.value) event.preventDefault()
 }
 watch(
   () => route.fullPath,
@@ -58,7 +66,13 @@ const flyoutLinkClass =
         <UPopover
           v-if="props.collapsed"
           :open="open === entry.id"
-          :content="{ side: 'right', align: 'start', sideOffset: 8 }"
+          :content="{
+            side: 'right',
+            align: 'start',
+            sideOffset: 8,
+            onOpenAutoFocus: keepFocus,
+            onCloseAutoFocus: keepFocus,
+          }"
           @update:open="(value: boolean) => setOpen(entry.id, value)"
         >
           <button
@@ -110,7 +124,13 @@ const flyoutLinkClass =
             <UPopover
               v-if="entry.children.length > 0 && entry.id !== section"
               :open="open === entry.id"
-              :content="{ side: 'right', align: 'start', sideOffset: 12 }"
+              :content="{
+                side: 'right',
+                align: 'start',
+                sideOffset: 12,
+                onOpenAutoFocus: keepFocus,
+                onCloseAutoFocus: keepFocus,
+              }"
               @update:open="(value: boolean) => setOpen(entry.id, value)"
             >
               <button

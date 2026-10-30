@@ -389,7 +389,8 @@
     "site": {
       "visit": "Visit",
       "visitLabel": "Visit the site {site}"
-    }
+    },
+    "newTab": "(opens in a new tab)"
   },
   "menu": {
     "dashboard": "Dashboard",

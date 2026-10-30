@@ -7,6 +7,7 @@
  * 3. `@theme inline` makes utilities of the tokens Nuxt UI has no name for (bg-app, bg-surface, bg-sidebar, text-accent …).
  * test/contrast.test.ts reads this file and checks every pair in both themes. `.blekk-light` gives a part of a dark page the light
  * tokens, as `.dark` gives a part of a light page the dark ones: the component overview (/admin/_ui) shows both side by side.
+ * Inside `.blekk-light` on a dark page Nuxt UI's few `dark:` variants still apply: look at the overview's light half on a light page.
  */
 :root,
 .blekk-light {

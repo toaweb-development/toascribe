@@ -389,7 +389,8 @@
     "site": {
       "visit": "Vis",
       "visitLabel": "Vis nettstedet {site}"
-    }
+    },
+    "newTab": "(åpnes i en ny fane)"
   },
   "menu": {
     "dashboard": "Kontrollpanel",

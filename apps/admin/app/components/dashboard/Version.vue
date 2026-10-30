@@ -2,8 +2,6 @@
 // «Versjon» (M2.1, «Blekk»): the version that runs, whether it is the newest the last update check found (for `update_core`, as
 // «Oppdateringer» needs; others see the version only), and a link to the changelog of that version. The version comes from the
 // glance the dashboard loads.
-import { RELEASE_REPOSITORY } from '@toascribe/shared'
-
 const props = defineProps<{ version: string | undefined }>()
 
 const auth = useAuth()
@@ -18,11 +16,7 @@ const { data } = await useAsyncData('dashboard:updates', () => siteTools.updates
 })
 
 const check = computed(() => (data.value?.status?.ok === true ? data.value.status : undefined))
-const changelog = computed(() =>
-  props.version === undefined
-    ? undefined
-    : `https://github.com/${RELEASE_REPOSITORY}/blob/v${props.version}/CHANGELOG.md`,
-)
+const changelog = computed(() => (props.version === undefined ? undefined : changelogUrl(props.version)))
 </script>
 
 <template>
@@ -63,9 +57,10 @@ const changelog = computed(() =>
         v-else
         :to="changelog"
         target="_blank"
+        rel="noopener noreferrer"
         class="inline-flex min-h-control items-center self-start font-medium text-accent-text hover:underline"
       >
-        {{ $t('dashboard.version.changelog') }}
+        {{ $t('dashboard.version.changelog') }}<span class="sr-only"> {{ $t('shell.newTab') }}</span>
       </ULink>
     </div>
     <USkeleton v-else role="presentation" aria-hidden="true" aria-label="" class="h-5 w-40" />

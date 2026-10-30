@@ -532,7 +532,7 @@ const path = computed(() => (item.value === null ? '/' : item.value.shortLink))
                   autoresize
                   class="w-full"
                   :ui="{
-                    base: 'rounded-field p-0 text-editor-title font-bold text-heading placeholder:text-quiet focus:outline-2 focus:outline-offset-4 focus:outline-accent-text md:text-editor-title',
+                    base: 'rounded-field p-0 text-editor-title font-bold text-heading placeholder:text-quiet focus:outline-2 focus:outline-solid focus:outline-offset-4 focus:outline-accent-text md:text-editor-title',
                   }"
                   autocomplete="off"
                   :disabled="readOnly"

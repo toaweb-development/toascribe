@@ -142,9 +142,10 @@ const action = 'inline-flex min-h-control shrink-0 items-center rounded-field px
           v-else-if="fixUrl(notice)"
           :to="fixUrl(notice)"
           target="_blank"
+          rel="noopener noreferrer"
           :class="[action, warns ? 'text-warning-text' : 'text-accent-text']"
         >
-          {{ $t('dashboard.notices.fix') }}
+          {{ $t('dashboard.notices.fix') }}<span class="sr-only"> {{ $t('shell.newTab') }}</span>
         </ULink>
       </li>
 

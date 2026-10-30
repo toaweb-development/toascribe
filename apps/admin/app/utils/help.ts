@@ -35,3 +35,8 @@ export function helpUrl(path: string, version: string): string {
 export function docsUrl(page: string, version: string): string {
   return `https://github.com/${RELEASE_REPOSITORY}/blob/v${version}/docs/user/${page}.md`
 }
+
+/** CHANGELOG.md at the version's tag. */
+export function changelogUrl(version: string): string {
+  return `https://github.com/${RELEASE_REPOSITORY}/blob/v${version}/CHANGELOG.md`
+}
