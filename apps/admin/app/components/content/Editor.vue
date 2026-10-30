@@ -439,6 +439,7 @@ const path = computed(() => (item.value === null ? '/' : item.value.shortLink))
           variant="outline"
           icon="i-lucide-eye"
           :label="$t('content.actions.preview')"
+          :aria-label="$t('content.actions.preview')"
           :disabled="saving"
           :ui="{ label: 'hidden sm:inline' }"
           @click="preview"
@@ -530,7 +531,9 @@ const path = computed(() => (item.value === null ? '/' : item.value.shortLink))
                   :rows="1"
                   autoresize
                   class="w-full"
-                  :ui="{ base: 'p-0 text-editor-title font-bold text-heading placeholder:text-quiet' }"
+                  :ui="{
+                    base: 'rounded-field p-0 text-editor-title font-bold text-heading placeholder:text-quiet focus:outline-2 focus:outline-offset-4 focus:outline-accent-text md:text-editor-title',
+                  }"
                   autocomplete="off"
                   :disabled="readOnly"
                   :placeholder="$t('content.editor.titlePlaceholder')"

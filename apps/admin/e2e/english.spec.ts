@@ -28,7 +28,7 @@ test('Språk → English switches the admin at once and on every page after; bac
 
   // A new page, drawn by the server: in English from the first paint.
   await page.goto('/admin/')
-  await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible()
+  await expect(dashboardHeading(page)).toBeVisible()
   await expect(page.getByRole('region', { name: 'At a Glance' })).toBeVisible()
   await expect(page.getByRole('link', { name: /^Help/ })).toBeVisible()
   await expectNoAxeViolations(page, 'the dashboard in English')

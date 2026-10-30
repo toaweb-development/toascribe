@@ -31,7 +31,7 @@ const label = computed(() => `${t('shell.bar.howdy', { name: name.value })}. ${t
     :content="{ align: props.compact ? 'end' : 'start', side: props.compact ? 'bottom' : 'top' }"
   >
     <UButton v-if="props.compact" color="neutral" variant="ghost" class="rounded-full p-0" :aria-label="label">
-      <UAvatar :alt="name" size="md" :ui="{ fallback: 'text-default' }" />
+      <UAvatar :alt="name" size="md" aria-hidden="true" :ui="{ fallback: 'text-default' }" />
     </UButton>
     <button
       v-else
@@ -48,7 +48,9 @@ const label = computed(() => `${t('shell.bar.howdy', { name: name.value })}. ${t
         :ui="{ root: 'bg-accent-weak', fallback: 'text-accent-text' }"
       />
       <span v-if="!props.collapsed" class="flex min-w-0 flex-col">
-        <span class="truncate font-medium"><span class="sr-only">{{ $t('shell.bar.howdyPrefix') }} </span>{{ name }}</span>
+        <span class="truncate font-medium"
+          ><span class="sr-only">{{ $t('shell.bar.howdyPrefix') }} </span>{{ name }}</span
+        >
         <span class="truncate text-help text-sidebar-muted">{{ role }}</span>
       </span>
     </button>

@@ -33,7 +33,7 @@ test('make a category and a tag, put them on a post in quick edit, and filter th
   await page.getByLabel('Navn', { exact: true }).fill(category)
   await page.getByRole('button', { name: 'Legg til ny kategori' }).click()
   await expect(page.getByText('Kategori lagt til.')).toBeVisible()
-  await expect(page.getByRole('list', { name: 'Kategoriliste' }).getByText(category, { exact: true })).toBeVisible()
+  await expect(page.getByRole('table', { name: 'Kategoriliste' }).getByText(category, { exact: true })).toBeVisible()
   await expectNoAxeViolations(page, 'the categories screen')
 
   await page.goto('/admin/tags')

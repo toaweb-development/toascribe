@@ -155,10 +155,7 @@ test('a page under another page shows under it with «— », after a quick edit
 
   // The tree: the child right after its parent, with a dash.
   await expect(page.getByText(`— ${child}`).filter({ visible: true })).toBeVisible()
-  const titles = await page
-    .getByRole((page.viewportSize()?.width ?? 1280) < 768 ? 'listitem' : 'row')
-    .filter({ hasText: word })
-    .allInnerTexts()
+  const titles = await page.getByRole('row').filter({ hasText: word }).allInnerTexts()
   const parentIndex = titles.findIndex((text) => text.includes(parent) && !text.includes(`— ${child}`))
   const childIndex = titles.findIndex((text) => text.includes(`— ${child}`))
   expect(childIndex).toBe(parentIndex + 1)

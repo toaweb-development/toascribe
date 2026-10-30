@@ -376,7 +376,7 @@
       },
       "open": "Show the submenu of {name}"
     },
-    "home": ", to the dashboard",
+    "home": "– to the dashboard",
     "breadcrumbs": "Breadcrumbs",
     "new": {
       "button": "New",

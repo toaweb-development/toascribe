@@ -31,17 +31,13 @@ test.beforeEach(async () => {
   await resetLimits()
 })
 
-const isCompact = (page: Page): boolean => (page.viewportSize()?.width ?? 1280) < 768
-
 const viewsNav = (page: Page) => page.getByRole('navigation', { name: 'Brukere etter rolle' })
 const searchBox = (page: Page) => page.getByRole('searchbox', { name: 'Søk i brukere' })
 const count = (page: Page) => page.getByText(/^\d+ element(er)?$/)
 
-/** The accounts as rows: the body rows of the table from md, the entries of the list below it. */
+/** The accounts as rows: the body rows of the table, at every width since M2.1 (it scrolls sideways in its box on a phone). */
 function dataRows(page: Page) {
-  return isCompact(page)
-    ? page.getByRole('list', { name: 'Brukerliste' }).getByRole('listitem')
-    : page.getByRole('table', { name: 'Brukerliste' }).locator('tbody').getByRole('row')
+  return page.getByRole('table', { name: 'Brukerliste' }).locator('tbody').getByRole('row')
 }
 
 const rowOf = (page: Page, username: string) => dataRows(page).filter({ hasText: username })
@@ -90,16 +86,11 @@ const query = (page: Page, name: string) => new URL(page.url()).searchParams.get
 test('shows the views with their counts and filters by them', async ({ page }) => {
   await openUsers(page, admin)
 
-  // «Alle» is the current view, marked for assistive technology; the table is a table from md and a list below it.
+  // «Alle» is the current view, marked for assistive technology; the table is a table at every width.
   await expect(viewsNav(page).getByRole('link', { name: /^Alle \(\d+\)$/ })).toHaveAttribute('aria-current', 'page')
-  if (isCompact(page)) {
-    await expect(page.getByRole('table')).toHaveCount(0)
-    await expect(page.getByRole('list', { name: 'Brukerliste' })).toBeVisible()
-  } else {
-    await expect(page.getByRole('table', { name: 'Brukerliste' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'E-post' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'Innlegg' })).toBeVisible()
-  }
+  await expect(page.getByRole('table', { name: 'Brukerliste' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'E-post' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Innlegg' })).toBeVisible()
 
   const subscribers = await viewCount(page, 'Abonnent')
   expect(subscribers).toBeGreaterThan(0)
@@ -170,32 +161,20 @@ test('sorts by e-mail address both ways and marks the column', async ({ page }) 
 
   // Sorted by username, ascending, as WordPress starts.
   expect(await mine()).toEqual(ours)
-  if (isCompact(page)) {
-    await expect(
-      page.getByRole('navigation', { name: 'Sorter brukerne' }).getByRole('link', { name: /^Brukernavn/ }),
-    ).toHaveAttribute('aria-current', 'true')
-  } else {
-    await expect(page.getByRole('columnheader', { name: 'Brukernavn' })).toHaveAttribute('aria-sort', 'ascending')
-    await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'none')
-  }
+  await expect(page.getByRole('columnheader', { name: 'Brukernavn' })).toHaveAttribute('aria-sort', 'ascending')
+  await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'none')
 
-  const sortLink = isCompact(page)
-    ? page.getByRole('navigation', { name: 'Sorter brukerne' }).getByRole('link', { name: /^E-post/ })
-    : page.getByRole('columnheader', { name: 'E-post' }).getByRole('link')
+  const sortLink = page.getByRole('columnheader', { name: 'E-post' }).getByRole('link')
   await sortLink.click()
   await expect(page).toHaveURL(/orderby=email/)
   expect(query(page, 'order')).toBeNull() // ascending is the default and stays out of the address
   expect(await mine()).toEqual(ours)
-  if (!isCompact(page)) {
-    await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'ascending')
-  }
+  await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'ascending')
 
   await sortLink.click()
   await expect(page).toHaveURL(/order=desc/)
   await expect.poll(mine).toEqual([...ours].reverse())
-  if (!isCompact(page)) {
-    await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'descending')
-  }
+  await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'descending')
   // The sort is kept when another view is chosen, and the search with it.
   await viewsNav(page)
     .getByRole('link', { name: /^Abonnent \(/ })
@@ -215,9 +194,7 @@ test('keeps the state of the list in the address, through a reload and the back 
     await expect(viewsNav(page).getByRole('link', { name: /^Abonnent \(/ })).toHaveAttribute('aria-current', 'page')
     await expect(searchBox(page)).toHaveValue(subscriber.username)
     await expect(dataRows(page)).toHaveCount(1)
-    if (!isCompact(page)) {
-      await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'descending')
-    }
+    await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'descending')
   }
   await check()
   await page.reload()
@@ -459,7 +436,7 @@ test('does not show the users to an account that may not list them', async ({ pa
   await expect(page.getByRole('searchbox')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Endre', exact: true })).toHaveCount(0)
   await expectNoAxeViolations(page, 'the users page without access')
-  await page.getByRole('link', { name: 'Til kontrollpanelet' }).click()
+  await page.getByRole('link', { name: 'Til kontrollpanelet', exact: true }).click()
   await expect(dashboardHeading(page)).toBeVisible()
 })
 

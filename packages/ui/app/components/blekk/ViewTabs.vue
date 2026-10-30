@@ -26,14 +26,13 @@ const props = defineProps<{ items: readonly ViewTab[]; label: string }>()
           :class="item.current ? 'border-accent font-semibold text-heading' : 'border-transparent text-secondary'"
         >
           {{ item.label }}
-          <!-- Read as «Alle (12)»: the brackets are for the ear only. -->
-          <span
-            v-if="item.count !== undefined"
-            class="font-mono text-help"
-            :class="item.current ? 'text-secondary' : ''"
-          >
-            <span class="sr-only">(</span>{{ item.count }}<span class="sr-only">)</span>
-          </span>
+          <!-- Read as «Alle (12)»: one hidden text with the brackets, and the figure the eye sees hidden from the ear. -->
+          <template v-if="item.count !== undefined">
+            <span class="sr-only">({{ item.count }})</span>
+            <span aria-hidden="true" class="font-mono text-help" :class="item.current ? 'text-secondary' : ''">{{
+              item.count
+            }}</span>
+          </template>
         </NuxtLink>
       </li>
     </ul>
