@@ -234,192 +234,180 @@ const PAGE_BUTTON = 'min-h-11 min-w-11 lg:min-h-8 lg:min-w-8'
 </script>
 
 <template>
-  <UDashboardPanel :id="`terms-${taxonomy}`">
-    <template #header>
-      <UDashboardNavbar :title="words.title" />
-    </template>
+  <AdminPage :id="`terms-${taxonomy}`" :title="words.title">
+    <section v-if="!mayManage" aria-labelledby="terms-denied-heading" class="flex max-w-prose flex-col gap-3">
+      <h2 id="terms-denied-heading" class="text-xl font-semibold text-highlighted">{{ words.denied }}</h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
 
-    <template #body>
-      <section v-if="!mayManage" aria-labelledby="terms-denied-heading" class="flex max-w-prose flex-col gap-3">
-        <h2 id="terms-denied-heading" class="text-xl font-semibold text-highlighted">{{ words.denied }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    <div v-else class="grid w-full grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      <section aria-labelledby="terms-add-heading" class="flex flex-col gap-4">
+        <h2 id="terms-add-heading" class="text-lg font-semibold text-highlighted">{{ words.add }}</h2>
+        <form class="flex flex-col gap-4" @submit.prevent="add">
+          <UFormField :label="$t('terms.name')" name="name" :help="$t('terms.help.name')" :error="addError">
+            <UInput v-model="form.name" size="xl" class="w-full" autocomplete="off" :maxlength="TERM_NAME_MAX_LENGTH" />
+          </UFormField>
+          <UFormField :label="$t('terms.slug')" name="slug" :help="$t('terms.help.slug')">
+            <UInput v-model="form.slug" size="xl" class="w-full" autocomplete="off" />
+          </UFormField>
+          <UFormField v-if="isCategory" :label="$t('terms.parent')" name="parent" :help="$t('terms.help.parent')">
+            <USelect v-model="form.parent" :items="parentItems" size="xl" class="w-full" />
+          </UFormField>
+          <UFormField :label="$t('terms.description')" name="description" :help="$t('terms.help.description')">
+            <UTextarea v-model="form.about" :rows="4" class="w-full" />
+          </UFormField>
+          <div>
+            <UButton type="submit" size="lg" class="min-h-11" :loading="adding">{{ words.add }}</UButton>
+          </div>
+        </form>
       </section>
 
-      <div v-else class="grid w-full grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <section aria-labelledby="terms-add-heading" class="flex flex-col gap-4">
-          <h2 id="terms-add-heading" class="text-lg font-semibold text-highlighted">{{ words.add }}</h2>
-          <form class="flex flex-col gap-4" @submit.prevent="add">
-            <UFormField :label="$t('terms.name')" name="name" :help="$t('terms.help.name')" :error="addError">
-              <UInput
-                v-model="form.name"
+      <section aria-labelledby="terms-list-heading" class="flex min-w-0 flex-col gap-4">
+        <h2 id="terms-list-heading" class="sr-only">{{ words.caption }}</h2>
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <form class="flex flex-wrap items-end gap-2" @submit.prevent="applyBulk">
+            <UFormField :label="$t('content.bulk.label')" name="action">
+              <USelect
+                v-model="bulkAction"
+                :items="bulkItems"
+                :placeholder="$t('content.bulk.choose')"
                 size="xl"
-                class="w-full"
-                autocomplete="off"
-                :maxlength="TERM_NAME_MAX_LENGTH"
+                class="w-full sm:w-48"
               />
             </UFormField>
-            <UFormField :label="$t('terms.slug')" name="slug" :help="$t('terms.help.slug')">
-              <UInput v-model="form.slug" size="xl" class="w-full" autocomplete="off" />
-            </UFormField>
-            <UFormField v-if="isCategory" :label="$t('terms.parent')" name="parent" :help="$t('terms.help.parent')">
-              <USelect v-model="form.parent" :items="parentItems" size="xl" class="w-full" />
-            </UFormField>
-            <UFormField :label="$t('terms.description')" name="description" :help="$t('terms.help.description')">
-              <UTextarea v-model="form.about" :rows="4" class="w-full" />
-            </UFormField>
-            <div>
-              <UButton type="submit" size="lg" class="min-h-11" :loading="adding">{{ words.add }}</UButton>
-            </div>
+            <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11" :loading="busy">
+              {{ $t('content.bulk.apply') }}
+            </UButton>
           </form>
-        </section>
+          <form
+            role="search"
+            class="flex flex-wrap items-end gap-2"
+            @submit.prevent="router.push(locationFor({ search: searchText.trim() }))"
+          >
+            <div class="flex min-w-0 flex-col gap-1.5">
+              <label :for="`terms-search-${taxonomy}`" class="font-medium text-default">{{ words.search }}</label>
+              <UInput
+                :id="`terms-search-${taxonomy}`"
+                v-model="searchText"
+                type="search"
+                size="xl"
+                autocomplete="off"
+                icon="i-lucide-search"
+              />
+            </div>
+            <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
+              {{ words.search }}
+            </UButton>
+          </form>
+        </div>
 
-        <section aria-labelledby="terms-list-heading" class="flex min-w-0 flex-col gap-4">
-          <h2 id="terms-list-heading" class="sr-only">{{ words.caption }}</h2>
-          <div class="flex flex-wrap items-end justify-between gap-4">
-            <form class="flex flex-wrap items-end gap-2" @submit.prevent="applyBulk">
-              <UFormField :label="$t('content.bulk.label')" name="action">
-                <USelect
-                  v-model="bulkAction"
-                  :items="bulkItems"
-                  :placeholder="$t('content.bulk.choose')"
-                  size="xl"
-                  class="w-full sm:w-48"
+        <div role="status">
+          <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-circle-check" :title="report" />
+        </div>
+        <UAlert
+          v-if="failure || error"
+          color="error"
+          variant="subtle"
+          role="alert"
+          icon="i-lucide-triangle-alert"
+          :title="$t('content.actionFailed')"
+          :description="failure"
+        />
+
+        <p v-if="data" role="status" class="text-sm text-toned">
+          {{ $t('content.count', { n: data.total }, data.total) }}
+        </p>
+        <p v-if="data && items.length === 0" class="py-6 text-lg font-semibold text-highlighted">{{ words.empty }}</p>
+
+        <div v-else-if="data" :class="status === 'pending' ? 'opacity-60' : ''">
+          <label class="flex min-h-11 cursor-pointer items-center gap-3 text-base text-default">
+            <span :class="checkboxHitClass">
+              <UCheckbox size="lg" :model-value="allState" @update:model-value="toggleAll($event === true)" />
+            </span>
+            {{ $t('content.table.selectAll') }}
+          </label>
+          <ul
+            class="flex flex-col divide-y divide-default rounded-md border border-default"
+            :aria-label="words.caption"
+          >
+            <li v-for="term in items" :key="term.id" class="flex items-start gap-1 p-2">
+              <label v-if="!term.isDefault" :class="checkboxHitClass">
+                <UCheckbox
+                  size="lg"
+                  :model-value="selected.includes(term.id)"
+                  :aria-label="$t('content.table.select', { title: term.name })"
+                  @update:model-value="toggle(term.id, $event)"
                 />
-              </UFormField>
-              <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11" :loading="busy">
-                {{ $t('content.bulk.apply') }}
-              </UButton>
-            </form>
-            <form
-              role="search"
-              class="flex flex-wrap items-end gap-2"
-              @submit.prevent="router.push(locationFor({ search: searchText.trim() }))"
-            >
-              <div class="flex min-w-0 flex-col gap-1.5">
-                <label :for="`terms-search-${taxonomy}`" class="font-medium text-default">{{ words.search }}</label>
-                <UInput
-                  :id="`terms-search-${taxonomy}`"
-                  v-model="searchText"
-                  type="search"
-                  size="xl"
-                  autocomplete="off"
-                  icon="i-lucide-search"
-                />
+              </label>
+              <span v-else :class="checkboxHitClass" />
+              <div class="flex min-w-0 flex-1 flex-col gap-0.5 py-2 pe-1">
+                <p class="font-semibold text-highlighted wrap-anywhere">{{ label(term) }}</p>
+                <p v-if="term.description !== ''" class="text-sm text-default wrap-anywhere">
+                  {{ term.description }}
+                </p>
+                <p class="text-sm text-toned wrap-anywhere">
+                  {{ $t('terms.slug') }}: {{ term.slug }} ·
+                  <NuxtLink :to="postsLink(term)" class="text-primary underline underline-offset-4">
+                    {{ $t('terms.countLabel', { n: term.count }, term.count) }}
+                  </NuxtLink>
+                </p>
+                <ul class="flex flex-wrap gap-x-3" :aria-label="$t('content.actions.label', { title: term.name })">
+                  <li>
+                    <button
+                      type="button"
+                      :class="actionClass"
+                      :aria-label="$t('terms.editNamed', { name: term.name })"
+                      @click="openEdit(term, false)"
+                    >
+                      {{ $t('content.actions.edit') }}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      :class="actionClass"
+                      :aria-label="$t('content.actions.quickEditNamed', { title: term.name })"
+                      @click="openEdit(term, true)"
+                    >
+                      {{ $t('content.actions.quickEdit') }}
+                    </button>
+                  </li>
+                  <li v-if="!term.isDefault">
+                    <button
+                      type="button"
+                      :class="dangerClass"
+                      :aria-label="$t('terms.deleteNamed', { name: term.name })"
+                      @click="removeOne(term)"
+                    >
+                      {{ $t('terms.delete') }}
+                    </button>
+                  </li>
+                </ul>
               </div>
-              <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
-                {{ words.search }}
-              </UButton>
-            </form>
-          </div>
+            </li>
+          </ul>
+        </div>
 
-          <div role="status">
-            <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-circle-check" :title="report" />
-          </div>
-          <UAlert
-            v-if="failure || error"
-            color="error"
-            variant="subtle"
-            role="alert"
-            icon="i-lucide-triangle-alert"
-            :title="$t('content.actionFailed')"
-            :description="failure"
-          />
-
-          <p v-if="data" role="status" class="text-sm text-toned">
-            {{ $t('content.count', { n: data.total }, data.total) }}
-          </p>
-          <p v-if="data && items.length === 0" class="py-6 text-lg font-semibold text-highlighted">{{ words.empty }}</p>
-
-          <div v-else-if="data" :class="status === 'pending' ? 'opacity-60' : ''">
-            <label class="flex min-h-11 cursor-pointer items-center gap-3 text-base text-default">
-              <span :class="checkboxHitClass">
-                <UCheckbox size="lg" :model-value="allState" @update:model-value="toggleAll($event === true)" />
-              </span>
-              {{ $t('content.table.selectAll') }}
-            </label>
-            <ul
-              class="flex flex-col divide-y divide-default rounded-md border border-default"
-              :aria-label="words.caption"
-            >
-              <li v-for="term in items" :key="term.id" class="flex items-start gap-1 p-2">
-                <label v-if="!term.isDefault" :class="checkboxHitClass">
-                  <UCheckbox
-                    size="lg"
-                    :model-value="selected.includes(term.id)"
-                    :aria-label="$t('content.table.select', { title: term.name })"
-                    @update:model-value="toggle(term.id, $event)"
-                  />
-                </label>
-                <span v-else :class="checkboxHitClass" />
-                <div class="flex min-w-0 flex-1 flex-col gap-0.5 py-2 pe-1">
-                  <p class="font-semibold text-highlighted wrap-anywhere">{{ label(term) }}</p>
-                  <p v-if="term.description !== ''" class="text-sm text-default wrap-anywhere">
-                    {{ term.description }}
-                  </p>
-                  <p class="text-sm text-toned wrap-anywhere">
-                    {{ $t('terms.slug') }}: {{ term.slug }} ·
-                    <NuxtLink :to="postsLink(term)" class="text-primary underline underline-offset-4">
-                      {{ $t('terms.countLabel', { n: term.count }, term.count) }}
-                    </NuxtLink>
-                  </p>
-                  <ul class="flex flex-wrap gap-x-3" :aria-label="$t('content.actions.label', { title: term.name })">
-                    <li>
-                      <button
-                        type="button"
-                        :class="actionClass"
-                        :aria-label="$t('terms.editNamed', { name: term.name })"
-                        @click="openEdit(term, false)"
-                      >
-                        {{ $t('content.actions.edit') }}
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        :class="actionClass"
-                        :aria-label="$t('content.actions.quickEditNamed', { title: term.name })"
-                        @click="openEdit(term, true)"
-                      >
-                        {{ $t('content.actions.quickEdit') }}
-                      </button>
-                    </li>
-                    <li v-if="!term.isDefault">
-                      <button
-                        type="button"
-                        :class="dangerClass"
-                        :aria-label="$t('terms.deleteNamed', { name: term.name })"
-                        @click="removeOne(term)"
-                      >
-                        {{ $t('terms.delete') }}
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-            </ul>
-          </div>
-
-          <UPagination
-            v-if="data && data.totalPages > 1"
-            as="nav"
-            :aria-label="$t('content.pagination')"
-            :page="page"
-            :total="data.total"
-            :items-per-page="data.perPage"
-            :sibling-count="1"
-            show-edges
-            :to="(number: number) => locationFor({ page: number })"
-            :ui="{
-              list: 'flex-wrap',
-              item: PAGE_BUTTON,
-              prev: PAGE_BUTTON,
-              next: PAGE_BUTTON,
-              first: PAGE_BUTTON,
-              last: PAGE_BUTTON,
-            }"
-          />
-        </section>
-      </div>
-    </template>
-  </UDashboardPanel>
+        <UPagination
+          v-if="data && data.totalPages > 1"
+          as="nav"
+          :aria-label="$t('content.pagination')"
+          :page="page"
+          :total="data.total"
+          :items-per-page="data.perPage"
+          :sibling-count="1"
+          show-edges
+          :to="(number: number) => locationFor({ page: number })"
+          :ui="{
+            list: 'flex-wrap',
+            item: PAGE_BUTTON,
+            prev: PAGE_BUTTON,
+            next: PAGE_BUTTON,
+            first: PAGE_BUTTON,
+            last: PAGE_BUTTON,
+          }"
+        />
+      </section>
+    </div>
+  </AdminPage>
 </template>

@@ -359,7 +359,6 @@
   "shell": {
     "skipToContent": "Gå til hovedinnholdet",
     "bar": {
-      "visit": "Vis nettsted",
       "howdy": "Hei, {name}",
       "userMenu": "Brukermenyen din",
       "profile": "Rediger profil",
@@ -373,7 +372,22 @@
         "title": "Menyen kunne ikke lastes.",
         "text": "Du kan fortsatt bruke adressene direkte. Prøv å laste menyen på nytt.",
         "retry": "Prøv igjen"
-      }
+      },
+      "open": "Vis undermenyen til {name}"
+    },
+    "home": "Til kontrollpanelet",
+    "breadcrumbs": "Brødsmulesti",
+    "new": {
+      "button": "Ny",
+      "label": "Legg til nytt",
+      "post": "Innlegg",
+      "page": "Side",
+      "media": "Mediefil",
+      "user": "Bruker"
+    },
+    "site": {
+      "visit": "Vis",
+      "visitLabel": "Vis nettstedet {site}"
     }
   },
   "menu": {

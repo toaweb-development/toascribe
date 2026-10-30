@@ -318,282 +318,269 @@ async function saveLocations(): Promise<void> {
 </script>
 
 <template>
-  <UDashboardPanel id="appearance-menus">
-    <template #header>
-      <UDashboardNavbar :title="$t('appearance.menus.title')" />
-    </template>
-    <template #body>
-      <section v-if="!mayEdit" aria-labelledby="menus-denied" class="flex max-w-prose flex-col gap-3">
-        <h2 id="menus-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
-      </section>
-      <div v-else class="flex flex-col gap-6">
-        <UTabs v-model="tab" :items="tabs" :content="false" color="neutral" variant="link" class="w-full" />
-        <div role="status">
-          <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-circle-check" :title="report" />
-        </div>
-        <UAlert
-          v-if="failure"
-          color="error"
-          variant="subtle"
-          role="alert"
-          icon="i-lucide-triangle-alert"
-          :title="$t('appearance.menus.failed')"
-          :description="failure"
-        />
+  <AdminPage id="appearance-menus" :title="$t('appearance.menus.title')">
+    <section v-if="!mayEdit" aria-labelledby="menus-denied" class="flex max-w-prose flex-col gap-3">
+      <h2 id="menus-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
+    <div v-else class="flex flex-col gap-6">
+      <UTabs v-model="tab" :items="tabs" :content="false" color="neutral" variant="link" class="w-full" />
+      <div role="status">
+        <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-circle-check" :title="report" />
+      </div>
+      <UAlert
+        v-if="failure"
+        color="error"
+        variant="subtle"
+        role="alert"
+        icon="i-lucide-triangle-alert"
+        :title="$t('appearance.menus.failed')"
+        :description="failure"
+      />
 
-        <template v-if="tab === 'edit'">
-          <div class="flex flex-wrap items-end gap-3">
-            <UFormField v-if="menuChoices.length > 0" :label="$t('appearance.menus.choose')" name="menu-choose">
-              <USelect v-model="selectedId" :items="menuChoices" size="xl" class="w-full sm:w-72" />
+      <template v-if="tab === 'edit'">
+        <div class="flex flex-wrap items-end gap-3">
+          <UFormField v-if="menuChoices.length > 0" :label="$t('appearance.menus.choose')" name="menu-choose">
+            <USelect v-model="selectedId" :items="menuChoices" size="xl" class="w-full sm:w-72" />
+          </UFormField>
+          <form class="flex flex-wrap items-end gap-2" @submit.prevent="create">
+            <UFormField :label="$t('appearance.menus.newName')" name="menu-new">
+              <UInput v-model="newName" maxlength="200" size="xl" class="w-full sm:w-64" />
             </UFormField>
-            <form class="flex flex-wrap items-end gap-2" @submit.prevent="create">
-              <UFormField :label="$t('appearance.menus.newName')" name="menu-new">
-                <UInput v-model="newName" maxlength="200" size="xl" class="w-full sm:w-64" />
-              </UFormField>
-              <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">{{
-                $t('appearance.menus.create')
-              }}</UButton>
-            </form>
-          </div>
+            <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">{{
+              $t('appearance.menus.create')
+            }}</UButton>
+          </form>
+        </div>
 
-          <div v-if="menu" class="grid gap-6 lg:grid-cols-[18rem_1fr]">
-            <section aria-labelledby="menu-add" class="flex flex-col gap-4">
-              <h2 id="menu-add" class="text-lg font-semibold text-highlighted">{{ $t('appearance.menus.add') }}</h2>
-              <fieldset
-                v-for="kind in SOURCES"
-                :key="kind"
-                class="flex flex-col gap-2 rounded border border-default p-3"
+        <div v-if="menu" class="grid gap-6 lg:grid-cols-[18rem_1fr]">
+          <section aria-labelledby="menu-add" class="flex flex-col gap-4">
+            <h2 id="menu-add" class="text-lg font-semibold text-highlighted">{{ $t('appearance.menus.add') }}</h2>
+            <fieldset v-for="kind in SOURCES" :key="kind" class="flex flex-col gap-2 rounded border border-default p-3">
+              <legend class="px-1 font-semibold text-highlighted">{{ sourceLabel(kind) }}</legend>
+              <p v-if="(sources?.[kind] ?? []).length === 0" class="text-sm text-muted">
+                {{ $t('appearance.menus.none') }}
+              </p>
+              <div v-else class="flex max-h-48 flex-col gap-1 overflow-y-auto">
+                <UCheckbox
+                  v-for="entry in sources?.[kind] ?? []"
+                  :key="entry.id"
+                  :model-value="chosen[kind]?.includes(entry.id) ?? false"
+                  :label="entry.title"
+                  @update:model-value="toggleChosen(kind, entry.id, $event)"
+                />
+              </div>
+              <UButton
+                color="neutral"
+                variant="outline"
+                size="sm"
+                class="min-h-11 self-start"
+                :disabled="(chosen[kind] ?? []).length === 0"
+                @click="addChosen(kind)"
+                >{{ $t('appearance.menus.addTo', { what: sourceLabel(kind) }) }}</UButton
               >
-                <legend class="px-1 font-semibold text-highlighted">{{ sourceLabel(kind) }}</legend>
-                <p v-if="(sources?.[kind] ?? []).length === 0" class="text-sm text-muted">
-                  {{ $t('appearance.menus.none') }}
-                </p>
-                <div v-else class="flex max-h-48 flex-col gap-1 overflow-y-auto">
-                  <UCheckbox
-                    v-for="entry in sources?.[kind] ?? []"
-                    :key="entry.id"
-                    :model-value="chosen[kind]?.includes(entry.id) ?? false"
-                    :label="entry.title"
-                    @update:model-value="toggleChosen(kind, entry.id, $event)"
-                  />
-                </div>
-                <UButton
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                  class="min-h-11 self-start"
-                  :disabled="(chosen[kind] ?? []).length === 0"
-                  @click="addChosen(kind)"
-                  >{{ $t('appearance.menus.addTo', { what: sourceLabel(kind) }) }}</UButton
-                >
-              </fieldset>
-              <fieldset class="flex flex-col gap-2 rounded border border-default p-3">
-                <legend class="px-1 font-semibold text-highlighted">{{ $t('appearance.menus.custom') }}</legend>
-                <UFormField :label="$t('appearance.menus.url')" name="custom-url">
-                  <UInput v-model="customUrl" type="url" maxlength="2000" class="w-full" />
-                </UFormField>
-                <UFormField :label="$t('appearance.menus.linkText')" name="custom-label">
-                  <UInput v-model="customLabel" maxlength="200" class="w-full" />
-                </UFormField>
-                <UButton color="neutral" variant="outline" size="sm" class="min-h-11 self-start" @click="addCustom">{{
-                  $t('appearance.menus.addTo', { what: $t('appearance.menus.custom') })
-                }}</UButton>
-              </fieldset>
-            </section>
-
-            <section aria-labelledby="menu-structure" class="flex flex-col gap-4">
-              <h2 id="menu-structure" class="text-lg font-semibold text-highlighted">
-                {{ $t('appearance.menus.structure') }}
-              </h2>
-              <UFormField :label="$t('appearance.menus.name')" name="menu-name">
-                <UInput v-model="name" maxlength="200" size="xl" class="w-full sm:w-80" />
+            </fieldset>
+            <fieldset class="flex flex-col gap-2 rounded border border-default p-3">
+              <legend class="px-1 font-semibold text-highlighted">{{ $t('appearance.menus.custom') }}</legend>
+              <UFormField :label="$t('appearance.menus.url')" name="custom-url">
+                <UInput v-model="customUrl" type="url" maxlength="2000" class="w-full" />
               </UFormField>
-              <p class="text-sm text-toned">{{ $t('appearance.menus.structureHelp') }}</p>
-              <p v-if="rows.length === 0" class="text-sm text-muted">{{ $t('appearance.menus.empty') }}</p>
-              <ol v-else class="flex flex-col gap-2" :aria-label="$t('appearance.menus.items')">
-                <li
-                  v-for="row in rows"
-                  :id="`menu-item-${row.item.id}`"
-                  :key="row.item.id"
-                  :class="[
-                    INDENT[Math.min(row.depth, INDENT.length - 1)],
-                    dropHint?.id === row.item.id && dropHint.position === 'before' ? 'border-t-2 border-primary' : '',
-                    dropHint?.id === row.item.id && dropHint.position === 'after' ? 'border-b-2 border-primary' : '',
-                  ]"
-                  tabindex="-1"
-                  :aria-label="$t('appearance.menus.itemLabel', { label: shownLabel(row.item), level: row.depth + 1 })"
-                  @keydown="onKey($event, row.item.id)"
-                  @dragover="onDragOver($event, row.item.id)"
-                  @drop="onDrop($event, row.item.id)"
+              <UFormField :label="$t('appearance.menus.linkText')" name="custom-label">
+                <UInput v-model="customLabel" maxlength="200" class="w-full" />
+              </UFormField>
+              <UButton color="neutral" variant="outline" size="sm" class="min-h-11 self-start" @click="addCustom">{{
+                $t('appearance.menus.addTo', { what: $t('appearance.menus.custom') })
+              }}</UButton>
+            </fieldset>
+          </section>
+
+          <section aria-labelledby="menu-structure" class="flex flex-col gap-4">
+            <h2 id="menu-structure" class="text-lg font-semibold text-highlighted">
+              {{ $t('appearance.menus.structure') }}
+            </h2>
+            <UFormField :label="$t('appearance.menus.name')" name="menu-name">
+              <UInput v-model="name" maxlength="200" size="xl" class="w-full sm:w-80" />
+            </UFormField>
+            <p class="text-sm text-toned">{{ $t('appearance.menus.structureHelp') }}</p>
+            <p v-if="rows.length === 0" class="text-sm text-muted">{{ $t('appearance.menus.empty') }}</p>
+            <ol v-else class="flex flex-col gap-2" :aria-label="$t('appearance.menus.items')">
+              <li
+                v-for="row in rows"
+                :id="`menu-item-${row.item.id}`"
+                :key="row.item.id"
+                :class="[
+                  INDENT[Math.min(row.depth, INDENT.length - 1)],
+                  dropHint?.id === row.item.id && dropHint.position === 'before' ? 'border-t-2 border-primary' : '',
+                  dropHint?.id === row.item.id && dropHint.position === 'after' ? 'border-b-2 border-primary' : '',
+                ]"
+                tabindex="-1"
+                :aria-label="$t('appearance.menus.itemLabel', { label: shownLabel(row.item), level: row.depth + 1 })"
+                @keydown="onKey($event, row.item.id)"
+                @dragover="onDragOver($event, row.item.id)"
+                @drop="onDrop($event, row.item.id)"
+              >
+                <div
+                  class="flex flex-col gap-2 rounded border bg-default p-2"
+                  :class="
+                    dropHint?.id === row.item.id && dropHint.position === 'inside' ? 'border-primary' : 'border-default'
+                  "
                 >
-                  <div
-                    class="flex flex-col gap-2 rounded border bg-default p-2"
-                    :class="
-                      dropHint?.id === row.item.id && dropHint.position === 'inside'
-                        ? 'border-primary'
-                        : 'border-default'
-                    "
-                  >
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span
-                        draggable="true"
-                        class="cursor-grab px-1 text-muted"
-                        :title="$t('appearance.menus.drag')"
-                        aria-hidden="true"
-                        @dragstart="onDragStart($event, row.item.id)"
-                        @dragend="onDragEnd"
-                        >⠿</span
-                      >
-                      <span class="font-semibold text-highlighted">{{ shownLabel(row.item) }}</span>
-                      <span class="text-sm text-muted">{{ kindLabel(row.item.kind) }}</span>
-                      <UBadge v-if="hidden(row.item)" color="warning" variant="subtle">{{
-                        $t('appearance.menus.notShown')
-                      }}</UBadge>
-                      <span class="ms-auto flex flex-wrap gap-1">
-                        <UButton
-                          color="neutral"
-                          variant="ghost"
-                          size="sm"
-                          class="min-h-11"
-                          icon="i-lucide-arrow-up"
-                          :disabled="row.first"
-                          :aria-label="$t('appearance.menus.up', { label: shownLabel(row.item) })"
-                          @click="act(row.item.id, 'up')"
-                        />
-                        <UButton
-                          color="neutral"
-                          variant="ghost"
-                          size="sm"
-                          class="min-h-11"
-                          icon="i-lucide-arrow-down"
-                          :disabled="row.last"
-                          :aria-label="$t('appearance.menus.down', { label: shownLabel(row.item) })"
-                          @click="act(row.item.id, 'down')"
-                        />
-                        <UButton
-                          color="neutral"
-                          variant="ghost"
-                          size="sm"
-                          class="min-h-11"
-                          icon="i-lucide-arrow-right"
-                          :disabled="row.first"
-                          :aria-label="$t('appearance.menus.in', { label: shownLabel(row.item) })"
-                          @click="act(row.item.id, 'in')"
-                        />
-                        <UButton
-                          color="neutral"
-                          variant="ghost"
-                          size="sm"
-                          class="min-h-11"
-                          icon="i-lucide-arrow-left"
-                          :disabled="row.depth === 0"
-                          :aria-label="$t('appearance.menus.out', { label: shownLabel(row.item) })"
-                          @click="act(row.item.id, 'out')"
-                        />
-                        <UButton
-                          color="neutral"
-                          variant="ghost"
-                          size="sm"
-                          class="min-h-11"
-                          icon="i-lucide-pencil"
-                          :aria-expanded="expanded === row.item.id ? 'true' : 'false'"
-                          :aria-label="$t('appearance.menus.editItem', { label: shownLabel(row.item) })"
-                          @click="expanded = expanded === row.item.id ? null : row.item.id"
-                        />
-                      </span>
-                    </div>
-                    <div v-if="expanded === row.item.id" class="grid gap-3 sm:grid-cols-2">
-                      <UFormField
-                        v-if="row.item.kind === 'custom'"
-                        :label="$t('appearance.menus.url')"
-                        :name="`url-${row.item.id}`"
-                        class="sm:col-span-2"
-                      >
-                        <UInput
-                          :model-value="row.item.url ?? ''"
-                          maxlength="2000"
-                          class="w-full"
-                          @update:model-value="(value: string | number) => set(row.item.id, { url: String(value) })"
-                        />
-                      </UFormField>
-                      <UFormField :label="$t('appearance.menus.navLabel')" :name="`label-${row.item.id}`">
-                        <UInput
-                          :model-value="row.item.label"
-                          :placeholder="objectTitleOf(row.item) ?? ''"
-                          maxlength="200"
-                          class="w-full"
-                          @update:model-value="(value: string | number) => set(row.item.id, { label: String(value) })"
-                        />
-                      </UFormField>
-                      <UFormField :label="$t('appearance.menus.cssClass')" :name="`css-${row.item.id}`">
-                        <UInput
-                          :model-value="row.item.cssClass"
-                          maxlength="200"
-                          class="w-full"
-                          @update:model-value="
-                            (value: string | number) => set(row.item.id, { cssClass: String(value) })
-                          "
-                        />
-                      </UFormField>
-                      <UFormField
-                        :label="$t('appearance.menus.description')"
-                        :name="`description-${row.item.id}`"
-                        class="sm:col-span-2"
-                      >
-                        <UTextarea
-                          :model-value="row.item.description"
-                          maxlength="500"
-                          :rows="2"
-                          class="w-full"
-                          @update:model-value="(value: string) => set(row.item.id, { description: value })"
-                        />
-                      </UFormField>
-                      <UCheckbox
-                        :model-value="row.item.newTab"
-                        :label="$t('appearance.menus.newTab')"
-                        @update:model-value="
-                          (value: boolean | 'indeterminate') => set(row.item.id, { newTab: value === true })
-                        "
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span
+                      draggable="true"
+                      class="cursor-grab px-1 text-muted"
+                      :title="$t('appearance.menus.drag')"
+                      aria-hidden="true"
+                      @dragstart="onDragStart($event, row.item.id)"
+                      @dragend="onDragEnd"
+                      >⠿</span
+                    >
+                    <span class="font-semibold text-highlighted">{{ shownLabel(row.item) }}</span>
+                    <span class="text-sm text-muted">{{ kindLabel(row.item.kind) }}</span>
+                    <UBadge v-if="hidden(row.item)" color="warning" variant="subtle">{{
+                      $t('appearance.menus.notShown')
+                    }}</UBadge>
+                    <span class="ms-auto flex flex-wrap gap-1">
+                      <UButton
+                        color="neutral"
+                        variant="ghost"
+                        size="sm"
+                        class="min-h-11"
+                        icon="i-lucide-arrow-up"
+                        :disabled="row.first"
+                        :aria-label="$t('appearance.menus.up', { label: shownLabel(row.item) })"
+                        @click="act(row.item.id, 'up')"
                       />
                       <UButton
-                        color="error"
-                        variant="outline"
+                        color="neutral"
+                        variant="ghost"
                         size="sm"
-                        class="min-h-11 self-start"
-                        @click="act(row.item.id, 'remove')"
-                        >{{ $t('appearance.menus.remove') }}</UButton
-                      >
-                    </div>
+                        class="min-h-11"
+                        icon="i-lucide-arrow-down"
+                        :disabled="row.last"
+                        :aria-label="$t('appearance.menus.down', { label: shownLabel(row.item) })"
+                        @click="act(row.item.id, 'down')"
+                      />
+                      <UButton
+                        color="neutral"
+                        variant="ghost"
+                        size="sm"
+                        class="min-h-11"
+                        icon="i-lucide-arrow-right"
+                        :disabled="row.first"
+                        :aria-label="$t('appearance.menus.in', { label: shownLabel(row.item) })"
+                        @click="act(row.item.id, 'in')"
+                      />
+                      <UButton
+                        color="neutral"
+                        variant="ghost"
+                        size="sm"
+                        class="min-h-11"
+                        icon="i-lucide-arrow-left"
+                        :disabled="row.depth === 0"
+                        :aria-label="$t('appearance.menus.out', { label: shownLabel(row.item) })"
+                        @click="act(row.item.id, 'out')"
+                      />
+                      <UButton
+                        color="neutral"
+                        variant="ghost"
+                        size="sm"
+                        class="min-h-11"
+                        icon="i-lucide-pencil"
+                        :aria-expanded="expanded === row.item.id ? 'true' : 'false'"
+                        :aria-label="$t('appearance.menus.editItem', { label: shownLabel(row.item) })"
+                        @click="expanded = expanded === row.item.id ? null : row.item.id"
+                      />
+                    </span>
                   </div>
-                </li>
-              </ol>
-              <p class="sr-only" aria-live="polite">{{ announce }}</p>
-              <div class="flex flex-wrap gap-3">
-                <UButton size="lg" class="min-h-11" :loading="saving" @click="save">{{
-                  $t('appearance.menus.save')
-                }}</UButton>
-                <UButton color="error" variant="outline" size="lg" class="min-h-11" @click="remove">{{
-                  $t('appearance.menus.delete')
-                }}</UButton>
-              </div>
-            </section>
-          </div>
-          <p v-else class="text-base text-default">{{ $t('appearance.menus.first') }}</p>
-        </template>
+                  <div v-if="expanded === row.item.id" class="grid gap-3 sm:grid-cols-2">
+                    <UFormField
+                      v-if="row.item.kind === 'custom'"
+                      :label="$t('appearance.menus.url')"
+                      :name="`url-${row.item.id}`"
+                      class="sm:col-span-2"
+                    >
+                      <UInput
+                        :model-value="row.item.url ?? ''"
+                        maxlength="2000"
+                        class="w-full"
+                        @update:model-value="(value: string | number) => set(row.item.id, { url: String(value) })"
+                      />
+                    </UFormField>
+                    <UFormField :label="$t('appearance.menus.navLabel')" :name="`label-${row.item.id}`">
+                      <UInput
+                        :model-value="row.item.label"
+                        :placeholder="objectTitleOf(row.item) ?? ''"
+                        maxlength="200"
+                        class="w-full"
+                        @update:model-value="(value: string | number) => set(row.item.id, { label: String(value) })"
+                      />
+                    </UFormField>
+                    <UFormField :label="$t('appearance.menus.cssClass')" :name="`css-${row.item.id}`">
+                      <UInput
+                        :model-value="row.item.cssClass"
+                        maxlength="200"
+                        class="w-full"
+                        @update:model-value="(value: string | number) => set(row.item.id, { cssClass: String(value) })"
+                      />
+                    </UFormField>
+                    <UFormField
+                      :label="$t('appearance.menus.description')"
+                      :name="`description-${row.item.id}`"
+                      class="sm:col-span-2"
+                    >
+                      <UTextarea
+                        :model-value="row.item.description"
+                        maxlength="500"
+                        :rows="2"
+                        class="w-full"
+                        @update:model-value="(value: string) => set(row.item.id, { description: value })"
+                      />
+                    </UFormField>
+                    <UCheckbox
+                      :model-value="row.item.newTab"
+                      :label="$t('appearance.menus.newTab')"
+                      @update:model-value="
+                        (value: boolean | 'indeterminate') => set(row.item.id, { newTab: value === true })
+                      "
+                    />
+                    <UButton
+                      color="error"
+                      variant="outline"
+                      size="sm"
+                      class="min-h-11 self-start"
+                      @click="act(row.item.id, 'remove')"
+                      >{{ $t('appearance.menus.remove') }}</UButton
+                    >
+                  </div>
+                </div>
+              </li>
+            </ol>
+            <p class="sr-only" aria-live="polite">{{ announce }}</p>
+            <div class="flex flex-wrap gap-3">
+              <UButton size="lg" class="min-h-11" :loading="saving" @click="save">{{
+                $t('appearance.menus.save')
+              }}</UButton>
+              <UButton color="error" variant="outline" size="lg" class="min-h-11" @click="remove">{{
+                $t('appearance.menus.delete')
+              }}</UButton>
+            </div>
+          </section>
+        </div>
+        <p v-else class="text-base text-default">{{ $t('appearance.menus.first') }}</p>
+      </template>
 
-        <form v-else class="flex max-w-2xl flex-col gap-4" @submit.prevent="saveLocations">
-          <p class="text-base text-default">{{ $t('appearance.menus.locationsHelp') }}</p>
-          <p v-if="locationRows.length === 0" class="text-sm text-muted">{{ $t('appearance.menus.noLocations') }}</p>
-          <UFormField v-for="row in locationRows" :key="row.slug" :label="row.label" :name="`location-${row.slug}`">
-            <USelect v-model="locationForm[row.slug]" :items="locationChoices" size="xl" class="w-full sm:w-72" />
-          </UFormField>
-          <!-- Without the theme's locations (not read yet, or the site did not answer) a save would empty every placement. -->
-          <div v-if="locationRows.length > 0">
-            <UButton type="submit" size="lg" class="min-h-11">{{ $t('appearance.menus.saveLocations') }}</UButton>
-          </div>
-        </form>
-      </div>
-    </template>
-  </UDashboardPanel>
+      <form v-else class="flex max-w-2xl flex-col gap-4" @submit.prevent="saveLocations">
+        <p class="text-base text-default">{{ $t('appearance.menus.locationsHelp') }}</p>
+        <p v-if="locationRows.length === 0" class="text-sm text-muted">{{ $t('appearance.menus.noLocations') }}</p>
+        <UFormField v-for="row in locationRows" :key="row.slug" :label="row.label" :name="`location-${row.slug}`">
+          <USelect v-model="locationForm[row.slug]" :items="locationChoices" size="xl" class="w-full sm:w-72" />
+        </UFormField>
+        <!-- Without the theme's locations (not read yet, or the site did not answer) a save would empty every placement. -->
+        <div v-if="locationRows.length > 0">
+          <UButton type="submit" size="lg" class="min-h-11">{{ $t('appearance.menus.saveLocations') }}</UButton>
+        </div>
+      </form>
+    </div>
+  </AdminPage>
 </template>

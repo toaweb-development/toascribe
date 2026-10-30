@@ -184,149 +184,144 @@ async function publish(): Promise<void> {
 </script>
 
 <template>
-  <UDashboardPanel id="appearance-customize">
-    <template #header>
-      <UDashboardNavbar :title="$t('appearance.customize.title')">
-        <template #right>
-          <UButton
-            v-if="mayEdit && loaded"
-            size="lg"
-            class="min-h-11"
-            :loading="saving"
-            :label="$t('appearance.customize.publish')"
-            @click="publish"
-          />
+  <AdminPage id="appearance-customize" width="wide" :title="$t('appearance.customize.title')">
+    <template #actions>
+      <UButton
+        v-if="mayEdit && loaded"
+        size="lg"
+        class="min-h-11"
+        :loading="saving"
+        :label="$t('appearance.customize.publish')"
+        @click="publish"
+      />
+    </template>
+
+    <section v-if="!mayEdit" aria-labelledby="customize-denied" class="flex max-w-prose flex-col gap-3">
+      <h2 id="customize-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
+    <div v-else class="flex flex-col gap-6 lg:flex-row lg:items-start">
+      <div class="flex w-full flex-col gap-6 lg:w-96 lg:shrink-0">
+        <p role="status" class="sr-only">{{ report }}</p>
+        <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-check" :title="report" />
+        <UAlert
+          v-if="failure || loadFailed"
+          color="error"
+          variant="subtle"
+          role="alert"
+          icon="i-lucide-triangle-alert"
+          :title="$t('appearance.customize.failed')"
+          :description="failure"
+        />
+        <p v-if="!loaded && !loadFailed" class="text-sm text-muted">{{ $t('appearance.customize.loading') }}</p>
+        <template v-if="loaded">
+          <fieldset class="flex flex-col gap-4">
+            <legend class="mb-2 text-lg font-semibold text-highlighted">
+              {{ $t('appearance.customize.identity') }}
+            </legend>
+            <template v-if="loaded.mayEditIdentity">
+              <UFormField :label="$t('appearance.customize.siteTitle')" name="blogname">
+                <UInput v-model="identity.blogname" maxlength="200" size="xl" class="w-full" />
+              </UFormField>
+              <UFormField :label="$t('appearance.customize.tagline')" name="blogdescription">
+                <UInput v-model="identity.blogdescription" maxlength="500" size="xl" class="w-full" />
+              </UFormField>
+            </template>
+            <ContentFeaturedImage
+              v-model="identity.site_logo"
+              :label="$t('appearance.customize.logo')"
+              :choose-label="$t('appearance.customize.chooseLogo')"
+            />
+            <ContentFeaturedImage
+              v-if="loaded.mayEditIdentity"
+              v-model="identity.site_icon"
+              :label="$t('appearance.customize.icon')"
+              :help="$t('appearance.customize.iconHelp')"
+              :choose-label="$t('appearance.customize.chooseIcon')"
+            />
+          </fieldset>
+
+          <fieldset v-if="Object.keys(colors).length > 0" class="flex flex-col gap-4">
+            <legend class="mb-2 text-lg font-semibold text-highlighted">
+              {{ $t('appearance.customize.colors') }}
+            </legend>
+            <div
+              v-for="(spec, slug) in activeTheme?.settings.colors ?? {}"
+              :key="slug"
+              class="flex flex-wrap items-end gap-2"
+            >
+              <UFormField :label="spec.name" :name="`color-${slug}`">
+                <UInput v-model="colors[slug]" type="color" size="xl" class="w-24" />
+              </UFormField>
+              <code class="pb-3 text-sm text-muted">{{ colors[slug] }}</code>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                class="min-h-11"
+                :aria-label="$t('appearance.customize.resetNamed', { name: spec.name })"
+                :label="$t('appearance.customize.reset')"
+                @click="resetColor(String(slug))"
+              />
+            </div>
+          </fieldset>
+
+          <fieldset v-if="Object.keys(fonts).length > 0" class="flex flex-col gap-4">
+            <legend class="mb-2 text-lg font-semibold text-highlighted">
+              {{ $t('appearance.customize.fonts') }}
+            </legend>
+            <UFormField
+              v-for="(spec, slug) in activeTheme?.settings.fonts ?? {}"
+              :key="slug"
+              :label="spec.name"
+              :name="`font-${slug}`"
+            >
+              <USelect v-model="fonts[slug]" :items="fontItems(String(slug))" size="xl" class="w-full" />
+            </UFormField>
+          </fieldset>
+
+          <fieldset v-if="reading" class="flex flex-col gap-3">
+            <legend class="mb-2 text-lg font-semibold text-highlighted">
+              {{ $t('settings.reading.frontShows') }}
+            </legend>
+            <URadioGroup v-model="reading.show_on_front" :items="shows" />
+            <div v-if="reading.show_on_front === 'page'" class="flex flex-col gap-3 ps-6">
+              <UFormField :label="$t('settings.reading.frontPage')" name="page_on_front">
+                <USelect v-model="frontPage" :items="withNone" size="xl" class="w-full" />
+              </UFormField>
+              <UFormField :label="$t('settings.reading.postsPage')" name="page_for_posts">
+                <USelect v-model="postsPage" :items="withNone" size="xl" class="w-full" />
+              </UFormField>
+            </div>
+            <p class="text-sm text-toned">{{ $t('appearance.customize.frontHelp') }}</p>
+          </fieldset>
+
+          <fieldset v-if="loaded.mayEditCss" class="flex flex-col gap-2">
+            <legend class="mb-2 text-lg font-semibold text-highlighted">{{ $t('appearance.customize.css') }}</legend>
+            <UFormField :help="$t('appearance.customize.cssHelp')" name="custom-css">
+              <UTextarea
+                v-model="customCss"
+                :rows="10"
+                autoresize
+                spellcheck="false"
+                :aria-label="$t('appearance.customize.css')"
+                class="w-full font-mono"
+              />
+            </UFormField>
+          </fieldset>
         </template>
-      </UDashboardNavbar>
-    </template>
-    <template #body>
-      <section v-if="!mayEdit" aria-labelledby="customize-denied" class="flex max-w-prose flex-col gap-3">
-        <h2 id="customize-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
-      </section>
-      <div v-else class="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <div class="flex w-full flex-col gap-6 lg:w-96 lg:shrink-0">
-          <p role="status" class="sr-only">{{ report }}</p>
-          <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-check" :title="report" />
-          <UAlert
-            v-if="failure || loadFailed"
-            color="error"
-            variant="subtle"
-            role="alert"
-            icon="i-lucide-triangle-alert"
-            :title="$t('appearance.customize.failed')"
-            :description="failure"
-          />
-          <p v-if="!loaded && !loadFailed" class="text-sm text-muted">{{ $t('appearance.customize.loading') }}</p>
-          <template v-if="loaded">
-            <fieldset class="flex flex-col gap-4">
-              <legend class="mb-2 text-lg font-semibold text-highlighted">
-                {{ $t('appearance.customize.identity') }}
-              </legend>
-              <template v-if="loaded.mayEditIdentity">
-                <UFormField :label="$t('appearance.customize.siteTitle')" name="blogname">
-                  <UInput v-model="identity.blogname" maxlength="200" size="xl" class="w-full" />
-                </UFormField>
-                <UFormField :label="$t('appearance.customize.tagline')" name="blogdescription">
-                  <UInput v-model="identity.blogdescription" maxlength="500" size="xl" class="w-full" />
-                </UFormField>
-              </template>
-              <ContentFeaturedImage
-                v-model="identity.site_logo"
-                :label="$t('appearance.customize.logo')"
-                :choose-label="$t('appearance.customize.chooseLogo')"
-              />
-              <ContentFeaturedImage
-                v-if="loaded.mayEditIdentity"
-                v-model="identity.site_icon"
-                :label="$t('appearance.customize.icon')"
-                :help="$t('appearance.customize.iconHelp')"
-                :choose-label="$t('appearance.customize.chooseIcon')"
-              />
-            </fieldset>
-
-            <fieldset v-if="Object.keys(colors).length > 0" class="flex flex-col gap-4">
-              <legend class="mb-2 text-lg font-semibold text-highlighted">
-                {{ $t('appearance.customize.colors') }}
-              </legend>
-              <div
-                v-for="(spec, slug) in activeTheme?.settings.colors ?? {}"
-                :key="slug"
-                class="flex flex-wrap items-end gap-2"
-              >
-                <UFormField :label="spec.name" :name="`color-${slug}`">
-                  <UInput v-model="colors[slug]" type="color" size="xl" class="w-24" />
-                </UFormField>
-                <code class="pb-3 text-sm text-muted">{{ colors[slug] }}</code>
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  size="sm"
-                  class="min-h-11"
-                  :aria-label="$t('appearance.customize.resetNamed', { name: spec.name })"
-                  :label="$t('appearance.customize.reset')"
-                  @click="resetColor(String(slug))"
-                />
-              </div>
-            </fieldset>
-
-            <fieldset v-if="Object.keys(fonts).length > 0" class="flex flex-col gap-4">
-              <legend class="mb-2 text-lg font-semibold text-highlighted">
-                {{ $t('appearance.customize.fonts') }}
-              </legend>
-              <UFormField
-                v-for="(spec, slug) in activeTheme?.settings.fonts ?? {}"
-                :key="slug"
-                :label="spec.name"
-                :name="`font-${slug}`"
-              >
-                <USelect v-model="fonts[slug]" :items="fontItems(String(slug))" size="xl" class="w-full" />
-              </UFormField>
-            </fieldset>
-
-            <fieldset v-if="reading" class="flex flex-col gap-3">
-              <legend class="mb-2 text-lg font-semibold text-highlighted">
-                {{ $t('settings.reading.frontShows') }}
-              </legend>
-              <URadioGroup v-model="reading.show_on_front" :items="shows" />
-              <div v-if="reading.show_on_front === 'page'" class="flex flex-col gap-3 ps-6">
-                <UFormField :label="$t('settings.reading.frontPage')" name="page_on_front">
-                  <USelect v-model="frontPage" :items="withNone" size="xl" class="w-full" />
-                </UFormField>
-                <UFormField :label="$t('settings.reading.postsPage')" name="page_for_posts">
-                  <USelect v-model="postsPage" :items="withNone" size="xl" class="w-full" />
-                </UFormField>
-              </div>
-              <p class="text-sm text-toned">{{ $t('appearance.customize.frontHelp') }}</p>
-            </fieldset>
-
-            <fieldset v-if="loaded.mayEditCss" class="flex flex-col gap-2">
-              <legend class="mb-2 text-lg font-semibold text-highlighted">{{ $t('appearance.customize.css') }}</legend>
-              <UFormField :help="$t('appearance.customize.cssHelp')" name="custom-css">
-                <UTextarea
-                  v-model="customCss"
-                  :rows="10"
-                  autoresize
-                  spellcheck="false"
-                  :aria-label="$t('appearance.customize.css')"
-                  class="w-full font-mono"
-                />
-              </UFormField>
-            </fieldset>
-          </template>
-        </div>
-        <section aria-labelledby="customize-preview" class="flex min-w-0 flex-1 flex-col gap-2">
-          <h2 id="customize-preview" class="text-lg font-semibold text-highlighted">
-            {{ $t('appearance.customize.preview') }}
-          </h2>
-          <iframe
-            ref="preview"
-            src="/"
-            :title="$t('appearance.customize.previewFrame')"
-            class="h-[70vh] w-full rounded-md border border-default bg-default"
-          />
-        </section>
       </div>
-    </template>
-  </UDashboardPanel>
+      <section aria-labelledby="customize-preview" class="flex min-w-0 flex-1 flex-col gap-2">
+        <h2 id="customize-preview" class="text-lg font-semibold text-highlighted">
+          {{ $t('appearance.customize.preview') }}
+        </h2>
+        <iframe
+          ref="preview"
+          src="/"
+          :title="$t('appearance.customize.previewFrame')"
+          class="h-[70vh] w-full rounded-md border border-default bg-default"
+        />
+      </section>
+    </div>
+  </AdminPage>
 </template>

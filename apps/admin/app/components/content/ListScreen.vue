@@ -378,267 +378,261 @@ const newPath = computed(() => `/${props.type === 'page' ? 'pages' : 'posts'}/ne
 </script>
 
 <template>
-  <UDashboardPanel :id="`content-${type}`">
-    <template #header>
-      <UDashboardNavbar :title="words.title">
-        <template #right>
-          <UButton
-            v-if="mayEdit"
-            color="neutral"
-            variant="outline"
-            size="lg"
-            class="min-h-11"
-            icon="i-lucide-columns-3"
-            @click="openScreenOptions"
-          >
-            {{ $t('content.screenOptions.open') }}
-          </UButton>
-        </template>
-      </UDashboardNavbar>
+  <AdminPage :id="`content-${type}`" :title="words.title">
+    <template #actions>
+      <UButton
+        v-if="mayEdit"
+        color="neutral"
+        variant="outline"
+        size="lg"
+        class="min-h-11"
+        icon="i-lucide-columns-3"
+        @click="openScreenOptions"
+      >
+        {{ $t('content.screenOptions.open') }}
+      </UButton>
     </template>
 
-    <template #body>
-      <div class="flex w-full flex-col gap-4 sm:gap-5">
-        <section v-if="denied" aria-labelledby="content-denied-heading" class="flex max-w-prose flex-col gap-3">
-          <h2 id="content-denied-heading" class="text-xl font-semibold text-highlighted">{{ words.denied }}</h2>
-          <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
-          <div>
-            <NuxtLink
-              to="/"
-              class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
-            >
-              {{ $t('content.denied.back') }}
-            </NuxtLink>
-          </div>
-        </section>
-
-        <template v-else>
-          <div>
-            <UButton :to="newPath" size="lg" class="min-h-11" icon="i-lucide-plus">{{ words.add }}</UButton>
-          </div>
-
-          <UAlert
-            v-if="error"
-            color="error"
-            variant="subtle"
-            role="alert"
-            icon="i-lucide-triangle-alert"
-            :title="$t('content.failed.title')"
+    <div class="flex w-full flex-col gap-4 sm:gap-5">
+      <section v-if="denied" aria-labelledby="content-denied-heading" class="flex max-w-prose flex-col gap-3">
+        <h2 id="content-denied-heading" class="text-xl font-semibold text-highlighted">{{ words.denied }}</h2>
+        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+        <div>
+          <NuxtLink
+            to="/"
+            class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
           >
-            <template #description>
-              <p>{{ data ? $t('content.failed.stale') : $t('content.failed.text') }}</p>
-            </template>
-            <template #actions>
-              <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="() => refresh()">
-                {{ $t('content.failed.retry') }}
-              </UButton>
-            </template>
-          </UAlert>
+            {{ $t('content.denied.back') }}
+          </NuxtLink>
+        </div>
+      </section>
 
-          <nav v-if="data" :aria-label="words.views">
-            <ul class="flex flex-wrap gap-x-1">
-              <li v-for="link in viewLinks" :key="link.key">
-                <NuxtLink
-                  :to="link.to"
-                  :aria-current="link.current ? 'page' : undefined"
-                  class="inline-flex min-h-11 items-center rounded-md px-2.5 text-base underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary lg:min-h-8"
-                  :class="link.current ? 'font-semibold text-highlighted underline' : 'text-primary'"
-                >
-                  {{ $t('content.views.item', { name: link.label, n: link.count }) }}
-                </NuxtLink>
-              </li>
-            </ul>
-          </nav>
+      <template v-else>
+        <div>
+          <UButton :to="newPath" size="lg" class="min-h-11" icon="i-lucide-plus">{{ words.add }}</UButton>
+        </div>
 
-          <div v-if="data" class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-            <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
-              <form v-if="selectable" class="flex flex-wrap items-end gap-2" @submit.prevent="applyBulk">
-                <UFormField :label="$t('content.bulk.label')" name="action">
-                  <USelect
-                    id="content-bulk-action"
-                    v-model="chosenAction"
-                    :items="bulkItems"
-                    :placeholder="$t('content.bulk.choose')"
-                    size="xl"
-                    class="w-full sm:w-56"
-                  />
-                </UFormField>
-                <UButton
-                  type="submit"
-                  color="neutral"
-                  variant="outline"
-                  size="lg"
-                  class="min-h-11"
-                  :loading="busy"
-                  :aria-disabled="bulkHint !== ''"
-                  :aria-describedby="bulkHint === '' ? undefined : 'content-bulk-hint'"
-                >
-                  {{ $t('content.bulk.apply') }}
-                </UButton>
-                <p v-if="bulkHint !== ''" id="content-bulk-hint" class="basis-full text-sm text-toned">
-                  {{ bulkHint }}
-                </p>
-              </form>
+        <UAlert
+          v-if="error"
+          color="error"
+          variant="subtle"
+          role="alert"
+          icon="i-lucide-triangle-alert"
+          :title="$t('content.failed.title')"
+        >
+          <template #description>
+            <p>{{ data ? $t('content.failed.stale') : $t('content.failed.text') }}</p>
+          </template>
+          <template #actions>
+            <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="() => refresh()">
+              {{ $t('content.failed.retry') }}
+            </UButton>
+          </template>
+        </UAlert>
 
-              <form class="flex flex-wrap items-end gap-2" @submit.prevent="applyFilter">
-                <UFormField :label="$t('content.filter.month')" name="month">
-                  <USelect id="content-month" v-model="month" :items="monthItems" size="xl" class="w-full sm:w-48" />
-                </UFormField>
-                <UFormField v-if="type === 'post'" :label="$t('content.filter.category')" name="category">
-                  <USelect
-                    id="content-category"
-                    v-model="category"
-                    :items="categoryItems"
-                    size="xl"
-                    class="w-full sm:w-56"
-                  />
-                </UFormField>
-                <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
-                  {{ $t('content.filter.apply') }}
-                </UButton>
-              </form>
+        <nav v-if="data" :aria-label="words.views">
+          <ul class="flex flex-wrap gap-x-1">
+            <li v-for="link in viewLinks" :key="link.key">
+              <NuxtLink
+                :to="link.to"
+                :aria-current="link.current ? 'page' : undefined"
+                class="inline-flex min-h-11 items-center rounded-md px-2.5 text-base underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary lg:min-h-8"
+                :class="link.current ? 'font-semibold text-highlighted underline' : 'text-primary'"
+              >
+                {{ $t('content.views.item', { name: link.label, n: link.count }) }}
+              </NuxtLink>
+            </li>
+          </ul>
+        </nav>
 
+        <div v-if="data" class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
+            <form v-if="selectable" class="flex flex-wrap items-end gap-2" @submit.prevent="applyBulk">
+              <UFormField :label="$t('content.bulk.label')" name="action">
+                <USelect
+                  id="content-bulk-action"
+                  v-model="chosenAction"
+                  :items="bulkItems"
+                  :placeholder="$t('content.bulk.choose')"
+                  size="xl"
+                  class="w-full sm:w-56"
+                />
+              </UFormField>
               <UButton
-                v-if="inTrash && data.counts.trash > 0"
-                color="error"
+                type="submit"
+                color="neutral"
                 variant="outline"
                 size="lg"
                 class="min-h-11"
                 :loading="busy"
-                @click="emptyTrash"
+                :aria-disabled="bulkHint !== ''"
+                :aria-describedby="bulkHint === '' ? undefined : 'content-bulk-hint'"
               >
-                {{ $t('content.bulk.emptyTrash') }}
+                {{ $t('content.bulk.apply') }}
               </UButton>
-            </div>
+              <p v-if="bulkHint !== ''" id="content-bulk-hint" class="basis-full text-sm text-toned">
+                {{ bulkHint }}
+              </p>
+            </form>
 
-            <form role="search" class="flex flex-wrap items-end gap-2" @submit.prevent="search">
-              <div class="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-xs">
-                <label for="content-search" class="font-medium text-default">{{ words.search }}</label>
-                <UInput
-                  id="content-search"
-                  v-model="searchText"
-                  type="search"
-                  name="search"
+            <form class="flex flex-wrap items-end gap-2" @submit.prevent="applyFilter">
+              <UFormField :label="$t('content.filter.month')" name="month">
+                <USelect id="content-month" v-model="month" :items="monthItems" size="xl" class="w-full sm:w-48" />
+              </UFormField>
+              <UFormField v-if="type === 'post'" :label="$t('content.filter.category')" name="category">
+                <USelect
+                  id="content-category"
+                  v-model="category"
+                  :items="categoryItems"
                   size="xl"
-                  fixed
-                  class="w-full"
-                  autocomplete="off"
-                  icon="i-lucide-search"
+                  class="w-full sm:w-56"
                 />
-              </div>
+              </UFormField>
               <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
-                {{ words.search }}
+                {{ $t('content.filter.apply') }}
               </UButton>
             </form>
-          </div>
 
-          <p v-if="selectable && selected.length > 0" role="status" class="text-sm text-default">
-            {{ $t('content.bulk.selected', { n: selected.length }, selected.length) }}
-          </p>
-
-          <div role="status">
-            <UAlert
-              v-if="report"
-              :color="report.tone"
-              variant="subtle"
-              :icon="report.tone === 'success' ? 'i-lucide-circle-check' : 'i-lucide-info'"
-              :title="report.title"
+            <UButton
+              v-if="inTrash && data.counts.trash > 0"
+              color="error"
+              variant="outline"
+              size="lg"
+              class="min-h-11"
+              :loading="busy"
+              @click="emptyTrash"
             >
-              <template v-if="report.details.length > 0" #description>
-                <ul class="mt-1 flex list-disc flex-col gap-1 ps-5">
-                  <li v-for="line in report.details" :key="line">{{ line }}</li>
-                </ul>
-              </template>
-            </UAlert>
+              {{ $t('content.bulk.emptyTrash') }}
+            </UButton>
           </div>
+
+          <form role="search" class="flex flex-wrap items-end gap-2" @submit.prevent="search">
+            <div class="flex min-w-0 flex-1 flex-col gap-1.5 sm:max-w-xs">
+              <label for="content-search" class="font-medium text-default">{{ words.search }}</label>
+              <UInput
+                id="content-search"
+                v-model="searchText"
+                type="search"
+                name="search"
+                size="xl"
+                fixed
+                class="w-full"
+                autocomplete="off"
+                icon="i-lucide-search"
+              />
+            </div>
+            <UButton type="submit" color="neutral" variant="outline" size="lg" class="min-h-11">
+              {{ words.search }}
+            </UButton>
+          </form>
+        </div>
+
+        <p v-if="selectable && selected.length > 0" role="status" class="text-sm text-default">
+          {{ $t('content.bulk.selected', { n: selected.length }, selected.length) }}
+        </p>
+
+        <div role="status">
           <UAlert
-            v-if="failure"
-            color="error"
+            v-if="report"
+            :color="report.tone"
             variant="subtle"
-            role="alert"
-            icon="i-lucide-triangle-alert"
-            :title="$t('content.actionFailed')"
-            :description="failure"
-          />
+            :icon="report.tone === 'success' ? 'i-lucide-circle-check' : 'i-lucide-info'"
+            :title="report.title"
+          >
+            <template v-if="report.details.length > 0" #description>
+              <ul class="mt-1 flex list-disc flex-col gap-1 ps-5">
+                <li v-for="line in report.details" :key="line">{{ line }}</li>
+              </ul>
+            </template>
+          </UAlert>
+        </div>
+        <UAlert
+          v-if="failure"
+          color="error"
+          variant="subtle"
+          role="alert"
+          icon="i-lucide-triangle-alert"
+          :title="$t('content.actionFailed')"
+          :description="failure"
+        />
 
-          <section v-if="data || status === 'pending'" :aria-busy="status === 'pending'" class="flex flex-col gap-3">
-            <h2 ref="results" tabindex="-1" class="sr-only outline-none">{{ words.caption }}</h2>
+        <section v-if="data || status === 'pending'" :aria-busy="status === 'pending'" class="flex flex-col gap-3">
+          <h2 ref="results" tabindex="-1" class="sr-only outline-none">{{ words.caption }}</h2>
 
-            <div v-if="data" class="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <p role="status" class="text-sm text-toned">{{ $t('content.count', { n: data.total }, data.total) }}</p>
-              <p v-if="view.search !== ''" class="flex flex-wrap items-center gap-x-3 text-sm text-default">
-                <span>{{ $t('content.searchSummary', { query: view.search }) }}</span>
-                <NuxtLink
-                  :to="locationFor({ search: '' })"
-                  class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
-                >
-                  {{ $t('content.searchClear') }}
-                </NuxtLink>
-              </p>
-            </div>
+          <div v-if="data" class="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p role="status" class="text-sm text-toned">{{ $t('content.count', { n: data.total }, data.total) }}</p>
+            <p v-if="view.search !== ''" class="flex flex-wrap items-center gap-x-3 text-sm text-default">
+              <span>{{ $t('content.searchSummary', { query: view.search }) }}</span>
+              <NuxtLink
+                :to="locationFor({ search: '' })"
+                class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
+              >
+                {{ $t('content.searchClear') }}
+              </NuxtLink>
+            </p>
+          </div>
 
-            <div v-if="!data" class="flex flex-col gap-2" aria-hidden="true">
-              <USkeleton
-                v-for="row in 5"
-                :key="row"
-                role="presentation"
-                aria-hidden="true"
-                aria-label=""
-                class="h-12 w-full"
-              />
-            </div>
-
-            <div v-else-if="items.length === 0" class="flex max-w-prose flex-col gap-2 py-6">
-              <p class="text-lg font-semibold text-highlighted">{{ inTrash ? words.emptyTrash : words.empty }}</p>
-              <p v-if="filtered" class="text-base text-default">
-                <NuxtLink
-                  :to="{ path: route.path }"
-                  class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
-                >
-                  {{ $t('content.showAll') }}
-                </NuxtLink>
-              </p>
-            </div>
-
-            <div v-else :class="status === 'pending' ? 'opacity-60' : ''">
-              <ContentTable
-                v-model:selected="selected"
-                :type="type"
-                :items="items"
-                :view="view"
-                :to="locationFor"
-                :hidden-columns="screen.hiddenColumns"
-                :selectable="selectable"
-                :time-zone="data.timeZone"
-                @quick-edit="quickEdit"
-                @trash="trashOne"
-                @restore="restoreOne"
-                @remove="removeOne"
-              />
-            </div>
-
-            <UPagination
-              v-if="data && data.totalPages > 1"
-              as="nav"
-              :aria-label="$t('content.pagination')"
-              :page="view.page"
-              :total="data.total"
-              :items-per-page="data.perPage"
-              :sibling-count="1"
-              show-edges
-              :to="(page: number) => locationFor({ page })"
-              :ui="{
-                list: 'flex-wrap',
-                item: PAGE_BUTTON,
-                prev: PAGE_BUTTON,
-                next: PAGE_BUTTON,
-                first: PAGE_BUTTON,
-                last: PAGE_BUTTON,
-              }"
+          <div v-if="!data" class="flex flex-col gap-2" aria-hidden="true">
+            <USkeleton
+              v-for="row in 5"
+              :key="row"
+              role="presentation"
+              aria-hidden="true"
+              aria-label=""
+              class="h-12 w-full"
             />
-          </section>
-        </template>
-      </div>
-    </template>
-  </UDashboardPanel>
+          </div>
+
+          <div v-else-if="items.length === 0" class="flex max-w-prose flex-col gap-2 py-6">
+            <p class="text-lg font-semibold text-highlighted">{{ inTrash ? words.emptyTrash : words.empty }}</p>
+            <p v-if="filtered" class="text-base text-default">
+              <NuxtLink
+                :to="{ path: route.path }"
+                class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
+              >
+                {{ $t('content.showAll') }}
+              </NuxtLink>
+            </p>
+          </div>
+
+          <div v-else :class="status === 'pending' ? 'opacity-60' : ''">
+            <ContentTable
+              v-model:selected="selected"
+              :type="type"
+              :items="items"
+              :view="view"
+              :to="locationFor"
+              :hidden-columns="screen.hiddenColumns"
+              :selectable="selectable"
+              :time-zone="data.timeZone"
+              @quick-edit="quickEdit"
+              @trash="trashOne"
+              @restore="restoreOne"
+              @remove="removeOne"
+            />
+          </div>
+
+          <UPagination
+            v-if="data && data.totalPages > 1"
+            as="nav"
+            :aria-label="$t('content.pagination')"
+            :page="view.page"
+            :total="data.total"
+            :items-per-page="data.perPage"
+            :sibling-count="1"
+            show-edges
+            :to="(page: number) => locationFor({ page })"
+            :ui="{
+              list: 'flex-wrap',
+              item: PAGE_BUTTON,
+              prev: PAGE_BUTTON,
+              next: PAGE_BUTTON,
+              first: PAGE_BUTTON,
+              last: PAGE_BUTTON,
+            }"
+          />
+        </section>
+      </template>
+    </div>
+  </AdminPage>
 </template>

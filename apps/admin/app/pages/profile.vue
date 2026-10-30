@@ -29,42 +29,36 @@ function saved(next: MeResponse) {
 </script>
 
 <template>
-  <UDashboardPanel id="profile">
-    <template #header>
-      <UDashboardNavbar :title="$t('profile.title')" />
-    </template>
+  <AdminPage id="profile" :title="$t('profile.title')">
+    <div class="mx-auto flex w-full max-w-3xl flex-col gap-4 sm:gap-6">
+      <ProfilePersonal />
 
-    <template #body>
-      <div class="mx-auto flex w-full max-w-3xl flex-col gap-4 sm:gap-6">
-        <ProfilePersonal />
-
-        <UAlert
-          v-if="!me"
-          color="error"
-          variant="subtle"
-          role="alert"
-          :title="$t('profile.loadFailed.title')"
-          :description="error ? $t('profile.loadFailed.text') : undefined"
-        >
-          <template #actions>
-            <UButton color="neutral" variant="outline" size="lg" class="min-h-11" :loading="retrying" @click="retry">
-              {{ $t('profile.retry') }}
-            </UButton>
-          </template>
-        </UAlert>
-        <template v-else>
-          <ProfileAvatar :me="me" @saved="saved" />
-          <ProfileDetails v-model:dirty="dirty" :me="me" @saved="saved" />
+      <UAlert
+        v-if="!me"
+        color="error"
+        variant="subtle"
+        role="alert"
+        :title="$t('profile.loadFailed.title')"
+        :description="error ? $t('profile.loadFailed.text') : undefined"
+      >
+        <template #actions>
+          <UButton color="neutral" variant="outline" size="lg" class="min-h-11" :loading="retrying" @click="retry">
+            {{ $t('profile.retry') }}
+          </UButton>
         </template>
+      </UAlert>
+      <template v-else>
+        <ProfileAvatar :me="me" @saved="saved" />
+        <ProfileDetails v-model:dirty="dirty" :me="me" @saved="saved" />
+      </template>
 
-        <section aria-labelledby="account-heading" class="flex flex-col gap-4 sm:gap-6">
-          <h2 id="account-heading" class="text-xl font-semibold text-highlighted">{{ $t('profile.account.title') }}</h2>
-          <ProfilePassword />
-          <ProfileTwoFactor />
-          <ProfileSessions />
-          <ProfileAppPasswords />
-        </section>
-      </div>
-    </template>
-  </UDashboardPanel>
+      <section aria-labelledby="account-heading" class="flex flex-col gap-4 sm:gap-6">
+        <h2 id="account-heading" class="text-xl font-semibold text-highlighted">{{ $t('profile.account.title') }}</h2>
+        <ProfilePassword />
+        <ProfileTwoFactor />
+        <ProfileSessions />
+        <ProfileAppPasswords />
+      </section>
+    </div>
+  </AdminPage>
 </template>

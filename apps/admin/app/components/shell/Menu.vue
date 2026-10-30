@@ -1,10 +1,11 @@
 <script setup lang="ts">
-// The sidebar's menu: what `GET /api/v1/admin/menu` gives, in the order it gives it (the api decides what this account may see; nothing
-// is listed here). The current section and sub-item are marked. In the collapsed rail every item keeps its name and gets a tooltip,
-// and a section with sub-items opens a popover (utils/admin-nav.ts).
-const props = defineProps<{
-  collapsed?: boolean
-}>()
+// The side menu (M2.1, «Blekk»; WordPress' admin menu): what `GET /api/v1/admin/menu` gives, in its order (the api decides what this
+// account may see). The section the page is in shows its sub-items under it; another section's sub-items float beside it, on hover
+// or with its button from the keyboard (a section link is a link, so it cannot also open a menu). Collapsed to icons, every section
+// is a button that opens the same floating menu, with the section itself first.
+import type { AdminMenuEntry } from '@toascribe/shared'
+
+const props = withDefaults(defineProps<{ collapsed?: boolean }>(), { collapsed: false })
 
 const { t, te } = useI18n()
 const route = useRoute()
@@ -14,40 +15,162 @@ const { data, status, refresh } = await useAsyncData('admin:menu', () => adminAp
 
 const label = (key: string) => menuLabel({ t, te }, key)
 const entries = computed(() => data.value?.items ?? [])
-const items = computed(() => toNavigationItems(entries.value, route.path, label, props.collapsed === true))
+const section = computed(() => sectionOf(entries.value, route.path))
+const childId = (entry: AdminMenuEntry) => activeChildId(entry, route.path)
+
+// One floating menu at a time; the pointer opens it after a moment and closes it after leaving both the row and the menu.
+const open = ref<string>()
+let timer: ReturnType<typeof setTimeout> | undefined
+function hover(id: string | undefined, delay: number): void {
+  clearTimeout(timer)
+  timer = setTimeout(() => {
+    open.value = id
+  }, delay)
+}
+function setOpen(id: string, value: boolean): void {
+  clearTimeout(timer)
+  open.value = value ? id : open.value === id ? undefined : open.value
+}
+watch(
+  () => route.fullPath,
+  () => {
+    open.value = undefined
+  },
+)
+onBeforeUnmount(() => clearTimeout(timer))
+
+const linkClass =
+  'flex min-h-control items-center gap-3 rounded-menu px-3 text-sidebar-text hover:bg-sidebar-active focus-visible:outline-sidebar-focus'
+const flyoutLinkClass =
+  'flex min-h-control items-center rounded-menu px-3 text-default hover:bg-elevated aria-[current=page]:font-medium aria-[current=page]:text-accent-text'
 </script>
 
 <template>
-  <UNavigationMenu
-    v-if="entries.length > 0"
-    :aria-label="$t('shell.menu.label')"
-    orientation="vertical"
-    :items="items"
-    :collapsed="collapsed"
-    tooltip
-    popover
-  />
+  <nav v-if="entries.length > 0" :aria-label="$t('shell.menu.label')">
+    <ul class="flex flex-col gap-0.5">
+      <li
+        v-for="entry in entries"
+        :key="entry.id"
+        @mouseenter="entry.children.length > 0 && (props.collapsed || entry.id !== section) && hover(entry.id, 120)"
+        @mouseleave="hover(undefined, 200)"
+      >
+        <!-- Collapsed: the icon opens the section's menu. -->
+        <UPopover
+          v-if="props.collapsed"
+          :open="open === entry.id"
+          :content="{ side: 'right', align: 'start', sideOffset: 8 }"
+          @update:open="(value: boolean) => setOpen(entry.id, value)"
+        >
+          <button
+            type="button"
+            :class="[linkClass, 'w-full justify-center px-0', { 'bg-sidebar-active': entry.id === section }]"
+            :aria-label="label(entry.labelKey)"
+          >
+            <UIcon :name="entry.icon" class="size-5 shrink-0 text-sidebar-muted" aria-hidden="true" />
+          </button>
+          <template #content>
+            <ul
+              class="flex min-w-48 flex-col gap-0.5 p-1.5"
+              @mouseenter="hover(entry.id, 0)"
+              @mouseleave="hover(undefined, 200)"
+            >
+              <li>
+                <NuxtLink
+                  :to="entry.to"
+                  :class="[flyoutLinkClass, 'font-semibold text-highlighted']"
+                  :aria-current="route.path === entry.to ? 'page' : undefined"
+                >
+                  {{ label(entry.labelKey) }}
+                </NuxtLink>
+              </li>
+              <li v-for="child in entry.children" :key="child.id">
+                <NuxtLink
+                  :to="child.to"
+                  :class="flyoutLinkClass"
+                  :aria-current="childId(entry) === child.id ? 'page' : undefined"
+                >
+                  {{ label(child.labelKey) }}
+                </NuxtLink>
+              </li>
+            </ul>
+          </template>
+        </UPopover>
+
+        <template v-else>
+          <div class="flex items-center gap-1">
+            <NuxtLink
+              :to="entry.to"
+              :class="[linkClass, 'flex-1', { 'bg-sidebar-active font-medium': entry.id === section }]"
+              :aria-current="entry.id === section && childId(entry) === undefined ? 'page' : undefined"
+            >
+              <UIcon :name="entry.icon" class="size-5 shrink-0 text-sidebar-muted" aria-hidden="true" />
+              <span class="truncate">{{ label(entry.labelKey) }}</span>
+            </NuxtLink>
+            <UPopover
+              v-if="entry.children.length > 0 && entry.id !== section"
+              :open="open === entry.id"
+              :content="{ side: 'right', align: 'start', sideOffset: 12 }"
+              @update:open="(value: boolean) => setOpen(entry.id, value)"
+            >
+              <button
+                type="button"
+                class="inline-flex size-control shrink-0 items-center justify-center rounded-menu text-sidebar-muted hover:bg-sidebar-active hover:text-sidebar-text focus-visible:outline-sidebar-focus"
+                :aria-label="$t('shell.menu.open', { name: label(entry.labelKey) })"
+              >
+                <UIcon name="i-lucide-chevron-right" class="size-4" aria-hidden="true" />
+              </button>
+              <template #content>
+                <ul
+                  class="flex min-w-48 flex-col gap-0.5 p-1.5"
+                  @mouseenter="hover(entry.id, 0)"
+                  @mouseleave="hover(undefined, 200)"
+                >
+                  <li v-for="child in entry.children" :key="child.id">
+                    <NuxtLink :to="child.to" :class="flyoutLinkClass">{{ label(child.labelKey) }}</NuxtLink>
+                  </li>
+                </ul>
+              </template>
+            </UPopover>
+          </div>
+          <ul v-if="entry.id === section && entry.children.length > 0" class="mt-0.5 mb-1 flex flex-col gap-0.5 ps-8">
+            <li v-for="child in entry.children" :key="child.id">
+              <NuxtLink
+                :to="child.to"
+                :class="[
+                  linkClass,
+                  'text-sidebar-muted hover:text-sidebar-text',
+                  { 'font-medium text-sidebar-text': childId(entry) === child.id },
+                ]"
+                :aria-current="childId(entry) === child.id ? 'page' : undefined"
+              >
+                {{ label(child.labelKey) }}
+              </NuxtLink>
+            </li>
+          </ul>
+        </template>
+      </li>
+    </ul>
+  </nav>
   <div v-else-if="status === 'pending'" role="status" class="flex flex-col gap-2">
     <span class="sr-only">{{ $t('shell.menu.loading') }}</span>
-    <USkeleton v-for="n in 3" :key="n" role="presentation" aria-hidden="true" aria-label="" class="h-9 w-full" />
+    <USkeleton
+      v-for="n in 3"
+      :key="n"
+      role="presentation"
+      aria-hidden="true"
+      aria-label=""
+      class="h-9 w-full bg-sidebar-active"
+    />
   </div>
-  <UButton
-    v-else-if="collapsed"
-    icon="i-lucide-rotate-ccw"
-    color="neutral"
-    variant="outline"
-    class="min-h-11 min-w-11 justify-center"
-    :aria-label="$t('shell.menu.failed.retry')"
-    @click="() => refresh()"
-  />
-  <UAlert v-else color="error" variant="subtle" role="alert" :title="$t('shell.menu.failed.title')">
-    <template #description>
-      <p>{{ $t('shell.menu.failed.text') }}</p>
-    </template>
-    <template #actions>
-      <UButton color="neutral" variant="outline" size="lg" class="min-h-11" @click="() => refresh()">
-        {{ $t('shell.menu.failed.retry') }}
-      </UButton>
-    </template>
-  </UAlert>
+  <div v-else role="alert" class="flex flex-col gap-2 text-sidebar-text">
+    <p>{{ $t('shell.menu.failed.title') }}</p>
+    <button
+      type="button"
+      class="inline-flex min-h-control items-center gap-2 rounded-menu px-3 text-sidebar-text ring ring-sidebar-line hover:bg-sidebar-active focus-visible:outline-sidebar-focus"
+      @click="() => refresh()"
+    >
+      <UIcon name="i-lucide-rotate-ccw" class="size-4" aria-hidden="true" />
+      {{ $t('shell.menu.failed.retry') }}
+    </button>
+  </div>
 </template>

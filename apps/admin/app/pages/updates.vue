@@ -44,96 +44,91 @@ async function save(value: boolean): Promise<void> {
 </script>
 
 <template>
-  <UDashboardPanel id="updates">
-    <template #header>
-      <UDashboardNavbar :title="$t('updates.title')" />
-    </template>
-    <template #body>
-      <section v-if="!mayUpdate" aria-labelledby="updates-denied" class="flex max-w-prose flex-col gap-3">
-        <h2 id="updates-denied" class="text-xl font-semibold text-highlighted">{{ $t('settings.denied') }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+  <AdminPage id="updates" :title="$t('updates.title')">
+    <section v-if="!mayUpdate" aria-labelledby="updates-denied" class="flex max-w-prose flex-col gap-3">
+      <h2 id="updates-denied" class="text-xl font-semibold text-highlighted">{{ $t('settings.denied') }}</h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
+    <UAlert
+      v-else-if="error"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :title="$t('updates.loadFailed')"
+      :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
+    />
+    <div v-else-if="data" class="flex max-w-3xl flex-col gap-8">
+      <section aria-labelledby="updates-version" class="flex flex-col gap-3">
+        <h2 id="updates-version" class="text-lg font-semibold text-highlighted">
+          {{ $t('updates.current', { version: data.current }) }}
+        </h2>
+        <p v-if="data.status" class="text-sm text-toned">
+          {{ $t('updates.checkedAt', { time: when(data.status.checkedAt) }) }}
+        </p>
+        <UAlert
+          v-if="data.status === null"
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-info"
+          :title="$t('updates.never')"
+        />
+        <UAlert
+          v-else-if="!data.status.ok"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-triangle-alert"
+          :title="$t('updates.failed')"
+        />
+        <UAlert
+          v-else-if="data.status.available"
+          color="info"
+          variant="subtle"
+          icon="i-lucide-info"
+          :title="$t('updates.available', { version: data.status.latest ?? '' })"
+        />
+        <UAlert v-else color="success" variant="subtle" icon="i-lucide-circle-check" :title="$t('updates.newest')" />
+        <p v-if="data.changelogUrl">
+          <ULink :to="data.changelogUrl" target="_blank" rel="noopener noreferrer" class="underline text-primary">
+            {{ $t('updates.changelog', { version: data.status?.latest ?? '' }) }}
+          </ULink>
+        </p>
       </section>
-      <UAlert
-        v-else-if="error"
-        color="error"
-        variant="subtle"
-        icon="i-lucide-triangle-alert"
-        :title="$t('updates.loadFailed')"
-        :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
-      />
-      <div v-else-if="data" class="flex max-w-3xl flex-col gap-8">
-        <section aria-labelledby="updates-version" class="flex flex-col gap-3">
-          <h2 id="updates-version" class="text-lg font-semibold text-highlighted">
-            {{ $t('updates.current', { version: data.current }) }}
-          </h2>
-          <p v-if="data.status" class="text-sm text-toned">
-            {{ $t('updates.checkedAt', { time: when(data.status.checkedAt) }) }}
-          </p>
-          <UAlert
-            v-if="data.status === null"
-            color="neutral"
-            variant="subtle"
-            icon="i-lucide-info"
-            :title="$t('updates.never')"
-          />
-          <UAlert
-            v-else-if="!data.status.ok"
-            color="warning"
-            variant="subtle"
-            icon="i-lucide-triangle-alert"
-            :title="$t('updates.failed')"
-          />
-          <UAlert
-            v-else-if="data.status.available"
-            color="info"
-            variant="subtle"
-            icon="i-lucide-info"
-            :title="$t('updates.available', { version: data.status.latest ?? '' })"
-          />
-          <UAlert v-else color="success" variant="subtle" icon="i-lucide-circle-check" :title="$t('updates.newest')" />
-          <p v-if="data.changelogUrl">
-            <ULink :to="data.changelogUrl" target="_blank" rel="noopener noreferrer" class="underline text-primary">
-              {{ $t('updates.changelog', { version: data.status?.latest ?? '' }) }}
-            </ULink>
-          </p>
-        </section>
 
-        <section aria-labelledby="updates-how" class="flex flex-col gap-3">
-          <h2 id="updates-how" class="text-lg font-semibold text-highlighted">{{ $t('updates.howTitle') }}</h2>
-          <p class="max-w-prose text-base text-default">{{ $t('updates.how') }}</p>
-          <pre
-            class="overflow-x-auto rounded-md bg-muted p-4 font-mono text-sm text-highlighted"
-            data-testid="update-command"
-          ><code>{{ $t('updates.command') }}</code></pre>
-          <p class="max-w-prose text-sm text-toned">{{ $t('updates.backupNote') }}</p>
-        </section>
+      <section aria-labelledby="updates-how" class="flex flex-col gap-3">
+        <h2 id="updates-how" class="text-lg font-semibold text-highlighted">{{ $t('updates.howTitle') }}</h2>
+        <p class="max-w-prose text-base text-default">{{ $t('updates.how') }}</p>
+        <pre
+          class="overflow-x-auto rounded-md bg-muted p-4 font-mono text-sm text-highlighted"
+          data-testid="update-command"
+        ><code>{{ $t('updates.command') }}</code></pre>
+        <p class="max-w-prose text-sm text-toned">{{ $t('updates.backupNote') }}</p>
+      </section>
 
-        <section aria-labelledby="updates-check" class="flex flex-col gap-3">
-          <h2 id="updates-check" class="text-lg font-semibold text-highlighted">{{ $t('updates.checkTitle') }}</h2>
-          <USwitch
-            v-model="enabled"
-            :disabled="saving || data.disabledByServer"
-            :label="$t('updates.checkLabel')"
-            :description="$t('updates.checkHelp')"
-          />
-          <UAlert
-            v-if="data.disabledByServer"
-            color="neutral"
-            variant="subtle"
-            icon="i-lucide-info"
-            :title="$t('updates.offByServer')"
-          />
-          <UAlert
-            v-if="failure"
-            color="error"
-            variant="subtle"
-            role="alert"
-            icon="i-lucide-triangle-alert"
-            :title="$t('settings.saveFailed')"
-            :description="failure"
-          />
-        </section>
-      </div>
-    </template>
-  </UDashboardPanel>
+      <section aria-labelledby="updates-check" class="flex flex-col gap-3">
+        <h2 id="updates-check" class="text-lg font-semibold text-highlighted">{{ $t('updates.checkTitle') }}</h2>
+        <USwitch
+          v-model="enabled"
+          :disabled="saving || data.disabledByServer"
+          :label="$t('updates.checkLabel')"
+          :description="$t('updates.checkHelp')"
+        />
+        <UAlert
+          v-if="data.disabledByServer"
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-info"
+          :title="$t('updates.offByServer')"
+        />
+        <UAlert
+          v-if="failure"
+          color="error"
+          variant="subtle"
+          role="alert"
+          icon="i-lucide-triangle-alert"
+          :title="$t('settings.saveFailed')"
+          :description="failure"
+        />
+      </section>
+    </div>
+  </AdminPage>
 </template>

@@ -75,3 +75,9 @@ export function toNavigationItems(
     return [parent, ...children.map((child) => ({ ...child, class: SUB_ITEM_CLASS }))]
   })
 }
+
+/** The sub-item of a section the page is on (the one with the longest matching path), if any. */
+export function activeChildId(entry: AdminMenuEntry, current: string): string | undefined {
+  const matching = entry.children.filter((child) => isOnPath(current, child.to))
+  return matching.sort((a, b) => b.to.length - a.to.length)[0]?.id
+}

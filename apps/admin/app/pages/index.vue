@@ -15,27 +15,21 @@ const manages = computed(() => can('manage_options'))
 </script>
 
 <template>
-  <UDashboardPanel id="dashboard">
-    <template #header>
-      <UDashboardNavbar :title="$t('dashboard.title')" />
-    </template>
-
-    <template #body>
-      <!-- One block: the panel body is a flex column, and a card in it would shrink and clip its text. -->
-      <div class="flex flex-col gap-4 sm:gap-6">
-        <DashboardNotices />
-        <DashboardWelcome />
-        <div class="grid grid-cols-1 items-start gap-4 sm:gap-6 xl:grid-cols-2">
-          <div class="flex flex-col gap-4 sm:gap-6">
-            <DashboardGlance />
-            <DashboardHealth v-if="manages" />
-            <DashboardActivity v-if="writes" />
-          </div>
-          <div v-if="writes" class="flex flex-col gap-4 sm:gap-6">
-            <DashboardQuickDraft />
-          </div>
+  <AdminPage id="dashboard" :title="$t('dashboard.title')">
+    <!-- One block: the panel body is a flex column, and a card in it would shrink and clip its text. -->
+    <div class="flex flex-col gap-4 sm:gap-6">
+      <DashboardNotices />
+      <DashboardWelcome />
+      <div class="grid grid-cols-1 items-start gap-4 sm:gap-6 xl:grid-cols-2">
+        <div class="flex flex-col gap-4 sm:gap-6">
+          <DashboardGlance />
+          <DashboardHealth v-if="manages" />
+          <DashboardActivity v-if="writes" />
+        </div>
+        <div v-if="writes" class="flex flex-col gap-4 sm:gap-6">
+          <DashboardQuickDraft />
         </div>
       </div>
-    </template>
-  </UDashboardPanel>
+    </div>
+  </AdminPage>
 </template>

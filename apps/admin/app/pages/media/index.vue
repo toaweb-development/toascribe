@@ -17,16 +17,11 @@ if (import.meta.server && !mayUpload.value) {
 </script>
 
 <template>
-  <UDashboardPanel id="media-library">
-    <template #header>
-      <UDashboardNavbar :title="$t('media.library.title')" />
-    </template>
-    <template #body>
-      <section v-if="!mayUpload" aria-labelledby="media-denied-heading" class="flex max-w-prose flex-col gap-3">
-        <h2 id="media-denied-heading" class="text-xl font-semibold text-highlighted">{{ $t('media.denied') }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
-      </section>
-      <MediaLibrary v-else />
-    </template>
-  </UDashboardPanel>
+  <AdminPage id="media-library" :title="$t('media.library.title')">
+    <section v-if="!mayUpload" aria-labelledby="media-denied-heading" class="flex max-w-prose flex-col gap-3">
+      <h2 id="media-denied-heading" class="text-xl font-semibold text-highlighted">{{ $t('media.denied') }}</h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
+    <MediaLibrary v-else />
+  </AdminPage>
 </template>

@@ -14,6 +14,9 @@ that heading keep the format they were written in (Keep a Changelog).
   pair (a check in `pnpm check`), the fonts Geist and Geist Mono served by the site itself, and Nuxt UI's components in that look.
   The admin colour schemes are now a theme, «System», «Lyst» or «Mørkt» on the profile; an earlier choice becomes the theme it
   looked like (Standard and Hav: System, Midnatt: Mørkt).
+- The admin has a new frame: a dark side menu where only the open section shows its pages and the others open as a small menu
+  on hover or focus, which folds to icons and slides in on a phone; a top bar with the path to the screen, «Hjelp», «+ Ny» and
+  the user menu; and every screen under one page heading, at most 1180 px wide. The black bar across the top is gone.
 - A preview link (`/?preview=…`) puts its token in a short-lived, HttpOnly cookie on the first visit and sends the browser on to
   `/?preview`: the token is in no address the browser keeps or sends on, and the preview answers with `Referrer-Policy: no-referrer`.
 - A registration form's token is good for one registration (migration `0015_register_form_use` keeps the used ones for their hour).

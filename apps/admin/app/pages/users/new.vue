@@ -81,68 +81,63 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <UDashboardPanel id="users-new">
-    <template #header>
-      <UDashboardNavbar :title="$t('users.new.title')" />
-    </template>
-    <template #body>
-      <section v-if="!mayCreate" aria-labelledby="users-new-denied" class="flex max-w-prose flex-col gap-3">
-        <h2 id="users-new-denied" class="text-xl font-semibold text-highlighted">{{ $t('users.denied.title') }}</h2>
-        <p class="text-base text-default">{{ $t('users.new.denied') }}</p>
-      </section>
-      <form v-else class="flex max-w-2xl flex-col gap-6" @submit.prevent="submit">
-        <p class="max-w-prose text-base text-default">{{ $t('users.new.intro') }}</p>
-        <UFormField :label="$t('users.new.username')" :help="$t('users.new.usernameHelp')" name="username" required>
-          <UInput
-            v-model="form.username"
-            autocomplete="off"
-            spellcheck="false"
-            size="xl"
-            class="w-full sm:w-96"
-            required
-          />
-        </UFormField>
-        <UFormField :label="$t('users.new.email')" name="email" required>
-          <UInput v-model="form.email" type="email" autocomplete="off" size="xl" class="w-full sm:w-96" required />
-        </UFormField>
-        <div class="grid gap-6 sm:grid-cols-2">
-          <UFormField :label="$t('users.new.firstName')" name="firstName">
-            <UInput v-model="form.firstName" size="xl" class="w-full" />
-          </UFormField>
-          <UFormField :label="$t('users.new.lastName')" name="lastName">
-            <UInput v-model="form.lastName" size="xl" class="w-full" />
-          </UFormField>
-        </div>
-        <UFormField :label="$t('users.new.website')" name="website">
-          <UInput v-model="form.website" type="url" size="xl" class="w-full sm:w-96" />
-        </UFormField>
-        <UFormField :label="$t('users.new.role')" name="role">
-          <USelect v-model="form.role" :items="roleItems" size="xl" class="w-full sm:w-64" />
-        </UFormField>
-        <UCheckbox
-          v-model="form.sendInvite"
-          :label="$t('users.new.sendInvite')"
-          :description="$t('users.new.sendInviteHelp')"
+  <AdminPage id="users-new" :title="$t('users.new.title')">
+    <section v-if="!mayCreate" aria-labelledby="users-new-denied" class="flex max-w-prose flex-col gap-3">
+      <h2 id="users-new-denied" class="text-xl font-semibold text-highlighted">{{ $t('users.denied.title') }}</h2>
+      <p class="text-base text-default">{{ $t('users.new.denied') }}</p>
+    </section>
+    <form v-else class="flex max-w-2xl flex-col gap-6" @submit.prevent="submit">
+      <p class="max-w-prose text-base text-default">{{ $t('users.new.intro') }}</p>
+      <UFormField :label="$t('users.new.username')" :help="$t('users.new.usernameHelp')" name="username" required>
+        <UInput
+          v-model="form.username"
+          autocomplete="off"
+          spellcheck="false"
+          size="xl"
+          class="w-full sm:w-96"
+          required
         />
-        <AuthNewPasswordFields
-          v-if="!form.sendInvite"
-          v-model="form.password"
-          :label="$t('users.new.password')"
-          :help="$t('users.new.passwordHelp')"
-        />
-        <UAlert
-          v-if="failure"
-          color="error"
-          variant="subtle"
-          role="alert"
-          icon="i-lucide-triangle-alert"
-          :title="$t('users.new.failed')"
-          :description="failure"
-        />
-        <div>
-          <UButton type="submit" size="lg" class="min-h-11" :loading="saving">{{ $t('users.new.submit') }}</UButton>
-        </div>
-      </form>
-    </template>
-  </UDashboardPanel>
+      </UFormField>
+      <UFormField :label="$t('users.new.email')" name="email" required>
+        <UInput v-model="form.email" type="email" autocomplete="off" size="xl" class="w-full sm:w-96" required />
+      </UFormField>
+      <div class="grid gap-6 sm:grid-cols-2">
+        <UFormField :label="$t('users.new.firstName')" name="firstName">
+          <UInput v-model="form.firstName" size="xl" class="w-full" />
+        </UFormField>
+        <UFormField :label="$t('users.new.lastName')" name="lastName">
+          <UInput v-model="form.lastName" size="xl" class="w-full" />
+        </UFormField>
+      </div>
+      <UFormField :label="$t('users.new.website')" name="website">
+        <UInput v-model="form.website" type="url" size="xl" class="w-full sm:w-96" />
+      </UFormField>
+      <UFormField :label="$t('users.new.role')" name="role">
+        <USelect v-model="form.role" :items="roleItems" size="xl" class="w-full sm:w-64" />
+      </UFormField>
+      <UCheckbox
+        v-model="form.sendInvite"
+        :label="$t('users.new.sendInvite')"
+        :description="$t('users.new.sendInviteHelp')"
+      />
+      <AuthNewPasswordFields
+        v-if="!form.sendInvite"
+        v-model="form.password"
+        :label="$t('users.new.password')"
+        :help="$t('users.new.passwordHelp')"
+      />
+      <UAlert
+        v-if="failure"
+        color="error"
+        variant="subtle"
+        role="alert"
+        icon="i-lucide-triangle-alert"
+        :title="$t('users.new.failed')"
+        :description="failure"
+      />
+      <div>
+        <UButton type="submit" size="lg" class="min-h-11" :loading="saving">{{ $t('users.new.submit') }}</UButton>
+      </div>
+    </form>
+  </AdminPage>
 </template>

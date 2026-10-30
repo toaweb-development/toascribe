@@ -34,43 +34,38 @@ async function edit(item: MediaItem): Promise<void> {
 </script>
 
 <template>
-  <UDashboardPanel id="media-new">
-    <template #header>
-      <UDashboardNavbar :title="$t('media.new.title')" />
-    </template>
-    <template #body>
-      <section v-if="!mayUpload" aria-labelledby="media-denied-heading" class="flex max-w-prose flex-col gap-3">
-        <h2 id="media-denied-heading" class="text-xl font-semibold text-highlighted">{{ $t('media.denied') }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+  <AdminPage id="media-new" :title="$t('media.new.title')">
+    <section v-if="!mayUpload" aria-labelledby="media-denied-heading" class="flex max-w-prose flex-col gap-3">
+      <h2 id="media-denied-heading" class="text-xl font-semibold text-highlighted">{{ $t('media.denied') }}</h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
+    <div v-else class="flex max-w-3xl flex-col gap-6">
+      <UAlert
+        v-if="error"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-triangle-alert"
+        :title="$t('media.library.loadFailed')"
+        :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
+      />
+      <MediaUploader v-if="data" :limits="data" @uploaded="uploaded.unshift($event)" />
+      <section v-if="uploaded.length > 0" aria-labelledby="media-new-done" class="flex flex-col gap-2">
+        <h2 id="media-new-done" class="text-lg font-semibold text-highlighted">{{ $t('media.new.uploaded') }}</h2>
+        <ul class="flex flex-col divide-y divide-default rounded-md border border-default">
+          <li v-for="item in uploaded" :key="item.id" class="flex items-center justify-between gap-3 p-2">
+            <span class="min-w-0 truncate text-sm text-highlighted">{{ item.title || item.fileName }}</span>
+            <UButton
+              size="sm"
+              color="neutral"
+              variant="ghost"
+              class="min-h-11 lg:min-h-8"
+              :label="$t('content.actions.edit')"
+              :aria-label="$t('media.new.editNamed', { name: item.title || item.fileName })"
+              @click="edit(item)"
+            />
+          </li>
+        </ul>
       </section>
-      <div v-else class="flex max-w-3xl flex-col gap-6">
-        <UAlert
-          v-if="error"
-          color="error"
-          variant="subtle"
-          icon="i-lucide-triangle-alert"
-          :title="$t('media.library.loadFailed')"
-          :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
-        />
-        <MediaUploader v-if="data" :limits="data" @uploaded="uploaded.unshift($event)" />
-        <section v-if="uploaded.length > 0" aria-labelledby="media-new-done" class="flex flex-col gap-2">
-          <h2 id="media-new-done" class="text-lg font-semibold text-highlighted">{{ $t('media.new.uploaded') }}</h2>
-          <ul class="flex flex-col divide-y divide-default rounded-md border border-default">
-            <li v-for="item in uploaded" :key="item.id" class="flex items-center justify-between gap-3 p-2">
-              <span class="min-w-0 truncate text-sm text-highlighted">{{ item.title || item.fileName }}</span>
-              <UButton
-                size="sm"
-                color="neutral"
-                variant="ghost"
-                class="min-h-11 lg:min-h-8"
-                :label="$t('content.actions.edit')"
-                :aria-label="$t('media.new.editNamed', { name: item.title || item.fileName })"
-                @click="edit(item)"
-              />
-            </li>
-          </ul>
-        </section>
-      </div>
-    </template>
-  </UDashboardPanel>
+    </div>
+  </AdminPage>
 </template>

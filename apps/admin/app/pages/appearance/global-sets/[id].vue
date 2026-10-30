@@ -73,72 +73,67 @@ const topPlace = computed(() => {
 </script>
 
 <template>
-  <UDashboardPanel id="appearance-global-set">
-    <template #header>
-      <UDashboardNavbar :title="$t('appearance.sets.editTitle', { name: data?.name ?? '' })" />
-    </template>
-    <template #body>
-      <section v-if="!mayEdit" aria-labelledby="set-denied" class="flex max-w-prose flex-col gap-3">
-        <h2 id="set-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
-      </section>
+  <AdminPage id="appearance-global-set" :title="$t('appearance.sets.editTitle', { name: data?.name ?? '' })">
+    <section v-if="!mayEdit" aria-labelledby="set-denied" class="flex max-w-prose flex-col gap-3">
+      <h2 id="set-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
+    <UAlert
+      v-else-if="error"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :title="$t('appearance.sets.failed')"
+    />
+    <div v-else-if="data" class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-end gap-3">
+        <UFormField :label="$t('appearance.sets.name')" name="set-name">
+          <UInput v-model="name" maxlength="200" size="xl" class="w-full sm:w-80" />
+        </UFormField>
+        <p class="text-sm text-muted">
+          {{ $t('appearance.sets.slugHelp') }} <code>{{ data.slug }}</code>
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 border-b border-default py-2">
+        <EditorInserter :place="topPlace" :parent-type="null" :label="$t('editor.addBlock')" />
+        <UButton
+          icon="i-lucide-undo-2"
+          color="neutral"
+          variant="ghost"
+          :aria-label="$t('editorPrototype.undo')"
+          :disabled="!editor.canUndo.value"
+          @click="editor.undo()"
+        />
+        <UButton
+          icon="i-lucide-redo-2"
+          color="neutral"
+          variant="ghost"
+          :aria-label="$t('editorPrototype.redo')"
+          :disabled="!editor.canRedo.value"
+          @click="editor.redo()"
+        />
+        <UButton class="ms-auto min-h-11" size="lg" :loading="saving" @click="save">{{
+          $t('appearance.sets.save')
+        }}</UButton>
+      </div>
+      <div role="status">
+        <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-circle-check" :title="report" />
+      </div>
       <UAlert
-        v-else-if="error"
+        v-if="failure"
         color="error"
         variant="subtle"
+        role="alert"
         icon="i-lucide-triangle-alert"
-        :title="$t('appearance.sets.failed')"
+        :title="$t('appearance.sets.saveFailed')"
+        :description="failure"
       />
-      <div v-else-if="data" class="flex flex-col gap-4">
-        <div class="flex flex-wrap items-end gap-3">
-          <UFormField :label="$t('appearance.sets.name')" name="set-name">
-            <UInput v-model="name" maxlength="200" size="xl" class="w-full sm:w-80" />
-          </UFormField>
-          <p class="text-sm text-muted">
-            {{ $t('appearance.sets.slugHelp') }} <code>{{ data.slug }}</code>
-          </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2 border-b border-default py-2">
-          <EditorInserter :place="topPlace" :parent-type="null" :label="$t('editor.addBlock')" />
-          <UButton
-            icon="i-lucide-undo-2"
-            color="neutral"
-            variant="ghost"
-            :aria-label="$t('editorPrototype.undo')"
-            :disabled="!editor.canUndo.value"
-            @click="editor.undo()"
-          />
-          <UButton
-            icon="i-lucide-redo-2"
-            color="neutral"
-            variant="ghost"
-            :aria-label="$t('editorPrototype.redo')"
-            :disabled="!editor.canRedo.value"
-            @click="editor.redo()"
-          />
-          <UButton class="ms-auto min-h-11" size="lg" :loading="saving" @click="save">{{
-            $t('appearance.sets.save')
-          }}</UButton>
-        </div>
-        <div role="status">
-          <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-circle-check" :title="report" />
-        </div>
-        <UAlert
-          v-if="failure"
-          color="error"
-          variant="subtle"
-          role="alert"
-          icon="i-lucide-triangle-alert"
-          :title="$t('appearance.sets.saveFailed')"
-          :description="failure"
-        />
-        <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
-          <EditorCanvas />
-          <aside :aria-label="$t('editor.blockTab')">
-            <EditorBlockSettings />
-          </aside>
-        </div>
+      <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
+        <EditorCanvas />
+        <aside :aria-label="$t('editor.blockTab')">
+          <EditorBlockSettings />
+        </aside>
       </div>
-    </template>
-  </UDashboardPanel>
+    </div>
+  </AdminPage>
 </template>

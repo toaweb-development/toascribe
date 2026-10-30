@@ -63,69 +63,64 @@ async function copy(): Promise<void> {
 </script>
 
 <template>
-  <UDashboardPanel id="site-health">
-    <template #header>
-      <UDashboardNavbar :title="$t('siteHealth.title')" />
-    </template>
-    <template #body>
-      <section v-if="!mayManage" aria-labelledby="site-health-denied" class="flex max-w-prose flex-col gap-3">
-        <h2 id="site-health-denied" class="text-xl font-semibold text-highlighted">{{ $t('settings.denied') }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
-      </section>
+  <AdminPage id="site-health" :title="$t('siteHealth.title')">
+    <section v-if="!mayManage" aria-labelledby="site-health-denied" class="flex max-w-prose flex-col gap-3">
+      <h2 id="site-health-denied" class="text-xl font-semibold text-highlighted">{{ $t('settings.denied') }}</h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
+    <UAlert
+      v-else-if="error"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :title="$t('siteHealth.loadFailed')"
+      :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
+    />
+    <div v-else-if="data" class="flex max-w-3xl flex-col gap-6">
       <UAlert
-        v-else-if="error"
-        color="error"
+        v-if="debugOn"
+        color="warning"
         variant="subtle"
         icon="i-lucide-triangle-alert"
-        :title="$t('siteHealth.loadFailed')"
-        :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
+        :title="$t('siteHealth.debugOn')"
       />
-      <div v-else-if="data" class="flex max-w-3xl flex-col gap-6">
-        <UAlert
-          v-if="debugOn"
-          color="warning"
-          variant="subtle"
-          icon="i-lucide-triangle-alert"
-          :title="$t('siteHealth.debugOn')"
+      <h2 class="text-xl font-semibold text-highlighted">{{ $t('siteHealth.info') }}</h2>
+      <p class="max-w-prose text-base text-default">{{ $t('siteHealth.intro') }}</p>
+      <div class="flex flex-wrap items-center gap-3">
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="lg"
+          class="min-h-11"
+          icon="i-lucide-clipboard-copy"
+          :label="$t('siteHealth.copy')"
+          @click="copy"
         />
-        <h2 class="text-xl font-semibold text-highlighted">{{ $t('siteHealth.info') }}</h2>
-        <p class="max-w-prose text-base text-default">{{ $t('siteHealth.intro') }}</p>
-        <div class="flex flex-wrap items-center gap-3">
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="lg"
-            class="min-h-11"
-            icon="i-lucide-clipboard-copy"
-            :label="$t('siteHealth.copy')"
-            @click="copy"
-          />
-          <p role="status" class="text-sm text-toned">
-            <template v-if="notice === 'copied'">{{ $t('siteHealth.copied') }}</template>
-            <template v-else-if="notice === 'failed'">{{ $t('siteHealth.copyFailed') }}</template>
-          </p>
-        </div>
-        <section
-          v-for="group in data.groups"
-          :key="group.key"
-          :aria-labelledby="`site-health-${group.key}`"
-          class="flex flex-col gap-2"
-        >
-          <h3 :id="`site-health-${group.key}`" class="text-lg font-semibold text-highlighted">
-            {{ siteHealthGroup(translator, group.key) }}
-          </h3>
-          <dl class="divide-y divide-default rounded-md border border-default">
-            <div
-              v-for="field in group.fields"
-              :key="field.key"
-              class="grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4"
-            >
-              <dt class="text-sm font-medium text-toned">{{ label(group.key, field.key) }}</dt>
-              <dd class="text-base break-words text-default">{{ shown(field) }}</dd>
-            </div>
-          </dl>
-        </section>
+        <p role="status" class="text-sm text-toned">
+          <template v-if="notice === 'copied'">{{ $t('siteHealth.copied') }}</template>
+          <template v-else-if="notice === 'failed'">{{ $t('siteHealth.copyFailed') }}</template>
+        </p>
       </div>
-    </template>
-  </UDashboardPanel>
+      <section
+        v-for="group in data.groups"
+        :key="group.key"
+        :aria-labelledby="`site-health-${group.key}`"
+        class="flex flex-col gap-2"
+      >
+        <h3 :id="`site-health-${group.key}`" class="text-lg font-semibold text-highlighted">
+          {{ siteHealthGroup(translator, group.key) }}
+        </h3>
+        <dl class="divide-y divide-default rounded-md border border-default">
+          <div
+            v-for="field in group.fields"
+            :key="field.key"
+            class="grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4"
+          >
+            <dt class="text-sm font-medium text-toned">{{ label(group.key, field.key) }}</dt>
+            <dd class="text-base break-words text-default">{{ shown(field) }}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  </AdminPage>
 </template>

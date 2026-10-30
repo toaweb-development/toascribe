@@ -368,187 +368,181 @@ const path = computed(() => (item.value === null ? '/' : item.value.shortLink))
 </script>
 
 <template>
-  <UDashboardPanel :id="`content-editor-${type}`">
-    <template #header>
-      <UDashboardNavbar :title="heading" />
-    </template>
+  <AdminPage :id="`content-editor-${type}`" :title="heading">
+    <div class="flex w-full flex-col gap-4" @keydown="onKeydown">
+      <UAlert v-if="!mayEdit" color="error" variant="subtle" icon="i-lucide-triangle-alert" :title="words.denied" />
+      <UAlert
+        v-else-if="notFound"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-triangle-alert"
+        :title="$t('content.errors.notFound')"
+      />
+      <UAlert
+        v-else-if="status === 'error'"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-triangle-alert"
+        :title="$t('content.editor.loadFailed')"
+        :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
+      />
+      <template v-else>
+        <div
+          role="toolbar"
+          :aria-label="$t('editorPrototype.toolbarLabel')"
+          class="z-10 flex flex-wrap items-center gap-2 border-b border-default bg-default py-2 lg:sticky lg:top-0"
+        >
+          <EditorInserter
+            v-if="!legacy && !readOnly"
+            :place="topPlace"
+            :parent-type="null"
+            :label="$t('editor.addBlock')"
+          />
+          <UButton
+            icon="i-lucide-undo-2"
+            color="neutral"
+            variant="ghost"
+            :aria-label="$t('editorPrototype.undo')"
+            aria-keyshortcuts="Control+Z"
+            :disabled="!editor.canUndo.value || legacy"
+            @click="editor.undo()"
+          />
+          <UButton
+            icon="i-lucide-redo-2"
+            color="neutral"
+            variant="ghost"
+            :aria-label="$t('editorPrototype.redo')"
+            aria-keyshortcuts="Control+Shift+Z"
+            :disabled="!editor.canRedo.value || legacy"
+            @click="editor.redo()"
+          />
+          <span class="flex-1" />
+          <UButton
+            v-if="maySaveDraft(item)"
+            color="neutral"
+            variant="ghost"
+            :label="$t('content.editor.saveDraft')"
+            :loading="saving"
+            :disabled="readOnly"
+            aria-keyshortcuts="Control+S"
+            @click="save('draft')"
+          />
+          <UButton
+            icon="i-lucide-eye"
+            color="neutral"
+            variant="outline"
+            :label="$t('content.actions.preview')"
+            :disabled="saving"
+            @click="preview"
+          />
+          <UButton
+            v-if="!readOnly"
+            :icon="action === 'schedule' ? 'i-lucide-calendar-clock' : 'i-lucide-send'"
+            :label="actionLabel"
+            :loading="saving"
+            :aria-keyshortcuts="maySaveDraft(item) ? undefined : 'Control+S'"
+            @click="save(action)"
+          />
+          <UButton
+            icon="i-lucide-panel-right"
+            color="neutral"
+            :variant="sidebarOpen ? 'soft' : 'ghost'"
+            :aria-label="$t('editor.sidebar')"
+            :aria-pressed="sidebarOpen"
+            aria-controls="editor-sidebar"
+            @click="sidebarOpen = !sidebarOpen"
+          />
+          <UButton
+            icon="i-lucide-keyboard"
+            color="neutral"
+            variant="ghost"
+            :aria-label="$t('editor.shortcuts.title')"
+            @click="shortcutsDialog.open()"
+          />
+        </div>
 
-    <template #body>
-      <div class="flex w-full flex-col gap-4" @keydown="onKeydown">
-        <UAlert v-if="!mayEdit" color="error" variant="subtle" icon="i-lucide-triangle-alert" :title="words.denied" />
-        <UAlert
-          v-else-if="notFound"
-          color="error"
-          variant="subtle"
-          icon="i-lucide-triangle-alert"
-          :title="$t('content.errors.notFound')"
-        />
-        <UAlert
-          v-else-if="status === 'error'"
-          color="error"
-          variant="subtle"
-          icon="i-lucide-triangle-alert"
-          :title="$t('content.editor.loadFailed')"
-          :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
-        />
-        <template v-else>
-          <div
-            role="toolbar"
-            :aria-label="$t('editorPrototype.toolbarLabel')"
-            class="z-10 flex flex-wrap items-center gap-2 border-b border-default bg-default py-2 lg:sticky lg:top-0"
-          >
-            <EditorInserter
-              v-if="!legacy && !readOnly"
-              :place="topPlace"
-              :parent-type="null"
-              :label="$t('editor.addBlock')"
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div class="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4">
+            <UAlert
+              v-if="readOnly"
+              color="warning"
+              variant="subtle"
+              icon="i-lucide-lock"
+              :title="item?.status === 'trash' ? $t('content.errors.trashed') : $t('content.editor.readOnly')"
             />
-            <UButton
-              icon="i-lucide-undo-2"
-              color="neutral"
-              variant="ghost"
-              :aria-label="$t('editorPrototype.undo')"
-              aria-keyshortcuts="Control+Z"
-              :disabled="!editor.canUndo.value || legacy"
-              @click="editor.undo()"
-            />
-            <UButton
-              icon="i-lucide-redo-2"
-              color="neutral"
-              variant="ghost"
-              :aria-label="$t('editorPrototype.redo')"
-              aria-keyshortcuts="Control+Shift+Z"
-              :disabled="!editor.canRedo.value || legacy"
-              @click="editor.redo()"
-            />
-            <span class="flex-1" />
-            <UButton
-              v-if="maySaveDraft(item)"
-              color="neutral"
-              variant="ghost"
-              :label="$t('content.editor.saveDraft')"
-              :loading="saving"
-              :disabled="readOnly"
-              aria-keyshortcuts="Control+S"
-              @click="save('draft')"
-            />
-            <UButton
-              icon="i-lucide-eye"
-              color="neutral"
-              variant="outline"
-              :label="$t('content.actions.preview')"
-              :disabled="saving"
-              @click="preview"
-            />
-            <UButton
-              v-if="!readOnly"
-              :icon="action === 'schedule' ? 'i-lucide-calendar-clock' : 'i-lucide-send'"
-              :label="actionLabel"
-              :loading="saving"
-              :aria-keyshortcuts="maySaveDraft(item) ? undefined : 'Control+S'"
-              @click="save(action)"
-            />
-            <UButton
-              icon="i-lucide-panel-right"
-              color="neutral"
-              :variant="sidebarOpen ? 'soft' : 'ghost'"
-              :aria-label="$t('editor.sidebar')"
-              :aria-pressed="sidebarOpen"
-              aria-controls="editor-sidebar"
-              @click="sidebarOpen = !sidebarOpen"
-            />
-            <UButton
-              icon="i-lucide-keyboard"
-              color="neutral"
-              variant="ghost"
-              :aria-label="$t('editor.shortcuts.title')"
-              @click="shortcutsDialog.open()"
-            />
-          </div>
-
-          <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
-            <div class="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4">
-              <UAlert
-                v-if="readOnly"
-                color="warning"
-                variant="subtle"
-                icon="i-lucide-lock"
-                :title="item?.status === 'trash' ? $t('content.errors.trashed') : $t('content.editor.readOnly')"
+            <UFormField :label="$t('content.editor.title')" name="title">
+              <UInput
+                v-model="form.title"
+                size="xl"
+                class="w-full"
+                autocomplete="off"
+                :disabled="readOnly"
+                :placeholder="$t('content.editor.titlePlaceholder')"
               />
-              <UFormField :label="$t('content.editor.title')" name="title">
-                <UInput
-                  v-model="form.title"
-                  size="xl"
-                  class="w-full"
-                  autocomplete="off"
-                  :disabled="readOnly"
-                  :placeholder="$t('content.editor.titlePlaceholder')"
-                />
-              </UFormField>
-              <p v-if="item" class="text-sm text-toned">
-                {{ $t('content.editor.shortLink') }} <code>{{ item.shortLink }}</code>
-              </p>
-              <p v-if="dirty" class="text-xs text-warning" role="status">{{ $t('editorPrototype.unsaved') }}</p>
-              <UAlert
-                v-if="failure"
-                color="error"
-                variant="subtle"
-                role="alert"
-                icon="i-lucide-triangle-alert"
-                :title="$t('content.editor.saveFailed')"
-                :description="failure"
-              />
-              <UAlert
-                v-if="issues.length > 0"
-                color="error"
-                variant="subtle"
-                icon="i-lucide-triangle-alert"
-                :title="$t('editorPrototype.invalid')"
-              >
-                <template #description>
-                  <ul class="list-disc pl-4">
-                    <li v-for="found in issues" :key="found.key">{{ found.text }}</li>
-                  </ul>
-                </template>
-              </UAlert>
-              <UAlert
-                v-if="legacy"
-                color="info"
-                variant="subtle"
-                icon="i-lucide-info"
-                :title="$t('content.editor.legacy')"
-              />
-              <EditorCanvas v-else-if="!readOnly" :data-block-count="blockCount" />
-              <article v-else class="rounded-md border border-default p-4 sm:p-6">
-                <BlocksDocument :blocks="item?.blocks ?? []" />
-              </article>
-            </div>
-
-            <aside
-              v-if="sidebarOpen"
-              id="editor-sidebar"
-              :aria-label="$t('editor.sidebar')"
-              class="flex w-full shrink-0 flex-col gap-4 rounded-md border border-default p-4 lg:sticky lg:top-16 lg:max-h-[calc(100vh-6rem)] lg:w-80 lg:overflow-y-auto"
+            </UFormField>
+            <p v-if="item" class="text-sm text-toned">
+              {{ $t('content.editor.shortLink') }} <code>{{ item.shortLink }}</code>
+            </p>
+            <p v-if="dirty" class="text-xs text-warning" role="status">{{ $t('editorPrototype.unsaved') }}</p>
+            <UAlert
+              v-if="failure"
+              color="error"
+              variant="subtle"
+              role="alert"
+              icon="i-lucide-triangle-alert"
+              :title="$t('content.editor.saveFailed')"
+              :description="failure"
+            />
+            <UAlert
+              v-if="issues.length > 0"
+              color="error"
+              variant="subtle"
+              icon="i-lucide-triangle-alert"
+              :title="$t('editorPrototype.invalid')"
             >
-              <UTabs v-model="tab" :items="tabs" :content="false" color="neutral" variant="link" class="w-full" />
-              <ContentDocumentPanel
-                v-if="tab === 'document'"
-                v-model="form"
-                :type="type"
-                :item="item"
-                :rights="rights"
-                :authors="authors"
-                :parents="parents"
-                :categories="categoryTerms ?? []"
-                :path="path"
-                :read-only="readOnly"
-                @trash="trash"
-              />
-              <EditorBlockSettings v-else />
-            </aside>
+              <template #description>
+                <ul class="list-disc pl-4">
+                  <li v-for="found in issues" :key="found.key">{{ found.text }}</li>
+                </ul>
+              </template>
+            </UAlert>
+            <UAlert
+              v-if="legacy"
+              color="info"
+              variant="subtle"
+              icon="i-lucide-info"
+              :title="$t('content.editor.legacy')"
+            />
+            <EditorCanvas v-else-if="!readOnly" :data-block-count="blockCount" />
+            <article v-else class="rounded-md border border-default p-4 sm:p-6">
+              <BlocksDocument :blocks="item?.blocks ?? []" />
+            </article>
           </div>
-        </template>
-      </div>
-    </template>
-  </UDashboardPanel>
+
+          <aside
+            v-if="sidebarOpen"
+            id="editor-sidebar"
+            :aria-label="$t('editor.sidebar')"
+            class="flex w-full shrink-0 flex-col gap-4 rounded-md border border-default p-4 lg:sticky lg:top-16 lg:max-h-[calc(100vh-6rem)] lg:w-80 lg:overflow-y-auto"
+          >
+            <UTabs v-model="tab" :items="tabs" :content="false" color="neutral" variant="link" class="w-full" />
+            <ContentDocumentPanel
+              v-if="tab === 'document'"
+              v-model="form"
+              :type="type"
+              :item="item"
+              :rights="rights"
+              :authors="authors"
+              :parents="parents"
+              :categories="categoryTerms ?? []"
+              :path="path"
+              :read-only="readOnly"
+              @trash="trash"
+            />
+            <EditorBlockSettings v-else />
+          </aside>
+        </div>
+      </template>
+    </div>
+  </AdminPage>
 </template>

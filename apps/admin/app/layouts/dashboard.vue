@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The shell of every signed-in admin page (nuxt-vue §4.1, ui-system §3.3): the bar across the top, the sidebar with the menu and, to
-// the right of it, the page, which brings its own `UDashboardPanel` with its navbar. The sign-in screens and the setup wizard have
+// The shell of every signed-in admin page (nuxt-vue §4.1; M2.1 «Blekk»): the side menu the whole height (the logo, the site, the menu,
+// the account) and, to the right of it, the page, which brings its own panel with the top bar (components/AdminPage.vue). The sign-in screens and the setup wizard have
 // no layout. A page picks this one with `definePageMeta({ layout: 'dashboard', middleware: 'signed-in' })`.
 const router = useRouter()
 
@@ -24,29 +24,53 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 flex flex-col">
+  <div class="fixed inset-0 flex">
     <a
       href="#main-content"
-      class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-default focus:px-4 focus:py-3 focus:text-highlighted focus:ring-2 focus:ring-primary"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-field focus:bg-surface focus:px-4 focus:py-3 focus:text-highlighted"
       @click.prevent="main?.focus()"
     >
       {{ $t('shell.skipToContent') }}
     </a>
 
-    <ShellAdminBar />
-
     <UDashboardGroup unit="rem" class="relative inset-auto min-h-0 flex-1">
-      <UDashboardSidebar id="admin" collapsible>
-        <template #header>
-          <UDashboardSidebarCollapse class="ms-auto" />
+      <UDashboardSidebar
+        id="admin"
+        collapsible
+        :ui="{
+          root: 'bg-sidebar border-sidebar-line',
+          header: 'h-auto px-4 pt-5 pb-3',
+          body: 'gap-4 px-3',
+          footer: 'border-t border-sidebar-line px-3 py-3',
+        }"
+      >
+        <template #header="{ collapsed }">
+          <NuxtLink
+            to="/"
+            class="inline-flex min-h-control items-center gap-2.5 rounded-menu px-1 font-semibold text-sidebar-text focus-visible:outline-sidebar-focus"
+            :aria-label="$t('shell.home')"
+          >
+            <span
+              class="inline-flex size-7 items-center justify-center rounded-menu bg-accent text-on-accent"
+              aria-hidden="true"
+            >
+              <UIcon name="i-lucide-pen-line" class="size-4" />
+            </span>
+            <span v-if="!collapsed" class="text-card-title">{{ $t('brand.name') }}</span>
+          </NuxtLink>
         </template>
 
         <template #default="{ collapsed }">
+          <ShellSiteCard :collapsed="collapsed" />
           <ShellMenu :collapsed="collapsed" />
+        </template>
+
+        <template #footer="{ collapsed }">
+          <ShellUserMenu :collapsed="collapsed" />
         </template>
       </UDashboardSidebar>
 
-      <main id="main-content" ref="main" tabindex="-1" class="flex min-w-0 flex-1 outline-none">
+      <main id="main-content" ref="main" tabindex="-1" class="flex min-w-0 flex-1 bg-app outline-none">
         <slot />
       </main>
     </UDashboardGroup>

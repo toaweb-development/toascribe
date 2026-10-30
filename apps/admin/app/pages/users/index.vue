@@ -206,204 +206,198 @@ async function retry() {
 </script>
 
 <template>
-  <UDashboardPanel id="users">
-    <template #header>
-      <UDashboardNavbar :title="$t('users.title')">
-        <template #right>
-          <UButton v-if="mayCreate" to="/users/new" size="lg" class="min-h-11" icon="i-lucide-user-plus">
-            {{ $t('users.new.button') }}
-          </UButton>
-        </template>
-      </UDashboardNavbar>
+  <AdminPage id="users" :title="$t('users.title')">
+    <template #actions>
+      <UButton v-if="mayCreate" to="/users/new" size="lg" class="min-h-11" icon="i-lucide-user-plus">
+        {{ $t('users.new.button') }}
+      </UButton>
     </template>
 
-    <template #body>
-      <div class="flex w-full flex-col gap-4 sm:gap-5">
-        <!-- Permission denied (workflows §19, §24): say what is missing and who can give it; no list is asked for. -->
-        <section v-if="denied" aria-labelledby="users-denied-heading" class="flex max-w-prose flex-col gap-3">
-          <h2 id="users-denied-heading" class="text-xl font-semibold text-highlighted">
-            {{ $t('users.denied.title') }}
-          </h2>
-          <p class="text-base text-default">{{ $t('users.denied.text') }}</p>
-          <div>
-            <NuxtLink
-              to="/"
-              class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
-            >
-              {{ $t('users.denied.back') }}
-            </NuxtLink>
-          </div>
-        </section>
-
-        <template v-else>
-          <!-- Loading failed: what failed, what is safe, and a way to try again (workflows §25). Rows already shown stay under it. -->
-          <UAlert
-            v-if="error"
-            color="error"
-            variant="subtle"
-            role="alert"
-            icon="i-lucide-triangle-alert"
-            :title="$t('users.failed.title')"
+    <div class="flex w-full flex-col gap-4 sm:gap-5">
+      <!-- Permission denied (workflows §19, §24): say what is missing and who can give it; no list is asked for. -->
+      <section v-if="denied" aria-labelledby="users-denied-heading" class="flex max-w-prose flex-col gap-3">
+        <h2 id="users-denied-heading" class="text-xl font-semibold text-highlighted">
+          {{ $t('users.denied.title') }}
+        </h2>
+        <p class="text-base text-default">{{ $t('users.denied.text') }}</p>
+        <div>
+          <NuxtLink
+            to="/"
+            class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
           >
-            <template #description>
-              <p>{{ data ? $t('users.failed.stale') : $t('users.failed.text') }}</p>
-            </template>
-            <template #actions>
-              <UButton color="neutral" variant="outline" size="lg" class="min-h-11" :loading="retrying" @click="retry">
-                {{ $t('users.failed.retry') }}
-              </UButton>
+            {{ $t('users.denied.back') }}
+          </NuxtLink>
+        </div>
+      </section>
+
+      <template v-else>
+        <!-- Loading failed: what failed, what is safe, and a way to try again (workflows §25). Rows already shown stay under it. -->
+        <UAlert
+          v-if="error"
+          color="error"
+          variant="subtle"
+          role="alert"
+          icon="i-lucide-triangle-alert"
+          :title="$t('users.failed.title')"
+        >
+          <template #description>
+            <p>{{ data ? $t('users.failed.stale') : $t('users.failed.text') }}</p>
+          </template>
+          <template #actions>
+            <UButton color="neutral" variant="outline" size="lg" class="min-h-11" :loading="retrying" @click="retry">
+              {{ $t('users.failed.retry') }}
+            </UButton>
+          </template>
+        </UAlert>
+
+        <UsersViews v-if="data" :counts="data.roleCounts" :roles="data.roles" :view="view" :to="locationFor" />
+
+        <div v-if="data" class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <UsersBulk
+            v-if="bulkAvailable"
+            v-model:role="role"
+            :roles="grantable"
+            :selected-count="selected.length"
+            :busy="saving"
+            @submit="applyRole"
+          />
+          <form v-if="mayEdit" class="flex flex-wrap items-end gap-2" @submit.prevent="sendResets">
+            <UButton
+              type="submit"
+              color="neutral"
+              variant="outline"
+              size="lg"
+              class="min-h-11"
+              :loading="resetting"
+              :aria-disabled="selected.length === 0"
+            >
+              {{ $t('users.reset.submit') }}
+            </UButton>
+          </form>
+          <UsersSearch :search="view.search" @submit="search" />
+        </div>
+        <div role="status">
+          <UAlert v-if="done" color="success" variant="subtle" icon="i-lucide-circle-check" :title="done" />
+        </div>
+        <div role="status">
+          <UAlert
+            v-if="resetReport"
+            color="success"
+            variant="subtle"
+            icon="i-lucide-circle-check"
+            :title="resetReport"
+          />
+        </div>
+
+        <!-- The result of «Endre». A region that is always there, so the text put into it is announced; the error is its own alert. -->
+        <div role="status">
+          <UAlert
+            v-if="report"
+            :color="report.tone"
+            variant="subtle"
+            :icon="
+              report.tone === 'success'
+                ? 'i-lucide-circle-check'
+                : report.tone === 'warning'
+                  ? 'i-lucide-triangle-alert'
+                  : 'i-lucide-info'
+            "
+            :title="report.title"
+          >
+            <template v-if="report.details.length > 0" #description>
+              <ul class="mt-1 flex list-disc flex-col gap-1 ps-5">
+                <li v-for="line in report.details" :key="line">{{ line }}</li>
+              </ul>
             </template>
           </UAlert>
+        </div>
+        <UAlert
+          v-if="failure"
+          color="error"
+          variant="subtle"
+          role="alert"
+          icon="i-lucide-triangle-alert"
+          :title="$t('users.roleError.title')"
+          :description="failure"
+        />
 
-          <UsersViews v-if="data" :counts="data.roleCounts" :roles="data.roles" :view="view" :to="locationFor" />
+        <section v-if="data || status === 'pending'" :aria-busy="status === 'pending'" class="flex flex-col gap-3">
+          <h2 ref="results" tabindex="-1" class="sr-only outline-none">{{ $t('users.table.caption') }}</h2>
 
-          <div v-if="data" class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-            <UsersBulk
-              v-if="bulkAvailable"
-              v-model:role="role"
-              :roles="grantable"
-              :selected-count="selected.length"
-              :busy="saving"
-              @submit="applyRole"
-            />
-            <form v-if="mayEdit" class="flex flex-wrap items-end gap-2" @submit.prevent="sendResets">
-              <UButton
-                type="submit"
-                color="neutral"
-                variant="outline"
-                size="lg"
-                class="min-h-11"
-                :loading="resetting"
-                :aria-disabled="selected.length === 0"
+          <div v-if="data" class="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p role="status" class="text-sm text-toned">{{ $t('users.count', data.total) }}</p>
+            <p v-if="view.search !== ''" class="flex flex-wrap items-center gap-x-3 text-sm text-default">
+              <span>{{ $t('users.search.summary', { query: view.search }) }}</span>
+              <NuxtLink
+                :to="locationFor({ search: '' })"
+                class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
               >
-                {{ $t('users.reset.submit') }}
-              </UButton>
-            </form>
-            <UsersSearch :search="view.search" @submit="search" />
+                {{ $t('users.search.clear') }}
+              </NuxtLink>
+            </p>
           </div>
-          <div role="status">
-            <UAlert v-if="done" color="success" variant="subtle" icon="i-lucide-circle-check" :title="done" />
-          </div>
-          <div role="status">
-            <UAlert
-              v-if="resetReport"
-              color="success"
-              variant="subtle"
-              icon="i-lucide-circle-check"
-              :title="resetReport"
+
+          <!-- Loading with nothing to show yet: rows of the shape the table will have. -->
+          <div v-if="!data" class="flex flex-col gap-2" aria-hidden="true">
+            <USkeleton
+              v-for="row in 5"
+              :key="row"
+              role="presentation"
+              aria-hidden="true"
+              aria-label=""
+              class="h-12 w-full"
             />
           </div>
 
-          <!-- The result of «Endre». A region that is always there, so the text put into it is announced; the error is its own alert. -->
-          <div role="status">
-            <UAlert
-              v-if="report"
-              :color="report.tone"
-              variant="subtle"
-              :icon="
-                report.tone === 'success'
-                  ? 'i-lucide-circle-check'
-                  : report.tone === 'warning'
-                    ? 'i-lucide-triangle-alert'
-                    : 'i-lucide-info'
-              "
-              :title="report.title"
-            >
-              <template v-if="report.details.length > 0" #description>
-                <ul class="mt-1 flex list-disc flex-col gap-1 ps-5">
-                  <li v-for="line in report.details" :key="line">{{ line }}</li>
-                </ul>
-              </template>
-            </UAlert>
+          <!-- No results (workflows §24): the filters matched nothing, and the way back is one link. -->
+          <div v-else-if="users.length === 0" class="flex max-w-prose flex-col gap-2 py-6">
+            <p class="text-lg font-semibold text-highlighted">{{ $t('users.empty.title') }}</p>
+            <p v-if="filtered" class="text-base text-default">
+              <NuxtLink
+                :to="locationFor({ role: undefined, search: '' })"
+                class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
+              >
+                {{ $t('users.empty.showAll') }}
+              </NuxtLink>
+            </p>
           </div>
-          <UAlert
-            v-if="failure"
-            color="error"
-            variant="subtle"
-            role="alert"
-            icon="i-lucide-triangle-alert"
-            :title="$t('users.roleError.title')"
-            :description="failure"
-          />
 
-          <section v-if="data || status === 'pending'" :aria-busy="status === 'pending'" class="flex flex-col gap-3">
-            <h2 ref="results" tabindex="-1" class="sr-only outline-none">{{ $t('users.table.caption') }}</h2>
+          <div v-else :class="status === 'pending' ? 'opacity-60' : ''">
+            <UsersTable
+              v-model:selected="selected"
+              :users="users"
+              :view="view"
+              :to="locationFor"
+              :signed-in-id="account?.id"
+              :selectable="bulkAvailable || mayEdit"
+              :role-name="roleName"
+              :may-delete="mayDelete"
+            />
+          </div>
 
-            <div v-if="data" class="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <p role="status" class="text-sm text-toned">{{ $t('users.count', data.total) }}</p>
-              <p v-if="view.search !== ''" class="flex flex-wrap items-center gap-x-3 text-sm text-default">
-                <span>{{ $t('users.search.summary', { query: view.search }) }}</span>
-                <NuxtLink
-                  :to="locationFor({ search: '' })"
-                  class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline lg:min-h-8"
-                >
-                  {{ $t('users.search.clear') }}
-                </NuxtLink>
-              </p>
-            </div>
-
-            <!-- Loading with nothing to show yet: rows of the shape the table will have. -->
-            <div v-if="!data" class="flex flex-col gap-2" aria-hidden="true">
-              <USkeleton
-                v-for="row in 5"
-                :key="row"
-                role="presentation"
-                aria-hidden="true"
-                aria-label=""
-                class="h-12 w-full"
-              />
-            </div>
-
-            <!-- No results (workflows §24): the filters matched nothing, and the way back is one link. -->
-            <div v-else-if="users.length === 0" class="flex max-w-prose flex-col gap-2 py-6">
-              <p class="text-lg font-semibold text-highlighted">{{ $t('users.empty.title') }}</p>
-              <p v-if="filtered" class="text-base text-default">
-                <NuxtLink
-                  :to="locationFor({ role: undefined, search: '' })"
-                  class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 hover:no-underline"
-                >
-                  {{ $t('users.empty.showAll') }}
-                </NuxtLink>
-              </p>
-            </div>
-
-            <div v-else :class="status === 'pending' ? 'opacity-60' : ''">
-              <UsersTable
-                v-model:selected="selected"
-                :users="users"
-                :view="view"
-                :to="locationFor"
-                :signed-in-id="account?.id"
-                :selectable="bulkAvailable || mayEdit"
-                :role-name="roleName"
-                :may-delete="mayDelete"
-              />
-            </div>
-
-            <!-- Page links (WordPress' «1 2 3 … Neste»): real links with the page in the address (workflows §7), so a page can be bookmarked
+          <!-- Page links (WordPress' «1 2 3 … Neste»): real links with the page in the address (workflows §7), so a page can be bookmarked
               and the back button works. Only drawn when there is more than one page. -->
-            <UPagination
-              v-if="data && pageCountOf(data.total, data.perPage) > 1"
-              as="nav"
-              :aria-label="$t('users.pagination.label')"
-              :page="view.page"
-              :total="data.total"
-              :items-per-page="data.perPage"
-              :sibling-count="1"
-              show-edges
-              :to="(page: number) => locationFor({ page })"
-              :ui="{
-                list: 'flex-wrap',
-                item: PAGE_BUTTON,
-                prev: PAGE_BUTTON,
-                next: PAGE_BUTTON,
-                first: PAGE_BUTTON,
-                last: PAGE_BUTTON,
-              }"
-            />
-          </section>
-        </template>
-      </div>
-    </template>
-  </UDashboardPanel>
+          <UPagination
+            v-if="data && pageCountOf(data.total, data.perPage) > 1"
+            as="nav"
+            :aria-label="$t('users.pagination.label')"
+            :page="view.page"
+            :total="data.total"
+            :items-per-page="data.perPage"
+            :sibling-count="1"
+            show-edges
+            :to="(page: number) => locationFor({ page })"
+            :ui="{
+              list: 'flex-wrap',
+              item: PAGE_BUTTON,
+              prev: PAGE_BUTTON,
+              next: PAGE_BUTTON,
+              first: PAGE_BUTTON,
+              last: PAGE_BUTTON,
+            }"
+          />
+        </section>
+      </template>
+    </div>
+  </AdminPage>
 </template>

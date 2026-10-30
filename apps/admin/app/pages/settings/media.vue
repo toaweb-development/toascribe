@@ -162,130 +162,118 @@ const sizeLabel = (key: (typeof SIZES)[number]['key']) =>
 </script>
 
 <template>
-  <UDashboardPanel id="settings-media">
-    <template #header>
-      <UDashboardNavbar :title="$t('media.settings.title')" />
-    </template>
-    <template #body>
-      <section v-if="!mayManage" aria-labelledby="settings-denied-heading" class="flex max-w-prose flex-col gap-3">
-        <h2 id="settings-denied-heading" class="text-xl font-semibold text-highlighted">
-          {{ $t('media.settings.denied') }}
-        </h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+  <AdminPage id="settings-media" :title="$t('media.settings.title')">
+    <section v-if="!mayManage" aria-labelledby="settings-denied-heading" class="flex max-w-prose flex-col gap-3">
+      <h2 id="settings-denied-heading" class="text-xl font-semibold text-highlighted">
+        {{ $t('media.settings.denied') }}
+      </h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
+    <UAlert
+      v-else-if="error"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :title="$t('media.settings.loadFailed')"
+      :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
+    />
+    <form v-else-if="data" class="flex max-w-3xl flex-col gap-8" @submit.prevent="save">
+      <section aria-labelledby="settings-sizes" class="flex flex-col gap-4">
+        <h2 id="settings-sizes" class="text-lg font-semibold text-highlighted">{{ $t('media.settings.sizes') }}</h2>
+        <p class="text-sm text-toned">{{ $t('media.settings.sizesHelp') }}</p>
+        <fieldset v-for="size in SIZES" :key="size.key" class="flex flex-col gap-3">
+          <legend class="mb-2 font-semibold text-highlighted">{{ sizeLabel(size.key) }}</legend>
+          <div class="grid grid-cols-2 gap-3 sm:max-w-md">
+            <UFormField :label="$t('media.settings.width')" :name="size.w">
+              <UInput v-model.number="form[size.w]" type="number" min="0" max="10000" size="xl" class="w-full" />
+            </UFormField>
+            <UFormField :label="$t('media.settings.height')" :name="size.h">
+              <UInput v-model.number="form[size.h]" type="number" min="0" max="10000" size="xl" class="w-full" />
+            </UFormField>
+          </div>
+          <UCheckbox
+            v-if="size.key === 'thumbnail'"
+            v-model="form.thumbnail_crop"
+            :label="$t('media.settings.thumbnailCrop')"
+          />
+        </fieldset>
+        <div class="flex flex-col items-start gap-2">
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="lg"
+            class="min-h-11"
+            icon="i-lucide-refresh-cw"
+            :loading="regenerating"
+            :label="$t('media.settings.regenerate')"
+            @click="regenerateAll"
+          />
+          <p v-if="sizesChanged" class="text-sm text-warning" role="status">
+            {{ $t('media.settings.sizesChanged') }}
+          </p>
+        </div>
       </section>
+
+      <section aria-labelledby="settings-uploads" class="flex flex-col gap-4">
+        <h2 id="settings-uploads" class="text-lg font-semibold text-highlighted">
+          {{ $t('media.settings.uploads') }}
+        </h2>
+        <UCheckbox v-model="form.uploads_use_yearmonth_folders" :label="$t('media.settings.yearMonth')" />
+        <UFormField
+          :label="$t('media.settings.maxSize')"
+          :help="$t('media.settings.maxSizeHelp', { cap: data.uploadMaxSizeCapMb })"
+          name="upload_max_size_mb"
+        >
+          <UInput
+            v-model.number="form.upload_max_size_mb"
+            type="number"
+            min="1"
+            :max="data.uploadMaxSizeCapMb"
+            size="xl"
+            class="w-full sm:w-48"
+          />
+        </UFormField>
+        <UFormField
+          :label="$t('media.settings.maxPixels')"
+          :help="$t('media.settings.maxPixelsHelp')"
+          name="image_max_pixels"
+        >
+          <UInput v-model.number="form.megapixels" type="number" min="1" max="1000" size="xl" class="w-full sm:w-48" />
+        </UFormField>
+      </section>
+
+      <section aria-labelledby="settings-types" class="flex flex-col gap-4">
+        <h2 id="settings-types" class="text-lg font-semibold text-highlighted">{{ $t('media.settings.types') }}</h2>
+        <p class="text-sm text-toned">{{ $t('media.settings.typesHelp') }}</p>
+        <fieldset v-for="role in UPLOAD_ROLES" :key="role" class="flex flex-col gap-2">
+          <legend class="mb-2 font-semibold text-highlighted">{{ roleLabel($t, role, undefined) }}</legend>
+          <div class="flex flex-wrap gap-x-5 gap-y-2">
+            <UCheckbox
+              v-for="group in MEDIA_GROUPS"
+              :key="group"
+              :model-value="form.groups[role]?.includes(group) ?? false"
+              :label="groupLabel($t, group)"
+              @update:model-value="toggleGroup(role, group, $event)"
+            />
+          </div>
+        </fieldset>
+      </section>
+
+      <div role="status">
+        <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-circle-check" :title="report" />
+      </div>
       <UAlert
-        v-else-if="error"
+        v-if="failure"
         color="error"
         variant="subtle"
+        role="alert"
         icon="i-lucide-triangle-alert"
-        :title="$t('media.settings.loadFailed')"
-        :actions="[{ label: $t('content.failed.retry'), onClick: () => refresh() }]"
+        :title="$t('media.settings.saveFailed')"
+        :description="failure"
       />
-      <form v-else-if="data" class="flex max-w-3xl flex-col gap-8" @submit.prevent="save">
-        <section aria-labelledby="settings-sizes" class="flex flex-col gap-4">
-          <h2 id="settings-sizes" class="text-lg font-semibold text-highlighted">{{ $t('media.settings.sizes') }}</h2>
-          <p class="text-sm text-toned">{{ $t('media.settings.sizesHelp') }}</p>
-          <fieldset v-for="size in SIZES" :key="size.key" class="flex flex-col gap-3">
-            <legend class="mb-2 font-semibold text-highlighted">{{ sizeLabel(size.key) }}</legend>
-            <div class="grid grid-cols-2 gap-3 sm:max-w-md">
-              <UFormField :label="$t('media.settings.width')" :name="size.w">
-                <UInput v-model.number="form[size.w]" type="number" min="0" max="10000" size="xl" class="w-full" />
-              </UFormField>
-              <UFormField :label="$t('media.settings.height')" :name="size.h">
-                <UInput v-model.number="form[size.h]" type="number" min="0" max="10000" size="xl" class="w-full" />
-              </UFormField>
-            </div>
-            <UCheckbox
-              v-if="size.key === 'thumbnail'"
-              v-model="form.thumbnail_crop"
-              :label="$t('media.settings.thumbnailCrop')"
-            />
-          </fieldset>
-          <div class="flex flex-col items-start gap-2">
-            <UButton
-              color="neutral"
-              variant="outline"
-              size="lg"
-              class="min-h-11"
-              icon="i-lucide-refresh-cw"
-              :loading="regenerating"
-              :label="$t('media.settings.regenerate')"
-              @click="regenerateAll"
-            />
-            <p v-if="sizesChanged" class="text-sm text-warning" role="status">
-              {{ $t('media.settings.sizesChanged') }}
-            </p>
-          </div>
-        </section>
-
-        <section aria-labelledby="settings-uploads" class="flex flex-col gap-4">
-          <h2 id="settings-uploads" class="text-lg font-semibold text-highlighted">
-            {{ $t('media.settings.uploads') }}
-          </h2>
-          <UCheckbox v-model="form.uploads_use_yearmonth_folders" :label="$t('media.settings.yearMonth')" />
-          <UFormField
-            :label="$t('media.settings.maxSize')"
-            :help="$t('media.settings.maxSizeHelp', { cap: data.uploadMaxSizeCapMb })"
-            name="upload_max_size_mb"
-          >
-            <UInput
-              v-model.number="form.upload_max_size_mb"
-              type="number"
-              min="1"
-              :max="data.uploadMaxSizeCapMb"
-              size="xl"
-              class="w-full sm:w-48"
-            />
-          </UFormField>
-          <UFormField
-            :label="$t('media.settings.maxPixels')"
-            :help="$t('media.settings.maxPixelsHelp')"
-            name="image_max_pixels"
-          >
-            <UInput
-              v-model.number="form.megapixels"
-              type="number"
-              min="1"
-              max="1000"
-              size="xl"
-              class="w-full sm:w-48"
-            />
-          </UFormField>
-        </section>
-
-        <section aria-labelledby="settings-types" class="flex flex-col gap-4">
-          <h2 id="settings-types" class="text-lg font-semibold text-highlighted">{{ $t('media.settings.types') }}</h2>
-          <p class="text-sm text-toned">{{ $t('media.settings.typesHelp') }}</p>
-          <fieldset v-for="role in UPLOAD_ROLES" :key="role" class="flex flex-col gap-2">
-            <legend class="mb-2 font-semibold text-highlighted">{{ roleLabel($t, role, undefined) }}</legend>
-            <div class="flex flex-wrap gap-x-5 gap-y-2">
-              <UCheckbox
-                v-for="group in MEDIA_GROUPS"
-                :key="group"
-                :model-value="form.groups[role]?.includes(group) ?? false"
-                :label="groupLabel($t, group)"
-                @update:model-value="toggleGroup(role, group, $event)"
-              />
-            </div>
-          </fieldset>
-        </section>
-
-        <div role="status">
-          <UAlert v-if="report" color="success" variant="subtle" icon="i-lucide-circle-check" :title="report" />
-        </div>
-        <UAlert
-          v-if="failure"
-          color="error"
-          variant="subtle"
-          role="alert"
-          icon="i-lucide-triangle-alert"
-          :title="$t('media.settings.saveFailed')"
-          :description="failure"
-        />
-        <div>
-          <UButton type="submit" size="lg" class="min-h-11" :loading="saving">{{ $t('media.settings.save') }}</UButton>
-        </div>
-      </form>
-    </template>
-  </UDashboardPanel>
+      <div>
+        <UButton type="submit" size="lg" class="min-h-11" :loading="saving">{{ $t('media.settings.save') }}</UButton>
+      </div>
+    </form>
+  </AdminPage>
 </template>

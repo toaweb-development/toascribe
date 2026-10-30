@@ -78,54 +78,49 @@ const expected = (slug: string) => activeTheme.value?.globalSets.some((set) => s
 </script>
 
 <template>
-  <UDashboardPanel id="appearance-global-sets">
-    <template #header>
-      <UDashboardNavbar :title="$t('appearance.sets.title')" />
-    </template>
-    <template #body>
-      <section v-if="!mayEdit" aria-labelledby="sets-denied" class="flex max-w-prose flex-col gap-3">
-        <h2 id="sets-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
-        <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
-      </section>
-      <div v-else class="flex max-w-3xl flex-col gap-6">
-        <p class="text-base text-default">{{ $t('appearance.sets.intro') }}</p>
-        <UAlert
-          v-if="failure || error"
-          color="error"
-          variant="subtle"
-          role="alert"
-          icon="i-lucide-triangle-alert"
-          :title="$t('appearance.sets.failed')"
-          :description="failure"
-        />
-        <form class="flex flex-wrap items-end gap-2" @submit.prevent="create">
-          <UFormField :label="$t('appearance.sets.newName')" name="set-name">
-            <UInput v-model="name" maxlength="200" size="xl" class="w-full sm:w-72" />
-          </UFormField>
-          <UButton type="submit" size="lg" class="min-h-11">{{ $t('appearance.sets.create') }}</UButton>
-        </form>
-        <p v-if="data && data.items.length === 0" class="text-sm text-muted">{{ $t('appearance.sets.empty') }}</p>
-        <ul v-else-if="data" class="flex flex-col divide-y divide-default rounded border border-default">
-          <li v-for="item in data.items" :key="item.id" class="flex flex-wrap items-center gap-3 p-3">
-            <NuxtLink :to="`/appearance/global-sets/${item.id}`" class="font-semibold text-primary underline">{{
-              item.name
-            }}</NuxtLink>
-            <code class="text-sm text-muted">{{ item.slug }}</code>
-            <UBadge v-if="expected(item.slug)" color="neutral" variant="subtle">{{
-              $t('appearance.sets.fromTheme')
-            }}</UBadge>
-            <UButton
-              color="error"
-              variant="ghost"
-              size="sm"
-              class="ms-auto min-h-11"
-              :aria-label="$t('appearance.sets.deleteNamed', { name: item.name })"
-              @click="remove(item.id, item.name, item.slug)"
-              >{{ $t('appearance.sets.delete') }}</UButton
-            >
-          </li>
-        </ul>
-      </div>
-    </template>
-  </UDashboardPanel>
+  <AdminPage id="appearance-global-sets" :title="$t('appearance.sets.title')">
+    <section v-if="!mayEdit" aria-labelledby="sets-denied" class="flex max-w-prose flex-col gap-3">
+      <h2 id="sets-denied" class="text-xl font-semibold text-highlighted">{{ $t('appearance.denied') }}</h2>
+      <p class="text-base text-default">{{ $t('content.denied.text') }}</p>
+    </section>
+    <div v-else class="flex max-w-3xl flex-col gap-6">
+      <p class="text-base text-default">{{ $t('appearance.sets.intro') }}</p>
+      <UAlert
+        v-if="failure || error"
+        color="error"
+        variant="subtle"
+        role="alert"
+        icon="i-lucide-triangle-alert"
+        :title="$t('appearance.sets.failed')"
+        :description="failure"
+      />
+      <form class="flex flex-wrap items-end gap-2" @submit.prevent="create">
+        <UFormField :label="$t('appearance.sets.newName')" name="set-name">
+          <UInput v-model="name" maxlength="200" size="xl" class="w-full sm:w-72" />
+        </UFormField>
+        <UButton type="submit" size="lg" class="min-h-11">{{ $t('appearance.sets.create') }}</UButton>
+      </form>
+      <p v-if="data && data.items.length === 0" class="text-sm text-muted">{{ $t('appearance.sets.empty') }}</p>
+      <ul v-else-if="data" class="flex flex-col divide-y divide-default rounded border border-default">
+        <li v-for="item in data.items" :key="item.id" class="flex flex-wrap items-center gap-3 p-3">
+          <NuxtLink :to="`/appearance/global-sets/${item.id}`" class="font-semibold text-primary underline">{{
+            item.name
+          }}</NuxtLink>
+          <code class="text-sm text-muted">{{ item.slug }}</code>
+          <UBadge v-if="expected(item.slug)" color="neutral" variant="subtle">{{
+            $t('appearance.sets.fromTheme')
+          }}</UBadge>
+          <UButton
+            color="error"
+            variant="ghost"
+            size="sm"
+            class="ms-auto min-h-11"
+            :aria-label="$t('appearance.sets.deleteNamed', { name: item.name })"
+            @click="remove(item.id, item.name, item.slug)"
+            >{{ $t('appearance.sets.delete') }}</UButton
+          >
+        </li>
+      </ul>
+    </div>
+  </AdminPage>
 </template>

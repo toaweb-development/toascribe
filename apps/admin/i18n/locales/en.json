@@ -359,7 +359,6 @@
   "shell": {
     "skipToContent": "Skip to main content",
     "bar": {
-      "visit": "Visit site",
       "howdy": "Howdy, {name}",
       "userMenu": "Your user menu",
       "profile": "Edit profile",
@@ -373,7 +372,22 @@
         "title": "The menu could not be loaded.",
         "text": "You can still use the addresses directly. Try loading the menu again.",
         "retry": "Try again"
-      }
+      },
+      "open": "Show the submenu of {name}"
+    },
+    "home": "To the dashboard",
+    "breadcrumbs": "Breadcrumbs",
+    "new": {
+      "button": "New",
+      "label": "Add new",
+      "post": "Post",
+      "page": "Page",
+      "media": "Media file",
+      "user": "User"
+    },
+    "site": {
+      "visit": "Visit",
+      "visitLabel": "Visit the site {site}"
     }
   },
   "menu": {
