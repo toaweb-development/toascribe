@@ -35,7 +35,10 @@ const viewsNav = (page: Page) => page.getByRole('navigation', { name: 'Brukere e
 const searchBox = (page: Page) => page.getByRole('searchbox', { name: 'Søk i brukere' })
 const count = (page: Page) => page.getByText(/^\d+ element(er)?$/)
 
-/** The accounts as rows: the body rows of the table, at every width since M2.1 (it scrolls sideways in its box on a phone). */
+/** Below `md` the rows stack (M2.1): the username cell with the name and role under it; the other columns are hidden. */
+const narrow = (page: Page): boolean => (page.viewportSize()?.width ?? 1280) < 768
+
+/** The accounts as rows: the body rows of the table, at every width. */
 function dataRows(page: Page) {
   return page.getByRole('table', { name: 'Brukerliste' }).locator('tbody').getByRole('row')
 }
@@ -86,11 +89,15 @@ const query = (page: Page, name: string) => new URL(page.url()).searchParams.get
 test('shows the views with their counts and filters by them', async ({ page }) => {
   await openUsers(page, admin)
 
-  // «Alle» is the current view, marked for assistive technology; the table is a table at every width.
+  // «Alle» is the current view, marked for assistive technology; the table is a table at every width, its rows stacked on a phone.
   await expect(viewsNav(page).getByRole('link', { name: /^Alle \(\d+\)$/ })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('table', { name: 'Brukerliste' })).toBeVisible()
-  await expect(page.getByRole('columnheader', { name: 'E-post' })).toBeVisible()
-  await expect(page.getByRole('columnheader', { name: 'Innlegg' })).toBeVisible()
+  if (narrow(page)) {
+    await expect(page.getByRole('columnheader', { name: 'E-post' })).toBeHidden()
+  } else {
+    await expect(page.getByRole('columnheader', { name: 'E-post' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Innlegg' })).toBeVisible()
+  }
 
   const subscribers = await viewCount(page, 'Abonnent')
   expect(subscribers).toBeGreaterThan(0)
@@ -106,7 +113,12 @@ test('shows the views with their counts and filters by them', async ({ page }) =
   await expect(dataRows(page)).toHaveCount(1)
   await expect(rowOf(page, subscriber.username)).toContainText('Abonnent')
   await expect(rowOf(page, subscriber.username)).toContainText(subscriber.email)
-  await expect(page.getByRole('link', { name: subscriber.email })).toHaveAttribute('href', `mailto:${subscriber.email}`)
+  if (!narrow(page)) {
+    await expect(page.getByRole('link', { name: subscriber.email })).toHaveAttribute(
+      'href',
+      `mailto:${subscriber.email}`,
+    )
+  }
 
   // The administrator's own row is marked.
   await viewsNav(page)
@@ -155,6 +167,7 @@ test('searches when the form is sent, shows what is searched for and gets back',
 })
 
 test('sorts by e-mail address both ways and marks the column', async ({ page }) => {
+  test.skip(narrow(page), 'below md the e-mail column is not shown (stacked rows, M2.1)')
   await openUsers(page, admin, `?search=${prefix}`)
   const ours = [admin.email, author1.email, author2.email, subscriber.email]
   const mine = async () => (await emailsInOrder(page)).filter((email) => email.includes(prefix))
@@ -194,7 +207,9 @@ test('keeps the state of the list in the address, through a reload and the back 
     await expect(viewsNav(page).getByRole('link', { name: /^Abonnent \(/ })).toHaveAttribute('aria-current', 'page')
     await expect(searchBox(page)).toHaveValue(subscriber.username)
     await expect(dataRows(page)).toHaveCount(1)
-    await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'descending')
+    if (!narrow(page)) {
+      await expect(page.getByRole('columnheader', { name: 'E-post' })).toHaveAttribute('aria-sort', 'descending')
+    }
   }
   await check()
   await page.reload()

@@ -295,7 +295,7 @@ const headClass = 'px-3 py-2 text-start text-badge font-semibold tracking-wide t
 
     <div v-else-if="data" :class="status === 'pending' ? 'opacity-60' : ''">
       <BlekkTableFrame :label="$t('media.library.items')">
-        <table class="w-full min-w-160 table-auto text-start text-body">
+        <table class="w-full table-auto md:min-w-160 text-start text-body">
           <caption class="sr-only">
             {{
               $t('media.library.items')
@@ -304,8 +304,8 @@ const headClass = 'px-3 py-2 text-start text-badge font-semibold tracking-wide t
           <thead>
             <tr class="border-b border-line">
               <th scope="col" :class="headClass">{{ $t('media.columns.file') }}</th>
-              <th scope="col" :class="headClass">{{ $t('media.columns.author') }}</th>
-              <th scope="col" :class="[headClass, 'text-end']">{{ $t('media.columns.size') }}</th>
+              <th scope="col" :class="[headClass, 'max-md:hidden']">{{ $t('media.columns.author') }}</th>
+              <th scope="col" :class="[headClass, 'text-end max-md:hidden']">{{ $t('media.columns.size') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-divider">
@@ -336,6 +336,10 @@ const headClass = 'px-3 py-2 text-start text-badge font-semibold tracking-wide t
                       {{ labelOf(item) }}
                     </button>
                     <span class="font-mono text-help text-secondary wrap-anywhere">{{ item.fileName }}</span>
+                    <BlekkRowMeta>
+                      <span class="font-mono">{{ formatBytes(item.size, locale) }}</span>
+                      <span v-if="item.uploadedBy">{{ item.uploadedBy.displayName }}</span>
+                    </BlekkRowMeta>
                     <span
                       v-if="item.visibility === 'private' || processingLabel($t, item.processing)"
                       class="text-help text-secondary"
@@ -352,8 +356,12 @@ const headClass = 'px-3 py-2 text-start text-badge font-semibold tracking-wide t
                   </span>
                 </span>
               </th>
-              <td class="px-3 py-2 align-middle text-heading">{{ item.uploadedBy?.displayName ?? '—' }}</td>
-              <td class="px-3 py-2 text-end align-middle font-mono text-help text-heading whitespace-nowrap">
+              <td class="px-3 py-2 align-middle text-heading max-md:hidden">
+                {{ item.uploadedBy?.displayName ?? '—' }}
+              </td>
+              <td
+                class="px-3 py-2 text-end align-middle font-mono text-help text-heading whitespace-nowrap max-md:hidden"
+              >
                 {{ formatBytes(item.size, locale) }}
               </td>
             </tr>

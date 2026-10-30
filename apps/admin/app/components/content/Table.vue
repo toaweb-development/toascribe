@@ -75,16 +75,19 @@ const SORTABLE: { column: ContentSortColumn; label: () => string }[] = [
 const sortLocation = (column: ContentSortColumn) => props.to(sortContentBy(props.view, props.type, column))
 const ariaSort = (column: ContentSortColumn) => ariaSortOfContent(props.view, props.type, column)
 
-const checkboxHitClass = 'flex size-control shrink-0 cursor-pointer items-center justify-center'
+const checkboxHitClass =
+  'flex size-control max-lg:size-control-main shrink-0 cursor-pointer items-center justify-center'
 // The row's actions (M2.1, «Blekk»): 40 px high, shown under the pointer or while one of them has focus; on a screen without a pointer
 // that hovers (a phone) they are always shown.
-const actionClass = 'inline-flex min-h-control items-center rounded-menu text-help text-accent-text hover:underline'
-const dangerClass = 'inline-flex min-h-control items-center rounded-menu text-help text-danger hover:underline'
+const actionClass =
+  'inline-flex min-h-control max-lg:min-h-control-main items-center rounded-menu text-help text-accent-text hover:underline'
+const dangerClass =
+  'inline-flex min-h-control max-lg:min-h-control-main items-center rounded-menu text-help text-danger hover:underline'
 </script>
 
 <template>
   <BlekkTableFrame :label="typeText(t, type).caption">
-    <table class="w-full min-w-176 table-auto text-start text-body">
+    <table class="w-full table-auto md:min-w-176 text-start text-body">
       <caption class="sr-only">
         {{
           typeText(t, type).caption
@@ -123,21 +126,21 @@ const dangerClass = 'inline-flex min-h-control items-center rounded-menu text-he
           <th
             v-if="showAuthor"
             scope="col"
-            class="px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase"
+            class="px-3 py-2 text-start max-md:hidden text-badge font-semibold tracking-wide text-secondary uppercase"
           >
             {{ $t('content.columns.author') }}
           </th>
           <th
             v-if="showCategories"
             scope="col"
-            class="px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase"
+            class="px-3 py-2 text-start max-md:hidden text-badge font-semibold tracking-wide text-secondary uppercase"
           >
             {{ $t('terms.categories.title') }}
           </th>
           <th
             v-if="showTags"
             scope="col"
-            class="px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase"
+            class="px-3 py-2 text-start max-md:hidden text-badge font-semibold tracking-wide text-secondary uppercase"
           >
             {{ $t('terms.tags.title') }}
           </th>
@@ -145,7 +148,7 @@ const dangerClass = 'inline-flex min-h-control items-center rounded-menu text-he
             v-if="showDate"
             scope="col"
             :aria-sort="ariaSort('date')"
-            class="px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase"
+            class="px-3 py-2 text-start max-md:hidden text-badge font-semibold tracking-wide text-secondary uppercase"
           >
             <NuxtLink
               :to="sortLocation('date')"
@@ -190,6 +193,10 @@ const dangerClass = 'inline-flex min-h-control items-center rounded-menu text-he
                   — {{ state }}</span
                 >
               </span>
+              <BlekkRowMeta v-if="showDate">
+                <span>{{ dateLabel(t, item) }}</span>
+                <span class="font-mono">{{ dateOf(item) }}</span>
+              </BlekkRowMeta>
               <ContentRowActions
                 :item="item"
                 :in-trash="inTrash"
@@ -203,22 +210,24 @@ const dangerClass = 'inline-flex min-h-control items-center rounded-menu text-he
               />
             </span>
           </th>
-          <td v-if="showAuthor" class="px-3 py-3 align-top text-heading wrap-anywhere">{{ authorsOf(item) }}</td>
-          <td v-if="showCategories" class="px-3 py-3 align-top wrap-anywhere">
+          <td v-if="showAuthor" class="max-md:hidden px-3 py-3 align-top text-heading wrap-anywhere">
+            {{ authorsOf(item) }}
+          </td>
+          <td v-if="showCategories" class="max-md:hidden px-3 py-3 align-top wrap-anywhere">
             <template v-for="(term, index) in item.categories" :key="term.id">
               <span v-if="index > 0">, </span>
               <NuxtLink :to="termLink('category', term.id)" :class="termLinkClass">{{ term.name }}</NuxtLink>
             </template>
             <span v-if="item.categories.length === 0" class="text-secondary">—</span>
           </td>
-          <td v-if="showTags" class="px-3 py-3 align-top wrap-anywhere">
+          <td v-if="showTags" class="max-md:hidden px-3 py-3 align-top wrap-anywhere">
             <template v-for="(term, index) in item.tags" :key="term.id">
               <span v-if="index > 0">, </span>
               <NuxtLink :to="termLink('tag', term.id)" :class="termLinkClass">{{ term.name }}</NuxtLink>
             </template>
             <span v-if="item.tags.length === 0" class="text-secondary">—</span>
           </td>
-          <td v-if="showDate" class="px-3 py-3 align-top whitespace-nowrap">
+          <td v-if="showDate" class="max-md:hidden px-3 py-3 align-top whitespace-nowrap">
             <span class="block text-help text-secondary">{{ dateLabel(t, item) }}</span>
             <span class="font-mono text-help text-heading">{{ dateOf(item) }}</span>
           </td>

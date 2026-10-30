@@ -38,10 +38,7 @@ async function preview(): Promise<void> {
 </script>
 
 <template>
-  <ul
-    class="flex flex-wrap items-center gap-x-3 gap-y-0 transition-opacity pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100"
-    :aria-label="$t('content.actions.label', { title: named })"
-  >
+  <BlekkRowActions :label="$t('content.actions.label', { title: named })">
     <template v-if="!inTrash">
       <li v-if="item.can.edit">
         <NuxtLink :to="editPath" :class="actionClass" :aria-label="$t('content.actions.editNamed', { title: named })">
@@ -101,5 +98,5 @@ async function preview(): Promise<void> {
         </button>
       </li>
     </template>
-  </ul>
+  </BlekkRowActions>
 </template>

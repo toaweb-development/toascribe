@@ -65,13 +65,14 @@ function rolesOf(user: UserListItem): string {
 }
 
 /** The 40 px area around a box: a press anywhere in it reaches the box. */
-const checkboxHitClass = 'flex size-control shrink-0 cursor-pointer items-center justify-center'
+const checkboxHitClass =
+  'flex size-control max-lg:size-control-main shrink-0 cursor-pointer items-center justify-center'
 const linkClass = 'text-accent-text hover:underline'
 </script>
 
 <template>
   <BlekkTableFrame :label="$t('users.table.caption')">
-    <table class="w-full min-w-176 table-auto text-start text-body">
+    <table class="w-full table-auto md:min-w-176 text-start text-body">
       <caption class="sr-only">
         {{
           $t('users.table.caption')
@@ -90,10 +91,11 @@ const linkClass = 'text-accent-text hover:underline'
             </label>
           </th>
           <th
-            v-for="entry in COLUMNS"
+            v-for="(entry, index) in COLUMNS"
             :key="entry.column"
             scope="col"
             :aria-sort="ariaSort(entry.column)"
+            :class="index > 0 ? 'max-md:hidden' : ''"
             class="px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase"
           >
             <NuxtLink
@@ -109,10 +111,16 @@ const linkClass = 'text-accent-text hover:underline'
               />
             </NuxtLink>
           </th>
-          <th scope="col" class="px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase">
+          <th
+            scope="col"
+            class="px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase max-md:hidden"
+          >
             {{ $t('users.table.roles') }}
           </th>
-          <th scope="col" class="px-3 py-2 text-end text-badge font-semibold tracking-wide text-secondary uppercase">
+          <th
+            scope="col"
+            class="px-3 py-2 text-end text-badge font-semibold tracking-wide text-secondary uppercase max-md:hidden"
+          >
             {{ $t('users.table.posts') }}
           </th>
         </tr>
@@ -147,27 +155,34 @@ const linkClass = 'text-accent-text hover:underline'
                 {{ $t('users.you') }}
               </UBadge>
             </span>
-            <span
+            <BlekkRowMeta class="mt-0.5 font-normal">
+              <span>{{ user.displayName }}</span>
+              <span>{{ rolesOf(user) }}</span>
+            </BlekkRowMeta>
+            <BlekkRowActions
               v-if="mayDelete && user.id !== signedInId"
-              class="block font-normal transition-opacity pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100"
+              class="font-normal"
+              :label="$t('content.actions.label', { title: user.username })"
             >
-              <NuxtLink
-                :to="`/users/${user.id}/delete`"
-                class="inline-flex min-h-control items-center rounded-menu text-help text-danger hover:underline"
-                :aria-label="$t('users.delete.rowLabel', { user: user.username })"
-              >
-                {{ $t('users.delete.row') }}
-              </NuxtLink>
-            </span>
+              <li>
+                <NuxtLink
+                  :to="`/users/${user.id}/delete`"
+                  class="inline-flex min-h-control items-center rounded-menu text-help text-danger hover:underline max-lg:min-h-control-main"
+                  :aria-label="$t('users.delete.rowLabel', { user: user.username })"
+                >
+                  {{ $t('users.delete.row') }}
+                </NuxtLink>
+              </li>
+            </BlekkRowActions>
           </th>
-          <td class="px-3 py-3 align-middle text-heading wrap-anywhere">{{ user.displayName }}</td>
-          <td class="px-3 py-3 align-middle wrap-anywhere">
+          <td class="px-3 py-3 align-middle text-heading wrap-anywhere max-md:hidden">{{ user.displayName }}</td>
+          <td class="px-3 py-3 align-middle wrap-anywhere max-md:hidden">
             <a :href="`mailto:${user.email}`" :class="[linkClass, 'inline-flex min-h-control items-center']">{{
               user.email
             }}</a>
           </td>
-          <td class="px-3 py-3 align-middle text-heading">{{ rolesOf(user) }}</td>
-          <td class="px-3 py-3 text-end align-middle font-mono text-heading">{{ user.postCount }}</td>
+          <td class="px-3 py-3 align-middle text-heading max-md:hidden">{{ rolesOf(user) }}</td>
+          <td class="px-3 py-3 text-end align-middle font-mono text-heading max-md:hidden">{{ user.postCount }}</td>
         </tr>
       </tbody>
     </table>

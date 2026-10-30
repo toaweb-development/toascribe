@@ -167,8 +167,9 @@ test.describe('the keyboard', () => {
     const table = page.getByRole('table', { name: 'Innleggsliste' })
     const row = table.getByRole('row').nth(1)
     const actions = row.getByRole('list', { name: /^Handlinger for / })
-    // Under a fine pointer the actions wait for the pointer or the keyboard (Blekk: the sketch shows them on the hovered row).
-    await expect(actions).toHaveCSS('opacity', '0')
+    // From md, under a fine pointer, the actions wait for the pointer or the keyboard (the sketch shows them on the hovered row);
+    // below md the rows stack and the actions are always there (M2.1, as WordPress on a phone).
+    await expect(actions).toHaveCSS('opacity', isPhone() ? '1' : '0')
     const edit = actions.getByRole('link', { name: /^Rediger / })
     await edit.focus()
     await expect(actions).toHaveCSS('opacity', '1')
@@ -205,11 +206,57 @@ test('a flyout the pointer opens leaves the keyboard focus where it was', async 
   await expect(field).toBeFocused()
 })
 
+test('a list stacks its rows on a phone: title, status and date, the actions, and the checkbox', async ({ page }) => {
+  test.skip(!isPhone(), 'from md the list is a table with its columns')
+  await signIn(page, admin)
+  await page.goto('/admin/posts')
+  const table = page.getByRole('table', { name: 'Innleggsliste' })
+  await expect(table.getByRole('columnheader', { name: 'Forfatter' })).toBeHidden()
+  await expect(table.getByRole('columnheader', { name: 'Dato' })).toBeHidden()
+  const row = table.getByRole('row').nth(1)
+  await expect(row.getByRole('checkbox')).toBeVisible()
+  await expect(row.getByText(/^(Publisert|Sist endret|Planlagt)$/)).toBeVisible()
+  await expect(row.getByRole('list', { name: /^Handlinger for / })).toHaveCSS('opacity', '1')
+  // Nothing scrolls sideways: the table fits its box.
+  const frame = page.getByRole('region', { name: 'Innleggsliste' })
+  expect(await frame.evaluate((box) => box.scrollWidth <= box.clientWidth)).toBe(true)
+})
+
 test('the component overview is not in a production build', async ({ page }) => {
   await signIn(page, admin)
   const answer = await page.request.get('/admin/_ui')
   expect(answer.status()).toBe(404)
 })
+
+/** Calls the api as the signed-in page (session cookie and CSRF token). */
+async function api(page: Page, method: 'GET' | 'POST', path: string, data?: unknown): Promise<Record<string, unknown>> {
+  const session = (await (await page.request.get('/api/v1/auth/session')).json()) as { csrfToken: string }
+  const answer = await page.request.fetch(`/api/v1${path}`, {
+    method,
+    headers: { 'X-CSRF-Token': session.csrfToken, origin: new URL(page.url()).origin },
+    ...(data === undefined ? {} : { data }),
+  })
+  expect(answer.ok(), await answer.text()).toBe(true)
+  return (await answer.json()) as Record<string, unknown>
+}
+
+/**
+ * The fixed items the stacked lists are drawn with: the same names every run, made once in the e2e database (it keeps its data
+ * between runs), so the 375 px references show real rows.
+ */
+const REFERENCE = 'Blekk-referanse'
+async function ensureReferenceItems(page: Page): Promise<void> {
+  for (const title of [`${REFERENCE} én`, `${REFERENCE} to`]) {
+    const found = await api(page, 'GET', `/content?type=post&search=${encodeURIComponent(title)}&per_page=1`)
+    if (found['total'] === 0) {
+      await api(page, 'POST', '/content', { type: 'post', status: 'draft', title, blocks: [] })
+    }
+  }
+  const terms = await api(page, 'GET', `/taxonomies/category/terms?search=${encodeURIComponent(REFERENCE)}`)
+  if (terms['total'] === 0) {
+    await api(page, 'POST', '/taxonomies/category/terms', { name: REFERENCE })
+  }
+}
 
 /** The parts of a screen that change from run to run. */
 function dynamicParts(page: Page): Locator[] {
@@ -261,6 +308,29 @@ for (const scheme of ['light', 'dark'] as const) {
           page.getByText(/^\d+ elementer?$/),
           page.locator('#content-month'),
         ],
+      })
+    })
+
+    test(`stacked lists on a phone (${scheme})`, async ({ page }) => {
+      test.skip(!isPhone(), 'the rows stack below md only')
+      await signIn(page, admin)
+      await useTheme(page, scheme)
+      await ensureReferenceItems(page)
+      await page.goto(`/admin/posts?search=${encodeURIComponent(REFERENCE)}`)
+      const posts = page.getByRole('table', { name: 'Innleggsliste' })
+      await expect(posts.getByRole('row')).toHaveCount(3)
+      await expect(posts).toHaveScreenshot(`posts-stacked-${scheme}.png`, {
+        animations: 'disabled',
+        caret: 'hide',
+        // The date of a draft is when it was made.
+        mask: [posts.locator('.font-mono')],
+      })
+      await page.goto(`/admin/categories?search=${encodeURIComponent(REFERENCE)}`)
+      const terms = page.getByRole('table', { name: 'Kategoriliste' })
+      await expect(terms.getByRole('row')).toHaveCount(2)
+      await expect(terms).toHaveScreenshot(`categories-stacked-${scheme}.png`, {
+        animations: 'disabled',
+        caret: 'hide',
       })
     })
 

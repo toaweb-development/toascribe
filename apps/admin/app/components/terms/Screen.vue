@@ -225,9 +225,12 @@ const postsLink = (term: TermItem) => ({
   query: isCategory ? { category: term.id } : { tag: term.id },
 })
 const label = (term: TermItem) => `${'— '.repeat(term.depth)}${term.name}`
-const checkboxHitClass = 'flex size-control shrink-0 cursor-pointer items-center justify-center'
-const actionClass = 'inline-flex min-h-control items-center rounded-menu text-help text-accent-text hover:underline'
-const dangerClass = 'inline-flex min-h-control items-center rounded-menu text-help text-danger hover:underline'
+const checkboxHitClass =
+  'flex size-control max-lg:size-control-main shrink-0 cursor-pointer items-center justify-center'
+const actionClass =
+  'inline-flex min-h-control max-lg:min-h-control-main items-center rounded-menu text-help text-accent-text hover:underline'
+const dangerClass =
+  'inline-flex min-h-control max-lg:min-h-control-main items-center rounded-menu text-help text-danger hover:underline'
 const headClass = 'px-3 py-2 text-start text-badge font-semibold tracking-wide text-secondary uppercase'
 const PAGE_BUTTON = 'min-h-control min-w-control'
 </script>
@@ -319,7 +322,7 @@ const PAGE_BUTTON = 'min-h-control min-w-control'
 
         <div v-else-if="data" :class="status === 'pending' ? 'opacity-60' : ''">
           <BlekkTableFrame :label="words.caption">
-            <table class="w-full min-w-160 table-auto text-start text-body">
+            <table class="w-full table-auto md:min-w-160 text-start text-body">
               <caption class="sr-only">
                 {{
                   words.caption
@@ -338,8 +341,8 @@ const PAGE_BUTTON = 'min-h-control min-w-control'
                     </label>
                   </th>
                   <th scope="col" :class="headClass">{{ $t('terms.columns.name') }}</th>
-                  <th scope="col" :class="headClass">{{ $t('terms.slug') }}</th>
-                  <th scope="col" :class="[headClass, 'text-end']">{{ $t('terms.columns.count') }}</th>
+                  <th scope="col" :class="[headClass, 'max-md:hidden']">{{ $t('terms.slug') }}</th>
+                  <th scope="col" :class="[headClass, 'text-end max-md:hidden']">{{ $t('terms.columns.count') }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-divider">
@@ -365,10 +368,13 @@ const PAGE_BUTTON = 'min-h-control min-w-control'
                       <span v-if="term.description !== ''" class="text-help text-secondary wrap-anywhere">
                         {{ term.description }}
                       </span>
-                      <ul
-                        class="flex flex-wrap gap-x-3 transition-opacity pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100"
-                        :aria-label="$t('content.actions.label', { title: term.name })"
-                      >
+                      <BlekkRowMeta>
+                        <span class="font-mono">{{ term.slug }}</span>
+                        <NuxtLink :to="postsLink(term)" class="text-accent-text hover:underline">
+                          {{ $t('terms.countLabel', { n: term.count }, term.count) }}
+                        </NuxtLink>
+                      </BlekkRowMeta>
+                      <BlekkRowActions :label="$t('content.actions.label', { title: term.name })">
                         <li>
                           <button
                             type="button"
@@ -399,11 +405,13 @@ const PAGE_BUTTON = 'min-h-control min-w-control'
                             {{ $t('terms.delete') }}
                           </button>
                         </li>
-                      </ul>
+                      </BlekkRowActions>
                     </span>
                   </th>
-                  <td class="px-3 py-3 align-top font-mono text-help text-secondary wrap-anywhere">{{ term.slug }}</td>
-                  <td class="px-3 py-3 text-end align-top">
+                  <td class="px-3 py-3 align-top font-mono text-help text-secondary wrap-anywhere max-md:hidden">
+                    {{ term.slug }}
+                  </td>
+                  <td class="px-3 py-3 text-end align-top max-md:hidden">
                     <NuxtLink
                       :to="postsLink(term)"
                       class="font-mono text-accent-text hover:underline"
