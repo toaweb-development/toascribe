@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+
 import type { Locator, Page } from '@playwright/test'
 
 import { expect, expectNoAxeViolations, test } from './helpers/fixtures.ts'
@@ -266,7 +268,13 @@ function dynamicParts(page: Page): Locator[] {
   ]
 }
 
-const SNAPSHOT = { fullPage: true, animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.002 } as const
+const SNAPSHOT = {
+  fullPage: true,
+  animations: 'disabled',
+  caret: 'hide',
+  maxDiffPixelRatio: 0.002,
+  stylePath: fileURLToPath(new URL('./blekk-snapshot.css', import.meta.url)),
+} as const
 
 for (const scheme of ['light', 'dark'] as const) {
   test.describe(`the look, ${scheme}`, () => {
@@ -278,17 +286,8 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(page.getByRole('region', { name: 'Hurtigutkast' })).toBeVisible()
       await expect(page).toHaveScreenshot(`dashboard-${scheme}.png`, {
         ...SNAPSHOT,
-        mask: [
-          ...dynamicParts(page),
-          dashboardHeading(page),
-          page.locator('main header p'),
-          page.getByRole('region', { name: 'Oversikt' }),
-          page.getByRole('region', { name: 'Aktivitet' }).locator('ul, p'),
-          page.getByRole('region', { name: 'Dine siste kladder' }),
-          page.getByRole('region', { name: 'Nettstedshelse' }).locator('ul, [aria-hidden="true"], p, span'),
-          page.getByRole('region', { name: 'Versjon' }).locator('p'),
-          page.getByRole('region', { name: 'Varsler' }),
-        ],
+        // The greeting, the counts, the checks and the lists change from run to run: blekk-snapshot.css takes them out.
+        mask: dynamicParts(page),
       })
     })
 

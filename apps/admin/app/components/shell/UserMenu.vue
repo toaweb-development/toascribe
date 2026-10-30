@@ -30,8 +30,10 @@ const label = computed(() => `${t('shell.bar.howdy', { name: name.value })}. ${t
     :items="items"
     :content="{ align: props.compact ? 'end' : 'start', side: props.compact ? 'bottom' : 'top' }"
   >
-    <UButton v-if="props.compact" color="neutral" variant="ghost" class="rounded-full p-0" :aria-label="label">
+    <!-- The initials are not text to read: the name is a hidden text, not an aria-label the initials would have to be part of. -->
+    <UButton v-if="props.compact" color="neutral" variant="ghost" class="rounded-full p-0">
       <UAvatar :alt="name" size="md" aria-hidden="true" :ui="{ fallback: 'text-default' }" />
+      <span class="sr-only">{{ label }}</span>
     </UButton>
     <button
       v-else

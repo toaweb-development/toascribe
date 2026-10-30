@@ -1,0 +1,20 @@
+/*
+ * Applied while blekk.spec.ts takes its visual references: what changes from run to run, and with it the height of a card, is taken
+ * out of the picture. Text that only changes is made invisible (the layout stays); lists whose length changes are removed.
+ */
+body:has([aria-labelledby='stats-heading']) main h1,
+body:has([aria-labelledby='stats-heading']) main p:has(+ h1),
+[aria-labelledby='stats-heading'] li > span,
+[aria-labelledby='health-heading'] [aria-hidden='true'],
+[aria-labelledby='health-heading'] p,
+[aria-labelledby='health-heading'] .rounded-full,
+[aria-labelledby='version-heading'] p,
+[aria-labelledby='notices-heading'] li {
+  visibility: hidden !important;
+}
+
+[aria-labelledby='health-heading'] ul,
+[aria-labelledby='activity-heading'] ul,
+[aria-labelledby='quick-draft-list'] {
+  display: none !important;
+}
