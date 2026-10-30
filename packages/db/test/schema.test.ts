@@ -103,6 +103,8 @@ const ADDED_TABLES = [
   'admin_notice',
   // M1.4, PLAN «Cache og invalidering» (tags cleared on change): the log the site reads to drop its cached data by tag.
   'cache_invalidation',
+  // M2.1, Tor: a registration form token is good once (K-006): the used ones, by hash, for their hour.
+  'register_form_use',
 ]
 
 const TABLES = [...PLAN_TABLES, ...ADDED_TABLES].sort()

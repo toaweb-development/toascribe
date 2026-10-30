@@ -41,7 +41,7 @@ describe.skipIf(TEST_DATABASE_URL === undefined)('migration status (needs TEST_D
       expected: journal.length,
       latest: journal.at(-1)?.tag,
     })
-    expect(status.latest).toBe('0014_journal_read_for_backups')
+    expect(status.latest).toBe('0015_register_form_use')
   })
 
   it('says a database that lacks the newest migration is not up to date', async () => {
